@@ -1,0 +1,63 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write # to attach the package to a release; pull requests from forks get read
+
+env:
+  SOLIDCRAFT: 0.41.0 # the app version the end-to-end tests run against
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-tools
+
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Get the SolidCraft CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive=solidcraft-$SOLIDCRAFT-linux-x86_64.tar.gz
+          gh release download v$SOLIDCRAFT --repo tangency-labs/solidcraft \
+            --pattern "$archive" --pattern SHA256SUMS.txt --dir "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP"
+          sha256sum --check --ignore-missing SHA256SUMS.txt
+          mkdir solidcraft && tar -xzf "$archive" -C solidcraft
+          cli=$(find "$PWD/solidcraft" -type f -name solidcraft-cli | head -n 1)
+          test -n "$cli"
+          dirname "$cli" >> "$GITHUB_PATH"
+
+      - name: Unit tests, package, end-to-end tests
+        run: python build.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: woodwork
+          path: dist/woodwork-*.zip
+
+      - name: The tag must match the plugin version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: test -f "dist/woodwork-${GITHUB_REF_NAME#v}.zip"
+      - name: Attach the package to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/woodwork-*.zip
+          generate_release_notes: true

@@ -1,0 +1,69 @@
+{
+  "id": "woodwork",
+  "name": "Woodwork",
+  "version": "0.1.0",
+  "description": "Cabinets and furniture in sheet goods: carcass generator and cut list.",
+  "capabilities": ["commands@0.1"],
+  "runtime": {
+    "module": "woodwork.wasm",
+    "entries": [
+      {
+        "name": "cabinet",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Cabinet…" }],
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm: with in, enter each size in inches.", "enum": ["mm", "in"], "default": "mm" },
+            "width": { "type": "number", "title": "Width", "description": "Outside width.", "default": 600, "minimum": 4, "maximum": 5000 },
+            "height": { "type": "number", "title": "Height", "description": "Outside height, plinth included.", "default": 720, "minimum": 4, "maximum": 5000 },
+            "depth": { "type": "number", "title": "Depth", "description": "Outside depth, back included.", "default": 560, "minimum": 4, "maximum": 5000 },
+            "thickness": { "type": "number", "title": "Panel thickness", "default": 18, "minimum": 0.125, "maximum": 50 },
+            "back": { "type": "string", "title": "Back", "description": "groove: back panel in a groove 12 mm from the rear. overlay: back panel fixed on the rear edges. none: open back.", "enum": ["groove", "overlay", "none"], "default": "groove" },
+            "back_thickness": { "type": "number", "title": "Back thickness", "default": 6, "minimum": 0.125, "maximum": 50 },
+            "dividers": { "type": "integer", "title": "Dividers", "description": "Vertical dividers, splitting the inside into equal compartments.", "default": 0, "minimum": 0, "maximum": 10 },
+            "shelves": { "type": "integer", "title": "Shelves", "description": "Shelves in each compartment, evenly spaced.", "default": 1, "minimum": 0, "maximum": 20 },
+            "drawers": { "type": "integer", "title": "Drawers", "description": "A stack of equal drawers with overlay fronts, boxes sized for 12.7 mm slides. Shelves are then left out; not with doors or dividers.", "default": 0, "minimum": 0, "maximum": 8 },
+            "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth board sits 50 mm back from the front.", "default": 0, "minimum": 0, "maximum": 500 },
+            "shelf_pins": { "type": "boolean", "title": "Shelf pin holes", "description": "32 mm system: rows of 5 mm holes 37 mm from the front and back. The shelves rest on them.", "default": false },
+            "doors": { "type": "integer", "title": "Doors", "description": "Overlay doors with 35 mm hinge cup holes and 2 mm gaps: 0, 1, 2, or one per compartment (dividers + 1).", "default": 0, "minimum": 0, "maximum": 11 },
+            "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material… on a selection.", "enum": ["Birch plywood", "MDF", "White melamine", "Oak", "none"], "default": "Birch plywood" },
+            "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
+            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names.", "default": "Cabinet", "minLength": 1, "maxLength": 40 }
+          }
+        }
+      },
+      {
+        "name": "joinery",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Joinery…" }],
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "title": "Type", "description": "Drills where the sides meet the bottom and top of the cabinet you selected a part of. confirmat: 7 mm through the side and a 5 mm pilot for 7 x 50 screws. dowel: 8 mm holes for 8 x 35 dowels.", "enum": ["confirmat", "dowel"], "default": "confirmat" }
+          }
+        }
+      },
+      {
+        "name": "material",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Material…" }],
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "material": { "type": "string", "title": "Material", "enum": ["Birch plywood", "MDF", "White melamine", "Oak"], "default": "Birch plywood" },
+            "scope": { "type": "string", "title": "Apply to", "description": "cabinet: every panel of the cabinet you selected a part of. parts: only the selected parts, such as the doors.", "enum": ["cabinet", "parts"], "default": "cabinet" }
+          }
+        }
+      },
+      {
+        "name": "cutlist",
+        "effect": "read",
+        "slots": [{ "kind": "menu", "name": "Cut list" }],
+        "input_schema": { "type": "object", "properties": {} }
+      }
+    ],
+    "commands": ["solid.box", "solid.hole", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "joint.as_built", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
+    "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
+  }
+}
