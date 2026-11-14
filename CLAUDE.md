@@ -148,6 +148,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
   see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). A box
   cabinet can be placed beside its back leg, but not turned to continue its return.
+- Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
+  A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
+  parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the
+  selected one has one. Material is not matched.
 - Joinery covers the four carcass corners only, and tells an overlaid back from a grooved one
   by comparing the side depth with the depth parameter.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.

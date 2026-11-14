@@ -29,6 +29,9 @@ Under the **Plugins** menu:
     `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows.
     The counts (shelves, dividers, doors) are fixed once it is built.
   The Units field switches the sizes between mm and inches.
+  - **Match selected** links the new cabinet's height, depth, panel thickness and plinth to
+    the cabinet you have selected, so a whole run is resized by changing one cabinet's
+    parameters.
 - **Corner cabinet…** builds an L-shaped cabinet for a corner of the room, with the return on
   the left or the right: L-shaped bottom, top and shelves, optional plinth, and a door on each
   front. It is parametric, takes a material and can be placed like the box cabinet.

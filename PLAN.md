@@ -66,6 +66,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Hardware list in the cut list: hinges, slides, shelf pins, screws, dowels, handles
 - [x] Handle holes in doors and drawer fronts: knob or 128 mm pull
 - [x] Corner cabinet: L-shaped, left or right, with doors
+- [x] Match selected: a new cabinet's height, depth, thickness and plinth linked to the selected cabinet's parameters
 - [ ] Corner cabinet: joinery, handle holes, shelf pins, a thin back
 - [ ] Inset doors
 

@@ -9,6 +9,7 @@ mod kit;
 mod material;
 mod select;
 
+use kit::check;
 use serde_json::{json, Value};
 
 /// App commands with their arguments, in the order they run.
@@ -20,25 +21,35 @@ pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     match entry {
         "cabinet" | "corner" => {
-            let (commands, mut summary) = match entry {
-                "cabinet" => cabinet::build(params)?,
-                _ => corner::build(params)?,
-            };
             // Where it goes: on the origin, or against the cabinet that is selected.
             let place = params["place"].as_str().unwrap_or("origin");
-            let beside = match place {
-                "origin" => None,
-                "right" | "left" | "above" => {
-                    let design = run(
-                        "document.inspect",
-                        json!({"bodies": false, "timeline": false}),
-                    )?;
-                    Some(select::cabinet(
-                        &design,
-                        &run("inspect.measure", json!({}))?,
-                    )?)
+            check(
+                matches!(place, "origin" | "right" | "left" | "above"),
+                "place must be origin, right, left or above",
+            )?;
+            let matching = match params["match"].as_str().unwrap_or("no") {
+                "no" => false,
+                "selected" => true,
+                _ => return Err("match must be no or selected".into()),
+            };
+            let mut params = params.clone();
+            let mut beside = None;
+            if matching || place != "origin" {
+                let design = run(
+                    "document.inspect",
+                    json!({"bodies": false, "timeline": false}),
+                )?;
+                let found = select::cabinet(&design, &run("inspect.measure", json!({}))?)?;
+                if matching {
+                    params["_match"] = kit::matched(&found.name, &design)?;
                 }
-                _ => return Err("place must be origin, right, left or above".into()),
+                if place != "origin" {
+                    beside = Some(found);
+                }
+            }
+            let (commands, mut summary) = match entry {
+                "cabinet" => cabinet::build(&params)?,
+                _ => corner::build(&params)?,
             };
             // The cabinet is a component of its own, inside whichever component is active:
             // it moves as one piece, and a room can hold its cabinets.

@@ -10,6 +10,8 @@ It uses every function of the plugin:
 - Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth
 - Corner cabinet, at the right end of the base units and of the wall units
 - Place: each floor unit goes to the right of the one before it, by selecting that one
+- Match selected: only the first base and wall unit carry sizes. The others take height, depth,
+  thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Cut list: written out as CSV, with the sheets and the hardware to buy
@@ -29,6 +31,7 @@ WHITE = {"material": "White melamine"}
 FLOOR_UNIT = {**WHITE, "height": 870, "depth": 560, "plinth": 150}
 BASE = {**FLOOR_UNIT, "handles": "pull", "place": "right"}
 WALL = {**WHITE, "height": 700, "depth": 320, "shelves": 2, "shelf_pins": True, "handles": "knob"}
+MATCH = {"match": "selected"}  # sizes from the selected cabinet, and linked to it
 WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
 
 # The floor run, left to right. The tall unit stands on the origin; each of the others is
@@ -37,8 +40,8 @@ FLOOR = [
     ("Tall", {**WHITE, "width": 600, "height": 2100, "depth": 560, "plinth": 150, "shelves": 4, "doors": 1,
               "handles": "pull"}),
     ("Base 1", {**BASE, "width": 800, "dividers": 1, "doors": 2}),
-    ("Base 2", {**BASE, "width": 600, "drawers": 3}),
-    ("Base 3", {**BASE, "width": 900, "dividers": 2, "doors": 3}),
+    ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3}),
+    ("Base 3", {**BASE, **MATCH, "width": 900, "dividers": 2, "doors": 3}),
 ]
 # Wall units hang over the base units: name, left edge, parameters.
 HANGING = [
@@ -49,12 +52,12 @@ HANGING = [
 BACK = 280  # the wall: the tall unit is 560 deep and centred on the origin
 # The corner cabinet goes right of the last base unit; its return runs forward along the right
 # wall, and one more base unit continues it, turned to face into the room.
-CORNER = {**FLOOR_UNIT, "corner": "right", "width": 1000, "return": 1000, "doors": True, "place": "right"}
+CORNER = {**FLOOR_UNIT, **MATCH, "corner": "right", "width": 1000, "return": 1000, "doors": True, "place": "right"}
 RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"]  # the right wall
-RETURN = {**FLOOR_UNIT, "width": 600, "doors": 1, "handles": "pull"}
-WALL_CORNER = {**WHITE, "corner": "right", "width": 1000, "return": 1000, "height": 700, "depth": 320,
+RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "doors": 1, "handles": "pull"}
+WALL_CORNER = {**WHITE, **MATCH, "corner": "right", "width": 1000, "return": 1000, "height": 700, "depth": 320,
                "shelves": 2, "doors": True, "place": "right"}
-WALL_RETURN = {**WALL, "width": 600, "doors": 1}
+WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
         "Corner Door hinge": 75, "Base 4 Door hinge": 50, "Wall corner Door return hinge": 80}
@@ -81,6 +84,9 @@ for name, left, params in HANGING:
     # Made on the origin, then moved up onto the wall. The plugin grounds a cabinet so that
     # its doors can open, so it is ungrounded for the move.
     move = [left + params["width"] / 2, BACK - params["depth"] / 2, WALL_Z]
+    if name != HANGING[0][0]:
+        steps.append(select(f"{HANGING[0][0]} Top"))
+        params = {**params, **MATCH}
     steps += [build.plugin(approval, "cabinet", {**params, "name": name}),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", translate=move),
@@ -90,9 +96,10 @@ steps += [select(f"{FLOOR[-1][0]} Top"), build.plugin(approval, "corner", {**COR
 # The units on the return are made on the origin and drilled there (joinery wants a cabinet
 # square to the axes), then turned a quarter and put at the end of the corner cabinet's return.
 end = BACK - CORNER["return"]
-for name, params, kind, z in (("Base 4", RETURN, "confirmat", 0), ("Wall 4", WALL_RETURN, "dowel", WALL_Z)):
+for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner"),
+                                    ("Wall 4", WALL_RETURN, "dowel", WALL_Z, "Wall corner")):
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
-    steps += [build.plugin(approval, "cabinet", {**params, "name": name}),
+    steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name}),
               select(f"{name} Top"), build.plugin(approval, "joinery", {"type": kind}),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),

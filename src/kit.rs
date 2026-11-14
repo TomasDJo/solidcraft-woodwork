@@ -40,7 +40,31 @@ pub fn prefix(name: &str) -> String {
     prefix
 }
 
+/// The sizes a new cabinet takes from the selected one, for `Kit` as `_match` in its input:
+/// that cabinet's parameter prefix, and the values in mm. `design` is `document.inspect`'s
+/// reply. A cabinet without a plinth has no plinth parameter.
+pub const MATCHED: [&str; 4] = ["height", "depth", "thickness", "plinth"];
+
+pub fn matched(cabinet: &str, design: &Value) -> Result<Value, String> {
+    let from = prefix(cabinet);
+    let mut values = serde_json::Map::new();
+    for key in MATCHED {
+        let id = format!("{from}_{key}");
+        let all = design["params"].as_array().into_iter().flatten();
+        let found = all.into_iter().find(|p| p["name"] == id.as_str());
+        if let Some(v) = found.and_then(|p| p["value"].as_f64()) {
+            values.insert(key.into(), json!(v));
+        }
+    }
+    check(
+        values.contains_key("height"),
+        &format!("`{cabinet}` has no parameters to match"),
+    )?;
+    Ok(json!({"prefix": from, "values": values}))
+}
+
 pub struct Kit {
+    link: Value, // `_match`, or null
     pub name: String,
     pub prefix: String,
     unit: &'static str,
@@ -71,6 +95,7 @@ impl Kit {
             prefix: prefix(name),
             unit,
             scale,
+            link: p.get("_match").cloned().unwrap_or_default(),
             centre: RefCell::new([mm(0.0), mm(0.0)]),
             commands: RefCell::default(),
             bodies: RefCell::default(),
@@ -78,8 +103,12 @@ impl Kit {
         })
     }
 
-    /// A size field, in mm whatever unit it was entered in.
+    /// A size field, in mm whatever unit it was entered in. A matched size is the selected
+    /// cabinet's instead, whatever the field says.
     pub fn size(&self, p: &Value, key: &str, default_mm: f64) -> Result<f64, String> {
+        if !self.link.is_null() && MATCHED.contains(&key) {
+            return Ok(self.link["values"][key].as_f64().unwrap_or(0.0));
+        }
         num(p, key, default_mm / self.scale).map(|v| v * self.scale)
     }
 
@@ -88,10 +117,15 @@ impl Kit {
         let id = format!("{}_{key}", self.prefix);
         // rounded: 24 in must not come back from mm as 23.999999999999996
         let value = (mm_value / self.scale * 1e6).round() / 1e6;
+        // A matched size is the selected cabinet's parameter: change it there, both follow.
+        let expression = match self.link["values"].get(key) {
+            Some(_) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
+            None => format!("{value} {}", self.unit),
+        };
         self.push((
             "parameters.add",
             json!({
-                "name": id, "expression": format!("{value} {}", self.unit),
+                "name": id, "expression": expression,
                 "comment": format!("{}: {comment}", self.name),
             }),
         ));
@@ -192,5 +226,32 @@ impl Kit {
             "parameters": format!("{0}_width, {0}_height, ...", self.prefix),
         });
         (commands, summary)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_matched_cabinet_points_at_the_selected_ones_parameters() {
+        let design = json!({"params": [
+            {"name": "Base_1_height", "value": 900.0}, {"name": "Base_1_depth", "value": 400.0},
+            {"name": "Base_1_thickness", "value": 19.0}, {"name": "Base_1_width", "value": 800.0},
+        ]});
+        let link = matched("Base 1", &design).unwrap();
+        // the dialog's own height and plinth are ignored: Base 1 has no plinth
+        let p = json!({"name": "B", "height": 720, "plinth": 100, "_match": link});
+        let (commands, summary) = crate::cabinet::build(&p).unwrap();
+        let expression = |name: &str| {
+            let found = commands.iter().find(|c| c.1["name"] == name);
+            found.map(|c| c.1["expression"].clone())
+        };
+        assert_eq!(expression("B_height"), Some(json!("Base_1_height")));
+        assert_eq!(expression("B_thickness"), Some(json!("Base_1_thickness")));
+        assert_eq!(expression("B_width"), Some(json!("600 mm")));
+        assert_eq!(expression("B_plinth"), None);
+        assert_eq!(summary["size"]["height"], 900.0);
+        assert!(matched("Base 2", &design).is_err());
     }
 }
