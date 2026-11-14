@@ -65,6 +65,8 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Drawers: a drawer unit with fronts and boxes sized for 12.7 mm slides
 - [x] Hardware list in the cut list: hinges, slides, shelf pins, screws, dowels, handles
 - [x] Handle holes in doors and drawer fronts: knob or 128 mm pull
+- [x] Corner cabinet: L-shaped, left or right, with doors
+- [ ] Corner cabinet: joinery, handle holes, shelf pins, a thin back
 - [ ] Inset doors
 
 ### Later

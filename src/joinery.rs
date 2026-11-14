@@ -3,7 +3,7 @@
 //! The holes are expressions over the cabinet's parameters, like the cabinet itself, and are
 //! drilled inside its component, so they follow a resize and a move.
 
-use crate::{cabinet, select, Commands};
+use crate::{kit, select, Commands};
 use serde_json::{json, Value};
 
 const FROM_EDGE: f64 = 50.0; // first and last hole, from the front and back edge
@@ -18,7 +18,7 @@ pub fn build(
     kind: &str,
 ) -> Result<(Commands, [f64; 3]), String> {
     let name = &found.name;
-    let prefix = cabinet::prefix(name);
+    let prefix = kit::prefix(name);
     let value = |key: &str| {
         let id = format!("{prefix}_{key}");
         let all = design["params"].as_array().into_iter().flatten();
@@ -31,6 +31,11 @@ pub fn build(
             "`{name}` has no parameters: joinery needs a cabinet made by version 0.0.7 or later"
         ));
     };
+    if value("return").is_some() {
+        return Err(format!(
+            "`{name}` is a corner cabinet: joinery is only made for box cabinets so far"
+        ));
+    }
     let label = format!("{name} joint");
     let features = design["timeline"].as_array().into_iter().flatten();
     if features
@@ -195,5 +200,14 @@ mod tests {
         assert!(build(&found(), &drilled, "dowel").is_err());
         assert!(build(&found(), &json!({"timeline": [], "params": []}), "dowel").is_err());
         assert!(build(&found(), &json!({"timeline": [], "params": params}), "glue").is_err());
+        // a corner cabinet has a `return`
+        let corner = json!([{"name": "Base_1_depth", "value": 560.0}, {"name": "Base_1_thickness", "value": 18.0},
+            {"name": "Base_1_return", "value": 900.0}]);
+        assert!(build(
+            &found(),
+            &json!({"timeline": [], "params": corner}),
+            "dowel"
+        )
+        .is_err());
     }
 }

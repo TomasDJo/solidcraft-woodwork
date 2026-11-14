@@ -29,6 +29,9 @@ Under the **Plugins** menu:
     `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows.
     The counts (shelves, dividers, doors) are fixed once it is built.
   The Units field switches the sizes between mm and inches.
+- **Corner cabinet…** builds an L-shaped cabinet for a corner of the room, with the return on
+  the left or the right: L-shaped bottom, top and shelves, optional plinth, and a door on each
+  front. It is parametric, takes a material and can be placed like the box cabinet.
 - **Joinery…** drills the selected cabinet where its sides meet the bottom and top: holes for
   7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their number is set when they are drilled.
 - **Material…** gives the selected cabinet, or only the selected parts (the doors, say), a
@@ -62,9 +65,9 @@ Preferences > Plugins > Install plugin…
 The kitchen in the picture is in the repo:
 
 - [`examples/kitchen.sc`](examples/kitchen.sc): the design. Open it in SolidCraft; it needs no plugin.
-- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 94 boards.
+- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 132 boards.
 - [`examples/kitchen.py`](examples/kitchen.py): the script that built both, using every function of
-  the plugin: cabinets placed against each other, melamine carcasses with oak fronts, screws
+  the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other, handle holes, melamine carcasses with oak fronts, screws
   and dowels, doors and a drawer left open on their joints.
 
 To rebuild it, run `python build.py` and then `python examples/kitchen.py`.
@@ -78,7 +81,7 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 
 - `plugin.json`: manifest. Entries, their input forms, and the app commands used.
 - `src/lib.rs`: entry dispatch and the wasm guest.
-- `src/cabinet.rs`, `src/joinery.rs`, `src/material.rs`, `src/cutlist.rs`: one module per
+- `src/kit.rs`, `src/cabinet.rs`, `src/corner.rs`, `src/joinery.rs`, `src/material.rs`, `src/cutlist.rs`: one module per
   function, plain Rust with unit tests.
 - `src/select.rs`: finds the cabinet that is selected.
 - `build.py`: build, package and end-to-end test through `solidcraft-cli`.

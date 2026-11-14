@@ -40,7 +40,9 @@ materials, joinery and cut lists.
 |---|---|
 | `plugin.json` | Manifest: entries, dialog schemas, allowed commands, version |
 | `src/lib.rs` | Entry dispatch (`execute`) and the wasm guest. The only place that runs commands |
-| `src/cabinet.rs` | Cabinet builder: parameters in, list of commands out |
+| `src/kit.rs` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
+| `src/cabinet.rs` | Box cabinet builder: parameters in, list of commands out |
+| `src/corner.rs` | L-shaped corner cabinet builder, written for a left corner and mirrored for a right one |
 | `src/joinery.rs` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist.rs` | Cut list and sheet estimate from `inspect.measure` |
@@ -53,7 +55,11 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` (read).
+Entries today: `cabinet`, `corner`, `joinery`, `material` (all edit) and `cutlist` (read).
+
+A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
+`lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
+ground), so a builder only returns its commands and `Kit`'s summary.
 
 ## Build, test, install
 
@@ -76,6 +82,10 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
 - **CI must stay green.** `.github/workflows/build.yml` runs `cargo fmt --check`, clippy with
   warnings as errors, and `python build.py` (unit and end-to-end tests against a downloaded
   SolidCraft CLI) on every push and pull request. Run `cargo fmt` before committing.
+- **The sample kitchen shows everything.** A new function goes into `examples/kitchen.py` in
+  the same branch; rerun it (it rewrites `examples/kitchen.sc` and the cut list CSV) and
+  re-render `docs/kitchen.png`:
+  `solidcraft-cli snapshot --in examples/kitchen.sc --out docs/kitchen.png --camera '{"target":[1800,-350,1000],"yaw":0.22,"pitch":0.33,"distance":5600,"fov":0.6}' --no-grid --no-axes --width 1400 --height 900 --quality fine`
 - **Releases come from tags.** Pushing a tag `vX.Y.Z` that matches the version in
   `plugin.json` makes the same workflow attach `woodwork-X.Y.Z.zip` to a GitHub Release.
 - **Branches and pull requests, never straight to main.** One branch per function, one commit
@@ -135,6 +145,9 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
   `joint`, `Drawer n Front`), so renaming those breaks it.
 - The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.
+- A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
+  see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). A box
+  cabinet can be placed beside its back leg, but not turned to continue its return.
 - Joinery covers the four carcass corners only, and tells an overlaid back from a grooved one
   by comparing the side depth with the depth parameter.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
