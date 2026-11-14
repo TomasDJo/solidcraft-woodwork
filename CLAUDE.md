@@ -78,7 +78,9 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
   SolidCraft CLI) on every push and pull request. Run `cargo fmt` before committing.
 - **Releases come from tags.** Pushing a tag `vX.Y.Z` that matches the version in
   `plugin.json` makes the same workflow attach `woodwork-X.Y.Z.zip` to a GitHub Release.
-- **One commit per function, pushed.** Update `README.md` and tick `PLAN.md` in the same commit.
+- **Branches and pull requests, never straight to main.** One branch per function, one commit
+  per function, with `README.md` updated and `PLAN.md` ticked in the same commit. Do not push
+  until the user says so.
 - **Every length sent to the app carries its unit** (`"582 mm"`). A bare number in a size field
   is read in the design's unit, so an inch design would get 582 inches. Exceptions that take
   plain mm numbers only: `occurrence.move` `translate` and a joint's `point`.
@@ -98,7 +100,7 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
 - **Features made at cabinet level go into one history folder** (`timeline.group`).
 - Keep code minimal: no abstractions for one use, no new dependencies (only `serde_json` and
   `wit-bindgen`). A deliberate shortcut gets a `ponytail:` comment naming its limit.
-- Hardware numbers (32 mm system, 35 mm cups, 12.7 mm slides, confirmat and dowel sizes) are
+- Hardware numbers (32 mm system, 35 mm cups, 12.7 mm slides, 128 mm pulls, confirmat and dowel sizes) are
   common-practice values, not taken from a manufacturer's sheet.
 
 ## Working with the running app

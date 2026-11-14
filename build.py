@@ -138,6 +138,15 @@ def test():
     box = {b["name"]: [round(v, 4) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[3]["bodies"]}
     assert box["Cabinet Drawer 1 Right"][3] == 400 - 18 - 12.7, box["Cabinet Drawer 1 Right"]
 
+    def cylinders(measure, name):
+        return next(b for b in measure["bodies"] if b["name"] == name)["face_types"].get("cylinder", 0)
+    # Handles: a pull is two holes through each front, next to a door's two hinge cups.
+    results = cli([plugin(approval, "cabinet", {"name": "H", "doors": 2, "plinth": 100, "handles": "pull"}),
+                   plugin(approval, "cabinet", {"name": "K", "drawers": 2, "handles": "knob"}),
+                   {"command": "inspect.measure", "params": {}}],
+                  "--save", str(ROOT / "dist" / "handles.sc"))
+    assert cylinders(results[2], "H Door L") == 4 and cylinders(results[2], "K Drawer 2 Front") == 1
+
     # Joints: doors swing out on their hinges and a drawer slides out, in an inch design to
     # check the joint's point is not read in inches. The cabinet still moves as one piece.
     def drive(joint, value):
@@ -164,8 +173,6 @@ def test():
 
     # Joinery: confirmat holes at the four corners of a cabinet inside a Kitchen component.
     # 560 deep: 3 screws per joint. They spread out with a resize to 900 deep.
-    def cylinders(measure, name):
-        return next(b for b in measure["bodies"] if b["name"] == name)["face_types"].get("cylinder", 0)
     results = cli([{"command": "component.create", "params": {"name": "Kitchen"}},
                    plugin(approval, "cabinet", {"name": "J", "shelves": 0}),
                    {"command": "select.set", "params": {"items": [{"type": "body", "name": "J Top"}]}},
