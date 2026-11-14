@@ -18,6 +18,10 @@ const CUP_D: f64 = 35.0; // hinge cup
 const CUP_DEPTH: f64 = 13.0;
 const CUP_CENTRE: f64 = 22.5; // from the door edge: 5 mm of wood outside the cup
 const CUP_FROM_END: f64 = 100.0; // from the door's top and bottom
+const HANDLE_D: f64 = 5.0; // screw hole for a knob or pull
+const PULL: f64 = 128.0; // between the two screws of a pull
+const HANDLE_EDGE: f64 = 50.0; // on a door: from its opening edge
+const HANDLE_END: f64 = 100.0; // and from its top or bottom to the nearest hole
 const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
 const BOX_T: f64 = 12.0; // drawer box sides, front and back
 const BOX_BOTTOM: f64 = 6.0;
@@ -166,6 +170,15 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     check(
         doors == 0.0 || t >= 16.0,
         "doors with hinge cups need panels of 16 mm or more",
+    )?;
+    let handles = p.get("handles").and_then(Value::as_str).unwrap_or("none");
+    check(
+        matches!(handles, "none" | "knob" | "pull"),
+        "handles must be none, knob or pull",
+    )?;
+    check(
+        handles == "none" || doors == 0.0 || (w - (doors + 1.0) * DOOR_GAP) / doors >= 150.0,
+        "doors are too narrow for handles",
     )?;
     check(
         doors == 0.0 || h - plinth >= 300.0,
@@ -416,6 +429,38 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     );
     let door_h = format!("{eh} - {epl} - {}", mm(2.0 * DOOR_GAP));
     let (z0, z1) = (format!("{epl} + {gap_mm}"), format!("{eh} - {gap_mm}"));
+    // Screw holes for a knob (one) or a pull (two), through a front from its back face.
+    // `along` is the axis the pull lies on: 0 across, 2 upright.
+    let half = if handles == "pull" { PULL / 2.0 } else { 0.0 };
+    let handle = |body: &str, x: &str, z: &str, along: usize| {
+        let offsets: &[f64] = match handles {
+            "none" => &[],
+            "knob" => &[0.0],
+            _ => &[-half, half],
+        };
+        for (j, offset) in offsets.iter().enumerate() {
+            let mut at = [x.to_string(), format!("-{gap_mm}"), z.to_string()];
+            at[along] = format!("{} + {}", at[along], mm(*offset));
+            push((
+                "solid.hole",
+                json!({
+                    "position": place(&at[0], &at[1], &at[2]), "direction": [0, -1, 0],
+                    "diameter": mm(HANDLE_D), "depth": et,
+                    "targets": [format!("{name} {body}")],
+                    "name": format!("{name} {body} handle {}", j + 1),
+                }),
+            ));
+        }
+    };
+    // ponytail: where a door's handle sits is guessed from the cabinet: mid-height on a tall
+    // door, near the top on a floor unit (it has a plinth), else near the bottom as on a wall
+    // unit. A position field in the dialog if the guess is wrong too often.
+    let end = mm(HANDLE_END + half);
+    let handle_z = match (h - plinth > 1200.0, plinth > 0.0) {
+        (true, _) => format!("({z0} + {z1}) / 2"),
+        (_, true) => format!("{z1} - {end}"),
+        _ => format!("{z0} + {end}"),
+    };
     for i in 0..count {
         let part = match count {
             1 => "Door".to_string(),
@@ -448,6 +493,12 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
                 }),
             ));
         }
+        // The handle is on the side away from the hinges.
+        let handle_x = match i % 2 {
+            0 => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),
+            _ => format!("{x0} + {}", mm(HANDLE_EDGE)),
+        };
+        handle(&part, &handle_x, &handle_z, 2);
         // The hinge: the door's inner edge on its hinge side, turning outwards up to 110 degrees.
         let width = (w - 2.0 * DOOR_GAP - (doors - 1.0) * DOOR_GAP) / doors;
         let left = -w / 2.0 + DOOR_GAP + (width + DOOR_GAP) * i as f64;
@@ -488,6 +539,13 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
             [&gap_mm, &y, &z],
             [&front_w, &et, &front_h],
             false,
+        );
+        // In the middle of the front, lying across.
+        handle(
+            &format!("{drawer} Front"),
+            &format!("{ew}/2"),
+            &format!("{z} + {front_h}/2"),
+            0,
         );
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
@@ -628,6 +686,26 @@ mod tests {
         assert!(named("Drawer 3 Front") && named("Drawer 3 Bottom") && !named("Shelf 1"));
         // 4 carcass, plinth, back, 3 drawers of 6 parts
         assert_eq!(summary["bodies"].as_array().unwrap().len(), 6 + 3 * 6);
+        // a pull is two holes across the middle of each front, 128 mm apart
+        let (commands, _) = build(&json!({"drawers": 3, "handles": "pull"})).unwrap();
+        assert_eq!(count(&commands, "solid.hole"), 6);
+        let hole = commands
+            .iter()
+            .find(|c| c.1["name"] == "Cabinet Drawer 1 Front handle 2");
+        assert_eq!(
+            hole.unwrap().1["position"][0],
+            "Cabinet_width/2 + 64 mm - Cabinet_width/2"
+        );
+        // a knob on a wall unit's door: one hole, low on the opening side
+        let (commands, _) = build(&json!({"doors": 1, "handles": "knob"})).unwrap();
+        let hole = commands
+            .iter()
+            .find(|c| c.1["name"] == "Cabinet Door handle 1");
+        assert_eq!(
+            hole.unwrap().1["position"][2],
+            "0 mm + 2 mm + 100 mm + 0 mm"
+        );
+        assert!(build(&json!({"width": 300, "doors": 2, "handles": "knob"})).is_err());
         assert!(build(&json!({"drawers": 2, "doors": 1})).is_err());
         assert!(build(&json!({"drawers": 8, "height": 400})).is_err());
     }

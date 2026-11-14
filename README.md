@@ -17,6 +17,8 @@ Under the **Plugins** menu:
     piece and a room component can hold its cabinets.
   - **Drawers** makes it a drawer unit: a stack of equal drawers with overlay fronts and
     boxes sized for 12.7 mm ball-bearing slides.
+  - **Handle holes** drills the doors and drawer fronts for a knob (one 5 mm hole) or a
+    pull (two, 128 mm apart).
   - Every door and every drawer is a component of its own inside the cabinet, held by a
     joint: doors hinge open to 110 degrees, drawers slide out. Drive the joints to open them.
     The cabinet is grounded so they have something fixed to open against; unground it to

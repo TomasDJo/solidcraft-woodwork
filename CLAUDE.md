@@ -98,7 +98,7 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
 - **Features made at cabinet level go into one history folder** (`timeline.group`).
 - Keep code minimal: no abstractions for one use, no new dependencies (only `serde_json` and
   `wit-bindgen`). A deliberate shortcut gets a `ponytail:` comment naming its limit.
-- Hardware numbers (32 mm system, 35 mm cups, 12.7 mm slides, confirmat and dowel sizes) are
+- Hardware numbers (32 mm system, 35 mm cups, 12.7 mm slides, 128 mm pulls, confirmat and dowel sizes) are
   common-practice values, not taken from a manufacturer's sheet.
 
 ## Working with the running app
