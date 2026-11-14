@@ -3,7 +3,7 @@
 //! The holes are expressions over the cabinet's parameters, like the cabinet itself, and are
 //! drilled inside its component, so they follow a resize and a move.
 
-use crate::{cabinet, select, Commands};
+use crate::{kit, select, Commands};
 use serde_json::{json, Value};
 
 const FROM_EDGE: f64 = 50.0; // first and last hole, from the front and back edge
@@ -18,7 +18,7 @@ pub fn build(
     kind: &str,
 ) -> Result<(Commands, [f64; 3]), String> {
     let name = &found.name;
-    let prefix = cabinet::prefix(name);
+    let prefix = kit::prefix(name);
     let value = |key: &str| {
         let id = format!("{prefix}_{key}");
         let all = design["params"].as_array().into_iter().flatten();

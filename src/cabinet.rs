@@ -4,9 +4,9 @@
 //! expression over them, so the cabinet follows when a parameter is changed later. The numbers
 //! in here only check the input; the model itself is all expressions.
 
+use crate::kit::{check, mm, num, Kit};
 use crate::Commands;
 use serde_json::{json, Value};
-use std::cell::RefCell;
 
 const GROOVE_INSET: f64 = 12.0; // back groove, from the rear edge
 const KICK_RECESS: f64 = 50.0; // plinth board, back from the front
@@ -29,46 +29,10 @@ const BOX_LOWER: f64 = 40.0; // the box is this much lower than its front
 const BOX_LIFT: f64 = 15.0; // and starts this far above the front's lower edge
 const BOX_BEHIND: f64 = 10.0; // room behind the box
 
-fn num(p: &Value, key: &str, default: f64) -> Result<f64, String> {
-    match p.get(key) {
-        None | Some(Value::Null) => Ok(default),
-        Some(v) => v.as_f64().ok_or(format!("`{key}` must be a number")),
-    }
-}
-
-/// A constant in an expression: a bare number would be read in the design's unit.
-fn mm(v: f64) -> String {
-    format!("{v} mm")
-}
-
-fn check(ok: bool, message: &str) -> Result<(), String> {
-    if ok {
-        Ok(())
-    } else {
-        Err(message.into())
-    }
-}
-
-/// What a cabinet's parameters start with: its name, made a valid identifier.
-pub fn prefix(name: &str) -> String {
-    let mut prefix: String = name
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect();
-    if !prefix.starts_with(|c: char| c.is_ascii_alphabetic()) {
-        prefix.insert_str(0, "c_");
-    }
-    prefix
-}
-
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
-    // Sizes come in mm or inches; the parameters keep the unit they were given in.
-    let (unit, scale) = match p.get("units").and_then(Value::as_str).unwrap_or("mm") {
-        "mm" => ("mm", 1.0),
-        "in" => ("in", 25.4),
-        _ => return Err("units must be mm or in".into()),
-    };
-    let size = |key: &str, default_mm: f64| num(p, key, default_mm / scale).map(|v| v * scale);
+    let kit = Kit::new(p)?;
+    let name = kit.name.as_str();
+    let size = |key: &str, default_mm: f64| kit.size(p, key, default_mm);
     let (w, h, d) = (
         size("width", 600.0)?,
         size("height", 720.0)?,
@@ -96,11 +60,6 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         (shelves, pins)
     };
     let back = p.get("back").and_then(Value::as_str).unwrap_or("groove");
-    let name = p
-        .get("name")
-        .and_then(Value::as_str)
-        .unwrap_or("Cabinet")
-        .trim();
 
     check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
     check(
@@ -115,10 +74,6 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     check(
         matches!(back, "none" | "overlay" | "groove"),
         "back must be none, overlay or groove",
-    )?;
-    check(
-        !name.is_empty() && name.len() <= 40,
-        "name must be 1 to 40 characters",
     )?;
     check(
         w <= 5000.0 && h <= 5000.0 && d <= 5000.0,
@@ -199,20 +154,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         _ => d,
     };
 
-    let prefix = prefix(name);
-    let mut commands = Vec::new();
-    let mut parameter = |key: &str, mm_value: f64, comment: &str| {
-        let id = format!("{prefix}_{key}");
-        commands.push((
-            "parameters.add",
-            json!({
-                // rounded: 24 in must not come back from mm as 23.999999999999996
-                "name": id, "expression": format!("{} {unit}", (mm_value / scale * 1e6).round() / 1e6),
-                "comment": format!("{name}: {comment}"),
-            }),
-        ));
-        id
-    };
+    let parameter = |key: &str, mm_value: f64, comment: &str| kit.parameter(key, mm_value, comment);
     let ew = parameter("width", w, "outside width");
     let eh = parameter("height", h, "outside height, plinth included");
     let ed = parameter("depth", d, "outside depth, back included");
@@ -241,60 +183,20 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         _ => (ed.clone(), ed.clone()),
     };
 
-    let commands = RefCell::new(commands);
-    let push = |command: (&'static str, Value)| commands.borrow_mut().push(command);
-    let mut joints = Vec::new();
-    let mut bodies = Vec::new();
+    // The cabinet stands on Z = 0, centred on the origin, so the view orbits around it.
+    kit.centre(&ew, &ed);
+    let push = |command: (&'static str, Value)| kit.push(command);
     let mut drill = Vec::new(); // holes, run after the panels exist
     let carcass = ["Side L", "Side R", "Bottom", "Top"].map(|part| format!("{name} {part}"));
-    // The cabinet stands on Z = 0, centred on the origin, so the view orbits around it:
-    // positions are written from the front left bottom corner and shifted here.
-    let place =
-        |x: &str, y: &str, z: &str| json!([format!("{x} - {ew}/2"), format!("{y} - {ed}/2"), z]);
+    let place = |x: &str, y: &str, z: &str| kit.at(x, y, z);
     // A panel, or with `cut` its volume taken out of the carcass panels.
-    let mut panel = |part: &str, corner: [&str; 3], size: [&str; 3], cut: bool| {
-        let body = format!("{name} {part}");
-        let mut args = json!({
-            "length": size[0], "width": size[1], "height": size[2],
-            "corner": place(corner[0], corner[1], corner[2]), "name": body,
-        });
-        if cut {
-            args["operation"] = json!("cut");
-            args["targets"] = json!(carcass);
-        } else {
-            args["body_name"] = json!(body);
-            bodies.push(body);
-        }
-        push(("solid.box", args));
+    let panel = |part: &str, corner: [&str; 3], size: [&str; 3], cut: bool| {
+        kit.panel(part, corner, size, cut.then_some(&carcass[..]))
     };
-    // A door or a drawer is a component of its own inside the cabinet, held by a joint, so it
-    // can be opened. `open` and `close` go around the commands that build it.
-    let cabinet_occurrence = format!("{name}:1");
-    let open = |part: &str| {
-        push((
-            "component.create",
-            json!({"name": format!("{name} {part}"), "grounded": false}),
-        ))
-    };
-    // ponytail: the joint's point is a number, where the part is now. It does not follow a
-    // resize, and it is off if the cabinet is made inside a component that has been moved.
-    let mut close =
+    let open = |part: &str| kit.open(part);
+    let close =
         |part: &str, kind: &str, joint: &str, point: [f64; 3], axis: [i32; 3], limit: f64| {
-            let (occurrence, joint) =
-                (format!("{name} {part}:1"), format!("{name} {part} {joint}"));
-            push(("component.activate", json!({"component": name})));
-            push((
-                "joint.as_built",
-                json!({
-                    "type": kind, "a": cabinet_occurrence, "b": occurrence, "name": joint,
-                    "at": {"occurrence": occurrence, "point": point, "z": axis},
-                }),
-            ));
-            push((
-                "joint.limits",
-                json!({"joint": joint, "min": 0, "max": limit}),
-            ));
-            joints.push(joint);
+            kit.close(part, kind, joint, point, axis, limit)
         };
 
     let zero = mm(0.0);
@@ -598,27 +500,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         let travel = ((shelf_d - BOX_BEHIND) * 0.8).round();
         close(&drawer, "slider", "slide", at, [0, -1, 0], travel);
     }
-    let mut commands = commands.into_inner();
-    commands.append(&mut drill);
-
-    // One folder in the history for the whole cabinet.
-    let features: Vec<&Value> = commands
-        .iter()
-        .filter(|c| c.0.starts_with("solid."))
-        .map(|c| &c.1["name"])
-        .collect();
-    let group = json!({ "name": name, "features": features });
-    commands.push(("timeline.group", group));
-
-    let summary = json!({
-        "name": name,
-        "size": { "width": w, "height": h, "depth": d }, // mm
-        "bodies": bodies,
-        "joints": joints, // drive them to open doors and drawers
-        "parameters": format!("{prefix}_width, {prefix}_height, ..."),
-        // one compartment
-        "inner": { "width": cell_w, "height": clear_h, "depth": shelf_d },
-    });
+    let (commands, mut summary) = kit.finish(drill, [w, h, d]);
+    // one compartment
+    summary["inner"] = json!({ "width": cell_w, "height": clear_h, "depth": shelf_d });
     Ok((commands, summary))
 }
 
