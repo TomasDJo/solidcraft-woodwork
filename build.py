@@ -164,10 +164,11 @@ def test():
     # (716 x 297 x 18 mm, listed in inches in this inch design)
     assert '2,28 3/16,11 11/16,23/32,"Birch plywood","D Door L, D Door R"' in results[9]["result"]["csv"]
     box = {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[8]["bodies"]}
-    # left door: turned 90 degrees about its inner left edge (x -298, y -282), now along -Y
-    assert box["D Door L"] == [-316, -579, 1002, -298, -282, 1718], box["D Door L"]
+    # left door: turned 90 degrees about its front left edge (x -298, y -300), now along -Y and
+    # still inside the cabinet's width, clear of a door on the next cabinet
+    assert box["D Door L"] == [-298, -597, 1002, -280, -300, 1718], box["D Door L"]
     # right door: stopped by its limit at 110 degrees
-    assert box["D Door R"][1] < -282 - 297 * 0.9 and box["D Door R"][3] > 298, box["D Door R"]
+    assert box["D Door R"][1] < -300 - 297 * 0.9 and box["D Door R"][3] > 298, box["D Door R"]
     assert box["E Drawer 1 Front"][1] == -300 - 300, box["E Drawer 1 Front"]
     assert box["E Drawer 2 Front"][1] == -300, box["E Drawer 2 Front"]
 
