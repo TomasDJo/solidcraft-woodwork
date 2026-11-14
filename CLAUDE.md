@@ -19,8 +19,9 @@ materials, joinery and cut lists.
   features, so a design opens without the plugin.
 - Limits per run: 256 app commands, 30 s, 1 MiB result. No file or network access (file grants
   exist but the app has no way to give them yet), no storage.
-- A `read` entry may only call read commands. `selection.get` counts as an edit;
-  `document.inspect` is read and also returns the selection.
+- A `read` entry may only call read commands. `selection.get`, `component.list` and
+  `assembly.mass_properties` count as edits; `document.inspect` (which also returns the
+  selection), `inspect.measure` and `model.mesh` are read.
 - The plugin runs on a background copy of the design. Display commands such as `view.fit` are
   accepted but do nothing in the window.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
@@ -38,7 +39,7 @@ materials, joinery and cut lists.
 | `src/cutlist.rs` | Cut list and sheet estimate from `inspect.measure` |
 | `src/select.rs` | Finds the selected cabinet and its parts by body name |
 | `build.py` | Unit tests, wasm build, package, end-to-end tests, optional install |
-| `examples/kitchen.py` | Demo kitchen built with the plugin through the CLI |
+| `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it and re-render `docs/kitchen.png` when the plugin's output changes |
 
 The pattern: a module is plain Rust that turns input into `Vec<(command, json args)>`, so
 `cargo test` covers it without SolidCraft. `lib.rs` runs the list. Anything that needs a reply
@@ -111,8 +112,11 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
 
 - The dialog cannot remember values or adapt to the Units choice: defaults are always mm.
 - The camera is not framed after a run; the user presses Fit.
-- `select.rs`, cabinet placement (`place`) and the cut list read world bounding boxes, so they
-  are wrong for a cabinet or board that is rotated off the axes.
+- `select.rs` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
+  a cabinet that is rotated off the axes.
+- The cut list measures a board by its world bounding box when the board fills that box, and
+  otherwise (an open door, a turned cabinet) by `model.mesh` in the body's own component: one
+  extra command per such board, so about 250 of them at most.
 - Joints use a fixed point from creation time. They do not follow a resize, and they are off
   if the cabinet is made inside a component that has already been moved.
 - A cabinet is grounded at the end of a run, because a joint only moves against something

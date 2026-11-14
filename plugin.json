@@ -1,7 +1,7 @@
 {
   "id": "woodwork",
   "name": "Woodwork",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cabinets and furniture in sheet goods: carcass generator and cut list.",
   "capabilities": ["commands@0.1"],
   "runtime": {
@@ -63,7 +63,7 @@
         "input_schema": { "type": "object", "properties": {} }
       }
     ],
-    "commands": ["solid.box", "solid.hole", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "joint.as_built", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
+    "commands": ["solid.box", "solid.hole", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "model.mesh", "joint.as_built", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
   }
 }

@@ -21,24 +21,68 @@ fn inches(mm: f64) -> String {
 const SHEET_M2: f64 = 2.44 * 1.22; // a full sheet, 2440 x 1220 mm (4 x 8 ft)
 const WASTE: f64 = 0.15; // offcuts and saw kerf
 
-pub fn cutlist(measure: &Value, imperial: bool) -> Result<Value, String> {
+/// The bodies that do not fill their world bounding box: a board that stands turned off the
+/// axes, such as an open door, or a part that is not a plain board. A board square to the axes
+/// fills its box but for holes and grooves, which take well under 3 %.
+/// `measure` is `inspect.measure`'s reply. (The commands that list placements are not open to
+/// a read-only entry, hence this test on the sizes.)
+pub fn turned(measure: &Value) -> Vec<String> {
+    let bodies = measure["bodies"].as_array().into_iter().flatten();
+    let loose = |body: &&Value| {
+        let side = |i: usize| {
+            body["bbox"]["max"][i]
+                .as_f64()
+                .zip(body["bbox"]["min"][i].as_f64())
+        };
+        let sides = (0..3).filter_map(side).map(|(max, min)| max - min);
+        (body["volume_mm3"].as_f64()).is_some_and(|volume| volume < 0.97 * sides.product::<f64>())
+    };
+    bodies
+        .filter(loose)
+        .filter_map(|body| body["name"].as_str().map(String::from))
+        .collect()
+}
+
+/// The size of a body in its own component's axes, from `model.mesh`'s reply.
+pub fn extents(mesh: &Value) -> [f64; 3] {
+    let mut size = [0.0; 3];
+    for (i, s) in size.iter_mut().enumerate() {
+        let along = || {
+            mesh["positions"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(move |p| p[i].as_f64())
+        };
+        *s = along().fold(f64::MIN, f64::max) - along().fold(f64::MAX, f64::min);
+    }
+    size
+}
+
+/// `local` holds the sizes of the turned bodies, measured in their own component.
+pub fn cutlist(
+    measure: &Value,
+    local: &BTreeMap<String, [f64; 3]>,
+    imperial: bool,
+) -> Result<Value, String> {
     let bodies = measure["bodies"]
         .as_array()
         .ok_or("inspect.measure returned no bodies")?;
     // Key: thickness, length, width in tenths of a mm, then material.
     let mut rows: BTreeMap<(i64, i64, i64, String), Vec<String>> = BTreeMap::new();
     for body in bodies {
-        // ponytail: board size is the world bounding box, so a board turned off the axes
-        // reads too big. Measure along the body's own faces if rotated parts matter.
+        // A board square to the axes is as big as its world bounding box. A turned one is
+        // not, and comes measured in its own component.
+        let name = body["name"].as_str().unwrap_or("?").to_string();
         let mut size = [0i64; 3];
         for (i, s) in size.iter_mut().enumerate() {
             let max = body["bbox"]["max"][i].as_f64().ok_or("body without bbox")?;
             let min = body["bbox"]["min"][i].as_f64().ok_or("body without bbox")?;
-            *s = ((max - min) * 10.0).round() as i64;
+            let mm = local.get(&name).map_or(max - min, |own| own[i]);
+            *s = (mm * 10.0).round() as i64;
         }
         size.sort();
         let material = body["material"].as_str().unwrap_or("").to_string();
-        let name = body["name"].as_str().unwrap_or("?").to_string();
         rows.entry((size[0], size[2], size[1], material))
             .or_default()
             .push(name);
@@ -124,7 +168,7 @@ mod tests {
 
     #[test]
     fn groups_equal_boards() {
-        let list = cutlist(&measure(), false).unwrap();
+        let list = cutlist(&measure(), &BTreeMap::new(), false).unwrap();
         assert_eq!(list["boards"], 3);
         // 6 mm: 0.41 m2, 18 mm: 0.85 m2, one sheet each
         assert_eq!(list["sheets"][0]["thickness"], 6.0);
@@ -140,11 +184,31 @@ mod tests {
     }
 
     #[test]
+    fn an_open_door_is_measured_in_its_own_component() {
+        let body = |name: &str, max: [f64; 3], volume: f64| json!({"name": name, "volume_mm3": volume, "bbox": {"min": [0, 0, 0], "max": max}});
+        let board = 397.0 * 18.0 * 716.0;
+        let measured = json!({"bodies": [
+            body("Closed", [397.0, 18.0, 716.0], board - 25000.0), // two hinge cups
+            body("Ajar", [397.4, 31.9, 716.0], board),             // 2 degrees open
+            body("Open", [296.0, 355.0, 716.0], board),
+        ]});
+        assert_eq!(turned(&measured), ["Ajar", "Open"]);
+
+        let mesh = json!({"positions": [[0, 0, 0], [397, 18, 716], [397, 0, 0]]});
+        let local = BTreeMap::from([("Side L".to_string(), extents(&mesh))]);
+        let list = cutlist(&measure(), &local, false).unwrap();
+        assert!(list["csv"]
+            .as_str()
+            .unwrap()
+            .contains("1,716,397,18,\"Default\",\"Side L\""));
+    }
+
+    #[test]
     fn inches_as_fractions() {
         assert_eq!(inches(19.05), "3/4");
         assert_eq!(inches(609.6), "24");
         assert_eq!(inches(590.55), "23 1/4");
-        let list = cutlist(&measure(), true).unwrap();
+        let list = cutlist(&measure(), &BTreeMap::new(), true).unwrap();
         let csv = list["csv"].as_str().unwrap();
         assert!(
             csv.contains("2,30,22,3/4,\"Default\",\"Side L, Side R\""),

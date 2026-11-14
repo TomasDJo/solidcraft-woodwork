@@ -138,7 +138,15 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 json!({"bodies": false, "timeline": false}),
             )?;
             let imperial = matches!(design["units"].as_str(), Some("in" | "ft"));
-            cutlist::cutlist(&run("inspect.measure", json!({}))?, imperial)
+            let measure = run("inspect.measure", json!({}))?;
+            // ponytail: one more command per turned board, so a design with more than about
+            // 250 boards standing at an angle runs into the 256-command limit.
+            let mut local = std::collections::BTreeMap::new();
+            for body in cutlist::turned(&measure) {
+                let mesh = run("model.mesh", json!({"body": body, "tolerance": 1.0}))?;
+                local.insert(body, cutlist::extents(&mesh));
+            }
+            cutlist::cutlist(&measure, &local, imperial)
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }

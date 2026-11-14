@@ -146,8 +146,12 @@ def test():
                    drive("D Door L hinge", 90), drive("D Door R hinge", 200), drive("E Drawer 1 slide", 300),
                    {"command": "occurrence.ground", "params": {"occurrence": "D:1", "grounded": False}},
                    {"command": "occurrence.move", "params": {"occurrence": "D:1", "translate": [0, 0, 1000]}},
-                   {"command": "inspect.measure", "params": {}}],
+                   {"command": "inspect.measure", "params": {}},
+                   plugin(approval, "cutlist")],
                   "--save", str(ROOT / "dist" / "joints.sc"))
+    # the cut list measures the doors as boards, however far they stand open
+    # (716 x 297 x 18 mm, listed in inches in this inch design)
+    assert '2,28 3/16,11 11/16,23/32,"Birch plywood","D Door L, D Door R"' in results[9]["result"]["csv"]
     box = {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[8]["bodies"]}
     # left door: turned 90 degrees about its inner left edge (x -298, y -282), now along -Y
     assert box["D Door L"] == [-316, -579, 1002, -298, -282, 1718], box["D Door L"]
