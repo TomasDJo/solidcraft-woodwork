@@ -275,7 +275,7 @@ def test():
     def pick(*names):
         return {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}
     results = cli([plugin(approval, "cabinet", {"name": "A", "doors": 2}),
-                   plugin(approval, "cabinet", {"name": "A 2", "material": "none"}),
+                   plugin(approval, "cabinet", {"name": "A", "material": "none"}),  # taken: becomes A 2
                    pick("A Top"),
                    plugin(approval, "material", {"material": "White melamine"}),
                    pick("A Door L", "A Door R"),

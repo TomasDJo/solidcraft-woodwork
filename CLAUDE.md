@@ -104,7 +104,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - **Body names are the data model.** Bodies are `<Cabinet> <Part>`; a cabinet is recognised by
   its `<Cabinet> Side L` body, and the longest matching cabinet name owns a body. Never name
   another part with the suffix ` Side L` (drawer box sides are `Left` and `Right` for that
-  reason). Two cabinets cannot share a name.
+  reason). Two cabinets cannot share a name: `kit::free_name` gives a taken name the next free number.
 - **Geometry convention:** X width, Y depth with the front at -Y, Z up. A cabinet is centred on
   its component origin and stands on Z = 0.
 - **Features made at cabinet level go into one history folder** (`timeline.group`).

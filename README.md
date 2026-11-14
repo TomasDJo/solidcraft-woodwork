@@ -29,6 +29,8 @@ Under the **Plugins** menu:
     `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows.
     The counts (shelves, dividers, doors) are fixed once it is built.
   The Units field switches the sizes between mm and inches.
+  - **Name** is numbered when it is taken: Cabinet, Cabinet 2, Cabinet 3; after Base 1
+    comes Base 2.
   - **Match selected** links the new cabinet's height, depth, panel thickness and plinth to
     the cabinet you have selected, so a whole run is resized by changing one cabinet's
     parameters.

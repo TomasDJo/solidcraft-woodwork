@@ -40,6 +40,29 @@ pub fn prefix(name: &str) -> String {
     prefix
 }
 
+/// `name`, or with the next free number when the design already has a cabinet whose parameters
+/// would get the same prefix: Cabinet, Cabinet 2, Cabinet 3; after Base 1 comes Base 2.
+/// `design` is `document.inspect`'s reply.
+pub fn free_name(name: &str, design: &Value) -> String {
+    let taken = |name: &str| {
+        let id = format!("{}_width", prefix(name));
+        let all = design["params"].as_array().into_iter().flatten();
+        all.into_iter().any(|p| p["name"] == id.as_str())
+    };
+    let name = name.trim();
+    if !taken(name) {
+        return name.into();
+    }
+    let (stem, n) = match name.rsplit_once(' ') {
+        Some((stem, n)) if n.parse::<u32>().is_ok() => (stem, n.parse().unwrap_or(1)),
+        _ => (name, 1),
+    };
+    (n + 1..)
+        .map(|n| format!("{stem} {n}"))
+        .find(|candidate| !taken(candidate))
+        .unwrap_or_default()
+}
+
 /// The sizes a new cabinet takes from the selected one, for `Kit` as `_match` in its input:
 /// that cabinet's parameter prefix, and the values in mm. `design` is `document.inspect`'s
 /// reply. A cabinet without a plinth has no plinth parameter.
@@ -253,5 +276,16 @@ mod tests {
         assert_eq!(expression("B_plinth"), None);
         assert_eq!(summary["size"]["height"], 900.0);
         assert!(matched("Base 2", &design).is_err());
+    }
+
+    #[test]
+    fn a_taken_name_gets_the_next_free_number() {
+        let design = json!({"params": [
+            {"name": "Cabinet_width"}, {"name": "Cabinet_2_width"}, {"name": "Base_1_width"},
+        ]});
+        assert_eq!(free_name("Cabinet", &design), "Cabinet 3");
+        assert_eq!(free_name("Base 1", &design), "Base 2");
+        assert_eq!(free_name("Base_1", &design), "Base_1 2"); // same parameters as Base 1
+        assert_eq!(free_name(" Tall ", &design), "Tall");
     }
 }

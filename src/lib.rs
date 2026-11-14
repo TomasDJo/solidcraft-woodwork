@@ -34,11 +34,14 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             };
             let mut params = params.clone();
             let mut beside = None;
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            // A name that is taken gets the next free number: Cabinet, Cabinet 2, Cabinet 3.
+            let name = params["name"].as_str().unwrap_or("Cabinet");
+            params["name"] = json!(kit::free_name(name, &design));
             if matching || place != "origin" {
-                let design = run(
-                    "document.inspect",
-                    json!({"bodies": false, "timeline": false}),
-                )?;
                 let found = select::cabinet(&design, &run("inspect.measure", json!({}))?)?;
                 if matching {
                     params["_match"] = kit::matched(&found.name, &design)?;
@@ -59,14 +62,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             )?;
             summary["occurrence"] = made["occurrence"].clone();
             for (command, args) in commands {
-                run(command, args).map_err(|e| match command {
-                    // The parameters are named after the cabinet, so a second cabinet of
-                    // the same name stops here, before anything is built.
-                    "parameters.add" => format!(
-                        "{e}. Is there already a cabinet of this name? Give this one another name."
-                    ),
-                    _ => e,
-                })?;
+                run(command, args)?;
             }
             let board = params["material"].as_str().unwrap_or("Birch plywood");
             if board != "none" {

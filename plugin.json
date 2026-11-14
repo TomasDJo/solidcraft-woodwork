@@ -31,7 +31,7 @@
             "match": { "type": "string", "title": "Match selected", "description": "selected: height, depth, panel thickness and plinth are not read from this dialog but linked to the cabinet that is selected (select any part of it first). Change them on that cabinet later and this one follows.", "enum": ["no", "selected"], "default": "no" },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material… on a selection.", "enum": ["Birch plywood", "MDF", "White melamine", "Oak", "none"], "default": "Birch plywood" },
             "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
-            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names.", "default": "Cabinet", "minLength": 1, "maxLength": 40 }
+            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Cabinet, Cabinet 2, Cabinet 3.", "default": "Cabinet", "minLength": 1, "maxLength": 40 }
           }
         }
       },
@@ -55,7 +55,7 @@
             "match": { "type": "string", "title": "Match selected", "description": "selected: height, depth, panel thickness and plinth are not read from this dialog but linked to the cabinet that is selected (select any part of it first). Change them on that cabinet later and this one follows.", "enum": ["no", "selected"], "default": "no" },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material… on a selection.", "enum": ["Birch plywood", "MDF", "White melamine", "Oak", "none"], "default": "Birch plywood" },
             "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
-            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names.", "default": "Corner", "minLength": 1, "maxLength": 40 }
+            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Corner, Corner 2.", "default": "Corner", "minLength": 1, "maxLength": 40 }
           }
         }
       },
