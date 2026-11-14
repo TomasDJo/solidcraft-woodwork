@@ -82,6 +82,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - **CI must stay green.** `.github/workflows/build.yml` runs `cargo fmt --check`, clippy with
   warnings as errors, and `python build.py` (unit and end-to-end tests against a downloaded
   SolidCraft CLI) on every push and pull request. Run `cargo fmt` before committing.
+- **The sample kitchen shows everything.** A new function goes into `examples/kitchen.py` in
+  the same branch; rerun it (it rewrites `examples/kitchen.sc` and the cut list CSV) and
+  re-render `docs/kitchen.png`:
+  `solidcraft-cli snapshot --in examples/kitchen.sc --out docs/kitchen.png --camera '{"target":[1750,-320,1030],"yaw":0.45,"pitch":0.25,"distance":5900,"fov":0.6}' --no-grid --no-axes --width 1400 --height 950 --quality fine`
 - **Releases come from tags.** Pushing a tag `vX.Y.Z` that matches the version in
   `plugin.json` makes the same workflow attach `woodwork-X.Y.Z.zip` to a GitHub Release.
 - **Branches and pull requests, never straight to main.** One branch per function, one commit
