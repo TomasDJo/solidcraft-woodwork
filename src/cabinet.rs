@@ -376,19 +376,19 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         // sides; through a divider, which carries shelves on both faces.
         let blind = format!("min({et} - {}, {})", mm(5.0), mm(12.0));
         let mut rows = vec![
-            ("Side L".to_string(), et.clone(), blind.clone()),
-            ("Side R".to_string(), format!("{ew} - {et}"), blind),
+            ("Side L".to_string(), et.clone(), blind.clone(), -1),
+            ("Side R".to_string(), format!("{ew} - {et}"), blind, 1),
         ];
         for (k, x) in divider_x.iter().enumerate() {
-            rows.push((format!("Divider {}", k + 1), x.clone(), et.clone()));
+            rows.push((format!("Divider {}", k + 1), x.clone(), et.clone(), 1));
         }
-        for (part, x, depth) in rows {
+        for (part, x, depth, direction) in rows {
             let feature = format!("{name} {part} pins");
             let z = format!("{bottom_top} + {}", mm(2.0 * PITCH));
             drill.push((
                 "solid.hole",
                 json!({
-                    "position": place(&x, &mm(PIN_SETBACK), &z),
+                    "position": place(&x, &mm(PIN_SETBACK), &z), "direction": [direction, 0, 0],
                     "diameter": mm(PIN_D), "depth": depth,
                     "targets": [format!("{name} {part}")], "name": feature,
                 }),

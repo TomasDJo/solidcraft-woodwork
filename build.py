@@ -161,7 +161,7 @@ def test():
     assert box["E Drawer 2 Front"][1] == -300, box["E Drawer 2 Front"]
 
     # Joinery: confirmat holes at the four corners of a cabinet inside a Kitchen component.
-    # 560 deep: 3 screws per joint. They follow a resize to 900 deep: 5.
+    # 560 deep: 3 screws per joint. They spread out with a resize to 900 deep.
     def cylinders(measure, name):
         return next(b for b in measure["bodies"] if b["name"] == name)["face_types"].get("cylinder", 0)
     results = cli([{"command": "component.create", "params": {"name": "Kitchen"}},
@@ -175,7 +175,28 @@ def test():
                   "--save", str(ROOT / "dist" / "joinery.sc"))
     assert cylinders(results[4], "J Side L") == 6 and cylinders(results[4], "J Bottom") == 6
     assert results[5]["active"] == 1, results[5]["active"]  # back in Kitchen
-    assert cylinders(results[7], "J Side R") == 10 and cylinders(results[7], "J Top") == 10
+    assert cylinders(results[7], "J Side R") == 6 and cylinders(results[7], "J Top") == 6
+
+    # Joinery on cabinets that have been moved: placed to the right, and inside a moved room.
+    # Every hole must remove material.
+    # (B is as wide as A: drilled on the origin, its numbers are those of A's faces.)
+    results = cli([plugin(approval, "cabinet", {"name": "A", "height": 2100}),
+                   select("A Top"),
+                   plugin(approval, "cabinet", {"name": "B", "shelves": 0, "place": "right"}),
+                   select("B Top"),
+                   plugin(approval, "joinery", {"type": "dowel"}),
+                   {"command": "component.create", "params": {"name": "Room", "grounded": False}},
+                   {"command": "occurrence.move", "params": {"occurrence": "Room:1", "translate": [2000, 500, 0]}},
+                   plugin(approval, "cabinet", {"name": "C", "shelf_pins": True}),
+                   select("C Top"),
+                   plugin(approval, "joinery", {"type": "confirmat"}),
+                   {"command": "inspect.measure", "params": {}},
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
+    assert not [f["name"] for f in results[11]["timeline"] if f["warning"]]
+    for cabinet in "BC":
+        for part in ("Side L", "Side R", "Bottom", "Top"):
+            pins = 36 if cabinet == "C" and part.startswith("Side") else 0
+            assert cylinders(results[10], f"{cabinet} {part}") == 6 + pins, (cabinet, part)
 
     # Materials: oak doors on a melamine cabinet, next to a plywood one.
     def pick(*names):
