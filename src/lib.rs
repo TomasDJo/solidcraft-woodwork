@@ -2,6 +2,7 @@
 //! app commands, so `cargo test` covers them; only `guest` touches the wasm bindings.
 
 mod cabinet;
+mod corner;
 mod cutlist;
 mod joinery;
 mod kit;
@@ -18,8 +19,11 @@ pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
 
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     match entry {
-        "cabinet" => {
-            let (commands, mut summary) = cabinet::build(params)?;
+        "cabinet" | "corner" => {
+            let (commands, mut summary) = match entry {
+                "cabinet" => cabinet::build(params)?,
+                _ => corner::build(params)?,
+            };
             // Where it goes: on the origin, or against the cabinet that is selected.
             let place = params["place"].as_str().unwrap_or("origin");
             let beside = match place {

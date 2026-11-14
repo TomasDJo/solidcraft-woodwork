@@ -35,6 +35,29 @@
         }
       },
       {
+        "name": "corner",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Corner cabinet…" }],
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm: with in, enter each size in inches.", "enum": ["mm", "in"], "default": "mm" },
+            "corner": { "type": "string", "title": "Corner", "description": "L-shaped cabinet for a corner of the room. left: the corner is at the back left, and the return runs forward along the left wall. right: the mirror image.", "enum": ["left", "right"], "default": "left" },
+            "width": { "type": "number", "title": "Width", "description": "Along the back wall, from the corner.", "default": 900, "minimum": 4, "maximum": 5000 },
+            "return": { "type": "number", "title": "Return", "description": "Along the side wall, from the corner.", "default": 900, "minimum": 4, "maximum": 5000 },
+            "depth": { "type": "number", "title": "Depth", "description": "Depth of both legs, wall to front.", "default": 560, "minimum": 4, "maximum": 5000 },
+            "height": { "type": "number", "title": "Height", "description": "Outside height, plinth included.", "default": 720, "minimum": 4, "maximum": 5000 },
+            "thickness": { "type": "number", "title": "Panel thickness", "default": 18, "minimum": 0.125, "maximum": 50 },
+            "shelves": { "type": "integer", "title": "Shelves", "description": "L-shaped shelves, evenly spaced.", "default": 1, "minimum": 0, "maximum": 20 },
+            "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth boards sit 50 mm back from the fronts.", "default": 0, "minimum": 0, "maximum": 500 },
+            "doors": { "type": "boolean", "title": "Doors", "description": "One overlay door on each front, hinged on the two ends, with 35 mm hinge cup holes.", "default": false },
+            "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material… on a selection.", "enum": ["Birch plywood", "MDF", "White melamine", "Oak", "none"], "default": "Birch plywood" },
+            "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
+            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names.", "default": "Corner", "minLength": 1, "maxLength": 40 }
+          }
+        }
+      },
+      {
         "name": "joinery",
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Joinery…" }],

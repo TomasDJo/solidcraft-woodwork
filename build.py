@@ -210,6 +210,44 @@ def test():
             pins = 36 if cabinet == "C" and part.startswith("Side") else 0
             assert cylinders(results[10], f"{cabinet} {part}") == 6 + pins, (cabinet, part)
 
+    # Corner cabinet: an L of 1000 x 900 with the return on the left, a box cabinet placed to
+    # its right, both doors opened. Then the mirror image.
+    corner = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": True}
+    results = cli([plugin(approval, "corner", corner),
+                   {"command": "inspect.measure", "params": {}},
+                   select("C Top"),
+                   plugin(approval, "cabinet", {"name": "N", "place": "right"}),
+                   drive("C Door hinge", 60), drive("C Door return hinge", 60),
+                   {"command": "inspect.measure", "params": {}},
+                   plugin(approval, "cutlist"),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
+                  "--save", str(ROOT / "dist" / "corner.sc"))
+    def boxes(measure):
+        return {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in measure["bodies"]}
+    box = boxes(results[1])
+    assert len(box) == 11, sorted(box)  # 2 sides, 2 backs, bottom, top, shelf, 2 plinth boards, 2 doors
+    assert box["C Side L"] == [-500, -450, 0, 60, -432, 720], box["C Side L"]  # the end of the return
+    assert box["C Side R"] == [482, -110, 0, 500, 450, 720], box["C Side R"]
+    # the doors stop 2 mm short of each other in the inner corner
+    assert box["C Door"] == [82, -130, 102, 498, -112, 718], box["C Door"]
+    assert box["C Door return"] == [62, -448, 102, 80, -132, 718], box["C Door return"]
+    # an L-shaped board: 964 x 864 less the open corner of 422 x 322
+    bottom = next(b for b in results[1]["bodies"] if b["name"] == "C Bottom")
+    assert round(bottom["volume_mm3"]) == (964 * 864 - 422 * 322) * 18, bottom["volume_mm3"]
+    box = boxes(results[6])
+    assert box["N Side L"][0] == 500 and box["N Side L"][4] == 450, box["N Side L"]  # beside it, backs flush
+    assert box["C Door"][1] < -400 and box["C Door return"][3] > 300, (box["C Door"], box["C Door return"])  # both open outwards
+    assert '3,964,864,18,"Birch plywood","C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"]
+    assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
+    results = cli([plugin(approval, "corner", {**corner, "corner": "right"}),
+                   drive("C Door hinge", 60), drive("C Door return hinge", 60),
+                   {"command": "inspect.measure", "params": {}}])
+    mirror = boxes(results[3])
+    for part in ("C Door", "C Door return", "C Bottom", "C Plinth"):
+        x0, y0, z0, x1, y1, z1 = box[part]
+        assert mirror[part] == [-x1, y0, z0, -x0, y1, z1], (part, mirror[part], box[part])
+    assert mirror["C Side R"] == [-60, -450, 0, 500, -432, 720], mirror["C Side R"]
+
     # Materials: oak doors on a melamine cabinet, next to a plywood one.
     def pick(*names):
         return {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}
