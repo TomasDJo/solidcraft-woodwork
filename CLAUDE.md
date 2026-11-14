@@ -12,7 +12,11 @@ materials, joinery and cut lists.
 - The manifest lists the entries, a JSON schema per entry, and every command id the plugin
   calls. A command that is not listed is refused. Entry names: lowercase letters, digits,
   hyphens (no underscores).
-- The app draws each entry's dialog from its schema and shows the entry under the Plugins menu.
+- The app draws each entry's dialog from its schema and shows the entry under the Plugins menu
+  (0.42: a Woodwork submenu, and one ribbon button per entry, labelled by its `ribbon` slot).
+  A schema keyword the dialog cannot draw or check (`pattern`, `readOnly`, ...) removes the
+  entry from the menu in 0.42; ours use only type, title, description, default, enum, bounds
+  and lengths.
   The dialog is **static**: no dependent fields, no stored values, no preview, no pick-a-body
   field. Plugin code runs only after OK.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary

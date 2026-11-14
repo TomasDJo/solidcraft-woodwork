@@ -10,7 +10,7 @@
       {
         "name": "cabinet",
         "effect": "edit",
-        "slots": [{ "kind": "menu", "name": "Cabinet…" }],
+        "slots": [{ "kind": "menu", "name": "Cabinet…" }, { "kind": "ribbon", "name": "Cabinet" }],
         "input_schema": {
           "type": "object",
           "properties": {
@@ -38,7 +38,7 @@
       {
         "name": "corner",
         "effect": "edit",
-        "slots": [{ "kind": "menu", "name": "Corner cabinet…" }],
+        "slots": [{ "kind": "menu", "name": "Corner cabinet…" }, { "kind": "ribbon", "name": "Corner cabinet" }],
         "input_schema": {
           "type": "object",
           "properties": {
@@ -62,7 +62,7 @@
       {
         "name": "joinery",
         "effect": "edit",
-        "slots": [{ "kind": "menu", "name": "Joinery…" }],
+        "slots": [{ "kind": "menu", "name": "Joinery…" }, { "kind": "ribbon", "name": "Joinery" }],
         "input_schema": {
           "type": "object",
           "properties": {
@@ -73,7 +73,7 @@
       {
         "name": "material",
         "effect": "edit",
-        "slots": [{ "kind": "menu", "name": "Material…" }],
+        "slots": [{ "kind": "menu", "name": "Material…" }, { "kind": "ribbon", "name": "Material" }],
         "input_schema": {
           "type": "object",
           "properties": {
@@ -85,7 +85,7 @@
       {
         "name": "cutlist",
         "effect": "read",
-        "slots": [{ "kind": "menu", "name": "Cut list" }],
+        "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],
         "input_schema": { "type": "object", "properties": {} }
       }
     ],

@@ -53,7 +53,7 @@ Under the **Plugins** menu:
    (under **Assets**, not the source code zip).
 2. In SolidCraft open **Preferences > Plugins** and choose **Install plugin...**
 
-The functions then appear under the **Plugins** menu. Needs SolidCraft 0.41 or later.
+The functions then appear under **Plugins > Woodwork**, and from SolidCraft 0.42 also as buttons in the Plugins group of the Model ribbon. Needs SolidCraft 0.41 or later; tested on 0.42.
 
 ## Build from source
 
