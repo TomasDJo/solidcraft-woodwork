@@ -6,12 +6,17 @@
 use crate::{cabinet, select, Commands};
 use serde_json::{json, Value};
 
-const FROM_EDGE: &str = "50 mm"; // first and last hole, from the front and back edge
-const MAX_SPACING: &str = "250 mm";
+const FROM_EDGE: f64 = 50.0; // first and last hole, from the front and back edge
+const MAX_SPACING: f64 = 250.0;
 
 /// `design` is `document.inspect`'s reply with the timeline, `kind` is confirmat or dowel.
-/// The commands run with the cabinet's component active.
-pub fn build(found: &select::Cabinet, design: &Value, kind: &str) -> Result<Commands, String> {
+/// The commands run with the cabinet's component active. Also returns where the cabinet's
+/// origin (the middle of its footprint, on its floor) is in the world, in mm.
+pub fn build(
+    found: &select::Cabinet,
+    design: &Value,
+    kind: &str,
+) -> Result<(Commands, [f64; 3]), String> {
     let name = &found.name;
     let prefix = cabinet::prefix(name);
     let value = |key: &str| {
@@ -54,8 +59,12 @@ pub fn build(found: &select::Cabinet, design: &Value, kind: &str) -> Result<Comm
         ed.clone()
     };
     // Two holes at least, and more on a deep cabinet, evenly between the first and the last.
-    let count = format!("max(2, ceil(({side_d} - 2*{FROM_EDGE}) / {MAX_SPACING}) + 1)");
-    let spacing = format!("({side_d} - 2*{FROM_EDGE}) / ({count} - 1)");
+    // ponytail: every hole is a feature of its own, so their number is settled here and only
+    // the spacing follows a resize. (A pattern would follow, but the app loses copies of a
+    // patterned hole once another cabinet stands where this one's numbers point.)
+    let run = found.max[1] - found.min[1] - 2.0 * FROM_EDGE;
+    let count = ((run / MAX_SPACING).ceil() as u32 + 1).max(2);
+    let spacing = format!("({side_d} - {} mm) / {}", 2.0 * FROM_EDGE, count - 1);
     // Hole in the side, then hole in the end of the bottom or top: (name, diameter, depth).
     let (in_side, in_end) = match kind {
         // 7 x 50 mm confirmat: through the side from outside, pilot in the panel's end.
@@ -79,50 +88,62 @@ pub fn build(found: &select::Cabinet, design: &Value, kind: &str) -> Result<Comm
     };
 
     // Positions from the cabinet's front left bottom corner; the cabinet is centred on its origin.
-    let place =
-        |x: &str, z: &str| json!([format!("{x} - {ew}/2"), format!("{FROM_EDGE} - {ed}/2"), z]);
+    let place = |x: &str, k: u32, z: &str| {
+        json!([
+            format!("{x} - {ew}/2"),
+            format!("{FROM_EDGE} mm + {spacing} * {k} - {ed}/2"),
+            z
+        ])
+    };
     let mut commands = Vec::new();
     let sides = [
-        ("Side L", "0 mm".to_string(), et.clone()),
-        ("Side R", ew.clone(), format!("{ew} - {et}")),
+        ("Side L", "0 mm".to_string(), et.clone(), 1),
+        ("Side R", ew.clone(), format!("{ew} - {et}"), -1),
     ];
-    for (side, outer, inner) in &sides {
+    // `inwards` is the X direction from the side into the cabinet.
+    for (side, outer, inner, inwards) in &sides {
         let panels = [
             ("Bottom", format!("{epl} + {et}/2")),
             ("Top", format!("{eh} - {et}/2")),
         ];
         for (panel, z) in &panels {
             // A screw goes in from the outer face, a dowel sits behind the inner face.
-            let from = if kind == "confirmat" { outer } else { inner };
+            let (from, into_side) = match kind {
+                "confirmat" => (outer, *inwards),
+                _ => (inner, -inwards),
+            };
             let holes = [
-                (in_side.clone(), from, side),
-                (in_end.clone(), inner, panel),
+                (in_side.clone(), from, side, into_side),
+                (in_end.clone(), inner, panel, *inwards),
             ];
-            let mut row = Vec::new();
-            for ((what, diameter, depth), x, target) in holes {
-                let feature = format!("{label} {side} {panel} {what}");
-                commands.push((
-                    "solid.hole",
-                    json!({
-                        "position": place(x, z), "diameter": diameter, "depth": depth,
-                        "targets": [format!("{name} {target}")], "name": feature,
-                    }),
-                ));
-                row.push(feature);
+            for ((what, diameter, depth), x, target, direction) in holes {
+                for k in 0..count {
+                    // the first is named plainly: the cut list finds the joinery by it
+                    let feature = match k {
+                        0 => format!("{label} {side} {panel} {what}"),
+                        _ => format!("{label} {side} {panel} {what} {}", k + 1),
+                    };
+                    commands.push((
+                        "solid.hole",
+                        json!({
+                            "position": place(x, k, z), "direction": [direction, 0, 0],
+                            "diameter": diameter, "depth": depth,
+                            "targets": [format!("{name} {target}")], "name": feature,
+                        }),
+                    ));
+                }
             }
-            commands.push((
-                "solid.pattern.rectangular",
-                json!({
-                    "features": row, "name": format!("{label} {side} {panel} row"),
-                    "dir1": [0, 1, 0], "count1": count, "spacing1": spacing,
-                }),
-            ));
         }
     }
     let features: Vec<&Value> = commands.iter().map(|c| &c.1["name"]).collect();
     let group = json!({ "name": format!("{name} joinery"), "features": features });
     commands.push(("timeline.group", group));
-    Ok(commands)
+    let origin = [
+        (found.min[0] + found.max[0]) / 2.0,
+        found.min[1] + depth / 2.0,
+        found.min[2],
+    ];
+    Ok((commands, origin))
 }
 
 #[cfg(test)]
@@ -143,22 +164,23 @@ mod tests {
             {"name": "Base_1_depth", "value": 560.0}, {"name": "Base_1_thickness", "value": 18.0},
             {"name": "Base_1_plinth", "value": 100.0},
         ]});
-        let commands = build(&found(), &design, "confirmat").unwrap();
-        assert_eq!(commands.len(), 4 * 3 + 1);
-        // sides 554 deep in a 560 cabinet: an overlaid back
-        assert!(commands[2].1["count1"]
-            .as_str()
-            .unwrap()
-            .contains("Base_1_depth - Base_1_back_thickness"));
+        let (commands, origin) = build(&found(), &design, "confirmat").unwrap();
+        assert_eq!(origin, [300.0, 280.0, 0.0]);
+        // sides 554 deep in a 560 cabinet: 3 screws per joint, and an overlaid back
+        assert_eq!(commands.len(), 4 * 2 * 3 + 1);
+        assert_eq!(
+            commands[2].1["position"][1],
+            "50 mm + ((Base_1_depth - Base_1_back_thickness) - 100 mm) / 2 * 2 - Base_1_depth/2"
+        );
         // the screw enters the left side from outside, the bottom sits on the plinth
         assert_eq!(commands[0].1["position"][0], "0 mm - Base_1_width/2");
         assert_eq!(
             commands[0].1["position"][2],
             "Base_1_plinth + Base_1_thickness/2"
         );
-        assert_eq!(commands[1].1["targets"][0], "Base 1 Bottom");
+        assert_eq!(commands[3].1["targets"][0], "Base 1 Bottom");
 
-        let dowels = build(&found(), &design, "dowel").unwrap();
+        let (dowels, _) = build(&found(), &design, "dowel").unwrap();
         assert_eq!(
             dowels[0].1["position"][0],
             "Base_1_thickness - Base_1_width/2"

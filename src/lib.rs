@@ -101,13 +101,39 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             )?;
             let found = select::cabinet(&design, &run("inspect.measure", json!({}))?)?;
             let kind = params["type"].as_str().unwrap_or("confirmat");
-            let commands = joinery::build(&found, &design, kind)?;
+            let (commands, origin) = joinery::build(&found, &design, kind)?;
             let before = run("component.list", json!({"compact": true}))?["active"].clone();
+            // In a plugin run the app shifts a hole's position by where the component stands,
+            // so a cabinet that has been moved is drilled on the origin and then put back.
+            // ponytail: this leaves the cabinet grounded, as the cabinet entry made it, also
+            // if the user had freed it since.
+            let occurrence = format!("{}:1", found.name);
+            let shift = |by: [f64; 3], run: Run| {
+                run(
+                    "occurrence.move",
+                    json!({"occurrence": occurrence, "translate": by}),
+                )
+            };
+            let away = origin.iter().any(|v| v.abs() > 1e-6);
+            if away {
+                run(
+                    "occurrence.ground",
+                    json!({"occurrence": occurrence, "grounded": false}),
+                )?;
+                shift(origin.map(|v| -v), run)?;
+            }
             run("component.activate", json!({"component": found.name}))?;
             for (command, args) in commands {
                 run(command, args)?;
             }
             run("component.activate", json!({"component": before}))?;
+            if away {
+                shift(origin, run)?;
+                run(
+                    "occurrence.ground",
+                    json!({"occurrence": occurrence, "grounded": true}),
+                )?;
+            }
             Ok(json!({"cabinet": found.name, "type": kind, "joints": 4}))
         }
         "material" => {

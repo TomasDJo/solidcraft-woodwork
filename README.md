@@ -28,7 +28,7 @@ Under the **Plugins** menu:
     The counts (shelves, dividers, doors) are fixed once it is built.
   The Units field switches the sizes between mm and inches.
 - **Joinery…** drills the selected cabinet where its sides meet the bottom and top: holes for
-  7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters.
+  7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their number is set when they are drilled.
 - **Material…** gives the selected cabinet, or only the selected parts (the doors, say), a
   board material: birch plywood, MDF, white melamine or oak. New cabinets get one in the dialog.
 - **Cut list** returns every board as length x width x thickness with quantities, and as CSV.

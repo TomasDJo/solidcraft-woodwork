@@ -22,6 +22,13 @@ materials, joinery and cut lists.
 - A `read` entry may only call read commands. `selection.get`, `component.list` and
   `assembly.mass_properties` count as edits; `document.inspect` (which also returns the
   selection), `inspect.measure` and `model.mesh` are read.
+- Inside a plugin run, `solid.hole` checks its `position` in the active component's own
+  coordinates but stores it shifted by where that component stands in the world, so the hole
+  misses on a component that has been moved (through the CLI directly it does not). Joinery
+  therefore moves the cabinet to the origin, drills, and moves it back.
+- A pattern of a hole can lose copies ("cut copies remove no material") when the component has
+  been moved and another body stands where its local numbers point in the world. Joinery makes
+  every hole a feature of its own for that reason; the shelf pin patterns have not shown it.
 - The plugin runs on a background copy of the design. Display commands such as `view.fit` are
   accepted but do nothing in the window.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
@@ -117,6 +124,8 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
 - The cut list measures a board by its world bounding box when the board fills that box, and
   otherwise (an open door, a turned cabinet) by `model.mesh` in the body's own component: one
   extra command per such board, so about 250 of them at most.
+- A cabinet with doors or drawers cannot be made inside a component that has been moved:
+  the hinge cup holes fail with "not on a face of a body" (the shift described above).
 - Joints use a fixed point from creation time. They do not follow a resize, and they are off
   if the cabinet is made inside a component that has already been moved.
 - A cabinet is grounded at the end of a run, because a joint only moves against something
