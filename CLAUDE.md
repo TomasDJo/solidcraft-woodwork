@@ -130,6 +130,8 @@ Entries today: `cabinet` (edit), `joinery` (edit), `material` (edit), `cutlist` 
   if the cabinet is made inside a component that has already been moved.
 - A cabinet is grounded at the end of a run, because a joint only moves against something
   fixed. Moving it later means ungrounding it first.
+- The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
+  `joint`, `Drawer n Front`), so renaming those breaks it.
 - The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.
 - Joinery covers the four carcass corners only, and tells an overlaid back from a grooved one
   by comparing the side depth with the depth parameter.

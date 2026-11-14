@@ -59,6 +59,67 @@ pub fn extents(mesh: &Value) -> [f64; 3] {
     size
 }
 
+/// The hardware to buy, counted from what the plugin made: feature names in `timeline`
+/// (`document.inspect`'s reply) and bodies in `measure`.
+pub fn hardware(measure: &Value, design: &Value) -> Value {
+    let named = |list: &Value| -> Vec<String> {
+        let items = list.as_array().into_iter().flatten();
+        items
+            .filter_map(|item| item["name"].as_str().map(String::from))
+            .collect()
+    };
+    let (features, bodies) = (named(&design["timeline"]), named(&measure["bodies"]));
+    let ending = |end: &str| features.iter().filter(|f| f.ends_with(end)).count();
+    // Cabinets with a feature of this name, such as `<Cabinet> Side L pins`.
+    let cabinets = |end: &'static str| features.iter().filter_map(move |f| f.strip_suffix(end));
+    // ponytail: a screw or dowel is a round hole in the bottom or top panel, so a hole the
+    // user drills there by hand is counted too.
+    let holes = |cabinet: &str| -> u64 {
+        let ends = [format!("{cabinet} Bottom"), format!("{cabinet} Top")];
+        let all = measure["bodies"].as_array().into_iter().flatten();
+        all.filter(|b| ends.iter().any(|end| b["name"] == end.as_str()))
+            .filter_map(|b| b["face_types"]["cylinder"].as_u64())
+            .sum()
+    };
+    let shelves = |cabinet: &str| {
+        let start = format!("{cabinet} Shelf ");
+        bodies.iter().filter(|b| b.starts_with(&start)).count() as u64
+    };
+    let pulls = ending(" handle 2");
+    let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front");
+    let counts = [
+        (
+            "Hinge, 35 mm cup",
+            features
+                .iter()
+                .filter(|f| f.contains(" hinge cup "))
+                .count() as u64,
+        ),
+        (
+            "Drawer slide, pair",
+            bodies.iter().filter(drawers).count() as u64,
+        ),
+        (
+            "Shelf pin, 5 mm",
+            cabinets(" Side L pins").map(|c| 4 * shelves(c)).sum(),
+        ),
+        (
+            "Confirmat screw, 7 x 50 mm",
+            cabinets(" joint Side L Bottom pilot").map(holes).sum(),
+        ),
+        (
+            "Dowel, 8 x 35 mm",
+            cabinets(" joint Side L Bottom dowel end").map(holes).sum(),
+        ),
+        ("Knob", (ending(" handle 1") - pulls) as u64),
+        ("Pull, 128 mm", pulls as u64),
+    ];
+    let bought = counts.iter().filter(|(_, qty)| *qty > 0);
+    bought
+        .map(|(item, qty)| json!({"item": item, "qty": qty}))
+        .collect()
+}
+
 /// `local` holds the sizes of the turned bodies, measured in their own component.
 pub fn cutlist(
     measure: &Value,
@@ -201,6 +262,33 @@ mod tests {
             .as_str()
             .unwrap()
             .contains("1,716,397,18,\"Default\",\"Side L\""));
+    }
+
+    #[test]
+    fn hardware_is_counted_from_names() {
+        let named =
+            |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
+        let design = json!({"timeline": named(&[
+            "A Door hinge cup 1", "A Door hinge cup 2", "A Door handle 1", "A Door handle 2",
+            "A Side L pins", "A Side R pins", "A 2 Drawer 1 Front handle 1",
+            "A joint Side L Bottom pilot", "A joint Side L Bottom row",
+        ])});
+        let mut bodies = named(&[
+            "A Shelf 1",
+            "A Shelf 2",
+            "A 2 Shelf 1",
+            "A 2 Drawer 1 Front",
+        ]);
+        bodies.push(json!({"name": "A Bottom", "face_types": {"cylinder": 6}}));
+        bodies.push(json!({"name": "A Top", "face_types": {"cylinder": 6}}));
+        bodies.push(json!({"name": "A 2 Top", "face_types": {"cylinder": 3}}));
+        let list = hardware(&json!({"bodies": bodies}), &design);
+        let expected = json!([
+            {"item": "Hinge, 35 mm cup", "qty": 2}, {"item": "Drawer slide, pair", "qty": 1},
+            {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
+            {"item": "Knob", "qty": 1}, {"item": "Pull, 128 mm", "qty": 1},
+        ]);
+        assert_eq!(list, expected);
     }
 
     #[test]

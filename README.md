@@ -35,6 +35,7 @@ Under the **Plugins** menu:
   In a design set to inches or feet it lists inches as fractions to 1/32.
   It also estimates the 2440 x 1220 sheets to buy per material and thickness (area plus
   15 % waste, not a cutting layout).
+  And it counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles.
 
 ## Install
 

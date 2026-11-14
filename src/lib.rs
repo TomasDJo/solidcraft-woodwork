@@ -161,7 +161,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             // Inches when the design is in inches or feet, else mm.
             let design = run(
                 "document.inspect",
-                json!({"bodies": false, "timeline": false}),
+                json!({"bodies": false, "timeline": "summary"}),
             )?;
             let imperial = matches!(design["units"].as_str(), Some("in" | "ft"));
             let measure = run("inspect.measure", json!({}))?;
@@ -172,7 +172,9 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 let mesh = run("model.mesh", json!({"body": body, "tolerance": 1.0}))?;
                 local.insert(body, cutlist::extents(&mesh));
             }
-            cutlist::cutlist(&measure, &local, imperial)
+            let mut list = cutlist::cutlist(&measure, &local, imperial)?;
+            list["hardware"] = cutlist::hardware(&measure, &design);
+            Ok(list)
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }

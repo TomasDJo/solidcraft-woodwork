@@ -77,6 +77,8 @@ def test():
     # the groove took material out of the side: 9 deep, 6 wide
     assert side["volume_mm3"] < 18 * 400 * 900 - 9 * 6 * 700, side["volume_mm3"]
     assert cutlist["boards"] == 10, cutlist
+    assert cutlist["hardware"] == [{"item": "Hinge, 35 mm cup", "qty": 4},
+                                   {"item": "Shelf pin, 5 mm", "qty": 8}], cutlist["hardware"]
     print(cutlist["csv"])
 
     # Dividers: 3 compartments of 2 shelves, pin holes through the dividers.
@@ -171,8 +173,11 @@ def test():
                    {"command": "inspect.measure", "params": {}},
                    {"command": "component.list", "params": {"compact": True}},
                    {"command": "parameters.change", "params": {"name": "J_depth", "expression": "900 mm"}},
-                   {"command": "inspect.measure", "params": {}}],
+                   {"command": "inspect.measure", "params": {}},
+                   plugin(approval, "cutlist")],
                   "--save", str(ROOT / "dist" / "joinery.sc"))
+    # the cut list counts them: 3 screws in each of the 4 joints
+    assert results[8]["result"]["hardware"] == [{"item": "Confirmat screw, 7 x 50 mm", "qty": 12}], results[8]["result"]["hardware"]
     assert cylinders(results[4], "J Side L") == 6 and cylinders(results[4], "J Bottom") == 6
     assert results[5]["active"] == 1, results[5]["active"]  # back in Kitchen
     assert cylinders(results[7], "J Side R") == 6 and cylinders(results[7], "J Top") == 6
