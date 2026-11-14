@@ -63,6 +63,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [ ] Joinery for dividers and fixed shelves
 - [ ] Joints that follow a resize (their axis is a fixed point today)
 - [x] Drawers: a drawer unit with fronts and boxes sized for 12.7 mm slides
+- [x] Hardware list in the cut list: hinges, slides, shelf pins, screws, dowels, handles
 - [ ] Inset doors
 
 ### Later
