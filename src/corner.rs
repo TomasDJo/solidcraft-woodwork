@@ -207,7 +207,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         );
         let cup_x = format!("{ea} - {gap} - {}", mm(CUP_CENTRE));
         cup("Door", &cup_x, &face_y, [0, -1, 0]);
-        let hinge = [(a / 2.0 - g) * flip as f64, b / 2.0 - d - g, floor];
+        // like the box cabinet's: about the door's front edge, so it clears the next cabinet
+        let hinge = [(a / 2.0 - g) * flip as f64, b / 2.0 - d - g - t, floor];
         kit.close("Door", "revolute", "hinge", hinge, [0, 0, flip], 110.0);
 
         // On the return, facing across: hinged on the return's side, at the front.
@@ -221,7 +222,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         );
         let cup_y = format!("{gap} + {}", mm(CUP_CENTRE));
         cup("Door return", &face_x, &cup_y, [flip, 0, 0]);
-        let hinge = [(d + g - a / 2.0) * flip as f64, g - b / 2.0, floor];
+        let hinge = [(d + g + t - a / 2.0) * flip as f64, g - b / 2.0, floor];
         kit.close(
             "Door return",
             "revolute",

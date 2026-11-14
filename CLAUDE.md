@@ -12,7 +12,11 @@ materials, joinery and cut lists.
 - The manifest lists the entries, a JSON schema per entry, and every command id the plugin
   calls. A command that is not listed is refused. Entry names: lowercase letters, digits,
   hyphens (no underscores).
-- The app draws each entry's dialog from its schema and shows the entry under the Plugins menu.
+- The app draws each entry's dialog from its schema and shows the entry under the Plugins menu
+  (0.42: a Woodwork submenu, and one ribbon button per entry, labelled by its `ribbon` slot).
+  A schema keyword the dialog cannot draw or check (`pattern`, `readOnly`, ...) removes the
+  entry from the menu in 0.42; ours use only type, title, description, default, enum, bounds
+  and lengths.
   The dialog is **static**: no dependent fields, no stored values, no preview, no pick-a-body
   field. Plugin code runs only after OK.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
@@ -104,7 +108,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - **Body names are the data model.** Bodies are `<Cabinet> <Part>`; a cabinet is recognised by
   its `<Cabinet> Side L` body, and the longest matching cabinet name owns a body. Never name
   another part with the suffix ` Side L` (drawer box sides are `Left` and `Right` for that
-  reason). Two cabinets cannot share a name.
+  reason). Two cabinets cannot share a name: `kit::free_name` gives a taken name the next free number.
 - **Geometry convention:** X width, Y depth with the front at -Y, Z up. A cabinet is centred on
   its component origin and stands on Z = 0.
 - **Features made at cabinet level go into one history folder** (`timeline.group`).
@@ -148,6 +152,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
   see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). A box
   cabinet can be placed beside its back leg, but not turned to continue its return.
+- Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
+  A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
+  parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the
+  selected one has one. Material is not matched.
 - Joinery covers the four carcass corners only, and tells an overlaid back from a grooved one
   by comparing the side depth with the depth parameter.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.

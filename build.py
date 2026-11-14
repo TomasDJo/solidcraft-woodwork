@@ -164,10 +164,11 @@ def test():
     # (716 x 297 x 18 mm, listed in inches in this inch design)
     assert '2,28 3/16,11 11/16,23/32,"Birch plywood","D Door L, D Door R"' in results[9]["result"]["csv"]
     box = {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[8]["bodies"]}
-    # left door: turned 90 degrees about its inner left edge (x -298, y -282), now along -Y
-    assert box["D Door L"] == [-316, -579, 1002, -298, -282, 1718], box["D Door L"]
+    # left door: turned 90 degrees about its front left edge (x -298, y -300), now along -Y and
+    # still inside the cabinet's width, clear of a door on the next cabinet
+    assert box["D Door L"] == [-298, -597, 1002, -280, -300, 1718], box["D Door L"]
     # right door: stopped by its limit at 110 degrees
-    assert box["D Door R"][1] < -282 - 297 * 0.9 and box["D Door R"][3] > 298, box["D Door R"]
+    assert box["D Door R"][1] < -300 - 297 * 0.9 and box["D Door R"][3] > 298, box["D Door R"]
     assert box["E Drawer 1 Front"][1] == -300 - 300, box["E Drawer 1 Front"]
     assert box["E Drawer 2 Front"][1] == -300, box["E Drawer 2 Front"]
 
@@ -248,11 +249,34 @@ def test():
         assert mirror[part] == [-x1, y0, z0, -x0, y1, z1], (part, mirror[part], box[part])
     assert mirror["C Side R"] == [-60, -450, 0, 500, -432, 720], mirror["C Side R"]
 
+    # Match selected: B takes A's height, depth, thickness and plinth, and follows A afterwards.
+    # The corner cabinet too. In an inch design, with B's own sizes given in inches.
+    a = {"name": "A", "height": 900, "depth": 400, "thickness": 19, "plinth": 100}
+    results = cli([{"command": "document.units", "params": {"units": "in"}},
+                   plugin(approval, "cabinet", a),
+                   select("A Top"),
+                   plugin(approval, "cabinet", {"name": "B", "units": "in", "width": 20, "doors": 1,
+                                                "match": "selected", "place": "right"}),
+                   select("B Top"),
+                   plugin(approval, "corner", {"name": "K", "corner": "right", "match": "selected", "place": "right"}),
+                   {"command": "inspect.measure", "params": {}},
+                   {"command": "parameters.change", "params": {"changes": {"A_height": "800 mm", "A_plinth": "150 mm"}}},
+                   {"command": "inspect.measure", "params": {}},
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
+    box = boxes(results[6])
+    assert box["B Side L"] == [300, -200, 0, 319, 200, 900], box["B Side L"]
+    assert box["B Bottom"][2] == 100 and box["B Side R"][3] == 808, (box["B Bottom"], box["B Side R"])
+    assert box["K Side L"][5] == 900 and box["K Bottom"][2] == 100, (box["K Side L"], box["K Bottom"])
+    box = boxes(results[8])
+    for cabinet in "ABK":
+        assert box[f"{cabinet} Side L"][5] == 800 and box[f"{cabinet} Bottom"][2] == 150, cabinet
+    assert not [f["name"] for f in results[9]["timeline"] if f["warning"]]
+
     # Materials: oak doors on a melamine cabinet, next to a plywood one.
     def pick(*names):
         return {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}
     results = cli([plugin(approval, "cabinet", {"name": "A", "doors": 2}),
-                   plugin(approval, "cabinet", {"name": "A 2", "material": "none"}),
+                   plugin(approval, "cabinet", {"name": "A", "material": "none"}),  # taken: becomes A 2
                    pick("A Top"),
                    plugin(approval, "material", {"material": "White melamine"}),
                    pick("A Door L", "A Door R"),

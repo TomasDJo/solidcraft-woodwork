@@ -401,7 +401,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
             _ => format!("{x0} + {}", mm(HANDLE_EDGE)),
         };
         handle(&part, &handle_x, &handle_z, 2);
-        // The hinge: the door's inner edge on its hinge side, turning outwards up to 110 degrees.
+        // The hinge: turning outwards up to 110 degrees about the front edge on the door's hinge
+        // side. A cup hinge carries the door out and round so that its edge clears the door of
+        // the next cabinet; about the back edge it would swing a panel thickness into it.
         let width = (w - 2.0 * DOOR_GAP - (doors - 1.0) * DOOR_GAP) / doors;
         let left = -w / 2.0 + DOOR_GAP + (width + DOOR_GAP) * i as f64;
         let (x, axis) = if i % 2 == 0 {
@@ -413,7 +415,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
             &part,
             "revolute",
             "hinge",
-            [x, -d / 2.0 - DOOR_GAP, plinth + DOOR_GAP],
+            [x, -d / 2.0 - DOOR_GAP - t, plinth + DOOR_GAP],
             [0, 0, axis],
             110.0,
         );
