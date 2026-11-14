@@ -1,12 +1,13 @@
 # solidcraft-woodwork
 
-Woodworking plugin for SolidCraft 0.41+. See [PLAN.md](PLAN.md) for the roadmap.
+Woodworking plugin for SolidCraft: parametric cabinets, materials, joinery and a cut list.
+Works with SolidCraft 0.41 and 0.42. See [PLAN.md](PLAN.md) for the roadmap.
 
 ![Demo kitchen built by examples/kitchen.py](docs/kitchen.png)
 
 ## Functions
 
-Under the **Plugins** menu:
+Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Model ribbon:
 
 - **Cabinet** builds a box carcass: sides, top, bottom, shelves, back and optional plinth.
   Vertical dividers split it into equal compartments, each with the same shelves.
@@ -21,6 +22,8 @@ Under the **Plugins** menu:
     pull (two, 128 mm apart).
   - Every door and every drawer is a component of its own inside the cabinet, held by a
     joint: doors hinge open to 110 degrees, drawers slide out. Drive the joints to open them.
+    A door turns about its front edge, as on a cup hinge, so it clears the door of the next
+    cabinet.
     The cabinet is grounded so they have something fixed to open against; unground it to
     move it.
   - **Place** puts it against the cabinet you have selected (any part of it): to the right,
@@ -28,7 +31,7 @@ Under the **Plugins** menu:
   - Its sizes are design parameters (`Name_width`, `Name_height`, `Name_depth`,
     `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows.
     The counts (shelves, dividers, doors) are fixed once it is built.
-  The Units field switches the sizes between mm and inches.
+  - **Units** switches the sizes in the dialog between mm and inches.
   - **Name** is numbered when it is taken: Cabinet, Cabinet 2, Cabinet 3; after Base 1
     comes Base 2.
   - **Match selected** links the new cabinet's height, depth, panel thickness and plinth to
@@ -36,7 +39,8 @@ Under the **Plugins** menu:
     parameters.
 - **Corner cabinet** builds an L-shaped cabinet for a corner of the room, with the return on
   the left or the right: L-shaped bottom, top and shelves, optional plinth, and a door on each
-  front. It is parametric, takes a material and can be placed like the box cabinet.
+  front. It is parametric, takes a material, and can be placed, named and matched like the
+  box cabinet.
 - **Joinery** drills the selected cabinet where its sides meet the bottom and top: holes for
   7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their number is set when they are drilled.
 - **Material** gives the selected cabinet, or only the selected parts (the doors, say), a
@@ -53,7 +57,18 @@ Under the **Plugins** menu:
    (under **Assets**, not the source code zip).
 2. In SolidCraft open **Preferences > Plugins** and choose **Install plugin...**
 
-The functions then appear under **Plugins > Woodwork**, and from SolidCraft 0.42 also as buttons in the Plugins group of the Model ribbon. Needs SolidCraft 0.41 or later; tested on 0.42.
+The functions then appear under **Plugins > Woodwork**.
+
+## SolidCraft versions
+
+| SolidCraft | Plugin | Notes |
+|---|---|---|
+| 0.42 | 0.1.4 and later | Tested on every change. Adds a button per function in the Plugins group of the Model ribbon. |
+| 0.41 | 0.1.0 and later | The first version with plugins. 0.1.0 to 0.1.3 were tested on it; later versions should work but are no longer tested there. |
+| 0.40 and earlier | none | No plugin support. |
+
+A design made with the plugin is ordinary bodies, joints and parameters: it opens in any
+SolidCraft from 0.41 on, with or without the plugin.
 
 ## Build from source
 
@@ -72,8 +87,9 @@ The kitchen in the picture is in the repo:
 - [`examples/kitchen.sc`](examples/kitchen.sc): the design. Open it in SolidCraft; it needs no plugin.
 - [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 132 boards.
 - [`examples/kitchen.py`](examples/kitchen.py): the script that built both, using every function of
-  the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other, handle holes, melamine carcasses with oak fronts, screws
-  and dowels, doors and a drawer left open on their joints.
+  the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other and
+  linked in size (change `Base_1_height` and the whole floor run follows), handle holes,
+  melamine carcasses with oak fronts, screws and dowels, doors and a drawer left open on their joints.
 
 To rebuild it, run `python build.py` and then `python examples/kitchen.py`.
 
@@ -86,7 +102,8 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 
 - `plugin.json`: manifest. Entries, their input forms, and the app commands used.
 - `src/lib.rs`: entry dispatch and the wasm guest.
-- `src/kit.rs`, `src/cabinet.rs`, `src/corner.rs`, `src/joinery.rs`, `src/material.rs`, `src/cutlist.rs`: one module per
-  function, plain Rust with unit tests.
+- `src/cabinet.rs`, `src/corner.rs`, `src/joinery.rs`, `src/material.rs`, `src/cutlist.rs`: one
+  module per function, plain Rust with unit tests. `src/kit.rs` is what the two cabinet
+  builders share.
 - `src/select.rs`: finds the cabinet that is selected.
 - `build.py`: build, package and end-to-end test through `solidcraft-cli`.
