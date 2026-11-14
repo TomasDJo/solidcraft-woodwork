@@ -8,7 +8,7 @@ Woodworking plugin for SolidCraft 0.41+. See [PLAN.md](PLAN.md) for the roadmap.
 
 Under the **Plugins** menu:
 
-- **Cabinet…** builds a box carcass: sides, top, bottom, shelves, back and optional plinth.
+- **Cabinet** builds a box carcass: sides, top, bottom, shelves, back and optional plinth.
   Vertical dividers split it into equal compartments, each with the same shelves.
   Options: back in a groove or overlaid, 32 mm shelf pin holes, overlay doors with hinge cup
   holes (one, two, or one per compartment). Each panel is an ordinary named body.
@@ -34,12 +34,12 @@ Under the **Plugins** menu:
   - **Match selected** links the new cabinet's height, depth, panel thickness and plinth to
     the cabinet you have selected, so a whole run is resized by changing one cabinet's
     parameters.
-- **Corner cabinet…** builds an L-shaped cabinet for a corner of the room, with the return on
+- **Corner cabinet** builds an L-shaped cabinet for a corner of the room, with the return on
   the left or the right: L-shaped bottom, top and shelves, optional plinth, and a door on each
   front. It is parametric, takes a material and can be placed like the box cabinet.
-- **Joinery…** drills the selected cabinet where its sides meet the bottom and top: holes for
+- **Joinery** drills the selected cabinet where its sides meet the bottom and top: holes for
   7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their number is set when they are drilled.
-- **Material…** gives the selected cabinet, or only the selected parts (the doors, say), a
+- **Material** gives the selected cabinet, or only the selected parts (the doors, say), a
   board material: birch plywood, MDF, white melamine or oak. New cabinets get one in the dialog.
 - **Cut list** returns every board as length x width x thickness with quantities, and as CSV.
   In a design set to inches or feet it lists inches as fractions to 1/32.
@@ -63,7 +63,7 @@ Needs Rust with the `wasm32-unknown-unknown` target, `wasm-tools` and Python.
     python build.py --install  # also install into SolidCraft
 
 The package lands in `dist/woodwork-<version>.zip`. It can also be installed from
-Preferences > Plugins > Install plugin…
+Preferences > Plugins > Install plugin
 
 ## Example
 
