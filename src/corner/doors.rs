@@ -6,7 +6,7 @@ use crate::kit::mm;
 
 /// A bi-fold pair of overlay doors, one on each front. The first hinges on the end of its leg
 /// and runs into the inner corner, closing it; the second stops against the first's face,
-/// hangs on it there and folds out flat with it. `on_return`: the pair hangs on the return.
+/// hangs on it there and folds out onto its face. `on_return`: the pair hangs on the return.
 pub fn build(corner: &Corner, on_return: bool) {
     let Corner {
         kit,
@@ -124,10 +124,11 @@ pub fn build(corner: &Corner, on_return: bool) {
         );
     };
     // A hinge is about the door's front edge at the end of its leg, like the box cabinet's,
-    // so the door clears the next cabinet. The fold is where the two back faces meet, as
-    // on a bi-fold hinge: 90 degrees brings the second door in line with the first.
+    // so the door clears the next cabinet. The fold is where the two front faces meet: 90
+    // degrees lays the second door on the face of the first, out of the cabinet, so it
+    // opens on its own too.
     let (front_y, meet_x) = (b / 2.0 - d - g - t, (d + g + t - a / 2.0) * flip as f64);
-    let fold = [meet_x - t * flip as f64, front_y + t, floor];
+    let fold = [meet_x, front_y, floor];
     let close = |part: &str, on: Option<&str>, joint: &str, at: [f64; 3], turn: i32| {
         let limit = if on.is_some() { 90.0 } else { 110.0 };
         kit.close(part, on, "revolute", joint, at, [0, 0, turn], limit)
@@ -137,12 +138,12 @@ pub fn build(corner: &Corner, on_return: bool) {
         let hinge = [meet_x, g - b / 2.0, floor];
         close("Door return", None, "hinge", hinge, -flip);
         door();
-        close("Door", Some("Door return"), "fold", fold, flip);
+        close("Door", Some("Door return"), "fold", fold, -flip);
     } else {
         door();
         let hinge = [(a / 2.0 - g) * flip as f64, front_y, floor];
         close("Door", None, "hinge", hinge, flip);
         door_return();
-        close("Door return", Some("Door"), "fold", fold, -flip);
+        close("Door return", Some("Door"), "fold", fold, flip);
     }
 }

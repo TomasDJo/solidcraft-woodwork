@@ -77,37 +77,13 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             // Back to where the user was working.
             run("component.activate", json!({"component": made["parent"]}))?;
             if let Some(other) = beside {
-                // Backs flush; side by side on the same floor, or on top with left sides flush.
+                // Against that cabinet's side, or on top of it, turned the way it is turned.
                 let size = |key: &str| summary["size"][key].as_f64().unwrap_or(0.0);
-                let x = match place {
-                    "right" => other.max[0] + size("width") / 2.0,
-                    "left" => other.min[0] - size("width") / 2.0,
-                    _ => other.min[0] + size("width") / 2.0,
-                };
-                let z = if place == "above" {
-                    other.max[2]
-                } else {
-                    other.min[2]
-                };
+                let (at, degrees) = other.seat(place, size("width"), size("depth"));
                 // plain numbers: this command takes mm whatever the design's unit is
-                let mut to = json!({"occurrence": made["occurrence"], "space": "world",
-                    "translate": [x, other.max[1] - size("depth") / 2.0, z]});
-                // Along a corner cabinet's return, or a run that is turned already: turned
-                // to face into the room, its back on the side wall.
-                let turn = other.turn(place).filter(|_| entry == "cabinet");
-                if let Some(degrees) = turn {
-                    let (half_w, half_d) = (size("width") / 2.0, size("depth") / 2.0);
-                    let wall = degrees < 0; // the right wall
-                    let x = match wall {
-                        true => other.max[0] - half_d,
-                        false => other.min[0] + half_d,
-                    };
-                    let y = match (place == "above", wall) {
-                        (false, _) => other.min[1] - half_w,
-                        (true, true) => other.max[1] - half_w,
-                        (true, false) => other.min[1] + half_w,
-                    };
-                    to["translate"] = json!([x, y, z]);
+                let mut to =
+                    json!({"occurrence": made["occurrence"], "space": "world", "translate": at});
+                if degrees != 0 {
                     to["axis"] = json!([0, 0, 1]);
                     to["angle"] = json!(format!("{degrees} deg"));
                 }

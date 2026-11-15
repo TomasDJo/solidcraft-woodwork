@@ -237,9 +237,15 @@ def test():
     assert round(bottom["volume_mm3"]) == (964 * 864 - 422 * 322) * 18, bottom["volume_mm3"]
     box = boxes(results[6])
     assert box["N Side L"][0] == 500 and box["N Side L"][4] == 450, box["N Side L"]  # beside it, backs flush
-    # a bi-fold pair: the door swings out, and the return door hangs on it, folded out in line
+    # a bi-fold pair: the door swings out, and the return door hangs on it, folded onto its face
     assert box["C Door"][1] < -400, box["C Door"]
-    assert box["C Door return"] == [96.412, -798.572, 102, 270, -515.908, 718], box["C Door return"]
+    assert box["C Door return"] == [290, -499.267, 102, 463.588, -216.603, 718], box["C Door return"]
+    # the fold alone, with the first door shut: out of the cabinet, onto the first door's face
+    for side, flat in (("left", [82, -148, 102, 398, -130, 718]), ("right", [-398, -148, 102, -82, -130, 718])):
+        doors = "hinged right" if side == "left" else "hinged left"
+        alone = cli([plugin(approval, "corner", {**corner, "corner": side, "doors": doors}),
+                     drive("C Door return fold", 90), {"command": "inspect.measure", "params": {}}])
+        assert boxes(alone[2])["C Door return"] == flat, (side, boxes(alone[2])["C Door return"])
     assert '3,964,864,18,"Birch plywood","C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"]
     assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
     results = cli([plugin(approval, "corner", {**corner, "corner": "right", "doors": "hinged left"}),
@@ -268,7 +274,7 @@ def test():
         assert cylinders(results[1], f"C {part}") == 30, (part, cylinders(results[1], f"C {part}"))
     swung = boxes(results[4])
     assert swung["C Door return"][3] > 300, swung["C Door return"]
-    assert swung["C Door"] == [379.305, -270, 102, 748.572, -46.412, 718], swung["C Door"]
+    assert swung["C Door"] == [-6.603, -513.588, 102, 362.664, -290, 718], swung["C Door"]
     hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
     assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
     assert not [f["name"] for f in results[6]["timeline"] if f["warning"]]
@@ -343,9 +349,12 @@ def test():
     results = cli([plugin(approval, "corner", {"name": "K", "corner": "right"}), select("K Top"),
                    plugin(approval, "cabinet", {**box_cabinet, "name": "R"}), select("R Top"),
                    plugin(approval, "cabinet", {**box_cabinet, "name": "S"}), select("S Top"),
+                   plugin(approval, "corner", {"name": "U", "corner": "right", "place": "right"}), select("S Top"),
                    plugin(approval, "cabinet", {**box_cabinet, "name": "T", "place": "above", "depth": 300}),
                    {"command": "inspect.measure", "params": {}}])
-    box = boxes(results[7])
+    box = boxes(results[9])
+    # a corner cabinet carries on too: its Side L wall to wall with S's Side R
+    assert box["U Side L"] == [-110, -1268, 0, 450, -1250, 720], box["U Side L"]
     assert [box["K Side R"][i] for i in (3, 1)] == [450, -450]  # the right wall, the return's end
     assert box["R Side L"] == [-110, -468, 0, 450, -450, 720], box["R Side L"]  # back on the wall
     assert box["S Side R"] == [-110, -1250, 0, 450, -1232, 720], box["S Side R"]  # and on along it

@@ -17,6 +17,11 @@ fn an_l_of_boards_with_the_corner_cut_out() {
         json!({"width": 1000.0, "height": 720.0, "depth": 900.0})
     );
     assert_eq!(summary["joints"].as_array().unwrap().len(), 2);
+    // the second door folds out of the cabinet: about the corner where the two front faces
+    // meet, turning towards the room
+    let fold = named(&commands, "Cabinet Door return fold");
+    assert_eq!(fold["at"]["point"], json!([80.0, -130.0, 102.0]));
+    assert_eq!(fold["at"]["z"], json!([0, 0, 1]));
     // the return's end is the left side, across the front of the footprint
     assert_eq!(
         named(&commands, "Cabinet Side L")["length"],
@@ -45,6 +50,9 @@ fn a_right_corner_is_the_mirror_image() {
     // hinged at the left end of the back leg: 2 mm in from x = -450
     assert_eq!(joint.unwrap().1["at"]["point"][0], -448.0);
     assert_eq!(joint.unwrap().1["at"]["z"], json!([0, 0, -1]));
+    // and each joint turns the other way
+    let fold = named(&commands, "Cabinet Door return fold");
+    assert_eq!(fold["at"]["z"], json!([0, 0, -1]));
 }
 
 #[test]

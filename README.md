@@ -28,8 +28,9 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
     move it.
   - **Place** puts it against the cabinet you have selected (any part of it): to the right,
     to the left, or on top, backs flush. That cabinet must stand square to the axes.
-    On the return's side of a corner cabinet it is turned a quarter and continues along the
-    return, and the next one placed after it carries on the same way.
+    Right is against that cabinet's right side and left against its left side, whichever
+    way it stands: on the return's side of a corner cabinet the new one is turned a quarter
+    and continues along the return, and the run carries on from there, corner cabinets too.
   - Its sizes are design parameters (`Name_width`, `Name_height`, `Name_depth`,
     `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows.
     The counts (shelves, dividers, doors) are fixed once it is built.
@@ -44,8 +45,8 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
   holes, and doors hinged at the end you choose, with handle holes. It is parametric, takes
   a material, and can be placed, named and matched like the box cabinet. Two shapes:
   - **L-shaped**: two fronts at a right angle, with a bi-fold pair of doors. The first door
-    is hinged on the cabinet and closes the inner corner; the second hangs on it there, so
-    the two fold out together.
+    is hinged on the cabinet and closes the inner corner; the second hangs on it there and
+    folds out onto its face, so the two swing out together.
   - **Diagonal**: one front straight across the corner at 45 degrees, with one door. The
     depth at the end of the return follows from the width and the return, and equals Depth
     when the two are the same.

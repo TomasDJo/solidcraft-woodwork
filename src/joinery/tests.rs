@@ -5,7 +5,8 @@ fn found() -> select::Cabinet {
         name: "Base 1".into(),
         min: [0.0, 0.0, 0.0],
         max: [600.0, 554.0, 720.0],
-        sides: [(false, 0.0); 2],
+        sides: [[0.0; 4]; 2],
+        back: [0.0; 4],
     }
 }
 

@@ -85,6 +85,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 
 - **Versions move slowly.** Bump only the last digit, in both `plugin.json` and `Cargo.toml`.
   0.1.0 was the first public release.
+- **Every fix and every function has a test that fails without it.** A bug gets a regression
+  test in the same commit as its fix: a unit test in the module's `tests.rs` for the logic,
+  and a case in `build.py` when the bug showed in real geometry (a joint turning the wrong
+  way, a cabinet placed wrong). No fix is done before its test exists.
 - **CI must stay green.** `.github/workflows/build.yml` runs `cargo fmt --check`, clippy with
   warnings as errors, and `python build.py` (unit and end-to-end tests against a downloaded
   SolidCraft CLI) on every push and pull request. Run `cargo fmt` before committing.
@@ -109,6 +113,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (doors: revolute, drawers: slider). New moving parts follow the same rule. A part can hang
   on another moving part: a corner cabinet's second door is jointed to the first (`Door return
   fold`, or `Door fold` when the pair hangs on the return), not to the cabinet, so it follows it.
+  The fold turns out of the cabinet, onto the first door's face.
 - **Body names are the data model.** Bodies are `<Cabinet> <Part>`; a cabinet is recognised by
   its `<Cabinet> Side L` body, and the longest matching cabinet name owns a body. Never name
   another part with the suffix ` Side L` (drawer box sides are `Left` and `Right` for that
@@ -159,10 +164,11 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   cut with `solid.chamfer`, picking the edge by a point in mm that is worked out twice: as an
   expression for the board and as a number for the pick.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
-  see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). A box
-  cabinet placed on the return's side of it is turned a quarter and continues the return
-  (`select::Cabinet::turn`, read from which way the two side panels run); so does one placed
-  after or above a cabinet that is turned already. A corner cabinet is never turned.
+  see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). Place
+  puts a new cabinet against the selected one's Side R (right) or Side L (left), whichever
+  way that panel faces (`select::Cabinet::seat`, read from the boxes of the two sides and the
+  back): so one continues a corner cabinet's return turned a quarter, and a turned run carries
+  on turned, corner cabinets included. Quarter turns only.
 - Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
   A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
   parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the
