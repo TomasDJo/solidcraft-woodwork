@@ -213,7 +213,7 @@ def test():
 
     # Corner cabinet: an L of 1000 x 900 with the return on the left, a box cabinet placed to
     # its right, the bi-fold doors opened. Then the mirror image.
-    corner = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": True}
+    corner = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged on width"}
     results = cli([plugin(approval, "corner", corner),
                    {"command": "inspect.measure", "params": {}},
                    select("C Top"),
@@ -229,8 +229,8 @@ def test():
     assert len(box) == 11, sorted(box)  # 2 sides, 2 backs, bottom, top, shelf, 2 plinth boards, 2 doors
     assert box["C Side L"] == [-500, -450, 0, 60, -432, 720], box["C Side L"]  # the end of the return
     assert box["C Side R"] == [482, -110, 0, 500, 450, 720], box["C Side R"]
-    # the doors stop 2 mm short of each other in the inner corner
-    assert box["C Door"] == [82, -130, 102, 498, -112, 718], box["C Door"]
+    # the first door runs into the inner corner; the second stops 2 mm short of its face
+    assert box["C Door"] == [62, -130, 102, 498, -112, 718], box["C Door"]
     assert box["C Door return"] == [62, -448, 102, 80, -132, 718], box["C Door return"]
     # an L-shaped board: 964 x 864 less the open corner of 422 x 322
     bottom = next(b for b in results[1]["bodies"] if b["name"] == "C Bottom")
@@ -239,7 +239,7 @@ def test():
     assert box["N Side L"][0] == 500 and box["N Side L"][4] == 450, box["N Side L"]  # beside it, backs flush
     # a bi-fold pair: the door swings out, and the return door hangs on it, folded out in line
     assert box["C Door"][1] < -400, box["C Door"]
-    assert box["C Door return"] == [114.412, -767.395, 102, 288, -484.731, 718], box["C Door return"]
+    assert box["C Door return"] == [96.412, -798.572, 102, 270, -515.908, 718], box["C Door return"]
     assert '3,964,864,18,"Birch plywood","C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"]
     assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
     results = cli([plugin(approval, "corner", {**corner, "corner": "right"}),
@@ -250,6 +250,28 @@ def test():
         x0, y0, z0, x1, y1, z1 = box[part]
         assert mirror[part] == [-x1, y0, z0, -x0, y1, z1], (part, mirror[part], box[part])
     assert mirror["C Side R"] == [-60, -450, 0, 500, -432, 720], mirror["C Side R"]
+    # Hinged on the return instead, with a pull on that door and shelf pins: the return door
+    # swings out and the back leg's door hangs on it, folded out in line.
+    results = cli([plugin(approval, "corner", {**corner, "doors": "hinged on return", "handles": "pull",
+                                               "shelf_pins": True}),
+                   {"command": "inspect.measure", "params": {}},
+                   drive("C Door return hinge", 60), drive("C Door fold", 90),
+                   {"command": "inspect.measure", "params": {}},
+                   plugin(approval, "cutlist"),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
+    shut = boxes(results[1])
+    assert shut["C Door"] == [82, -130, 102, 498, -112, 718], shut["C Door"]
+    assert shut["C Door return"] == [62, -448, 102, 80, -112, 718], shut["C Door return"]
+    # 2 hinge cups each; 2 screw holes on the return door only. 15 pin holes in each of 2 rows
+    assert cylinders(results[1], "C Door return") == 4 and cylinders(results[1], "C Door") == 2
+    for part in ("Side L", "Side R", "Back", "Back return"):
+        assert cylinders(results[1], f"C {part}") == 30, (part, cylinders(results[1], f"C {part}"))
+    swung = boxes(results[4])
+    assert swung["C Door return"][3] > 300, swung["C Door return"]
+    assert swung["C Door"] == [379.305, -270, 102, 748.572, -46.412, 718], swung["C Door"]
+    hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
+    assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
+    assert not [f["name"] for f in results[6]["timeline"] if f["warning"]]
 
     # Match selected: B takes A's height, depth, thickness and plinth, and follows A afterwards.
     # The corner cabinet too. In an inch design, with B's own sizes given in inches.

@@ -101,7 +101,13 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         ),
         (
             "Shelf pin, 5 mm",
-            cabinets(" Side L pins").map(|c| 4 * shelves(c)).sum(),
+            // four under each shelf; eight under a corner cabinet's L-shaped one
+            cabinets(" Side L pins")
+                .map(|c| {
+                    let corner = features.contains(&format!("{c} Back return pins"));
+                    shelves(c) * if corner { 8 } else { 4 }
+                })
+                .sum(),
         ),
         (
             "Confirmat screw, 7 x 50 mm",

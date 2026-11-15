@@ -38,10 +38,11 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
     the cabinet you have selected, so a whole run is resized by changing one cabinet's
     parameters.
 - **Corner cabinet** builds an L-shaped cabinet for a corner of the room, with the return on
-  the left or the right: L-shaped bottom, top and shelves, optional plinth, and a bi-fold pair
-  of doors: one hinged on the cabinet, the other hanging on it at the inner corner, so the
-  two fold out together. It is parametric, takes a material, and can be placed, named and matched like the
-  box cabinet.
+  the left or the right: L-shaped bottom, top and shelves, optional plinth, shelf pin holes,
+  and a bi-fold pair of doors. The first door is hinged on the cabinet, at the end you choose,
+  and closes the inner corner; the second hangs on it there, so the two fold out together.
+  Handle holes go in the first door. It is parametric, takes a material, and can be placed,
+  named and matched like the box cabinet.
 - **Joinery** drills the selected cabinet where its sides meet the bottom and top: holes for
   7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their number is set when they are drilled.
 - **Material** gives the selected cabinet, or only the selected parts (the doors, say), a

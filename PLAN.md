@@ -65,13 +65,15 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Match selected: a new cabinet's height, depth, thickness and plinth linked to the selected cabinet's parameters
 - [x] Doors turn about their front edge, like a cup hinge, so they clear the next cabinet
 - [x] Corner cabinet doors are a bi-fold pair, hinged to each other at the inner corner
+- [x] Corner cabinet: handle holes, shelf pin holes, and a choice of which end the doors hang on
 - [x] SolidCraft 0.42: ribbon buttons, tests run against 0.42
 
 ## Open
 
 Cabinets:
 - [ ] Inset doors
-- [ ] Corner cabinet: joinery, handle holes, shelf pins, a thin back
+- [ ] Corner cabinet: joinery, a thin back
+- [ ] Corner cabinet with a diagonal front and one door
 - [ ] Joinery for dividers and fixed shelves
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)

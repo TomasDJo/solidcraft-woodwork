@@ -10,18 +10,18 @@ use serde_json::{json, Value};
 
 const GROOVE_INSET: f64 = 12.0; // back groove, from the rear edge
 const KICK_RECESS: f64 = 50.0; // plinth board, back from the front
-const PITCH: f64 = 32.0; // 32 mm system: shelf pin holes
-const PIN_SETBACK: f64 = 37.0; // pin rows, from the front and from the back of the shelf
-const PIN_D: f64 = 5.0;
+pub(crate) const PITCH: f64 = 32.0; // 32 mm system: shelf pin holes
+pub(crate) const PIN_SETBACK: f64 = 37.0; // pin rows, from the front and from the back of the shelf
+pub(crate) const PIN_D: f64 = 5.0;
 const DOOR_GAP: f64 = 2.0; // around overlay doors, and between door and carcass
 const CUP_D: f64 = 35.0; // hinge cup
 const CUP_DEPTH: f64 = 13.0;
 const CUP_CENTRE: f64 = 22.5; // from the door edge: 5 mm of wood outside the cup
 const CUP_FROM_END: f64 = 100.0; // from the door's top and bottom
-const HANDLE_D: f64 = 5.0; // screw hole for a knob or pull
-const PULL: f64 = 128.0; // between the two screws of a pull
-const HANDLE_EDGE: f64 = 50.0; // on a door: from its opening edge
-const HANDLE_END: f64 = 100.0; // and from its top or bottom to the nearest hole
+pub(crate) const HANDLE_D: f64 = 5.0; // screw hole for a knob or pull
+pub(crate) const PULL: f64 = 128.0; // between the two screws of a pull
+pub(crate) const HANDLE_EDGE: f64 = 50.0; // on a door: from its opening edge
+pub(crate) const HANDLE_END: f64 = 100.0; // and from its top or bottom to the nearest hole
 const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
 const BOX_T: f64 = 12.0; // drawer box sides, front and back
 const BOX_BOTTOM: f64 = 6.0;
