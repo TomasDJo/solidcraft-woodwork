@@ -213,7 +213,7 @@ def test():
 
     # Corner cabinet: an L of 1000 x 900 with the return on the left, a box cabinet placed to
     # its right, the bi-fold doors opened. Then the mirror image.
-    corner = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged on width"}
+    corner = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"}
     results = cli([plugin(approval, "corner", corner),
                    {"command": "inspect.measure", "params": {}},
                    select("C Top"),
@@ -242,7 +242,7 @@ def test():
     assert box["C Door return"] == [96.412, -798.572, 102, 270, -515.908, 718], box["C Door return"]
     assert '3,964,864,18,"Birch plywood","C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"]
     assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
-    results = cli([plugin(approval, "corner", {**corner, "corner": "right"}),
+    results = cli([plugin(approval, "corner", {**corner, "corner": "right", "doors": "hinged left"}),
                    drive("C Door hinge", 60), drive("C Door return fold", 90),
                    {"command": "inspect.measure", "params": {}}])
     mirror = boxes(results[3])
@@ -252,7 +252,7 @@ def test():
     assert mirror["C Side R"] == [-60, -450, 0, 500, -432, 720], mirror["C Side R"]
     # Hinged on the return instead, with a pull on that door and shelf pins: the return door
     # swings out and the back leg's door hangs on it, folded out in line.
-    results = cli([plugin(approval, "corner", {**corner, "doors": "hinged on return", "handles": "pull",
+    results = cli([plugin(approval, "corner", {**corner, "doors": "hinged left", "handles": "pull",
                                                "shelf_pins": True}),
                    {"command": "inspect.measure", "params": {}},
                    drive("C Door return hinge", 60), drive("C Door fold", 90),
@@ -294,25 +294,25 @@ def test():
         assert volume(results[2], part) == (964 * 864 - 304 * 304 / 2) * 18, (part, volume(results[2], part))
     # from the return's end to the back leg's end, 2 mm in front of the carcass
     door = [round(v, 1) for v in box["C Door"]]
-    assert door == [162.8, -462.7, 102, 512.7, -112.8, 718], door
+    assert door == [177.0, -448.6, 102, 498.6, -127.0, 718], door  # inside the footprint: x <= 500, y >= -450
     csv = results[3]["result"]["csv"]
-    assert '1,24 1/4,18 25/32,23/32,"Birch plywood","C Door"' in csv, csv
+    assert '1,24 1/4,17 3/16,23/32,"Birch plywood","C Door"' in csv, csv
     assert '1,18 15/16,3 15/16,23/32,"Birch plywood","C Plinth"' in csv, csv
     hardware = {h["item"]: h["qty"] for h in results[3]["result"]["hardware"]}
     assert hardware == {"Hinge, 35 mm cup": 2, "Shelf pin, 5 mm": 8, "Knob": 1}, hardware
     door = [round(v, 1) for v in boxes(results[5])["C Door"]]
-    assert door == [500, -475.5, 102, 849.9, -125.6, 718], door  # swung out square to the front
+    assert door == [485.9, -461.3, 102, 807.5, -139.7, 718], door  # swung out square to the front
     assert volume(results[7], "C Bottom") == (1064 * 864 - 304 * 304 / 2) * 18, volume(results[7], "C Bottom")
     assert boxes(results[7])["C Side L"][3] == 210, boxes(results[7])["C Side L"]  # 760 deep now
     assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
-    results = cli([plugin(approval, "corner", {**diagonal, "corner": "right", "doors": "hinged on return"}), measure,
+    results = cli([plugin(approval, "corner", {**diagonal, "corner": "right", "doors": "hinged right"}), measure,
                    drive("C Door hinge", 90), measure])
     mirror = boxes(results[1])
     for part in ("C Door", "C Bottom", "C Plinth", "C Side R"):
         x0, y0, z0, x1, y1, z1 = box[part.replace("Side R", "Side L")]
         assert [round(v, 3) for v in mirror[part]] == [-x1, y0, z0, -x0, y1, z1], (part, mirror[part])
     door = [round(v, 1) for v in boxes(results[3])["C Door"]]
-    assert door == [-525.5, -799.9, 102, -175.6, -450, 718], door  # hinged at the return's end
+    assert door == [-511.3, -757.5, 102, -189.7, -435.9, 718], door  # hinged at the return's end
 
     # Match selected: B takes A's height, depth, thickness and plinth, and follows A afterwards.
     # The corner cabinet too. In an inch design, with B's own sizes given in inches.

@@ -8,7 +8,7 @@ fn named<'a>(commands: &'a Commands, name: &str) -> &'a Value {
 
 #[test]
 fn an_l_of_boards_with_the_corner_cut_out() {
-    let p = json!({"width": 1000, "return": 900, "plinth": 100, "doors": "hinged on width"});
+    let p = json!({"width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"});
     let (commands, summary) = build(&p).unwrap();
     // 2 sides, 2 backs, bottom, top, shelf, 2 plinth boards, 2 doors
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 11);
@@ -30,7 +30,7 @@ fn an_l_of_boards_with_the_corner_cut_out() {
 
 #[test]
 fn a_right_corner_is_the_mirror_image() {
-    let p = json!({"corner": "right", "doors": "hinged on width"});
+    let p = json!({"corner": "right", "doors": "hinged left"});
     let (commands, _) = build(&p).unwrap();
     // the return's end is now the right side, and starts `depth` from the right
     assert_eq!(
@@ -50,7 +50,7 @@ fn a_right_corner_is_the_mirror_image() {
 #[test]
 fn a_diagonal_front_is_one_turned_door() {
     let p = json!({"shape": "diagonal", "width": 1000, "return": 900, "plinth": 100,
-        "doors": "hinged on width", "handles": "knob"});
+        "doors": "hinged right", "handles": "knob"});
     let (commands, summary) = build(&p).unwrap();
     // 2 sides, 2 backs, bottom, top, shelf, plinth, door
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 9);
@@ -77,7 +77,7 @@ fn a_diagonal_front_is_one_turned_door() {
     // hinged at the back leg's end: the far end of the door, on its front edge
     let hinge = named(&commands, "Cabinet Door hinge");
     let at = |i: usize| hinge["at"]["point"][i].as_f64().unwrap();
-    assert!((at(0) - 512.728).abs() < 0.01 && (at(1) + 125.557).abs() < 0.01);
+    assert!((at(0) - 498.586).abs() < 0.01 && (at(1) + 139.700).abs() < 0.01);
     // a return too long for the width leaves no depth at its end
     assert!(build(&json!({"shape": "diagonal", "width": 800, "return": 1300})).is_err());
 }
@@ -86,6 +86,6 @@ fn a_diagonal_front_is_one_turned_door() {
 fn refuses_bad_input() {
     assert!(build(&json!({"width": 700})).is_err()); // no room beside the return
     assert!(build(&json!({"corner": "middle"})).is_err());
-    assert!(build(&json!({"doors": "hinged on width", "thickness": 12})).is_err());
+    assert!(build(&json!({"doors": "hinged right", "thickness": 12})).is_err());
     assert!(build(&json!({"height": 200, "shelves": 8})).is_err());
 }

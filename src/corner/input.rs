@@ -43,12 +43,17 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "diagonal" => true,
         _ => return Err("shape must be L-shaped or diagonal".into()),
     };
-    // The doors hang on the end of the back leg (`width`) or of the return.
+    let right = match p.get("corner").and_then(Value::as_str).unwrap_or("left") {
+        "left" => false,
+        "right" => true,
+        _ => return Err("corner must be left or right".into()),
+    };
+    // Left and right as you face the corner: the return's end is on the corner's own side.
     let on_return = match p.get("doors").and_then(Value::as_str).unwrap_or("none") {
         "none" => None,
-        "hinged on width" => Some(false),
-        "hinged on return" => Some(true),
-        _ => return Err("doors must be none, hinged on width or hinged on return".into()),
+        "hinged left" => Some(!right),
+        "hinged right" => Some(right),
+        _ => return Err("doors must be none, hinged left or hinged right".into()),
     };
     let doors = on_return.is_some();
     let handles = p.get("handles").and_then(Value::as_str).unwrap_or("none");
@@ -56,11 +61,6 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         matches!(handles, "none" | "knob" | "pull"),
         "handles must be none, knob or pull",
     )?;
-    let right = match p.get("corner").and_then(Value::as_str).unwrap_or("left") {
-        "left" => false,
-        "right" => true,
-        _ => return Err("corner must be left or right".into()),
-    };
 
     check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
     check(
