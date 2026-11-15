@@ -53,7 +53,8 @@ materials, joinery and cut lists.
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list and sheet estimate from `inspect.measure` |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
-| `build.py` | Unit tests, wasm build, package, end-to-end tests, optional install |
+| `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
+| `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
 | `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it and re-render `docs/kitchen.png` when the plugin's output changes |
 
 The pattern: a module is plain Rust that turns input into `Vec<(command, json args)>`, so
@@ -70,12 +71,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 ## Build, test, install
 
     python build.py            # cargo test, wasm build, package, end-to-end tests
+    python build.py corner     # the same, but only the end-to-end tests named like that
     python build.py --install  # the same, then install into SolidCraft
     python examples/kitchen.py out.sc
 
 - Needs Rust with the `wasm32-unknown-unknown` target and `wasm-tools` (both in `~/.cargo/bin`,
   which is not on PATH in a fresh shell; `build.py` adds it).
-- The end-to-end tests in `build.py` run the built plugin through `solidcraft-cli` and check
+- The end-to-end tests in `tests/` run the built plugin through `solidcraft-cli` and check
   real geometry (bounding boxes, hole counts, joint moves). A new feature gets a case there.
 - `solidcraft-cli snapshot --in file.sc --out shot.png` renders a result; look at it before
   calling a geometry change done.
@@ -87,7 +89,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   0.1.0 was the first public release.
 - **Every fix and every function has a test that fails without it.** A bug gets a regression
   test in the same commit as its fix: a unit test in the module's `tests.rs` for the logic,
-  and a case in `build.py` when the bug showed in real geometry (a joint turning the wrong
+  and a case in `tests/` when the bug showed in real geometry (a joint turning the wrong
   way, a cabinet placed wrong). No fix is done before its test exists.
 - **CI must stay green.** `.github/workflows/build.yml` runs `cargo fmt --check`, clippy with
   warnings as errors, and `python build.py` (unit and end-to-end tests against a downloaded

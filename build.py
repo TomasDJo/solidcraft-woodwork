@@ -2,6 +2,9 @@
 
     python build.py            build dist/woodwork/ and dist/woodwork-<version>.zip, then test
     python build.py --install  also install the zip into SolidCraft
+    python build.py corner     only the end-to-end tests with "corner" in their file or name
+
+The end-to-end tests are in tests/, one file per function of the plugin.
 
 Needs: cargo (with the wasm32-unknown-unknown target), wasm-tools, solidcraft-cli.
 """
@@ -53,346 +56,27 @@ def build():
     return archive
 
 
-def test():
+def test(only=()):
+    """Run the end-to-end tests in tests/test_*.py: every `test_*(approval)` function, or those
+    whose file or name contains one of the words in `only`."""
+    import importlib
+    sys.path[:0] = [str(ROOT), str(ROOT / "tests")]
     approval = cli([{"command": "plugin.inspect", "params": {"path": str(PKG)}}])[0]["approval"]
-    cabinet = {"width": 800, "height": 900, "depth": 400, "shelves": 2, "plinth": 100,
-               "shelf_pins": True, "doors": 2}
-    results = cli([plugin(approval, "cabinet", cabinet),
-                   {"command": "inspect.measure", "params": {}},
-                   plugin(approval, "cutlist")],
-                  "--save", str(ROOT / "dist" / "cabinet.sc"))
-    measure, cutlist = results[1], results[2]
-    # the plugin's own result may be wrapped by plugin.run
-    cutlist = cutlist.get("result", cutlist)
-    bodies = {b["name"]: b for b in measure["bodies"]}
-    # 2 sides, bottom, top, 2 shelves, plinth, back, 2 doors
-    assert len(bodies) == 10, sorted(bodies)
-    side = bodies["Cabinet Side L"]
-    # clear height 764: pin rows 2..21 of the 32 mm grid, front and rear
-    assert side["face_types"]["cylinder"] == 40, side["face_types"]
-    assert bodies["Cabinet Door L"]["face_types"]["cylinder"] == 2
-    # centred on the origin, standing on Z = 0
-    assert [round(v, 6) for v in side["bbox"]["min"]] == [-400, -200, 0], side["bbox"]
-    assert [round(v, 6) for v in side["bbox"]["max"]] == [-382, 200, 900], side["bbox"]
-    # the groove took material out of the side: 9 deep, 6 wide
-    assert side["volume_mm3"] < 18 * 400 * 900 - 9 * 6 * 700, side["volume_mm3"]
-    assert cutlist["boards"] == 10, cutlist
-    assert cutlist["hardware"] == [{"item": "Hinge, 35 mm cup", "qty": 4},
-                                   {"item": "Shelf pin, 5 mm", "qty": 8}], cutlist["hardware"]
-    print(cutlist["csv"])
-
-    # Dividers: 3 compartments of 2 shelves, pin holes through the dividers.
-    wide = {"width": 1200, "dividers": 2, "shelves": 2, "shelf_pins": True}
-    results = cli([plugin(approval, "cabinet", wide), {"command": "inspect.measure", "params": {}}],
-                  "--save", str(ROOT / "dist" / "dividers.sc"))
-    bodies = {b["name"]: b for b in results[1]["bodies"]}
-    assert len(bodies) == 4 + 2 + 6 + 1, sorted(bodies)
-    shelf = bodies["Cabinet Shelf 2.1"]["bbox"]
-    assert round(shelf["max"][0] - shelf["min"][0], 6) == 376, shelf
-    # clear height 684: pin rows 2..19, front and rear
-    assert bodies["Cabinet Divider 1"]["face_types"]["cylinder"] == 36
-    assert bodies["Cabinet Side L"]["face_types"]["cylinder"] == 36
-
-    # Resize through the parameters: the whole cabinet follows.
-    resize = {"changes": {"Cabinet_width": "1500 mm", "Cabinet_height": "1000 mm"}}
-    results = cli([{"command": "parameters.change", "params": resize},
-                   {"command": "inspect.measure", "params": {}}],
-                  "--in", str(ROOT / "dist" / "dividers.sc"))
-    bodies = {b["name"]: b for b in results[1]["bodies"]}
-    shelf = bodies["Cabinet Shelf 2.1"]["bbox"]
-    assert round(shelf["max"][0] - shelf["min"][0], 6) == 476, shelf
-    side = bodies["Cabinet Side R"]
-    assert [round(v, 6) for v in side["bbox"]["max"]] == [750, 280, 1000], side["bbox"]
-    # clear height 964: pin rows 2..28
-    assert side["face_types"]["cylinder"] == 54, side["face_types"]
-
-    # Place against the selection: B right of A, C on top of B. In an inch design, to check
-    # that the move is not read in inches.
-    def select(name):
-        return {"command": "select.set", "params": {"items": [{"type": "body", "name": name}]}}
-    results = cli([{"command": "document.units", "params": {"units": "in"}},
-                   plugin(approval, "cabinet", {"name": "A", "width": 600}),
-                   select("A Shelf 1"),
-                   plugin(approval, "cabinet", {"name": "B", "width": 800, "depth": 400, "place": "right"}),
-                   select("B Side L"),
-                   plugin(approval, "cabinet", {"name": "C", "width": 500, "depth": 300, "place": "above"}),
-                   {"command": "inspect.measure", "params": {}}])
-    box = {b["name"]: [round(v, 6) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[6]["bodies"]}
-    assert box["A Side R"][3] == 300 and box["B Side L"][0] == 300, (box["A Side R"], box["B Side L"])
-    assert box["B Side L"][4] == 280, box["B Side L"]  # backs flush at y = 280
-    assert box["C Side L"][:3] == [300, -20, 720] and box["C Side L"][4] == 280, box["C Side L"]
-
-    # Drawers: 3 in a 600 x 720 cabinet. The boxes clear the sides by 12.7 mm and follow a resize.
-    results = cli([plugin(approval, "cabinet", {"drawers": 3}),
-                   {"command": "inspect.measure", "params": {}},
-                   {"command": "parameters.change", "params": {"name": "Cabinet_width", "expression": "800 mm"}},
-                   {"command": "inspect.measure", "params": {}}],
-                  "--save", str(ROOT / "dist" / "drawers.sc"))
-    box = {b["name"]: [round(v, 4) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[1]["bodies"]}
-    assert len(box) == 5 + 3 * 6, sorted(box)
-    assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7, box["Cabinet Drawer 1 Left"]
-    assert box["Cabinet Drawer 1 Right"][3] == 300 - 18 - 12.7, box["Cabinet Drawer 1 Right"]
-    front = box["Cabinet Drawer 2 Front"]  # (720 - 4 gaps of 2) / 3 high
-    assert round(front[5] - front[2], 3) == round(712 / 3, 3), front
-    assert box["Cabinet Drawer 1 Bottom"][4] <= 280 - 12 - 6, box["Cabinet Drawer 1 Bottom"]  # clear of the back
-    box = {b["name"]: [round(v, 4) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[3]["bodies"]}
-    assert box["Cabinet Drawer 1 Right"][3] == 400 - 18 - 12.7, box["Cabinet Drawer 1 Right"]
-
-    def cylinders(measure, name):
-        return next(b for b in measure["bodies"] if b["name"] == name)["face_types"].get("cylinder", 0)
-    # Handles: a pull is two holes through each front, next to a door's two hinge cups.
-    results = cli([plugin(approval, "cabinet", {"name": "H", "doors": 2, "plinth": 100, "handles": "pull"}),
-                   plugin(approval, "cabinet", {"name": "K", "drawers": 2, "handles": "knob"}),
-                   {"command": "inspect.measure", "params": {}}],
-                  "--save", str(ROOT / "dist" / "handles.sc"))
-    assert cylinders(results[2], "H Door L") == 4 and cylinders(results[2], "K Drawer 2 Front") == 1
-
-    # Joints: doors swing out on their hinges and a drawer slides out, in an inch design to
-    # check the joint's point is not read in inches. The cabinet still moves as one piece.
-    def drive(joint, value):
-        return {"command": "joint.drive", "params": {"joint": joint, "value": value}}
-    results = cli([{"command": "document.units", "params": {"units": "in"}},
-                   plugin(approval, "cabinet", {"name": "D", "doors": 2}),
-                   plugin(approval, "cabinet", {"name": "E", "drawers": 2}),
-                   drive("D Door L hinge", 90), drive("D Door R hinge", 200), drive("E Drawer 1 slide", 300),
-                   {"command": "occurrence.ground", "params": {"occurrence": "D:1", "grounded": False}},
-                   {"command": "occurrence.move", "params": {"occurrence": "D:1", "translate": [0, 0, 1000]}},
-                   {"command": "inspect.measure", "params": {}},
-                   plugin(approval, "cutlist")],
-                  "--save", str(ROOT / "dist" / "joints.sc"))
-    # the cut list measures the doors as boards, however far they stand open
-    # (716 x 297 x 18 mm, listed in inches in this inch design)
-    assert '2,28 3/16,11 11/16,23/32,"Birch plywood","D Door L, D Door R"' in results[9]["result"]["csv"]
-    box = {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[8]["bodies"]}
-    # left door: turned 90 degrees about its front left edge (x -298, y -300), now along -Y and
-    # still inside the cabinet's width, clear of a door on the next cabinet
-    assert box["D Door L"] == [-298, -597, 1002, -280, -300, 1718], box["D Door L"]
-    # right door: stopped by its limit at 110 degrees
-    assert box["D Door R"][1] < -300 - 297 * 0.9 and box["D Door R"][3] > 298, box["D Door R"]
-    assert box["E Drawer 1 Front"][1] == -300 - 300, box["E Drawer 1 Front"]
-    assert box["E Drawer 2 Front"][1] == -300, box["E Drawer 2 Front"]
-
-    # Joinery: confirmat holes at the four corners of a cabinet inside a Kitchen component.
-    # 560 deep: 3 screws per joint. They spread out with a resize to 900 deep.
-    results = cli([{"command": "component.create", "params": {"name": "Kitchen"}},
-                   plugin(approval, "cabinet", {"name": "J", "shelves": 0}),
-                   {"command": "select.set", "params": {"items": [{"type": "body", "name": "J Top"}]}},
-                   plugin(approval, "joinery", {"type": "confirmat"}),
-                   {"command": "inspect.measure", "params": {}},
-                   {"command": "component.list", "params": {"compact": True}},
-                   {"command": "parameters.change", "params": {"name": "J_depth", "expression": "900 mm"}},
-                   {"command": "inspect.measure", "params": {}},
-                   plugin(approval, "cutlist")],
-                  "--save", str(ROOT / "dist" / "joinery.sc"))
-    # the cut list counts them: 3 screws in each of the 4 joints
-    assert results[8]["result"]["hardware"] == [{"item": "Confirmat screw, 7 x 50 mm", "qty": 12}], results[8]["result"]["hardware"]
-    assert cylinders(results[4], "J Side L") == 6 and cylinders(results[4], "J Bottom") == 6
-    assert results[5]["active"] == 1, results[5]["active"]  # back in Kitchen
-    assert cylinders(results[7], "J Side R") == 6 and cylinders(results[7], "J Top") == 6
-
-    # Joinery on cabinets that have been moved: placed to the right, and inside a moved room.
-    # Every hole must remove material.
-    # (B is as wide as A: drilled on the origin, its numbers are those of A's faces.)
-    results = cli([plugin(approval, "cabinet", {"name": "A", "height": 2100}),
-                   select("A Top"),
-                   plugin(approval, "cabinet", {"name": "B", "shelves": 0, "place": "right"}),
-                   select("B Top"),
-                   plugin(approval, "joinery", {"type": "dowel"}),
-                   {"command": "component.create", "params": {"name": "Room", "grounded": False}},
-                   {"command": "occurrence.move", "params": {"occurrence": "Room:1", "translate": [2000, 500, 0]}},
-                   plugin(approval, "cabinet", {"name": "C", "shelf_pins": True}),
-                   select("C Top"),
-                   plugin(approval, "joinery", {"type": "confirmat"}),
-                   {"command": "inspect.measure", "params": {}},
-                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
-    assert not [f["name"] for f in results[11]["timeline"] if f["warning"]]
-    for cabinet in "BC":
-        for part in ("Side L", "Side R", "Bottom", "Top"):
-            pins = 36 if cabinet == "C" and part.startswith("Side") else 0
-            assert cylinders(results[10], f"{cabinet} {part}") == 6 + pins, (cabinet, part)
-
-    # Corner cabinet: an L of 1000 x 900 with the return on the left, a box cabinet placed to
-    # its right, the bi-fold doors opened. Then the mirror image.
-    corner = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"}
-    results = cli([plugin(approval, "corner", corner),
-                   {"command": "inspect.measure", "params": {}},
-                   select("C Top"),
-                   plugin(approval, "cabinet", {"name": "N", "place": "right"}),
-                   drive("C Door hinge", 60), drive("C Door return fold", 90),
-                   {"command": "inspect.measure", "params": {}},
-                   plugin(approval, "cutlist"),
-                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
-                  "--save", str(ROOT / "dist" / "corner.sc"))
-    def boxes(measure):
-        return {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in measure["bodies"]}
-    box = boxes(results[1])
-    assert len(box) == 11, sorted(box)  # 2 sides, 2 backs, bottom, top, shelf, 2 plinth boards, 2 doors
-    assert box["C Side L"] == [-500, -450, 0, 60, -432, 720], box["C Side L"]  # the end of the return
-    assert box["C Side R"] == [482, -110, 0, 500, 450, 720], box["C Side R"]
-    # the first door runs into the inner corner; the second stops 2 mm short of its face
-    assert box["C Door"] == [62, -130, 102, 498, -112, 718], box["C Door"]
-    assert box["C Door return"] == [62, -448, 102, 80, -132, 718], box["C Door return"]
-    # an L-shaped board: 964 x 864 less the open corner of 422 x 322
-    bottom = next(b for b in results[1]["bodies"] if b["name"] == "C Bottom")
-    assert round(bottom["volume_mm3"]) == (964 * 864 - 422 * 322) * 18, bottom["volume_mm3"]
-    box = boxes(results[6])
-    assert box["N Side L"][0] == 500 and box["N Side L"][4] == 450, box["N Side L"]  # beside it, backs flush
-    # a bi-fold pair: the door swings out, and the return door hangs on it, folded onto its face
-    assert box["C Door"][1] < -400, box["C Door"]
-    assert box["C Door return"] == [290, -499.267, 102, 463.588, -216.603, 718], box["C Door return"]
-    # the fold alone, with the first door shut: out of the cabinet, onto the first door's face
-    for side, flat in (("left", [82, -148, 102, 398, -130, 718]), ("right", [-398, -148, 102, -82, -130, 718])):
-        doors = "hinged right" if side == "left" else "hinged left"
-        alone = cli([plugin(approval, "corner", {**corner, "corner": side, "doors": doors}),
-                     drive("C Door return fold", 90), {"command": "inspect.measure", "params": {}}])
-        assert boxes(alone[2])["C Door return"] == flat, (side, boxes(alone[2])["C Door return"])
-    assert '3,964,864,18,"Birch plywood","C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"]
-    assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
-    results = cli([plugin(approval, "corner", {**corner, "corner": "right", "doors": "hinged left"}),
-                   drive("C Door hinge", 60), drive("C Door return fold", 90),
-                   {"command": "inspect.measure", "params": {}}])
-    mirror = boxes(results[3])
-    for part in ("C Door", "C Door return", "C Bottom", "C Plinth"):
-        x0, y0, z0, x1, y1, z1 = box[part]
-        assert mirror[part] == [-x1, y0, z0, -x0, y1, z1], (part, mirror[part], box[part])
-    assert mirror["C Side R"] == [-60, -450, 0, 500, -432, 720], mirror["C Side R"]
-    # Hinged on the return instead, with a pull on that door and shelf pins: the return door
-    # swings out and the back leg's door hangs on it, folded out in line.
-    results = cli([plugin(approval, "corner", {**corner, "doors": "hinged left", "handles": "pull",
-                                               "shelf_pins": True}),
-                   {"command": "inspect.measure", "params": {}},
-                   drive("C Door return hinge", 60), drive("C Door fold", 90),
-                   {"command": "inspect.measure", "params": {}},
-                   plugin(approval, "cutlist"),
-                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
-    shut = boxes(results[1])
-    assert shut["C Door"] == [82, -130, 102, 498, -112, 718], shut["C Door"]
-    assert shut["C Door return"] == [62, -448, 102, 80, -112, 718], shut["C Door return"]
-    # 2 hinge cups each; 2 screw holes on the return door only. 15 pin holes in each of 2 rows
-    assert cylinders(results[1], "C Door return") == 4 and cylinders(results[1], "C Door") == 2
-    for part in ("Side L", "Side R", "Back", "Back return"):
-        assert cylinders(results[1], f"C {part}") == 30, (part, cylinders(results[1], f"C {part}"))
-    swung = boxes(results[4])
-    assert swung["C Door return"][3] > 300, swung["C Door return"]
-    assert swung["C Door"] == [-6.603, -513.588, 102, 362.664, -290, 718], swung["C Door"]
-    hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
-    assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
-    assert not [f["name"] for f in results[6]["timeline"] if f["warning"]]
-
-    # Diagonal corner cabinet, in an inch design: boards cut at 45 degrees, one door and the
-    # plinth standing at 45 degrees. Then wider, and the mirror image.
-    diagonal = {**corner, "shape": "diagonal", "handles": "knob", "shelf_pins": True}
-    measure = {"command": "inspect.measure", "params": {}}
-    results = cli([{"command": "document.units", "params": {"units": "in"}},
-                   plugin(approval, "corner", diagonal), measure,
-                   plugin(approval, "cutlist"),
-                   drive("C Door hinge", 90), measure,
-                   {"command": "parameters.change", "params": {"changes": {"C_width": "1100 mm"}}}, measure,
-                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
-                  "--save", str(ROOT / "dist" / "diagonal.sc"))
-    box = boxes(results[2])
-    assert len(box) == 9, sorted(box)  # 2 sides, 2 backs, bottom, top, shelf, plinth, door
-    assert box["C Side L"] == [-500, -450, 0, 160, -432, 720], box["C Side L"]  # 660 deep at the return's end
-    def volume(measure, name):
-        return round(next(b for b in measure["bodies"] if b["name"] == name)["volume_mm3"])
-    # 964 x 864 less a corner of 304 x 304, cut across
-    for part in ("C Bottom", "C Top", "C Shelf 1"):
-        assert volume(results[2], part) == (964 * 864 - 304 * 304 / 2) * 18, (part, volume(results[2], part))
-    # from the return's end to the back leg's end, 2 mm in front of the carcass
-    door = [round(v, 1) for v in box["C Door"]]
-    assert door == [177.0, -448.6, 102, 498.6, -127.0, 718], door  # inside the footprint: x <= 500, y >= -450
-    csv = results[3]["result"]["csv"]
-    assert '1,24 1/4,17 3/16,23/32,"Birch plywood","C Door"' in csv, csv
-    assert '1,18 15/16,3 15/16,23/32,"Birch plywood","C Plinth"' in csv, csv
-    hardware = {h["item"]: h["qty"] for h in results[3]["result"]["hardware"]}
-    assert hardware == {"Hinge, 35 mm cup": 2, "Shelf pin, 5 mm": 8, "Knob": 1}, hardware
-    door = [round(v, 1) for v in boxes(results[5])["C Door"]]
-    assert door == [485.9, -461.3, 102, 807.5, -139.7, 718], door  # swung out square to the front
-    assert volume(results[7], "C Bottom") == (1064 * 864 - 304 * 304 / 2) * 18, volume(results[7], "C Bottom")
-    assert boxes(results[7])["C Side L"][3] == 210, boxes(results[7])["C Side L"]  # 760 deep now
-    assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
-    results = cli([plugin(approval, "corner", {**diagonal, "corner": "right", "doors": "hinged right"}), measure,
-                   drive("C Door hinge", 90), measure])
-    mirror = boxes(results[1])
-    for part in ("C Door", "C Bottom", "C Plinth", "C Side R"):
-        x0, y0, z0, x1, y1, z1 = box[part.replace("Side R", "Side L")]
-        assert [round(v, 3) for v in mirror[part]] == [-x1, y0, z0, -x0, y1, z1], (part, mirror[part])
-    door = [round(v, 1) for v in boxes(results[3])["C Door"]]
-    assert door == [-511.3, -757.5, 102, -189.7, -435.9, 718], door  # hinged at the return's end
-
-    # Match selected: B takes A's height, depth, thickness and plinth, and follows A afterwards.
-    # The corner cabinet too. In an inch design, with B's own sizes given in inches.
-    a = {"name": "A", "height": 900, "depth": 400, "thickness": 19, "plinth": 100}
-    results = cli([{"command": "document.units", "params": {"units": "in"}},
-                   plugin(approval, "cabinet", a),
-                   select("A Top"),
-                   plugin(approval, "cabinet", {"name": "B", "units": "in", "width": 20, "doors": 1,
-                                                "match": "selected", "place": "right"}),
-                   select("B Top"),
-                   plugin(approval, "corner", {"name": "K", "corner": "right", "match": "selected", "place": "right"}),
-                   {"command": "inspect.measure", "params": {}},
-                   {"command": "parameters.change", "params": {"changes": {"A_height": "800 mm", "A_plinth": "150 mm"}}},
-                   {"command": "inspect.measure", "params": {}},
-                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
-    box = boxes(results[6])
-    assert box["B Side L"] == [300, -200, 0, 319, 200, 900], box["B Side L"]
-    assert box["B Bottom"][2] == 100 and box["B Side R"][3] == 808, (box["B Bottom"], box["B Side R"])
-    assert box["K Side L"][5] == 900 and box["K Bottom"][2] == 100, (box["K Side L"], box["K Bottom"])
-    box = boxes(results[8])
-    for cabinet in "ABK":
-        assert box[f"{cabinet} Side L"][5] == 800 and box[f"{cabinet} Bottom"][2] == 150, cabinet
-    assert not [f["name"] for f in results[9]["timeline"] if f["warning"]]
-
-    # Right of a right-hand corner cabinet is along its return: turned to face into the room.
-    # One more continues the run, and one goes above it.
-    box_cabinet = {"width": 400, "doors": 1, "handles": "knob", "place": "right"}
-    results = cli([plugin(approval, "corner", {"name": "K", "corner": "right"}), select("K Top"),
-                   plugin(approval, "cabinet", {**box_cabinet, "name": "R"}), select("R Top"),
-                   plugin(approval, "cabinet", {**box_cabinet, "name": "S"}), select("S Top"),
-                   plugin(approval, "corner", {"name": "U", "corner": "right", "place": "right"}), select("S Top"),
-                   plugin(approval, "cabinet", {**box_cabinet, "name": "T", "place": "above", "depth": 300}),
-                   {"command": "inspect.measure", "params": {}}])
-    box = boxes(results[9])
-    # a corner cabinet carries on too: its Side L wall to wall with S's Side R
-    assert box["U Side L"] == [-110, -1268, 0, 450, -1250, 720], box["U Side L"]
-    assert [box["K Side R"][i] for i in (3, 1)] == [450, -450]  # the right wall, the return's end
-    assert box["R Side L"] == [-110, -468, 0, 450, -450, 720], box["R Side L"]  # back on the wall
-    assert box["S Side R"] == [-110, -1250, 0, 450, -1232, 720], box["S Side R"]  # and on along it
-    assert box["T Side L"] == [150, -868, 720, 450, -850, 1440], box["T Side L"]  # above S, left sides flush
-    assert box["R Door"] == [-130, -848, 2, -112, -452, 718], box["R Door"]  # facing into the room
-
-    # Materials: oak doors on a melamine cabinet, next to a plywood one.
-    def pick(*names):
-        return {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}
-    results = cli([plugin(approval, "cabinet", {"name": "A", "doors": 2}),
-                   plugin(approval, "cabinet", {"name": "A", "material": "none"}),  # taken: becomes A 2
-                   pick("A Top"),
-                   plugin(approval, "material", {"material": "White melamine"}),
-                   pick("A Door L", "A Door R"),
-                   plugin(approval, "material", {"material": "Oak", "scope": "parts"}),
-                   {"command": "inspect.measure", "params": {}},
-                   plugin(approval, "cutlist")])
-    material = {b["name"]: b["material"] for b in results[6]["bodies"]}
-    assert material["A Side L"] == material["A Back"] == "White melamine", material
-    assert material["A Door L"] == material["A Door R"] == "Oak", material
-    assert material["A 2 Side L"] == "Default", material  # untouched: another cabinet
-    sheets = results[7].get("result", results[7])["sheets"]
-    assert {s["material"] for s in sheets} == {"White melamine", "Oak", "Default"}, sheets
-
-    # Inches: a 24 x 30 x 22 in cabinet in a design set to inches.
-    results = cli([{"command": "document.units", "params": {"units": "in"}},
-                   plugin(approval, "cabinet", {"units": "in", "width": 24, "height": 30, "depth": 22,
-                                                "thickness": 0.75, "back_thickness": 0.25}),
-                   plugin(approval, "cutlist")])
-    cutlist = results[2].get("result", results[2])
-    assert cutlist["units"] == "in", cutlist
-    assert '2,30,22,3/4,"Birch plywood","Cabinet Side L, Cabinet Side R"' in cutlist["csv"], cutlist["csv"]
-    print(cutlist["csv"])
-    print("PASS")
+    ran = 0
+    for path in sorted((ROOT / "tests").glob("test_*.py")):
+        module = importlib.import_module(path.stem)
+        for name, function in vars(module).items():
+            label = f"{path.stem}.{name}"
+            if name.startswith("test_") and (not only or any(word in label for word in only)):
+                function(approval)
+                print("ok  ", label, flush=True)
+                ran += 1
+    assert ran, f"no test matches {only}"
+    print("PASS" if not only else f"PASS ({ran} of the tests)")
 
 
 if __name__ == "__main__":
     archive = build()
-    test()
+    test([word for word in sys.argv[1:] if not word.startswith("-")])
     if "--install" in sys.argv:
         print(cli([{"command": "plugin.install", "params": {"path": str(archive), "replace": True}}]))

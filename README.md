@@ -120,3 +120,5 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
   parameters, and the hardware (shelf pins, hinge cups, handles).
 - `src/select/`: finds the cabinet that is selected.
 - `build.py`: build, package and end-to-end test through `solidcraft-cli`.
+- `tests/`: the end-to-end tests, one file per function. Unit tests are in `tests.rs` beside
+  each module in `src/`.
