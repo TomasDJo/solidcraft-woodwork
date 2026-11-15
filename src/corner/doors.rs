@@ -45,7 +45,13 @@ pub fn build(corner: &Corner, on_return: bool) {
     let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * DOOR_GAP);
     // The first door carries the handle: upright on its opening edge, at the height the
     // box cabinet would put it.
-    let handle_z = fittings::handle_height(handles, &z0, &z1, h - plinth, plinth > 0.0);
+    let handle_z = fittings::handle_height(
+        handles,
+        &z0,
+        &z1,
+        h - plinth,
+        fittings::floor_unit(plinth, d),
+    );
     let screws = fittings::screw_heights(handles, &handle_z);
     // Holes from a door's back face: hinge cups at `cup`, and on the first door the handle
     // screws at `pull`. Both are x and y; `into` is the way into the door.

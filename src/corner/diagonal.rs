@@ -94,7 +94,13 @@ pub fn door(corner: &Corner, on_return: bool) {
         let what = format!("hinge cup {}", j + 1);
         hole(&cup_x, z, CUP_D, &mm(CUP_DEPTH), what);
     }
-    let handle_z = fittings::handle_height(handles, &z0, &z1, h - plinth, plinth > 0.0);
+    let handle_z = fittings::handle_height(
+        handles,
+        &z0,
+        &z1,
+        h - plinth,
+        fittings::floor_unit(plinth, d),
+    );
     let screws = fittings::screw_heights(handles, &handle_z);
     for (j, z) in screws.iter().enumerate() {
         hole(&pull_x, z, HANDLE_D, et, format!("handle {}", j + 1));

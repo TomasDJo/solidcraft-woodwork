@@ -28,6 +28,8 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
     move it.
   - **Place** puts it against the cabinet you have selected (any part of it): to the right,
     to the left, or on top, backs flush. That cabinet must stand square to the axes.
+    On the return's side of a corner cabinet it is turned a quarter and continues along the
+    return, and the next one placed after it carries on the same way.
   - Its sizes are design parameters (`Name_width`, `Name_height`, `Name_depth`,
     `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows.
     The counts (shelves, dividers, doors) are fixed once it is built.

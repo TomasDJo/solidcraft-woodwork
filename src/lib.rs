@@ -90,11 +90,28 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     other.min[2]
                 };
                 // plain numbers: this command takes mm whatever the design's unit is
-                let to = [x, other.max[1] - size("depth") / 2.0, z];
-                run(
-                    "occurrence.move",
-                    json!({"occurrence": made["occurrence"], "space": "world", "translate": to}),
-                )?;
+                let mut to = json!({"occurrence": made["occurrence"], "space": "world",
+                    "translate": [x, other.max[1] - size("depth") / 2.0, z]});
+                // Along a corner cabinet's return, or a run that is turned already: turned
+                // to face into the room, its back on the side wall.
+                let turn = other.turn(place).filter(|_| entry == "cabinet");
+                if let Some(degrees) = turn {
+                    let (half_w, half_d) = (size("width") / 2.0, size("depth") / 2.0);
+                    let wall = degrees < 0; // the right wall
+                    let x = match wall {
+                        true => other.max[0] - half_d,
+                        false => other.min[0] + half_d,
+                    };
+                    let y = match (place == "above", wall) {
+                        (false, _) => other.min[1] - half_w,
+                        (true, true) => other.max[1] - half_w,
+                        (true, false) => other.min[1] + half_w,
+                    };
+                    to["translate"] = json!([x, y, z]);
+                    to["axis"] = json!([0, 0, 1]);
+                    to["angle"] = json!(format!("{degrees} deg"));
+                }
+                run("occurrence.move", to)?;
                 summary["placed"] = json!(format!("{place} of {}", other.name));
             }
             // Grounded, so that its doors and drawers have something fixed to open against.

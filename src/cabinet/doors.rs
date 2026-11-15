@@ -36,7 +36,13 @@ pub fn build(cabinet: &Cabinet) {
     let door_h = format!("{eh} - {epl} - {}", mm(2.0 * DOOR_GAP));
     let (z0, z1) = (format!("{epl} + {gap_mm}"), format!("{eh} - {gap_mm}"));
     let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * DOOR_GAP);
-    let handle_z = fittings::handle_height(handles, &z0, &z1, h - plinth, plinth > 0.0);
+    let handle_z = fittings::handle_height(
+        handles,
+        &z0,
+        &z1,
+        h - plinth,
+        fittings::floor_unit(plinth, d),
+    );
     for i in 0..count {
         let part = match count {
             1 => "Door".to_string(),

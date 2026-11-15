@@ -337,6 +337,21 @@ def test():
         assert box[f"{cabinet} Side L"][5] == 800 and box[f"{cabinet} Bottom"][2] == 150, cabinet
     assert not [f["name"] for f in results[9]["timeline"] if f["warning"]]
 
+    # Right of a right-hand corner cabinet is along its return: turned to face into the room.
+    # One more continues the run, and one goes above it.
+    box_cabinet = {"width": 400, "doors": 1, "handles": "knob", "place": "right"}
+    results = cli([plugin(approval, "corner", {"name": "K", "corner": "right"}), select("K Top"),
+                   plugin(approval, "cabinet", {**box_cabinet, "name": "R"}), select("R Top"),
+                   plugin(approval, "cabinet", {**box_cabinet, "name": "S"}), select("S Top"),
+                   plugin(approval, "cabinet", {**box_cabinet, "name": "T", "place": "above", "depth": 300}),
+                   {"command": "inspect.measure", "params": {}}])
+    box = boxes(results[7])
+    assert [box["K Side R"][i] for i in (3, 1)] == [450, -450]  # the right wall, the return's end
+    assert box["R Side L"] == [-110, -468, 0, 450, -450, 720], box["R Side L"]  # back on the wall
+    assert box["S Side R"] == [-110, -1250, 0, 450, -1232, 720], box["S Side R"]  # and on along it
+    assert box["T Side L"] == [150, -868, 720, 450, -850, 1440], box["T Side L"]  # above S, left sides flush
+    assert box["R Door"] == [-130, -848, 2, -112, -452, 718], box["R Door"]  # facing into the room
+
     # Materials: oak doors on a melamine cabinet, next to a plywood one.
     def pick(*names):
         return {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}

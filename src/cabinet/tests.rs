@@ -70,7 +70,7 @@ fn drawers_replace_shelves() {
         "Cabinet_width/2 + 64 mm - Cabinet_width/2"
     );
     // a knob on a wall unit's door: one hole, low on the opening side
-    let (commands, _) = build(&json!({"doors": 1, "handles": "knob"})).unwrap();
+    let (commands, _) = build(&json!({"doors": 1, "handles": "knob", "depth": 320})).unwrap();
     let hole = commands
         .iter()
         .find(|c| c.1["name"] == "Cabinet Door handle 1");

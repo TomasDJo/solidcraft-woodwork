@@ -160,7 +160,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   expression for the board and as a number for the pick.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
   see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). A box
-  cabinet can be placed beside its back leg, but not turned to continue its return.
+  cabinet placed on the return's side of it is turned a quarter and continues the return
+  (`select::Cabinet::turn`, read from which way the two side panels run); so does one placed
+  after or above a cabinet that is turned already. A corner cabinet is never turned.
 - Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
   A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
   parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the

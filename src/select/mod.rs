@@ -7,6 +7,22 @@ pub struct Cabinet {
     /// World box around the two sides, mm. Doors and an overlaid back stand outside it.
     pub min: [f64; 3],
     pub max: [f64; 3],
+    /// Side L and Side R: whether the panel runs along X, and where it starts in Y.
+    pub sides: [(bool, f64); 2],
+}
+
+impl Cabinet {
+    /// The quarter turn, in degrees, a box cabinet needs to continue from this one on
+    /// `place`: along a corner cabinet's return, or along a run that is already turned.
+    pub fn turn(&self, place: &str) -> Option<i32> {
+        let [l, r] = self.sides;
+        match place {
+            "right" if r.0 && (!l.0 || r.1 < l.1) => Some(-90),
+            "left" if l.0 && (!r.0 || l.1 < r.1) => Some(90),
+            "above" if l.0 && r.0 => Some(if r.1 < l.1 { -90 } else { 90 }),
+            _ => None,
+        }
+    }
 }
 
 fn names(measure: &Value) -> impl Iterator<Item = &str> {
@@ -55,7 +71,8 @@ pub fn cabinet(design: &Value, measure: &Value) -> Result<Cabinet, String> {
     // ponytail: world bounding box, so this is only right for a cabinet that still stands
     // square to the axes. Read the component's placement if turned cabinets matter.
     let (mut min, mut max) = ([f64::INFINITY; 3], [f64::NEG_INFINITY; 3]);
-    for side in ["Side L", "Side R"] {
+    let mut sides = [(false, 0.0); 2];
+    for (n, side) in ["Side L", "Side R"].into_iter().enumerate() {
         let wanted = format!("{name} {side}");
         let bodies = measure["bodies"].as_array().into_iter().flatten();
         let body = (bodies.into_iter().find(|b| b["name"] == wanted.as_str()))
@@ -64,11 +81,15 @@ pub fn cabinet(design: &Value, measure: &Value) -> Result<Cabinet, String> {
             min[i] = min[i].min(body["bbox"]["min"][i].as_f64().ok_or("body without bbox")?);
             max[i] = max[i].max(body["bbox"]["max"][i].as_f64().ok_or("body without bbox")?);
         }
+        let at = |end: &str, i: usize| body["bbox"][end][i].as_f64().unwrap_or(0.0);
+        let along_x = at("max", 0) - at("min", 0) > at("max", 1) - at("min", 1);
+        sides[n] = (along_x, at("min", 1));
     }
     Ok(Cabinet {
         name: name.to_string(),
         min,
         max,
+        sides,
     })
 }
 
