@@ -196,7 +196,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let open = |part: &str| kit.open(part);
     let close =
         |part: &str, kind: &str, joint: &str, point: [f64; 3], axis: [i32; 3], limit: f64| {
-            kit.close(part, kind, joint, point, axis, limit)
+            kit.close(part, None, kind, joint, point, axis, limit)
         };
 
     let zero = mm(0.0);

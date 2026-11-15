@@ -64,6 +64,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Automatic names: a taken name gets the next free number
 - [x] Match selected: a new cabinet's height, depth, thickness and plinth linked to the selected cabinet's parameters
 - [x] Doors turn about their front edge, like a cup hinge, so they clear the next cabinet
+- [x] Corner cabinet doors are a bi-fold pair, hinged to each other at the inner corner
 - [x] SolidCraft 0.42: ribbon buttons, tests run against 0.42
 
 ## Open

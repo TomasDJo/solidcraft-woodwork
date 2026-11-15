@@ -212,13 +212,13 @@ def test():
             assert cylinders(results[10], f"{cabinet} {part}") == 6 + pins, (cabinet, part)
 
     # Corner cabinet: an L of 1000 x 900 with the return on the left, a box cabinet placed to
-    # its right, both doors opened. Then the mirror image.
+    # its right, the bi-fold doors opened. Then the mirror image.
     corner = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": True}
     results = cli([plugin(approval, "corner", corner),
                    {"command": "inspect.measure", "params": {}},
                    select("C Top"),
                    plugin(approval, "cabinet", {"name": "N", "place": "right"}),
-                   drive("C Door hinge", 60), drive("C Door return hinge", 60),
+                   drive("C Door hinge", 60), drive("C Door return fold", 90),
                    {"command": "inspect.measure", "params": {}},
                    plugin(approval, "cutlist"),
                    {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
@@ -237,11 +237,13 @@ def test():
     assert round(bottom["volume_mm3"]) == (964 * 864 - 422 * 322) * 18, bottom["volume_mm3"]
     box = boxes(results[6])
     assert box["N Side L"][0] == 500 and box["N Side L"][4] == 450, box["N Side L"]  # beside it, backs flush
-    assert box["C Door"][1] < -400 and box["C Door return"][3] > 300, (box["C Door"], box["C Door return"])  # both open outwards
+    # a bi-fold pair: the door swings out, and the return door hangs on it, folded out in line
+    assert box["C Door"][1] < -400, box["C Door"]
+    assert box["C Door return"] == [114.412, -767.395, 102, 288, -484.731, 718], box["C Door return"]
     assert '3,964,864,18,"Birch plywood","C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"]
     assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
     results = cli([plugin(approval, "corner", {**corner, "corner": "right"}),
-                   drive("C Door hinge", 60), drive("C Door return hinge", 60),
+                   drive("C Door hinge", 60), drive("C Door return fold", 90),
                    {"command": "inspect.measure", "params": {}}])
     mirror = boxes(results[3])
     for part in ("C Door", "C Door return", "C Bottom", "C Plinth"):

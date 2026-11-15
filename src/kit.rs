@@ -202,9 +202,13 @@ impl Kit {
 
     // ponytail: the joint's point is a number, where the part is now. It does not follow a
     // resize, and it is off if the cabinet is made inside a component that has been moved.
+    /// `on` is the moving part it hangs on (a bi-fold door on the door beside it), or `None`
+    /// for the cabinet itself.
+    #[allow(clippy::too_many_arguments)]
     pub fn close(
         &self,
         part: &str,
+        on: Option<&str>,
         kind: &str,
         joint: &str,
         point: [f64; 3],
@@ -213,11 +217,15 @@ impl Kit {
     ) {
         let name = &self.name;
         let (occurrence, joint) = (format!("{name} {part}:1"), format!("{name} {part} {joint}"));
+        let base = match on {
+            Some(other) => format!("{name} {other}:1"),
+            None => format!("{name}:1"),
+        };
         self.push(("component.activate", json!({"component": name})));
         self.push((
             "joint.as_built",
             json!({
-                "type": kind, "a": format!("{name}:1"), "b": occurrence, "name": joint,
+                "type": kind, "a": base, "b": occurrence, "name": joint,
                 "at": {"occurrence": occurrence, "point": point, "z": axis},
             }),
         ));

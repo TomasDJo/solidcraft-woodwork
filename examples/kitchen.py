@@ -60,7 +60,8 @@ WALL_CORNER = {**WHITE, **MATCH, "corner": "right", "width": 1000, "return": 100
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
-        "Corner Door hinge": 75, "Base 4 Door hinge": 50, "Wall corner Door return hinge": 80}
+        "Corner Door hinge": 60, "Corner Door return fold": 60, "Base 4 Door hinge": 50, "Wall corner Door hinge": 60,
+        "Wall corner Door return fold": 70}
 
 
 def step(command, **params):

@@ -165,8 +165,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     }
 
     if doors {
-        // One overlay door on each front. They hinge on the two sides and stop short of the
-        // inner corner, each leaving room for the other's thickness.
+        // A bi-fold pair of overlay doors, one on each front. The door on the back leg hinges
+        // on that leg's side; the door on the return hangs on it at the inner corner and folds
+        // out flat with it. Each stops short of the corner by the other's thickness.
         let gap = mm(DOOR_GAP);
         // A door starts past the other door and its gaps, and ends a gap short of its side.
         let start = format!("{et} + {}", mm(2.0 * DOOR_GAP));
@@ -209,9 +210,17 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         cup("Door", &cup_x, &face_y, [0, -1, 0]);
         // like the box cabinet's: about the door's front edge, so it clears the next cabinet
         let hinge = [(a / 2.0 - g) * flip as f64, b / 2.0 - d - g - t, floor];
-        kit.close("Door", "revolute", "hinge", hinge, [0, 0, flip], 110.0);
+        kit.close(
+            "Door",
+            None,
+            "revolute",
+            "hinge",
+            hinge,
+            [0, 0, flip],
+            110.0,
+        );
 
-        // On the return, facing across: hinged on the return's side, at the front.
+        // On the return, facing across: hinged on the first door, where their fronts meet.
         let face_x = format!("{ed} + {gap}");
         kit.open("Door return");
         panel(
@@ -220,16 +229,18 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
             [&et, &format!("{eb} - {ed} - {clear}"), &door_h],
             None,
         );
-        let cup_y = format!("{gap} + {}", mm(CUP_CENTRE));
+        let cup_y = format!("{eb} - {ed} - {et} - {}", mm(2.0 * g + CUP_CENTRE));
         cup("Door return", &face_x, &cup_y, [flip, 0, 0]);
-        let hinge = [(d + g + t - a / 2.0) * flip as f64, g - b / 2.0, floor];
+        // 90 degrees brings it in line with the first door
+        let fold = [(d + g + t - a / 2.0) * flip as f64, hinge[1], floor];
         kit.close(
             "Door return",
+            Some("Door"),
             "revolute",
-            "hinge",
-            hinge,
+            "fold",
+            fold,
             [0, 0, -flip],
-            110.0,
+            90.0,
         );
     }
 

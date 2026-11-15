@@ -104,7 +104,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   dividers, doors, drawers) are fixed when the cabinet is built.
 - **A cabinet is a component**, created inside whichever component is active, and the active
   component is restored afterwards. **A part that moves is a sub-component with a joint**
-  (doors: revolute, drawers: slider). New moving parts follow the same rule.
+  (doors: revolute, drawers: slider). New moving parts follow the same rule. A part can hang
+  on another moving part: a corner cabinet's second door is jointed to the first (`Door return
+  fold`), not to the cabinet, so it follows it.
 - **Body names are the data model.** Bodies are `<Cabinet> <Part>`; a cabinet is recognised by
   its `<Cabinet> Side L` body, and the longest matching cabinet name owns a body. Never name
   another part with the suffix ` Side L` (drawer box sides are `Left` and `Right` for that
