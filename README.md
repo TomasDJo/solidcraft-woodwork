@@ -19,7 +19,9 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
   - **Drawers** makes it a drawer unit: a stack of equal drawers with overlay fronts and
     boxes sized for 12.7 mm ball-bearing slides.
   - **Handle holes** drills the doors and drawer fronts for a knob (one 5 mm hole) or a
-    pull (two, 128 mm apart).
+    pull (two, 128 mm apart). **Handle position** puts a door's handle near the top, in the
+    middle or near the bottom; left on auto it is near the top on a floor unit and near the
+    bottom on a wall unit. Drawer fronts get theirs in the middle.
   - Every door and every drawer is a component of its own inside the cabinet, held by a
     joint: doors hinge open to 110 degrees, drawers slide out. Drive the joints to open them.
     A door turns about its front edge, as on a cup hinge, so it clears the door of the next
@@ -46,7 +48,8 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
   a material, and can be placed, named and matched like the box cabinet. Two shapes:
   - **L-shaped**: two fronts at a right angle, with a bi-fold pair of doors. The first door
     is hinged on the cabinet and closes the inner corner; the second hangs on it there and
-    folds out onto its face, so the two swing out together. The handle is on the second door.
+    folds out onto its face, so the two swing out together. The handle is on the second door, at the
+    position you choose.
   - **Diagonal**: one front straight across the corner at 45 degrees, with one door. The
     depth at the end of the return follows from the width and the return, and equals Depth
     when the two are the same.

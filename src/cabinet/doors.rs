@@ -24,6 +24,7 @@ pub fn build(cabinet: &Cabinet) {
         plinth,
         doors,
         handles,
+        handle_at,
         ..
     } = cabinet.input;
     let count = doors as usize;
@@ -38,6 +39,7 @@ pub fn build(cabinet: &Cabinet) {
     let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * DOOR_GAP);
     let handle_z = fittings::handle_height(
         handles,
+        handle_at,
         &z0,
         &z1,
         h - plinth,

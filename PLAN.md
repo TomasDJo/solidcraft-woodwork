@@ -67,6 +67,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Corner cabinet doors are a bi-fold pair, hinged to each other at the inner corner
 - [x] Corner cabinet: handle holes, shelf pin holes, and a choice of which end the doors hang on
 - [x] Diagonal corner cabinet: one front at 45 degrees with one door
+- [x] Handle position on doors: top, middle, bottom or auto, for knobs and pulls on both cabinets
 - [x] SolidCraft 0.42: ribbon buttons, tests run against 0.42
 
 ## Open

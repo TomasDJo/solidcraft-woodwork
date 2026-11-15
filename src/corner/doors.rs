@@ -11,6 +11,7 @@ pub fn build(corner: &Corner, on_return: bool) {
     let Corner {
         kit,
         handles,
+        handle_at,
         ea,
         eb,
         ed,
@@ -47,6 +48,7 @@ pub fn build(corner: &Corner, on_return: bool) {
     // the height the box cabinet would put it.
     let handle_z = fittings::handle_height(
         handles,
+        handle_at,
         &z0,
         &z1,
         h - plinth,

@@ -22,6 +22,7 @@ pub struct Input<'a> {
     pub pins: bool,
     pub back: &'a str,
     pub handles: &'a str,
+    pub handle_at: &'a str,
     /// One compartment's width, and the height between the bottom and top panels.
     pub cell_w: f64,
     pub clear_h: f64,
@@ -131,6 +132,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         matches!(handles, "none" | "knob" | "pull"),
         "handles must be none, knob or pull",
     )?;
+    let handle_at = crate::fittings::handle_position(p)?;
     check(
         handles == "none" || doors == 0.0 || (w - (doors + 1.0) * DOOR_GAP) / doors >= 150.0,
         "doors are too narrow for handles",
@@ -167,6 +169,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         pins,
         back,
         handles,
+        handle_at,
         cell_w,
         clear_h,
         shelf_d,
