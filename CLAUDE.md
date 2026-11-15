@@ -48,7 +48,7 @@ materials, joinery and cut lists.
 | `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
 | `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
-| `src/corner/` | L-shaped corner cabinet builder, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `doors.rs` the bi-fold pair |
+| `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list and sheet estimate from `inspect.measure` |
@@ -153,6 +153,11 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
   `joint`, `Drawer n Front`), so renaming those breaks it.
 - The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.
+- A diagonal corner cabinet's front is always at 45 degrees: its door and plinth are components
+  turned by a fixed angle (`Kit::turn`), since an occurrence's turn cannot follow a parameter.
+  The depth at the return's end follows instead (`width - return + depth`). Their boards are
+  cut with `solid.chamfer`, picking the edge by a point in mm that is worked out twice: as an
+  expression for the board and as a number for the pick.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
   see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). A box
   cabinet can be placed beside its back leg, but not turned to continue its return.

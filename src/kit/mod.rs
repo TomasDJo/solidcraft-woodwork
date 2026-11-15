@@ -173,10 +173,16 @@ impl Kit {
 
     /// A panel, or with `cut` its volume taken out of those bodies.
     pub fn panel(&self, part: &str, corner: [&str; 3], size: [&str; 3], cut: Option<&[String]>) {
+        self.panel_at(part, self.at(corner[0], corner[1], corner[2]), size, cut)
+    }
+
+    /// The same, with the corner as the app gets it: for a part built around its own
+    /// component's origin.
+    pub fn panel_at(&self, part: &str, corner: Value, size: [&str; 3], cut: Option<&[String]>) {
         let body = format!("{} {part}", self.name);
         let mut args = json!({
             "length": size[0], "width": size[1], "height": size[2],
-            "corner": self.at(corner[0], corner[1], corner[2]), "name": body,
+            "corner": corner, "name": body,
         });
         match cut {
             Some(targets) => {
@@ -197,6 +203,33 @@ impl Kit {
         self.push((
             "component.create",
             json!({"name": format!("{} {part}", self.name), "grounded": false}),
+        ));
+    }
+
+    // ponytail: the angle is a number, so only the position follows the parameters.
+    /// For a part that stands at an angle: it is built square around its own component's
+    /// origin, then this turns the component about Z and puts its origin at `at`.
+    pub fn turn(&self, part: &str, at: Value, degrees: i32) {
+        let name = &self.name;
+        self.push(("component.activate", json!({"component": name})));
+        self.push((
+            "occurrence.move",
+            json!({
+                "occurrence": format!("{name} {part}:1"), "translate": at,
+                "axis": [0, 0, 1], "angle": format!("{degrees} deg"),
+            }),
+        ));
+    }
+
+    /// Holds a part that has its own component but does not move.
+    pub fn fix(&self, part: &str) {
+        let name = &self.name;
+        self.push((
+            "joint.as_built",
+            json!({
+                "type": "rigid", "a": format!("{name}:1"), "b": format!("{name} {part}:1"),
+                "name": format!("{name} {part} fixed"),
+            }),
         ));
     }
 

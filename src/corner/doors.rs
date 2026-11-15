@@ -46,16 +46,7 @@ pub fn build(corner: &Corner, on_return: bool) {
     // The first door carries the handle: upright on its opening edge, at the height the
     // box cabinet would put it.
     let handle_z = fittings::handle_height(handles, &z0, &z1, h - plinth, plinth > 0.0);
-    let screws = fittings::screw_offsets(handles).iter().map(|&offset| {
-        if offset < 0.0 {
-            format!("{handle_z} - {}", mm(-offset))
-        } else if offset > 0.0 {
-            format!("{handle_z} + {}", mm(offset))
-        } else {
-            handle_z.clone()
-        }
-    });
-    let screws: Vec<String> = screws.collect();
+    let screws = fittings::screw_heights(handles, &handle_z);
     // Holes from a door's back face: hinge cups at `cup`, and on the first door the handle
     // screws at `pull`. Both are x and y; `into` is the way into the door.
     let holes = |part: &str, cup: [&str; 2], pull: [&str; 2], first: bool, into: [i32; 3]| {

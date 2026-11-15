@@ -37,12 +37,16 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
   - **Match selected** links the new cabinet's height, depth, panel thickness and plinth to
     the cabinet you have selected, so a whole run is resized by changing one cabinet's
     parameters.
-- **Corner cabinet** builds an L-shaped cabinet for a corner of the room, with the return on
-  the left or the right: L-shaped bottom, top and shelves, optional plinth, shelf pin holes,
-  and a bi-fold pair of doors. The first door is hinged on the cabinet, at the end you choose,
-  and closes the inner corner; the second hangs on it there, so the two fold out together.
-  Handle holes go in the first door. It is parametric, takes a material, and can be placed,
-  named and matched like the box cabinet.
+- **Corner cabinet** builds a cabinet for a corner of the room, with the return on the left
+  or the right: bottom, top and shelves that fill the corner, optional plinth, shelf pin
+  holes, and doors hinged at the end you choose, with handle holes. It is parametric, takes
+  a material, and can be placed, named and matched like the box cabinet. Two shapes:
+  - **L-shaped**: two fronts at a right angle, with a bi-fold pair of doors. The first door
+    is hinged on the cabinet and closes the inner corner; the second hangs on it there, so
+    the two fold out together.
+  - **Diagonal**: one front straight across the corner at 45 degrees, with one door. The
+    depth at the end of the return follows from the width and the return, and equals Depth
+    when the two are the same.
 - **Joinery** drills the selected cabinet where its sides meet the bottom and top: holes for
   7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their number is set when they are drilled.
 - **Material** gives the selected cabinet, or only the selected parts (the doors, say), a
@@ -87,10 +91,11 @@ Preferences > Plugins > Install plugin
 The kitchen in the picture is in the repo:
 
 - [`examples/kitchen.sc`](examples/kitchen.sc): the design. Open it in SolidCraft; it needs no plugin.
-- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 132 boards.
+- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 131 boards.
 - [`examples/kitchen.py`](examples/kitchen.py): the script that built both, using every function of
   the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other and
-  linked in size (change `Base_1_height` and the whole floor run follows), handle holes,
+  linked in size (change `Base_1_height` and the whole floor run follows), an L-shaped and a
+  diagonal corner cabinet, handle holes,
   melamine carcasses with oak fronts, screws and dowels, doors and a drawer left open on their joints.
 
 To rebuild it, run `python build.py` and then `python examples/kitchen.py`.
@@ -106,7 +111,7 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 - `src/lib.rs`: entry dispatch and the wasm guest.
 - `src/cabinet/`, `src/corner/`, `src/joinery/`, `src/cutlist/`, `src/material.rs`: one module
   per function, plain Rust. A folder holds the code in `mod.rs` (the box cabinet also has
-  `input.rs`, `doors.rs` and `drawers.rs`, the corner cabinet `doors.rs`) and its unit tests
+  `input.rs`, `doors.rs` and `drawers.rs`, the corner cabinet `input.rs`, `doors.rs` and `diagonal.rs`) and its unit tests
   in `tests.rs`.
 - `src/kit/` and `src/fittings.rs`: what the two cabinet builders share, the panels and
   parameters, and the hardware (shelf pins, hinge cups, handles).

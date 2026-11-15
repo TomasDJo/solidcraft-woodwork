@@ -5,14 +5,21 @@
 //! `return` (Y, the front at 0), and the return is on the left. A right corner is the same
 //! mirrored in X. Like the box cabinet, every size is an expression over design parameters.
 //!
-//! This file is the carcass; `doors.rs` is the bi-fold pair.
+//! The diagonal shape has one front straight across the open corner, at 45 degrees, in place
+//! of the two fronts of the L.
+//!
+//! This file is the carcass; `input.rs` reads the dialog, `doors.rs` is the L's bi-fold
+//! pair, `diagonal.rs` the diagonal shape's door and plinth.
 
+mod diagonal;
 mod doors;
+mod input;
 
 use crate::fittings::{self, PinRows, PIN_SETBACK, PITCH};
-use crate::kit::{check, mm, num, Kit};
+use crate::kit::{mm, Kit};
 use crate::Commands;
-use serde_json::Value;
+use input::Input;
+use serde_json::{json, Value};
 
 const KICK_RECESS: f64 = 50.0; // plinth boards, back from the fronts
 
@@ -20,6 +27,7 @@ const KICK_RECESS: f64 = 50.0; // plinth boards, back from the fronts
 struct Corner<'a> {
     kit: &'a Kit,
     right: bool,
+    diagonal: bool,
     handles: &'a str,
     a: f64,
     b: f64,
@@ -27,9 +35,11 @@ struct Corner<'a> {
     h: f64,
     t: f64,
     plinth: f64,
+    dr: f64, // depth at the return's end: `d` on the L
     ea: String,
     eb: String,
     ed: String,
+    edr: String,
     eh: String,
     et: String,
     epl: String,
@@ -37,75 +47,21 @@ struct Corner<'a> {
 
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let kit = Kit::new(p)?;
-    let size = |key: &str, default_mm: f64| kit.size(p, key, default_mm);
-    let (a, b, d, h) = (
-        size("width", 900.0)?,
-        size("return", 900.0)?,
-        size("depth", 560.0)?,
-        size("height", 720.0)?,
-    );
-    let t = size("thickness", 18.0)?;
-    let plinth = size("plinth", 0.0)?;
-    let shelves = num(p, "shelves", 1.0)?;
-    let pins = p
-        .get("shelf_pins")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    // The bi-fold pair hangs on the end of the back leg (`width`) or of the return.
-    let on_return = match p.get("doors").and_then(Value::as_str).unwrap_or("none") {
-        "none" => None,
-        "hinged on width" => Some(false),
-        "hinged on return" => Some(true),
-        _ => return Err("doors must be none, hinged on width or hinged on return".into()),
-    };
-    let doors = on_return.is_some();
-    let handles = p.get("handles").and_then(Value::as_str).unwrap_or("none");
-    check(
-        matches!(handles, "none" | "knob" | "pull"),
-        "handles must be none, knob or pull",
-    )?;
-    let right = match p.get("corner").and_then(Value::as_str).unwrap_or("left") {
-        "left" => false,
-        "right" => true,
-        _ => return Err("corner must be left or right".into()),
-    };
-
-    check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
-    check(
-        (0.0..=20.0).contains(&shelves) && shelves.fract() == 0.0,
-        "shelves must be 0 to 20",
-    )?;
-    check(plinth >= 0.0, "plinth cannot be negative")?;
-    check(
-        a <= 5000.0 && b <= 5000.0 && h <= 5000.0,
-        "sizes are limited to 5000 mm",
-    )?;
-    check(d >= 150.0 + t, "depth is too small")?;
-    check(
-        a >= d + 200.0 && b >= d + 200.0,
-        "width and return must each be 200 mm more than the depth",
-    )?;
-    let clear_h = h - plinth - 2.0 * t; // between bottom and top panels
-    check(
-        (clear_h - shelves * t) / (shelves + 1.0) >= 20.0,
-        "height is too small for the plinth and shelves",
-    )?;
-    check(
-        !doors || t >= 16.0,
-        "doors with hinge cups need panels of 16 mm or more",
-    )?;
-    check(
-        !doors || h - plinth >= 300.0,
-        "too low for a door with two hinges",
-    )?;
-    check(
-        !pins || t >= 12.0,
-        "shelf pin holes need panels of 12 mm or more",
-    )?;
-    check(
-        !pins || clear_h >= 4.0 * PITCH,
-        "too low for shelf pin holes",
-    )?;
+    let Input {
+        a,
+        b,
+        d,
+        h,
+        t,
+        plinth,
+        dr,
+        shelves,
+        pins,
+        on_return,
+        handles,
+        right,
+        diagonal,
+    } = input::read(&kit, p)?;
 
     let ea = kit.parameter("width", a, "along the back wall");
     let eb = kit.parameter("return", b, "along the side wall");
@@ -117,9 +73,14 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         false => mm(0.0),
     };
     kit.centre(&ea, &eb);
+    let edr = match diagonal {
+        true => format!("({ea} - {eb} + {ed})"),
+        false => ed.clone(),
+    };
     let corner = Corner {
         kit: &kit,
         right,
+        diagonal,
         handles,
         a,
         b,
@@ -127,16 +88,20 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         h,
         t,
         plinth,
+        dr,
         ea,
         eb,
         ed,
+        edr,
         eh,
         et,
         epl,
     };
-    let drill = corner.carcass(shelves as u32, pins); // holes, run after the panels exist
-    if let Some(on_return) = on_return {
-        doors::build(&corner, on_return);
+    let drill = corner.carcass(shelves, pins); // holes, run after the panels exist
+    match on_return {
+        Some(on_return) if diagonal => diagonal::door(&corner, on_return),
+        Some(on_return) => doors::build(&corner, on_return),
+        None => {}
     }
     // The bounding box: `return` is its depth.
     Ok(kit.finish(drill, [a, h, b]))
@@ -184,6 +149,7 @@ impl Corner<'_> {
             ea,
             eb,
             ed,
+            edr,
             eh,
             et,
             epl,
@@ -201,7 +167,7 @@ impl Corner<'_> {
             [et, ed, eh],
             None,
         );
-        panel(return_end, [&zero, &zero, &zero], [ed, et, eh], None);
+        panel(return_end, [&zero, &zero, &zero], [edr, et, eh], None);
         // Full panels against both walls, standing on the floor like the sides.
         panel(
             "Back",
@@ -216,29 +182,54 @@ impl Corner<'_> {
             None,
         );
         // Bottom, top and shelves are L-shaped: a board over the whole inside, with the open
-        // corner cut out of it. The cut list gives the board before the cut.
+        // corner cut out of it, square or (diagonal) at 45 degrees. The cut list gives the
+        // board before the cut. Each board's height is also kept in mm, for picking its edge.
         let ech = format!("({eh} - {epl} - 2*{et})"); // clear height
         let egap = format!("(({ech} - {s}*{et}) / {})", s + 1); // between shelves
+        let (t, clear_h) = (self.t, self.h - self.plinth - 2.0 * self.t);
+        let gap = (clear_h - s as f64 * t) / (s + 1) as f64;
         let mut boards = vec![
-            ("Bottom".to_string(), epl.clone()),
-            ("Top".to_string(), format!("{eh} - {et}")),
+            ("Bottom".to_string(), epl.clone(), self.plinth),
+            ("Top".to_string(), format!("{eh} - {et}"), self.h - t),
         ];
         let elast = fittings::top_pin_row(&ech);
         for i in 0..s {
             // Height over the bottom panel: evenly spaced, or on the nearest row of pins.
             let mut over = format!("{egap}*{} + {et}*{i}", i + 1);
+            let mut over_mm = gap * (i + 1) as f64 + t * i as f64;
             if pins {
                 over = fittings::on_pin_row(&over, &elast);
+                over_mm = fittings::on_pin_row_mm(over_mm, clear_h);
             }
-            boards.push((format!("Shelf {}", i + 1), format!("{epl} + {et} + {over}")));
+            boards.push((
+                format!("Shelf {}", i + 1),
+                format!("{epl} + {et} + {over}"),
+                self.plinth + t + over_mm,
+            ));
         }
-        for (part, z) in &boards {
+        for (part, z, z_mm) in &boards {
             panel(
                 part,
                 [et, et, z],
                 [&format!("{ea} - 2*{et}"), &format!("{eb} - 2*{et}"), et],
                 None,
             );
+            if self.diagonal {
+                // The board's upright edge at the open corner, cut back to the front.
+                let edge = [
+                    (self.a / 2.0 - t) * self.flip() as f64,
+                    t - self.b / 2.0,
+                    z_mm + t / 2.0,
+                ];
+                self.kit.push((
+                    "solid.chamfer",
+                    json!({
+                        "edges": [edge], "distance": format!("{eb} - {ed} - 2*{et}"),
+                        "body": format!("{name} {part}"), "name": format!("{name} {part} corner"),
+                    }),
+                ));
+                continue;
+            }
             panel(
                 &format!("{part} notch"),
                 [ed, et, z],
@@ -250,7 +241,9 @@ impl Corner<'_> {
                 Some(&[format!("{name} {part}")]),
             );
         }
-        if self.plinth > 0.0 {
+        if self.plinth > 0.0 && self.diagonal {
+            diagonal::plinth(self);
+        } else if self.plinth > 0.0 {
             // Two boards set back from the fronts, meeting in the inner corner.
             let x = format!("{ed} - {} - {et}", mm(KICK_RECESS));
             let y = format!("{eb} - {ed} + {}", mm(KICK_RECESS));
@@ -301,7 +294,7 @@ impl Corner<'_> {
             ("Back return", [et, &far], [-flip, 0, 0], [0, 1, 0]),
         ];
         let z = format!("{epl} + {et} + {}", mm(2.0 * PITCH));
-        let run = format!("{ed} - {et}");
+        let (run, return_run) = (format!("{ed} - {et}"), format!("{} - {et}", self.edr));
         let mut drill = Vec::new();
         for (part, [x, y], into, across) in rows {
             let rows = PinRows {
@@ -310,7 +303,11 @@ impl Corner<'_> {
                 into,
                 depth: &blind,
                 across,
-                run: &run,
+                run: if part == return_end {
+                    &return_run
+                } else {
+                    &run
+                },
             };
             drill.extend(fittings::pin_rows(kit, top_row, rows));
         }

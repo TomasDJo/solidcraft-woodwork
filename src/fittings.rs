@@ -29,6 +29,12 @@ pub fn on_pin_row(over: &str, top_row: &str) -> String {
     format!("min(max(round(({over} - {r}) / {pitch}), 2), {top_row}) * {pitch} + {r}")
 }
 
+/// `on_pin_row` in mm, for where a point on the shelf is. `clear_h` is the clear height.
+pub fn on_pin_row_mm(over: f64, clear_h: f64) -> f64 {
+    let top = ((clear_h - 2.0 * PITCH) / PITCH).floor();
+    ((over - PIN_D / 2.0) / PITCH).round().max(2.0).min(top) * PITCH + PIN_D / 2.0
+}
+
 /// How deep a pin hole goes into a panel it must not come through.
 pub fn blind_pin(thickness: &str) -> String {
     format!("min({thickness} - {}, {})", mm(5.0), mm(12.0))
@@ -114,6 +120,20 @@ pub fn screw_offsets(handles: &str) -> &'static [f64] {
         "knob" => &[0.0],
         _ => &[-PULL / 2.0, PULL / 2.0],
     }
+}
+
+/// The height of each screw of a handle whose middle is at `handle_z`.
+pub fn screw_heights(handles: &str, handle_z: &str) -> Vec<String> {
+    let screws = screw_offsets(handles).iter().map(|&offset| {
+        if offset < 0.0 {
+            format!("{handle_z} - {}", mm(-offset))
+        } else if offset > 0.0 {
+            format!("{handle_z} + {}", mm(offset))
+        } else {
+            handle_z.to_string()
+        }
+    });
+    screws.collect()
 }
 
 // ponytail: where a door's handle sits is guessed from the cabinet: mid-height on a tall

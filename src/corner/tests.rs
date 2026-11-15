@@ -48,6 +48,41 @@ fn a_right_corner_is_the_mirror_image() {
 }
 
 #[test]
+fn a_diagonal_front_is_one_turned_door() {
+    let p = json!({"shape": "diagonal", "width": 1000, "return": 900, "plinth": 100,
+        "doors": "hinged on width", "handles": "knob"});
+    let (commands, summary) = build(&p).unwrap();
+    // 2 sides, 2 backs, bottom, top, shelf, plinth, door
+    assert_eq!(summary["bodies"].as_array().unwrap().len(), 9);
+    assert_eq!(summary["joints"], json!(["Cabinet Door hinge"]));
+    // the return's end is as deep as a 45 degree front leaves it
+    assert_eq!(
+        named(&commands, "Cabinet Side L")["length"],
+        "(Cabinet_width - Cabinet_return + Cabinet_depth)"
+    );
+    // each board's open corner is cut back, picked at mid-thickness
+    let cut = named(&commands, "Cabinet Bottom corner");
+    assert_eq!(cut["edges"], json!([[482.0, -432.0, 109.0]]));
+    assert_eq!(
+        cut["distance"],
+        "Cabinet_return - Cabinet_depth - 2*Cabinet_thickness"
+    );
+    let turns: Vec<&Value> = commands
+        .iter()
+        .filter(|c| c.0 == "occurrence.move")
+        .map(|c| &c.1)
+        .collect();
+    assert_eq!(turns.len(), 2); // plinth and door
+    assert_eq!(turns[1]["angle"], "45 deg");
+    // hinged at the back leg's end: the far end of the door, on its front edge
+    let hinge = named(&commands, "Cabinet Door hinge");
+    let at = |i: usize| hinge["at"]["point"][i].as_f64().unwrap();
+    assert!((at(0) - 512.728).abs() < 0.01 && (at(1) + 125.557).abs() < 0.01);
+    // a return too long for the width leaves no depth at its end
+    assert!(build(&json!({"shape": "diagonal", "width": 800, "return": 1300})).is_err());
+}
+
+#[test]
 fn refuses_bad_input() {
     assert!(build(&json!({"width": 700})).is_err()); // no room beside the return
     assert!(build(&json!({"corner": "middle"})).is_err());
