@@ -4,6 +4,7 @@
 mod cabinet;
 mod corner;
 mod cutlist;
+mod fittings;
 mod joinery;
 mod kit;
 mod material;
@@ -76,24 +77,17 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             // Back to where the user was working.
             run("component.activate", json!({"component": made["parent"]}))?;
             if let Some(other) = beside {
-                // Backs flush; side by side on the same floor, or on top with left sides flush.
+                // Against that cabinet's side, or on top of it, turned the way it is turned.
                 let size = |key: &str| summary["size"][key].as_f64().unwrap_or(0.0);
-                let x = match place {
-                    "right" => other.max[0] + size("width") / 2.0,
-                    "left" => other.min[0] - size("width") / 2.0,
-                    _ => other.min[0] + size("width") / 2.0,
-                };
-                let z = if place == "above" {
-                    other.max[2]
-                } else {
-                    other.min[2]
-                };
+                let (at, degrees) = other.seat(place, size("width"), size("depth"));
                 // plain numbers: this command takes mm whatever the design's unit is
-                let to = [x, other.max[1] - size("depth") / 2.0, z];
-                run(
-                    "occurrence.move",
-                    json!({"occurrence": made["occurrence"], "space": "world", "translate": to}),
-                )?;
+                let mut to =
+                    json!({"occurrence": made["occurrence"], "space": "world", "translate": at});
+                if degrees != 0 {
+                    to["axis"] = json!([0, 0, 1]);
+                    to["angle"] = json!(format!("{degrees} deg"));
+                }
+                run("occurrence.move", to)?;
                 summary["placed"] = json!(format!("{place} of {}", other.name));
             }
             // Grounded, so that its doors and drawers have something fixed to open against.

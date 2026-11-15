@@ -27,10 +27,10 @@
             "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth board sits 50 mm back from the front.", "default": 0, "minimum": 0, "maximum": 500 },
             "shelf_pins": { "type": "boolean", "title": "Shelf pin holes", "description": "32 mm system: rows of 5 mm holes 37 mm from the front and back. The shelves rest on them.", "default": false },
             "doors": { "type": "integer", "title": "Doors", "description": "Overlay doors with 35 mm hinge cup holes and 2 mm gaps: 0, 1, 2, or one per compartment (dividers + 1).", "default": 0, "minimum": 0, "maximum": 11 },
-            "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes through the doors and drawer fronts. knob: one hole. pull: two, 128 mm apart. On a door they are on the opening side: near the top with a plinth, near the bottom without, at mid-height on a door over 1200 mm.", "enum": ["none", "knob", "pull"], "default": "none" },
+            "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes through the doors and drawer fronts. knob: one hole. pull: two, 128 mm apart. On a door they are on the opening side: near the top on a floor unit (it has a plinth or is 450 mm deep or more), near the bottom on a wall unit, at mid-height on a door over 1200 mm.", "enum": ["none", "knob", "pull"], "default": "none" },
             "match": { "type": "string", "title": "Match selected", "description": "selected: height, depth, panel thickness and plinth are not read from this dialog but linked to the cabinet that is selected (select any part of it first). Change them on that cabinet later and this one follows.", "enum": ["no", "selected"], "default": "no" },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material on a selection.", "enum": ["Birch plywood", "MDF", "White melamine", "Oak", "none"], "default": "Birch plywood" },
-            "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
+            "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush. right is against its right side and left against its left side, so on the return's side of a corner cabinet the new one is turned to continue the return.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
             "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Cabinet, Cabinet 2, Cabinet 3.", "default": "Cabinet", "minLength": 1, "maxLength": 40 }
           }
         }
@@ -44,17 +44,20 @@
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm: with in, enter each size in inches.", "enum": ["mm", "in"], "default": "mm" },
             "corner": { "type": "string", "title": "Corner", "description": "L-shaped cabinet for a corner of the room. left: the corner is at the back left, and the return runs forward along the left wall. right: the mirror image.", "enum": ["left", "right"], "default": "left" },
+            "shape": { "type": "string", "title": "Shape", "description": "L-shaped: two fronts at a right angle, with a bi-fold pair of doors. diagonal: one front straight across the open corner at 45 degrees, with one door.", "enum": ["L-shaped", "diagonal"], "default": "L-shaped" },
             "width": { "type": "number", "title": "Width", "description": "Along the back wall, from the corner.", "default": 900, "minimum": 4, "maximum": 5000 },
             "return": { "type": "number", "title": "Return", "description": "Along the side wall, from the corner.", "default": 900, "minimum": 4, "maximum": 5000 },
-            "depth": { "type": "number", "title": "Depth", "description": "Depth of both legs, wall to front.", "default": 560, "minimum": 4, "maximum": 5000 },
+            "depth": { "type": "number", "title": "Depth", "description": "Depth of both legs, wall to front. diagonal: the depth at the end of the width; at the end of the return it is width - return + depth, so the same when width and return are equal.", "default": 560, "minimum": 4, "maximum": 5000 },
             "height": { "type": "number", "title": "Height", "description": "Outside height, plinth included.", "default": 720, "minimum": 4, "maximum": 5000 },
             "thickness": { "type": "number", "title": "Panel thickness", "default": 18, "minimum": 0.125, "maximum": 50 },
             "shelves": { "type": "integer", "title": "Shelves", "description": "L-shaped shelves, evenly spaced.", "default": 1, "minimum": 0, "maximum": 20 },
-            "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth boards sit 50 mm back from the fronts.", "default": 0, "minimum": 0, "maximum": 500 },
-            "doors": { "type": "boolean", "title": "Doors", "description": "One overlay door on each front, hinged on the two ends, with 35 mm hinge cup holes.", "default": false },
+            "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth sits 50 mm back from the fronts.", "default": 0, "minimum": 0, "maximum": 500 },
+            "shelf_pins": { "type": "boolean", "title": "Shelf pin holes", "description": "32 mm system: rows of 5 mm holes in both ends and both backs. The shelves rest on them.", "default": false },
+            "doors": { "type": "string", "title": "Doors", "description": "Overlay doors with 35 mm hinge cup holes, hinged on the cabinet at its left or its right end, as you face the corner. L-shaped: a bi-fold pair, one door on each front; the first closes the inner corner and the second is hinged to it there. diagonal: one door.", "enum": ["none", "hinged left", "hinged right"], "default": "none" },
+            "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes. L-shaped: through the door that folds, beside the fold. diagonal: on the door's opening edge. knob: one hole. pull: two, 128 mm apart. Near the top on a floor unit (it has a plinth or is 450 mm deep or more), near the bottom on a wall unit, at mid-height on a door over 1200 mm.", "enum": ["none", "knob", "pull"], "default": "none" },
             "match": { "type": "string", "title": "Match selected", "description": "selected: height, depth, panel thickness and plinth are not read from this dialog but linked to the cabinet that is selected (select any part of it first). Change them on that cabinet later and this one follows.", "enum": ["no", "selected"], "default": "no" },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material on a selection.", "enum": ["Birch plywood", "MDF", "White melamine", "Oak", "none"], "default": "Birch plywood" },
-            "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
+            "place": { "type": "string", "title": "Place", "description": "origin: centred on the origin. right, left, above: against the cabinet that is selected (select any part of it first), backs flush. right is against its right side and left against its left side, whichever way it is turned.", "enum": ["origin", "right", "left", "above"], "default": "origin" },
             "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Corner, Corner 2.", "default": "Corner", "minLength": 1, "maxLength": 40 }
           }
         }
@@ -89,7 +92,7 @@
         "input_schema": { "type": "object", "properties": {} }
       }
     ],
-    "commands": ["solid.box", "solid.hole", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "model.mesh", "joint.as_built", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
+    "commands": ["solid.box", "solid.hole", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "model.mesh", "joint.as_built", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
   }
 }

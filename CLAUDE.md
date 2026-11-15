@@ -44,14 +44,17 @@ materials, joinery and cut lists.
 |---|---|
 | `plugin.json` | Manifest: entries, dialog schemas, allowed commands, version |
 | `src/lib.rs` | Entry dispatch (`execute`) and the wasm guest. The only place that runs commands |
-| `src/kit.rs` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
-| `src/cabinet.rs` | Box cabinet builder: parameters in, list of commands out |
-| `src/corner.rs` | L-shaped corner cabinet builder, written for a left corner and mirrored for a right one |
-| `src/joinery.rs` | Screw and dowel holes for an existing cabinet |
+| `src/<module>/mod.rs`, `tests.rs` | Each module below that has unit tests is a folder: the code in `mod.rs`, its tests in `tests.rs` beside it |
+| `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
+| `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
+| `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
+| `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
+| `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
-| `src/cutlist.rs` | Cut list and sheet estimate from `inspect.measure` |
-| `src/select.rs` | Finds the selected cabinet and its parts by body name |
-| `build.py` | Unit tests, wasm build, package, end-to-end tests, optional install |
+| `src/cutlist/` | Cut list and sheet estimate from `inspect.measure` |
+| `src/select/` | Finds the selected cabinet and its parts by body name |
+| `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
+| `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
 | `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it and re-render `docs/kitchen.png` when the plugin's output changes |
 
 The pattern: a module is plain Rust that turns input into `Vec<(command, json args)>`, so
@@ -68,12 +71,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 ## Build, test, install
 
     python build.py            # cargo test, wasm build, package, end-to-end tests
+    python build.py corner     # the same, but only the end-to-end tests named like that
     python build.py --install  # the same, then install into SolidCraft
     python examples/kitchen.py out.sc
 
 - Needs Rust with the `wasm32-unknown-unknown` target and `wasm-tools` (both in `~/.cargo/bin`,
   which is not on PATH in a fresh shell; `build.py` adds it).
-- The end-to-end tests in `build.py` run the built plugin through `solidcraft-cli` and check
+- The end-to-end tests in `tests/` run the built plugin through `solidcraft-cli` and check
   real geometry (bounding boxes, hole counts, joint moves). A new feature gets a case there.
 - `solidcraft-cli snapshot --in file.sc --out shot.png` renders a result; look at it before
   calling a geometry change done.
@@ -83,6 +87,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 
 - **Versions move slowly.** Bump only the last digit, in both `plugin.json` and `Cargo.toml`.
   0.1.0 was the first public release.
+- **Every fix and every function has a test that fails without it.** A bug gets a regression
+  test in the same commit as its fix: a unit test in the module's `tests.rs` for the logic,
+  and a case in `tests/` when the bug showed in real geometry (a joint turning the wrong
+  way, a cabinet placed wrong). No fix is done before its test exists.
 - **CI must stay green.** `.github/workflows/build.yml` runs `cargo fmt --check`, clippy with
   warnings as errors, and `python build.py` (unit and end-to-end tests against a downloaded
   SolidCraft CLI) on every push and pull request. Run `cargo fmt` before committing.
@@ -99,12 +107,15 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   is read in the design's unit, so an inch design would get 582 inches. Exceptions that take
   plain mm numbers only: `occurrence.move` `translate` and a joint's `point`.
 - **Cabinets are parametric.** Sizes become design parameters named `<Prefix>_width` and so on
-  (`cabinet::prefix` makes the name an identifier). Every panel and hole is an expression over
-  them. The numeric values in `cabinet.rs` are for validating input only. Counts (shelves,
+  (`kit::prefix` makes the name an identifier). Every panel and hole is an expression over
+  them. The numeric values in the builders are for validating input only. Counts (shelves,
   dividers, doors, drawers) are fixed when the cabinet is built.
 - **A cabinet is a component**, created inside whichever component is active, and the active
   component is restored afterwards. **A part that moves is a sub-component with a joint**
-  (doors: revolute, drawers: slider). New moving parts follow the same rule.
+  (doors: revolute, drawers: slider). New moving parts follow the same rule. A part can hang
+  on another moving part: a corner cabinet's second door is jointed to the first (`Door return
+  fold`, or `Door fold` when the pair hangs on the return), not to the cabinet, so it follows it.
+  The fold turns out of the cabinet, onto the first door's face.
 - **Body names are the data model.** Bodies are `<Cabinet> <Part>`; a cabinet is recognised by
   its `<Cabinet> Side L` body, and the longest matching cabinet name owns a body. Never name
   another part with the suffix ` Side L` (drawer box sides are `Left` and `Right` for that
@@ -135,7 +146,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 
 - The dialog cannot remember values or adapt to the Units choice: defaults are always mm.
 - The camera is not framed after a run; the user presses Fit.
-- `select.rs` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
+- `select` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
   a cabinet that is rotated off the axes.
 - The cut list measures a board by its world bounding box when the board fills that box, and
   otherwise (an open door, a turned cabinet) by `model.mesh` in the body's own component: one
@@ -149,9 +160,17 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
   `joint`, `Drawer n Front`), so renaming those breaks it.
 - The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.
+- A diagonal corner cabinet's front is always at 45 degrees: its door and plinth are components
+  turned by a fixed angle (`Kit::turn`), since an occurrence's turn cannot follow a parameter.
+  The depth at the return's end follows instead (`width - return + depth`). Their boards are
+  cut with `solid.chamfer`, picking the edge by a point in mm that is worked out twice: as an
+  expression for the board and as a number for the pick.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
-  see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). A box
-  cabinet can be placed beside its back leg, but not turned to continue its return.
+  see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). Place
+  puts a new cabinet against the selected one's Side R (right) or Side L (left), whichever
+  way that panel faces (`select::Cabinet::seat`, read from the boxes of the two sides and the
+  back): so one continues a corner cabinet's return turned a quarter, and a turned run carries
+  on turned, corner cabinets included. Quarter turns only.
 - Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
   A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
   parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the

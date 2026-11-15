@@ -173,10 +173,16 @@ impl Kit {
 
     /// A panel, or with `cut` its volume taken out of those bodies.
     pub fn panel(&self, part: &str, corner: [&str; 3], size: [&str; 3], cut: Option<&[String]>) {
+        self.panel_at(part, self.at(corner[0], corner[1], corner[2]), size, cut)
+    }
+
+    /// The same, with the corner as the app gets it: for a part built around its own
+    /// component's origin.
+    pub fn panel_at(&self, part: &str, corner: Value, size: [&str; 3], cut: Option<&[String]>) {
         let body = format!("{} {part}", self.name);
         let mut args = json!({
             "length": size[0], "width": size[1], "height": size[2],
-            "corner": self.at(corner[0], corner[1], corner[2]), "name": body,
+            "corner": corner, "name": body,
         });
         match cut {
             Some(targets) => {
@@ -200,11 +206,42 @@ impl Kit {
         ));
     }
 
+    // ponytail: the angle is a number, so only the position follows the parameters.
+    /// For a part that stands at an angle: it is built square around its own component's
+    /// origin, then this turns the component about Z and puts its origin at `at`.
+    pub fn turn(&self, part: &str, at: Value, degrees: i32) {
+        let name = &self.name;
+        self.push(("component.activate", json!({"component": name})));
+        self.push((
+            "occurrence.move",
+            json!({
+                "occurrence": format!("{name} {part}:1"), "translate": at,
+                "axis": [0, 0, 1], "angle": format!("{degrees} deg"),
+            }),
+        ));
+    }
+
+    /// Holds a part that has its own component but does not move.
+    pub fn fix(&self, part: &str) {
+        let name = &self.name;
+        self.push((
+            "joint.as_built",
+            json!({
+                "type": "rigid", "a": format!("{name}:1"), "b": format!("{name} {part}:1"),
+                "name": format!("{name} {part} fixed"),
+            }),
+        ));
+    }
+
     // ponytail: the joint's point is a number, where the part is now. It does not follow a
     // resize, and it is off if the cabinet is made inside a component that has been moved.
+    /// `on` is the moving part it hangs on (a bi-fold door on the door beside it), or `None`
+    /// for the cabinet itself.
+    #[allow(clippy::too_many_arguments)]
     pub fn close(
         &self,
         part: &str,
+        on: Option<&str>,
         kind: &str,
         joint: &str,
         point: [f64; 3],
@@ -213,11 +250,15 @@ impl Kit {
     ) {
         let name = &self.name;
         let (occurrence, joint) = (format!("{name} {part}:1"), format!("{name} {part} {joint}"));
+        let base = match on {
+            Some(other) => format!("{name} {other}:1"),
+            None => format!("{name}:1"),
+        };
         self.push(("component.activate", json!({"component": name})));
         self.push((
             "joint.as_built",
             json!({
-                "type": kind, "a": format!("{name}:1"), "b": occurrence, "name": joint,
+                "type": kind, "a": base, "b": occurrence, "name": joint,
                 "at": {"occurrence": occurrence, "point": point, "z": axis},
             }),
         ));
@@ -253,39 +294,4 @@ impl Kit {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_matched_cabinet_points_at_the_selected_ones_parameters() {
-        let design = json!({"params": [
-            {"name": "Base_1_height", "value": 900.0}, {"name": "Base_1_depth", "value": 400.0},
-            {"name": "Base_1_thickness", "value": 19.0}, {"name": "Base_1_width", "value": 800.0},
-        ]});
-        let link = matched("Base 1", &design).unwrap();
-        // the dialog's own height and plinth are ignored: Base 1 has no plinth
-        let p = json!({"name": "B", "height": 720, "plinth": 100, "_match": link});
-        let (commands, summary) = crate::cabinet::build(&p).unwrap();
-        let expression = |name: &str| {
-            let found = commands.iter().find(|c| c.1["name"] == name);
-            found.map(|c| c.1["expression"].clone())
-        };
-        assert_eq!(expression("B_height"), Some(json!("Base_1_height")));
-        assert_eq!(expression("B_thickness"), Some(json!("Base_1_thickness")));
-        assert_eq!(expression("B_width"), Some(json!("600 mm")));
-        assert_eq!(expression("B_plinth"), None);
-        assert_eq!(summary["size"]["height"], 900.0);
-        assert!(matched("Base 2", &design).is_err());
-    }
-
-    #[test]
-    fn a_taken_name_gets_the_next_free_number() {
-        let design = json!({"params": [
-            {"name": "Cabinet_width"}, {"name": "Cabinet_2_width"}, {"name": "Base_1_width"},
-        ]});
-        assert_eq!(free_name("Cabinet", &design), "Cabinet 3");
-        assert_eq!(free_name("Base 1", &design), "Base 2");
-        assert_eq!(free_name("Base_1", &design), "Base_1 2"); // same parameters as Base 1
-        assert_eq!(free_name(" Tall ", &design), "Tall");
-    }
-}
+mod tests;
