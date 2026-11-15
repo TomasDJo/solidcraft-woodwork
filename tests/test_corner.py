@@ -52,7 +52,7 @@ def test_l_shape_doors_and_mirror(approval):
 
 def test_hinged_on_the_return(approval):
     corner = CORNER
-    # Hinged on the return instead, with a pull on that door and shelf pins: the return door
+    # Hinged on the return instead, with a pull on the folding door and shelf pins: the return door
     # swings out and the back leg's door hangs on it, folded out in line.
     results = cli([plugin(approval, "corner", {**corner, "doors": "hinged left", "handles": "pull",
                                                "shelf_pins": True}),
@@ -64,8 +64,8 @@ def test_hinged_on_the_return(approval):
     shut = boxes(results[1])
     assert shut["C Door"] == [82, -130, 102, 498, -112, 718], shut["C Door"]
     assert shut["C Door return"] == [62, -448, 102, 80, -112, 718], shut["C Door return"]
-    # 2 hinge cups each; 2 screw holes on the return door only. 15 pin holes in each of 2 rows
-    assert cylinders(results[1], "C Door return") == 4 and cylinders(results[1], "C Door") == 2
+    # 2 hinge cups each; 2 screw holes on the door that folds only. 15 pin holes in each of 2 rows
+    assert cylinders(results[1], "C Door return") == 2 and cylinders(results[1], "C Door") == 4
     for part in ("Side L", "Side R", "Back", "Back return"):
         assert cylinders(results[1], f"C {part}") == 30, (part, cylinders(results[1], f"C {part}"))
     swung = boxes(results[4])

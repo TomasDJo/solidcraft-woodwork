@@ -34,6 +34,19 @@ fn an_l_of_boards_with_the_corner_cut_out() {
 }
 
 #[test]
+fn the_handle_is_on_the_door_that_folds() {
+    let handle_on = |doors: &str, part: &str| {
+        let p = json!({"doors": doors, "handles": "pull"});
+        let (commands, _) = build(&p).unwrap();
+        let wanted = format!("Cabinet {part} handle 1");
+        commands.iter().any(|c| c.1["name"] == wanted.as_str())
+    };
+    // hinged right in a left corner: the back leg's door is on the cabinet, the return's folds
+    assert!(handle_on("hinged right", "Door return") && !handle_on("hinged right", "Door"));
+    assert!(handle_on("hinged left", "Door") && !handle_on("hinged left", "Door return"));
+}
+
+#[test]
 fn a_right_corner_is_the_mirror_image() {
     let p = json!({"corner": "right", "doors": "hinged left"});
     let (commands, _) = build(&p).unwrap();

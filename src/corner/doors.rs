@@ -43,8 +43,8 @@ pub fn build(corner: &Corner, on_return: bool) {
     let (z0, z1) = (format!("{epl} + {gap}"), format!("{eh} - {gap}"));
     let door_h = format!("{eh} - {epl} - {}", mm(2.0 * DOOR_GAP));
     let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * DOOR_GAP);
-    // The first door carries the handle: upright on its opening edge, at the height the
-    // box cabinet would put it.
+    // The second door, the one that folds, carries the handle: upright beside the fold, at
+    // the height the box cabinet would put it.
     let handle_z = fittings::handle_height(
         handles,
         &z0,
@@ -53,9 +53,9 @@ pub fn build(corner: &Corner, on_return: bool) {
         fittings::floor_unit(plinth, d),
     );
     let screws = fittings::screw_heights(handles, &handle_z);
-    // Holes from a door's back face: hinge cups at `cup`, and on the first door the handle
+    // Holes from a door's back face: hinge cups at `cup`, and on the second door the handle
     // screws at `pull`. Both are x and y; `into` is the way into the door.
-    let holes = |part: &str, cup: [&str; 2], pull: [&str; 2], first: bool, into: [i32; 3]| {
+    let holes = |part: &str, cup: [&str; 2], pull: [&str; 2], second: bool, into: [i32; 3]| {
         let hole = |at: [&str; 2], z: &str, d: f64, depth: &str, what: String| {
             let position = kit.at(&corner.point(at[0]), at[1], z);
             fittings::hole(kit, part, position, into, d, depth, &what);
@@ -69,7 +69,7 @@ pub fn build(corner: &Corner, on_return: bool) {
                 format!("hinge cup {}", j + 1),
             );
         }
-        for (j, z) in screws.iter().enumerate().filter(|_| first) {
+        for (j, z) in screws.iter().enumerate().filter(|_| second) {
             hole(pull, z, HANDLE_D, et, format!("handle {}", j + 1));
         }
     };
@@ -95,7 +95,7 @@ pub fn build(corner: &Corner, on_return: bool) {
             "Door",
             [&cup_x, face_y],
             [&pull_x, face_y],
-            !on_return,
+            on_return,
             [0, -1, 0],
         );
     };
@@ -119,7 +119,7 @@ pub fn build(corner: &Corner, on_return: bool) {
             "Door return",
             [face_x, &cup_y],
             [face_x, &pull_y],
-            on_return,
+            !on_return,
             [flip, 0, 0],
         );
     };

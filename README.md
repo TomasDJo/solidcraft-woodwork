@@ -46,7 +46,7 @@ Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Mode
   a material, and can be placed, named and matched like the box cabinet. Two shapes:
   - **L-shaped**: two fronts at a right angle, with a bi-fold pair of doors. The first door
     is hinged on the cabinet and closes the inner corner; the second hangs on it there and
-    folds out onto its face, so the two swing out together.
+    folds out onto its face, so the two swing out together. The handle is on the second door.
   - **Diagonal**: one front straight across the corner at 45 degrees, with one door. The
     depth at the end of the return follows from the width and the return, and equals Depth
     when the two are the same.
