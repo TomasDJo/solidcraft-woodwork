@@ -40,6 +40,7 @@ pub fn door(corner: &Corner, on_return: bool) {
     let Corner {
         kit,
         handles,
+        handle_at,
         eh,
         et,
         epl,
@@ -96,6 +97,7 @@ pub fn door(corner: &Corner, on_return: bool) {
     }
     let handle_z = fittings::handle_height(
         handles,
+        handle_at,
         &z0,
         &z1,
         h - plinth,

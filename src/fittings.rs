@@ -136,22 +136,43 @@ pub fn screw_heights(handles: &str, handle_z: &str) -> Vec<String> {
     screws.collect()
 }
 
-// ponytail: where a door's handle sits is guessed from the cabinet: mid-height on a tall
-// door, near the top on a floor unit, else near the bottom as on a wall unit. A position
-// field in the dialog if the guess is wrong too often.
+/// The `handle_position` field: where on a door its handle sits.
+pub fn handle_position(p: &Value) -> Result<&str, String> {
+    let at = p.get("handle_position").and_then(Value::as_str);
+    match at.unwrap_or("auto") {
+        at @ ("auto" | "top" | "middle" | "bottom") => Ok(at),
+        _ => Err("handle_position must be auto, top, middle or bottom".into()),
+    }
+}
+
+// ponytail: on `auto` a door's handle is placed by a guess from the cabinet: mid-height on a
+// tall door, near the top on a floor unit, else near the bottom as on a wall unit.
 /// A floor unit has a plinth or is deep; a wall unit is shallow and has none.
 pub fn floor_unit(plinth: f64, depth: f64) -> bool {
     plinth > 0.0 || depth >= 450.0
 }
 
-/// The middle of the handle on a door from `z0` up to `z1`. `front_h` is the cabinet's height
-/// above its plinth, in mm.
-pub fn handle_height(handles: &str, z0: &str, z1: &str, front_h: f64, floor: bool) -> String {
+/// The middle of the handle on a door from `z0` up to `z1`, at `at`: top, middle, bottom or
+/// auto. `front_h` is the cabinet's height above its plinth, in mm.
+pub fn handle_height(
+    handles: &str,
+    at: &str,
+    z0: &str,
+    z1: &str,
+    front_h: f64,
+    floor: bool,
+) -> String {
     let half = if handles == "pull" { PULL / 2.0 } else { 0.0 };
     let end = mm(HANDLE_END + half);
-    match (front_h > 1200.0, floor) {
-        (true, _) => format!("({z0} + {z1}) / 2"),
-        (_, true) => format!("{z1} - {end}"),
+    let at = match at {
+        "auto" if front_h > 1200.0 => "middle",
+        "auto" if floor => "top",
+        "auto" => "bottom",
+        at => at,
+    };
+    match at {
+        "middle" => format!("({z0} + {z1}) / 2"),
+        "top" => format!("{z1} - {end}"),
         _ => format!("{z0} + {end}"),
     }
 }

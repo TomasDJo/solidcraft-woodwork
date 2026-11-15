@@ -79,6 +79,23 @@ fn drawers_replace_shelves() {
         "0 mm + 2 mm + 100 mm + 0 mm"
     );
     assert!(build(&json!({"width": 300, "doors": 2, "handles": "knob"})).is_err());
+    // the position can be chosen instead: the middle of a pull, 100 mm + half of 128 from the end
+    let height = |at: &str| {
+        let p = json!({"doors": 1, "handles": "pull", "handle_position": at});
+        let (commands, _) = build(&p).unwrap();
+        let hole = commands
+            .iter()
+            .find(|c| c.1["name"] == "Cabinet Door handle 1");
+        hole.unwrap().1["position"][2].as_str().unwrap().to_string()
+    };
+    assert_eq!(height("top"), "Cabinet_height - 2 mm - 164 mm + -64 mm");
+    assert_eq!(
+        height("middle"),
+        "(0 mm + 2 mm + Cabinet_height - 2 mm) / 2 + -64 mm"
+    );
+    assert_eq!(height("bottom"), "0 mm + 2 mm + 164 mm + -64 mm");
+    assert_eq!(height("auto"), height("top")); // 560 deep: a floor unit
+    assert!(build(&json!({"doors": 1, "handles": "knob", "handle_position": "side"})).is_err());
     assert!(build(&json!({"drawers": 2, "doors": 1})).is_err());
     assert!(build(&json!({"drawers": 8, "height": 400})).is_err());
 }

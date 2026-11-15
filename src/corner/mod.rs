@@ -29,6 +29,7 @@ struct Corner<'a> {
     right: bool,
     diagonal: bool,
     handles: &'a str,
+    handle_at: &'a str,
     a: f64,
     b: f64,
     d: f64,
@@ -59,6 +60,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         pins,
         on_return,
         handles,
+        handle_at,
         right,
         diagonal,
     } = input::read(&kit, p)?;
@@ -82,6 +84,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         right,
         diagonal,
         handles,
+        handle_at,
         a,
         b,
         d,

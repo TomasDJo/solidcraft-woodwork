@@ -28,3 +28,13 @@ def cylinders(measure, name):
 
 def volume(measure, name):
     return round(next(b for b in measure["bodies"] if b["name"] == name)["volume_mm3"])
+
+
+def faces(body):
+    return {"command": "model.faces", "params": {"body": body}}
+
+
+def handle_heights(faces):
+    """The heights of the 5 mm screw holes in a door, from `model.faces`: lowest first."""
+    holes = [f for f in faces["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 2.5) < 0.01]
+    return sorted(round(f["centroid"][2], 3) for f in holes)

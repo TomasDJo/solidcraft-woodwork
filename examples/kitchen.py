@@ -58,6 +58,7 @@ RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"] 
 RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "doors": 1, "handles": "pull"}
 WALL_CORNER = {**WHITE, **MATCH, "corner": "right", "width": 1000, "return": 1000, "height": 700, "depth": 320,
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
+               "handle_position": "middle",
                "place": "right"}
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,

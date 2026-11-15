@@ -44,6 +44,23 @@ fn the_handle_is_on_the_door_that_folds() {
     // hinged right in a left corner: the back leg's door is on the cabinet, the return's folds
     assert!(handle_on("hinged right", "Door return") && !handle_on("hinged right", "Door"));
     assert!(handle_on("hinged left", "Door") && !handle_on("hinged left", "Door return"));
+    // and at the height that is chosen, on both shapes
+    for (shape, part) in [("L-shaped", "Door return"), ("diagonal", "Door")] {
+        let height = |at: &str| {
+            let p = json!({"shape": shape, "doors": "hinged right", "handles": "knob",
+                "handle_position": at});
+            let (commands, _) = build(&p).unwrap();
+            let hole = named(&commands, &format!("Cabinet {part} handle 1"));
+            hole["position"][2].as_str().unwrap().to_string()
+        };
+        assert_eq!(height("top"), "Cabinet_height - 2 mm - 100 mm");
+        assert_eq!(
+            height("middle"),
+            "(0 mm + 2 mm + Cabinet_height - 2 mm) / 2"
+        );
+        assert_eq!(height("bottom"), "0 mm + 2 mm + 100 mm");
+    }
+    assert!(build(&json!({"doors": "hinged left", "handle_position": "side"})).is_err());
 }
 
 #[test]

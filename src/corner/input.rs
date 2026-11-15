@@ -19,6 +19,7 @@ pub struct Input<'a> {
     /// Which end the doors hang on, if there are doors.
     pub on_return: Option<bool>,
     pub handles: &'a str,
+    pub handle_at: &'a str,
     pub right: bool,
     pub diagonal: bool,
 }
@@ -61,6 +62,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         matches!(handles, "none" | "knob" | "pull"),
         "handles must be none, knob or pull",
     )?;
+    let handle_at = crate::fittings::handle_position(p)?;
 
     check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
     check(
@@ -117,6 +119,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         pins,
         on_return,
         handles,
+        handle_at,
         right,
         diagonal,
     })

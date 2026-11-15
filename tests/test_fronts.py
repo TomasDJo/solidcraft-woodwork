@@ -29,6 +29,22 @@ def test_handles(approval):
     assert cylinders(results[2], "H Door L") == 4 and cylinders(results[2], "K Drawer 2 Front") == 1
 
 
+def test_handle_position(approval):
+    # The door stands from z = 2 to 718. A pull's two holes are 128 mm apart, its middle 164 mm
+    # from the end; a knob is 100 mm from it.
+    for at, pull in (("top", [490, 618]), ("middle", [296, 424]), ("bottom", [102, 230]), ("auto", [490, 618])):
+        results = cli([plugin(approval, "cabinet", {"doors": 1, "handles": "pull", "handle_position": at}),
+                       faces("Cabinet Door")])
+        assert handle_heights(results[1]) == pull, (at, handle_heights(results[1]))
+    # Both corner shapes, with a knob: on the L it is on the door that folds.
+    for shape, door in (("L-shaped", "Cabinet Door return"), ("diagonal", "Cabinet Door")):
+        for at, knob in (("top", [618]), ("middle", [360]), ("bottom", [102])):
+            results = cli([plugin(approval, "corner", {"shape": shape, "doors": "hinged right", "handles": "knob",
+                                                       "handle_position": at}),
+                           faces(door)])
+            assert handle_heights(results[1]) == knob, (shape, at, handle_heights(results[1]))
+
+
 def test_joints(approval):
     # Joints: doors swing out on their hinges and a drawer slides out, in an inch design to
     # check the joint's point is not read in inches. The cabinet still moves as one piece.
