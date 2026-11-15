@@ -44,13 +44,15 @@ materials, joinery and cut lists.
 |---|---|
 | `plugin.json` | Manifest: entries, dialog schemas, allowed commands, version |
 | `src/lib.rs` | Entry dispatch (`execute`) and the wasm guest. The only place that runs commands |
-| `src/kit.rs` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
-| `src/cabinet.rs` | Box cabinet builder: parameters in, list of commands out |
-| `src/corner.rs` | L-shaped corner cabinet builder, written for a left corner and mirrored for a right one |
-| `src/joinery.rs` | Screw and dowel holes for an existing cabinet |
+| `src/<module>/mod.rs`, `tests.rs` | Each module below that has unit tests is a folder: the code in `mod.rs`, its tests in `tests.rs` beside it |
+| `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
+| `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
+| `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
+| `src/corner/` | L-shaped corner cabinet builder, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `doors.rs` the bi-fold pair |
+| `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
-| `src/cutlist.rs` | Cut list and sheet estimate from `inspect.measure` |
-| `src/select.rs` | Finds the selected cabinet and its parts by body name |
+| `src/cutlist/` | Cut list and sheet estimate from `inspect.measure` |
+| `src/select/` | Finds the selected cabinet and its parts by body name |
 | `build.py` | Unit tests, wasm build, package, end-to-end tests, optional install |
 | `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it and re-render `docs/kitchen.png` when the plugin's output changes |
 
@@ -99,8 +101,8 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   is read in the design's unit, so an inch design would get 582 inches. Exceptions that take
   plain mm numbers only: `occurrence.move` `translate` and a joint's `point`.
 - **Cabinets are parametric.** Sizes become design parameters named `<Prefix>_width` and so on
-  (`cabinet::prefix` makes the name an identifier). Every panel and hole is an expression over
-  them. The numeric values in `cabinet.rs` are for validating input only. Counts (shelves,
+  (`kit::prefix` makes the name an identifier). Every panel and hole is an expression over
+  them. The numeric values in the builders are for validating input only. Counts (shelves,
   dividers, doors, drawers) are fixed when the cabinet is built.
 - **A cabinet is a component**, created inside whichever component is active, and the active
   component is restored afterwards. **A part that moves is a sub-component with a joint**
@@ -137,7 +139,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 
 - The dialog cannot remember values or adapt to the Units choice: defaults are always mm.
 - The camera is not framed after a run; the user presses Fit.
-- `select.rs` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
+- `select` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
   a cabinet that is rotated off the axes.
 - The cut list measures a board by its world bounding box when the board fills that box, and
   otherwise (an open door, a turned cabinet) by `model.mesh` in the body's own component: one

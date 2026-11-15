@@ -4,6 +4,7 @@
 mod cabinet;
 mod corner;
 mod cutlist;
+mod fittings;
 mod joinery;
 mod kit;
 mod material;

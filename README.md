@@ -104,8 +104,11 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 
 - `plugin.json`: manifest. Entries, their input forms, and the app commands used.
 - `src/lib.rs`: entry dispatch and the wasm guest.
-- `src/cabinet.rs`, `src/corner.rs`, `src/joinery.rs`, `src/material.rs`, `src/cutlist.rs`: one
-  module per function, plain Rust with unit tests. `src/kit.rs` is what the two cabinet
-  builders share.
-- `src/select.rs`: finds the cabinet that is selected.
+- `src/cabinet/`, `src/corner/`, `src/joinery/`, `src/cutlist/`, `src/material.rs`: one module
+  per function, plain Rust. A folder holds the code in `mod.rs` (the box cabinet also has
+  `input.rs`, `doors.rs` and `drawers.rs`, the corner cabinet `doors.rs`) and its unit tests
+  in `tests.rs`.
+- `src/kit/` and `src/fittings.rs`: what the two cabinet builders share, the panels and
+  parameters, and the hardware (shelf pins, hinge cups, handles).
+- `src/select/`: finds the cabinet that is selected.
 - `build.py`: build, package and end-to-end test through `solidcraft-cli`.
