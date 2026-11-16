@@ -22,6 +22,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     pull (two, 128 mm apart). **Handle position** puts a door's handle near the top, in the
     middle or near the bottom; left on auto it is near the top on a floor unit and near the
     bottom on a wall unit. Drawer fronts get theirs in the middle.
+  - **Labels** writes each board's name on it, the name the cut list has, as text in a
+    sketch on the board's face. It stays in the middle of the board when the cabinet
+    changes size.
   - Every door and every drawer is a component of its own inside the cabinet, held by a
     joint: doors hinge open to 110 degrees, drawers slide out. Drive the joints to open them.
     A door turns about its front edge, as on a cup hinge, so it clears the door of the next

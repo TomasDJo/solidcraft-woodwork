@@ -8,6 +8,8 @@ use crate::Commands;
 use serde_json::{json, Value};
 use std::cell::RefCell;
 
+const LABEL_HEIGHT: f64 = 20.0; // of a board label's capitals
+
 pub fn num(p: &Value, key: &str, default: f64) -> Result<f64, String> {
     match p.get(key) {
         None | Some(Value::Null) => Ok(default),
@@ -89,6 +91,7 @@ pub fn matched(cabinet: &str, design: &Value) -> Result<Value, String> {
 pub struct Kit {
     link: Value,     // `_match`, or null
     existing: Value, // `_existing`: the parameters an edited cabinet already has, in mm
+    labels: bool,    // write each board's name and size on it
     pub name: String,
     pub prefix: String,
     unit: &'static str,
@@ -121,6 +124,7 @@ impl Kit {
             scale,
             link: p.get("_match").cloned().unwrap_or_default(),
             existing: p.get("_existing").cloned().unwrap_or_default(),
+            labels: p.get("labels").and_then(Value::as_bool).unwrap_or(false),
             centre: RefCell::new([mm(0.0), mm(0.0)]),
             commands: RefCell::default(),
             bodies: RefCell::default(),
@@ -205,10 +209,55 @@ impl Kit {
             }
             None => {
                 args["body_name"] = json!(body);
-                self.bodies.borrow_mut().push(body);
+                self.bodies.borrow_mut().push(body.clone());
             }
         }
         self.push(("solid.box", args));
+        if self.labels && cut.is_none() {
+            self.label(&body, &corner, size);
+        }
+    }
+
+    // ponytail: the name only. The size would have to be text built from parameters, and
+    // `number()` takes one parameter, not an expression: two more parameters a board.
+    /// A board's name, the one the cut list has, as text in a sketch on its face: in the
+    /// middle of it, where it stays when the cabinet changes size. Readable from the front,
+    /// from above or from the left, whichever way the board lies. A board is told from its
+    /// one size that is a thickness parameter; anything else gets no label.
+    fn label(&self, body: &str, corner: &Value, size: [&str; 3]) {
+        let thin = |i: &usize| {
+            size[*i].starts_with(&self.prefix)
+                && size[*i].ends_with("_thickness")
+                && !size[*i].contains(' ')
+        };
+        let [across] = (0..3).filter(thin).collect::<Vec<_>>()[..] else {
+            return;
+        };
+        let at = |i: usize| corner[i].as_str().unwrap_or_default().to_string();
+        let mid = |i: usize| format!("{} + ({}) / 2", at(i), size[i]);
+        let (origin, x_dir, y_dir) = match across {
+            0 => ([at(0), mid(1), mid(2)], [0, -1, 0], [0, 0, 1]),
+            1 => ([mid(0), at(1), mid(2)], [1, 0, 0], [0, 0, 1]),
+            _ => {
+                let top = format!("{} + {}", at(2), size[2]);
+                ([mid(0), mid(1), top], [1, 0, 0], [0, 1, 0])
+            }
+        };
+        self.push((
+            "sketch.create",
+            json!({
+                "plane": {"origin": origin, "x_dir": x_dir, "y_dir": y_dir},
+                "frame": "component", "name": format!("{body} label"),
+            }),
+        ));
+        self.push((
+            "sketch.text",
+            json!({
+                "text": body, "at": [0, 0], "height": mm(LABEL_HEIGHT),
+                "align": "center", "vertical_align": "middle",
+            }),
+        ));
+        self.push(("sketch.finish", json!({})));
     }
 
     /// A door or a drawer is a component of its own inside the cabinet, held by a joint, so it
@@ -372,7 +421,9 @@ impl Kit {
         commands.append(&mut last);
         let features: Vec<&Value> = commands
             .iter()
-            .filter(|c| c.0.starts_with("solid.") || c.0.starts_with("construct."))
+            .filter(|c| {
+                c.0.starts_with("solid.") || c.0.starts_with("construct.") || c.0 == "sketch.create"
+            })
             .map(|c| &c.1["name"])
             .collect();
         let group = json!({ "name": self.name, "features": features });

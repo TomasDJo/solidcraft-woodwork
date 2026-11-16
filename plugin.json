@@ -13,7 +13,7 @@
         "slots": [{ "kind": "menu", "name": "Cabinet" }, { "kind": "ribbon", "name": "Cabinet" }],
         "input_schema": {
           "type": "object",
-          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "handles", "handle_position", "match", "material", "place", "name"],
+          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "handles", "handle_position", "labels", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "width": { "type": "number", "title": "Width", "description": "Outside width.", "default": 600, "minimum": 4, "maximum": 5000 },
@@ -30,6 +30,7 @@
             "doors": { "type": "integer", "title": "Doors", "description": "Overlay doors with 35 mm hinge cup holes and 2 mm gaps: 0, 1, 2, or one per compartment (dividers + 1).", "default": 0, "minimum": 0, "maximum": 11 },
             "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes through the doors, on the opening side, and the drawer fronts.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "knob", "title": "Knob", "description": "One hole."}, {"const": "pull", "title": "Pull", "description": "Two holes, 128 mm apart."}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle holes go. Drawer fronts always get theirs in the middle.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Top on a floor unit, bottom on a wall unit, middle on a door over 1200 mm."}, {"const": "top", "title": "Top", "description": "100 mm from the top."}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom", "description": "100 mm from the bottom."}] },
+            "labels": { "type": "boolean", "title": "Labels", "description": "Writes each board's name on it, the name the cut list has.", "default": false },
             "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Select any part of it first. Resize that cabinet later and this one follows."}] },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
             "place": { "type": "string", "title": "Place", "description": "Right, left and above go against the selected cabinet: select any part of it first.", "default": "origin", "oneOf": [{"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
@@ -43,7 +44,7 @@
         "slots": [{ "kind": "menu", "name": "Corner cabinet" }, { "kind": "ribbon", "name": "Corner cabinet" }],
         "input_schema": {
           "type": "object",
-          "required": ["units", "corner", "shape", "width", "return", "depth", "height", "thickness", "shelves", "plinth", "shelf_pins", "doors", "handles", "handle_position", "match", "material", "place", "name"],
+          "required": ["units", "corner", "shape", "width", "return", "depth", "height", "thickness", "shelves", "plinth", "shelf_pins", "doors", "handles", "handle_position", "labels", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "corner": { "type": "string", "title": "Corner", "description": "Which corner of the room the cabinet is for.", "default": "left", "oneOf": [{"const": "left", "title": "Left", "description": "The corner is at the back left, and the return runs forward along the left wall."}, {"const": "right", "title": "Right", "description": "The mirror image."}] },
@@ -59,6 +60,7 @@
             "doors": { "type": "string", "title": "Doors", "description": "Overlay doors with 35 mm hinge cup holes. L-shaped: a bi-fold pair, the second door hinged to the first. Diagonal: one door.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "hinged left", "title": "Hinged left", "description": "Hinged at the cabinet's left end, as you face the corner."}, {"const": "hinged right", "title": "Hinged right", "description": "Hinged at its right end."}] },
             "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes. L-shaped: through the door that folds, beside the fold. Diagonal: on the door's opening edge.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "knob", "title": "Knob", "description": "One hole."}, {"const": "pull", "title": "Pull", "description": "Two holes, 128 mm apart."}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle holes go.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Top on a floor unit, bottom on a wall unit, middle on a door over 1200 mm."}, {"const": "top", "title": "Top", "description": "100 mm from the top."}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom", "description": "100 mm from the bottom."}] },
+            "labels": { "type": "boolean", "title": "Labels", "description": "Writes each board's name on it, the name the cut list has.", "default": false },
             "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Select any part of it first. Resize that cabinet later and this one follows."}] },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
             "place": { "type": "string", "title": "Place", "description": "Right, left and above go against the selected cabinet: select any part of it first.", "default": "origin", "oneOf": [{"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
@@ -72,7 +74,7 @@
         "slots": [{ "kind": "menu", "name": "Edit cabinet" }, { "kind": "ribbon", "name": "Edit cabinet" }],
         "input_schema": {
           "type": "object",
-          "required": ["corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position"],
+          "required": ["corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position", "labels"],
           "properties": {
             "shelves": { "type": "integer", "title": "Shelves", "description": "Empty: as it is.", "minimum": 0, "maximum": 20 },
             "dividers": { "type": "integer", "title": "Dividers", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 10 },
@@ -84,6 +86,7 @@
             "shelf_pins": { "type": "string", "title": "Shelf pin holes", "description": "Rows of 5 mm holes for the shelves.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "yes", "title": "Yes"}, {"const": "no", "title": "No"}] },
             "handles": { "type": "string", "title": "Handle holes", "description": "On doors and drawer fronts.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "none", "title": "None"}, {"const": "knob", "title": "Knob"}, {"const": "pull", "title": "Pull"}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle goes.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "auto", "title": "Auto"}, {"const": "top", "title": "Top"}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom"}] },
+            "labels": { "type": "string", "title": "Labels", "description": "Each board's name written on it.", "default": "keep", "oneOf": [{ "const": "keep", "title": "Keep" }, { "const": "yes", "title": "Yes" }, { "const": "no", "title": "No" }] },
             "plinth": { "type": "number", "title": "Plinth height", "description": "Empty: as it is. In the unit the cabinet was made in; 0 for none.", "minimum": 0, "maximum": 500 }
           }
         }
@@ -125,7 +128,7 @@
         }
       }
     ],
-    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "joint.as_built", "joint.create", "construct.axis.two_planes", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
+    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "joint.as_built", "joint.create", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
     "permissions": { "files": [{ "name": "cutlists", "read": false, "write": true }] },
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
   }

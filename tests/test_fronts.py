@@ -90,3 +90,19 @@ def test_hinges_follow_a_resize(approval):
         doors = lambda measure: {name: box for name, box in boxes(measure).items() if " Door" in name}
         assert doors(resized) == doors(made) and doors(made), (entry, params, doors(resized), doors(made))
 
+
+def test_labels(approval):
+    # Each flat board gets its name on it, as a sketch that survives a resize; the drawer
+    # boxes' thin boards and a cabinet made without the field get none.
+    inspect = {"command": "document.inspect", "params": {"bodies": False, "timeline": False}}
+    change = {"command": "parameters.change", "params": {"changes": {"Cabinet_width": "900 mm", "Cabinet_depth": "400 mm"}}}
+    for entry, params, wanted in (("cabinet", {"doors": 2, "plinth": 100}, 9), ("corner", {"doors": "hinged right"}, 9),
+                                  ("corner", {"shape": "diagonal", "doors": "hinged left", "plinth": 100}, 9)):
+        results = cli([plugin(approval, entry, {**params, "labels": True}), MEASURE, change, inspect, plugin(approval, "cutlist")])
+        sketches = {s["name"]: s["status"] for s in results[3]["sketches"]}
+        bodies = [b["name"] for b in results[1]["bodies"]]
+        assert sorted(sketches) == sorted(f"{body} label" for body in bodies), (entry, sorted(sketches), bodies)
+        assert set(sketches.values()) == {"solved"} and len(sketches) == wanted, (entry, sketches)
+        assert results[4]["result"]["boards"] == len(bodies)  # the cut list counts boards, not labels
+    results = cli([plugin(approval, "cabinet", {"doors": 2}), inspect])
+    assert results[1]["sketches"] == [], results[1]["sketches"]
