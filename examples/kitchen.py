@@ -9,7 +9,8 @@ It uses every function of the plugin:
 
 - Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth
 - Corner cabinet, at the right end of the base units and of the wall units
-- Place: each floor unit goes to the right of the one before it, by selecting that one
+- Place: each floor unit goes to the right of the one before it, by selecting that one, and is
+  held to it: widen `Base_1_width` and the units after it move along
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts

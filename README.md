@@ -36,12 +36,19 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     A door turns about its front edge, as on a cup hinge, so it clears the door of the next
     cabinet.
     The cabinet is grounded so they have something fixed to open against; unground it to
-    move it.
+    move it. A cabinet placed against another is held to that one instead, see Place.
   - **Place** puts it against the cabinet you have selected (any part of it): to the right,
     to the left, or on top, backs flush. That cabinet must stand square to the axes.
     Right is against that cabinet's right side and left against its left side, whichever
     way it stands: on the return's side of a corner cabinet the new one is turned a quarter
     and continues along the return, and the run carries on from there, corner cabinets too.
+    The new cabinet is held to that one by a joint (`Name link`), so a run stays together:
+    make a cabinet wider and the ones placed after it move along; make one higher and the
+    one on top of it rises. A cabinet stands on its own middle, so the first of a run grows
+    to both sides. Only the distance follows: a cabinet made deeper afterwards is not moved
+    back to keep the backs flush, and a cabinet at the end of a corner cabinet's return does
+    not move sideways when the corner cabinet gets wider. To move a cabinet out of a run,
+    delete its link.
   - Its sizes are design parameters (`Name_width`, `Name_height`, `Name_depth`,
     `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows,
     its doors' hinges included.

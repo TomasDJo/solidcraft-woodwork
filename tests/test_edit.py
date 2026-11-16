@@ -43,8 +43,9 @@ def test_shelves_and_handles_on_a_cabinet_that_was_moved_and_resized(approval):
     # its dowel holes were drilled again: as many in the new top as there were in the old
     assert cylinders(results[14], "A Top") == cylinders(results[7], "A Top") > 0, cylinders(results[14], "A Top")
     assert material["A Door L"] == "Oak" and material["A Shelf 3"] == "Birch plywood", material
-    # the cabinet matched to it still follows its height
-    assert boxes(results[16])["B Top"][5] == 900, boxes(results[16])["B Top"]
+    # the cabinet matched to it still follows its height, and being placed against it, is still
+    # held to it: it went along 500 back and 300 up, and stands against the side that is now at 400
+    assert boxes(results[16])["B Top"] == [418, 220, 300 + 882, 982, 780, 300 + 900], boxes(results[16])["B Top"]
     # and it is one component as before, grounded
     tree = results[17]["components"]
     assert [c["occurrences"][0]["grounded"] for c in tree if c["name"] == "A"] == [True], tree

@@ -68,6 +68,14 @@ fn a_cabinet_goes_against_the_side_it_is_placed_on() {
     );
     // left of it: square, along the back wall
     assert_eq!(corner.seat("left", 400.0, 560.0), ([-650.0, 170.0, 0.0], 0));
+    // what holds a placed cabinet to it: forward from the end of the return, half the return
+    // from the corner cabinet's middle; to the left from the end of its back leg, half its width
+    assert_eq!(corner.toward("right"), ([0.0, -1.0, 0.0], "return"));
+    assert_eq!(corner.toward("left"), ([-1.0, 0.0, 0.0], "width"));
+    assert_eq!(corner.toward("above"), ([0.0, 0.0, 1.0], "height"));
+    // a box cabinet is its width across, either way
+    assert_eq!(base.toward("right"), ([1.0, 0.0, 0.0], "width"));
+    assert_eq!(base.toward("left"), ([-1.0, 0.0, 0.0], "width"));
     // on top of it: a corner cabinet of the same footprint, not turned
     assert_eq!(corner.seat("above", 900.0, 900.0), ([0.0, 0.0, 720.0], 0));
 
@@ -85,6 +93,7 @@ fn a_cabinet_goes_against_the_side_it_is_placed_on() {
         turned.seat("right", 400.0, 560.0),
         ([170.0, -1050.0, 0.0], -90)
     );
+    assert_eq!(turned.toward("right"), ([0.0, -1.0, 0.0], "width"));
     assert_eq!(
         turned.seat("right", 900.0, 900.0),
         ([0.0, -1300.0, 0.0], -90)

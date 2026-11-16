@@ -112,6 +112,31 @@ pub fn placement(tree: &Value, name: &str) -> Result<(Value, Value, bool), Strin
     Ok((occurrence["parent"].clone(), json!(rows), grounded))
 }
 
+/// The links a cabinet is part of, from `component.list`'s and `joint.list`'s replies: each
+/// joint called `<cabinet> link` with `name`'s occurrence on one side, and whether it is the
+/// cabinet's own, the one that holds it to the cabinet it stands against (its second side).
+pub fn links(tree: &Value, joints: &Value, name: &str) -> Vec<(String, bool)> {
+    let components = tree["components"].as_array().into_iter().flatten();
+    let id = components
+        .filter(|c| c["name"] == name)
+        .find_map(|c| c["occurrences"].get(0))
+        .map(|o| &o["id"]);
+    let all = joints["joints"].as_array().into_iter().flatten();
+    all.filter(|j| Some(&j["a"]) == id || Some(&j["b"]) == id)
+        .filter_map(|j| Some((j["name"].as_str()?, Some(&j["b"]) == id)))
+        .filter(|(joint, _)| joint.ends_with(" link"))
+        .map(|(joint, own)| (joint.to_string(), own))
+        .collect()
+}
+
+/// The cabinets that are held to `name` by a link.
+pub fn hanging(tree: &Value, joints: &Value, name: &str) -> Vec<String> {
+    let others = links(tree, joints, name).into_iter().filter(|l| !l.1);
+    others
+        .filter_map(|l| l.0.strip_suffix(" link").map(String::from))
+        .collect()
+}
+
 /// Which of `bodies` have which material, from `inspect.measure`'s reply: so boards that got
 /// another material than the rest keep it.
 pub fn materials(measure: &Value, bodies: &[String]) -> BTreeMap<String, Vec<String>> {

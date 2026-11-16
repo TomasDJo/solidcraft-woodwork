@@ -37,6 +37,26 @@ fn reach(b: Plan, dir: Dir) -> f64 {
 }
 
 impl Cabinet {
+    /// The way from this cabinet to one placed against it (`place`: right, left or above), in
+    /// the world, and which of this cabinet's sizes lies that way: half of it is how far its
+    /// middle is from that side. A corner cabinet's return ends in one of its two sides, the
+    /// one that faces the way its back is thin.
+    pub fn toward(&self, place: &str) -> ([f64; 3], &'static str) {
+        let [l, r] = self.sides;
+        let (out_l, out_r) = (away(l, centre(r)), away(r, centre(l)));
+        let out = match place {
+            "right" => out_r,
+            "left" => out_l,
+            _ => return ([0.0, 0.0, 1.0], "height"),
+        };
+        let corner = out_l[0] * out_r[0] + out_l[1] * out_r[1] == 0.0;
+        let whole = [self.min[0], self.min[1], self.max[0], self.max[1]];
+        let thin = away(self.back, centre(whole));
+        let along_return = corner && out[0] * thin[0] + out[1] * thin[1] != 0.0;
+        let size = if along_return { "return" } else { "width" };
+        ([out[0], out[1], 0.0], size)
+    }
+
     /// Where a new cabinet of `width` x `depth` goes against this one, and its turn in
     /// degrees: the middle of its footprint in mm, standing on this one's floor or top.
     ///

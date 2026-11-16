@@ -112,3 +112,24 @@ fn boards_keep_their_own_material() {
     assert_eq!(found["Oak"], ["A Door"]);
     assert_eq!(found["MDF"], ["A Top"]);
 }
+
+#[test]
+fn a_cabinet_knows_its_links() {
+    // B stands against A and C against B: B's own link holds it to A, C's hangs on it
+    let tree = json!({"components": [
+        {"name": "A", "occurrences": [{"id": 2}]}, {"name": "B", "occurrences": [{"id": 12}]},
+        {"name": "C", "occurrences": [{"id": 22}]}, {"name": "B Door", "occurrences": [{"id": 14}]},
+    ]});
+    let joints = json!({"joints": [
+        {"name": "B link", "a": 2, "b": 12}, {"name": "C link", "a": 12, "b": 22},
+        {"name": "B Door hinge", "a": 12, "b": 14},
+    ]});
+    assert_eq!(
+        links(&tree, &joints, "B"),
+        [("B link".to_string(), true), ("C link".to_string(), false)]
+    );
+    assert_eq!(hanging(&tree, &joints, "B"), ["C"]);
+    assert_eq!(hanging(&tree, &joints, "A"), ["B"]);
+    assert!(links(&tree, &joints, "C").iter().all(|link| link.1));
+    assert!(hanging(&tree, &joints, "Gone").is_empty());
+}
