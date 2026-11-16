@@ -14,6 +14,7 @@ It uses every function of the plugin:
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
 - Joinery: confirmat screws in the floor units, dowels in the wall units
+- Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Cut list: written out as CSV, with the sheets and the hardware to buy
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
@@ -125,6 +126,8 @@ for cabinet in made:
         continue
     kind = "dowel" if cabinet["name"].startswith("Wall") else "confirmat"
     steps += [select(f"{cabinet['name']} Top"), build.plugin(approval, "joinery", {"type": kind})]
+# One more shelf in a wall unit that is already hung, has an oak door and is drilled for dowels.
+steps += [select("Wall 2 Top"), build.plugin(approval, "edit", {"shelves": 3})]
 steps += [step("joint.drive", joint=joint, value=value) for joint, value in OPEN.items()]
 steps += [step("select.clear"), step("component.activate", component="root"),
           build.plugin(approval, "cutlist")]

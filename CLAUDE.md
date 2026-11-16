@@ -40,7 +40,9 @@ materials, joinery and cut lists.
 - Inside a plugin run, `solid.hole` checks its `position` in the active component's own
   coordinates but stores it shifted by where that component stands in the world, so the hole
   misses on a component that has been moved (through the CLI directly it does not). Joinery
-  therefore moves the cabinet to the origin, drills, and moves it back.
+  therefore moves the cabinet to the origin, drills, and moves it back. (The plugin now cuts
+  cylinders instead of holes, see Rules. Whether a cylinder cut is shifted the same way has
+  not been tried, so Joinery still does this.)
 - A pattern of a hole can lose copies ("cut copies remove no material") when the component has
   been moved and another body stands where its local numbers point in the world. Joinery makes
   every hole a feature of its own for that reason; the shelf pin patterns have not shown it.
@@ -155,6 +157,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   own materials, and the joinery drilled again. A new dialog field must survive this round
   trip; a field Edit should offer goes into `edit::merge` and the `edit` schema, where an
   empty number or `keep` means unchanged.
+- **A hole is a cylinder cut, never `solid.hole`.** `fittings::hole`, the pin rows and Joinery
+  cut `solid.cylinder` with `operation: cut` out of the one board named in `targets`. A
+  `solid.hole` keeps the face it was picked on, and in a design with many cabinets that
+  face is not found again when the history is rebuilt (`the reference ... no longer exists
+  as it was picked`): deleting any cabinet in the sample kitchen failed the dowel holes of
+  two wall units, and Edit deletes a cabinet. It only showed in the whole kitchen, so
+  `tests/test_kitchen.py` builds it and deletes a cabinet.
 - **Body names are the data model.** Bodies are `<Cabinet> <Part>`; a cabinet is recognised by
   its `<Cabinet> Side L` body, and the longest matching cabinet name owns a body. Never name
   another part with the suffix ` Side L` (drawer box sides are `Left` and `Right` for that

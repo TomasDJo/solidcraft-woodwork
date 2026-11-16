@@ -44,7 +44,7 @@ fn options_add_parts() {
     let p = json!({"shelf_pins": true, "doors": 2, "height": 1200});
     let (commands, summary) = build(&p).unwrap();
     assert_eq!(count(&commands, "solid.pattern.rectangular"), 2);
-    assert_eq!(count(&commands, "solid.hole"), 2 + 2 * 3); // pin seeds, 3 cups per tall door
+    assert_eq!(count(&commands, "solid.cylinder"), 2 + 2 * 3); // pin seeds, 3 cups per tall door
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 8);
 }
 
@@ -61,12 +61,12 @@ fn drawers_replace_shelves() {
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 6 + 3 * 6);
     // a pull is two holes across the middle of each front, 128 mm apart
     let (commands, _) = build(&json!({"drawers": 3, "handles": "pull"})).unwrap();
-    assert_eq!(count(&commands, "solid.hole"), 6);
+    assert_eq!(count(&commands, "solid.cylinder"), 6);
     let hole = commands
         .iter()
         .find(|c| c.1["name"] == "Cabinet Drawer 1 Front handle 2");
     assert_eq!(
-        hole.unwrap().1["position"][0],
+        hole.unwrap().1["base"][0],
         "Cabinet_width/2 + 64 mm - Cabinet_width/2"
     );
     // a knob on a wall unit's door: one hole, low on the opening side
@@ -74,10 +74,7 @@ fn drawers_replace_shelves() {
     let hole = commands
         .iter()
         .find(|c| c.1["name"] == "Cabinet Door handle 1");
-    assert_eq!(
-        hole.unwrap().1["position"][2],
-        "0 mm + 2 mm + 100 mm + 0 mm"
-    );
+    assert_eq!(hole.unwrap().1["base"][2], "0 mm + 2 mm + 100 mm + 0 mm");
     assert!(build(&json!({"width": 300, "doors": 2, "handles": "knob"})).is_err());
     // the position can be chosen instead: the middle of a pull, 100 mm + half of 128 from the end
     let height = |at: &str| {
@@ -86,7 +83,7 @@ fn drawers_replace_shelves() {
         let hole = commands
             .iter()
             .find(|c| c.1["name"] == "Cabinet Door handle 1");
-        hole.unwrap().1["position"][2].as_str().unwrap().to_string()
+        hole.unwrap().1["base"][2].as_str().unwrap().to_string()
     };
     assert_eq!(height("top"), "Cabinet_height - 2 mm - 164 mm + -64 mm");
     assert_eq!(
@@ -115,10 +112,10 @@ fn dividers_make_equal_compartments() {
     assert!(named("Shelf 4.1").is_none());
     // pins: blind in the sides, through the dividers
     assert_eq!(
-        named("Divider 1 pins").unwrap().1["depth"],
+        named("Divider 1 pins").unwrap().1["height"],
         "Cabinet_thickness"
     );
-    assert!(named("Side L pins").unwrap().1["depth"]
+    assert!(named("Side L pins").unwrap().1["height"]
         .as_str()
         .unwrap()
         .starts_with("min("));
