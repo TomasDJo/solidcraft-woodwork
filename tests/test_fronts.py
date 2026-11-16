@@ -73,6 +73,17 @@ def test_joints(approval):
     assert box["E Drawer 2 Front"][1] == -300, box["E Drawer 2 Front"]
 
 
+def test_a_drawer_handle_follows_its_position(approval):
+    # Top, middle and bottom move a drawer front's handle holes too: 40 mm from the front's
+    # edge, or its middle, which auto also is. Two drawers in 720: the lower front is 2 to 359.
+    wanted = {"auto": 180.5, "middle": 180.5, "top": 359 - 40, "bottom": 2 + 40}
+    for at, height in wanted.items():
+        for handles, holes in (("knob", 1), ("pull", 2)):
+            results = cli([plugin(approval, "cabinet", {"drawers": 2, "handles": handles, "handle_position": at}),
+                           faces("Cabinet Drawer 1 Front")])
+            assert handle_heights(results[1]) == [height] * holes, (at, handles, handle_heights(results[1]))
+
+
 def test_hinges_follow_a_resize(approval):
     # A cabinet made small and then widened and deepened opens its doors exactly as one made
     # at that size does: the hinge is on the door's edge, not at a point from when it was made.
