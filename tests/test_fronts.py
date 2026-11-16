@@ -95,6 +95,23 @@ def test_a_bifold_handle_is_at_the_free_end(approval):
                 raise AssertionError(("no handle", params))
 
 
+def test_a_diagonal_door_is_made_closed_and_opens_outwards(approval):
+    # The diagonal door stands at 45 degrees. Whichever end it is hinged at, in either corner,
+    # it is made closed across the front, that is where its joint is at 0, and at 90 it has
+    # swung out of the cabinet, away from its middle.
+    for corner in ("left", "right"):
+        closed = {}
+        for doors in ("hinged left", "hinged right"):
+            made = plugin(approval, "corner", {"shape": "diagonal", "corner": corner, "doors": doors})
+            door = lambda *steps: boxes(cli([made, *steps, MEASURE])[-1])["Cabinet Door"]
+            away = lambda box: ((box[0] + box[3]) ** 2 + (box[1] + box[4]) ** 2) ** 0.5 / 2
+            closed[doors] = door()
+            assert door(drive("Cabinet Door hinge", 0)) == closed[doors], (corner, doors, closed[doors])
+            opened = door(drive("Cabinet Door hinge", 90))
+            assert away(opened) > away(closed[doors]) + 200, (corner, doors, opened, closed[doors])
+        assert closed["hinged left"] == closed["hinged right"], (corner, closed)
+
+
 def test_a_drawer_handle_follows_its_position(approval):
     # Top, middle and bottom move a drawer front's handle holes too: 40 mm from the front's
     # edge, or its middle, which auto also is. Two drawers in 720: the lower front is 2 to 359.

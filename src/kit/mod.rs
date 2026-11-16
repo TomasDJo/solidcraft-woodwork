@@ -367,7 +367,8 @@ impl Kit {
             "b": {"occurrence": format!("{name} {part}:1"), "axis": of_part},
         });
         if let Some(degrees) = own {
-            args["angle"] = json!(format!("{degrees} deg"));
+            // about the hinge's own axis, which points down when it opens the other way
+            args["angle"] = json!(format!("{} deg", degrees * turn));
         }
         self.push(("joint.create", args));
         self.push((
