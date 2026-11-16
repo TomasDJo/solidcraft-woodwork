@@ -87,7 +87,8 @@ pub fn matched(cabinet: &str, design: &Value) -> Result<Value, String> {
 }
 
 pub struct Kit {
-    link: Value, // `_match`, or null
+    link: Value,     // `_match`, or null
+    existing: Value, // `_existing`: the parameters an edited cabinet already has, in mm
     pub name: String,
     pub prefix: String,
     unit: &'static str,
@@ -119,6 +120,7 @@ impl Kit {
             unit,
             scale,
             link: p.get("_match").cloned().unwrap_or_default(),
+            existing: p.get("_existing").cloned().unwrap_or_default(),
             centre: RefCell::new([mm(0.0), mm(0.0)]),
             commands: RefCell::default(),
             bodies: RefCell::default(),
@@ -140,6 +142,18 @@ impl Kit {
         let id = format!("{}_{key}", self.prefix);
         // rounded: 24 in must not come back from mm as 23.999999999999996
         let value = (mm_value / self.scale * 1e6).round() / 1e6;
+        // A cabinet that is built again keeps its parameters, and whatever they are linked
+        // to: one is only touched when the edit gave it another value.
+        if let Some(now) = self.existing.get(key).and_then(Value::as_f64) {
+            if (now - mm_value).abs() > 1e-6 {
+                let expression = format!("{value} {}", self.unit);
+                self.push((
+                    "parameters.change",
+                    json!({"name": id, "expression": expression}),
+                ));
+            }
+            return id;
+        }
         // A matched size is the selected cabinet's parameter: change it there, both follow.
         let expression = match self.link["values"].get(key) {
             Some(_) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),

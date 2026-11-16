@@ -4,6 +4,7 @@
 mod cabinet;
 mod corner;
 mod cutlist;
+mod edit;
 mod fittings;
 mod joinery;
 mod kit;
@@ -18,6 +19,94 @@ pub type Commands = Vec<(&'static str, Value)>;
 
 /// Runs one app command and returns its result.
 pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
+
+/// Builds a cabinet as a component of its own inside whichever component is active, so that it
+/// moves as one piece and a room can hold its cabinets. Gives its boards their material, and
+/// leaves on the component how it was made, for Edit. Returns the summary and
+/// `component.create`'s reply.
+fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String> {
+    let (commands, mut summary) = match entry {
+        "cabinet" => cabinet::build(params)?,
+        _ => corner::build(params)?,
+    };
+    let made = run(
+        "component.create",
+        json!({"name": summary["name"], "grounded": false}),
+    )?;
+    summary["occurrence"] = made["occurrence"].clone();
+    for (command, args) in commands {
+        run(command, args)?;
+    }
+    let board = params["material"].as_str().unwrap_or("Birch plywood");
+    if board != "none" {
+        let bodies = summary["bodies"].as_array().into_iter().flatten();
+        let bodies: Vec<String> = bodies
+            .filter_map(|b| b.as_str())
+            .map(String::from)
+            .collect();
+        material::assign(run, board, &bodies)?;
+    }
+    let name = summary["name"].as_str().unwrap_or_default();
+    run(
+        "component.metadata.set",
+        json!({"component": name, "values": edit::remember(entry, params, name)}),
+    )?;
+    // Back to where the user was working.
+    run("component.activate", json!({"component": made["parent"]}))?;
+    Ok((summary, made))
+}
+
+/// Drills a cabinet's screw or dowel holes inside its component, and notes the kind on the
+/// component so that Edit can drill them again.
+fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
+    let design = run(
+        "document.inspect",
+        json!({"bodies": false, "timeline": "summary"}),
+    )?;
+    let (commands, origin) = joinery::build(found, &design, kind)?;
+    let before = run("component.list", json!({"compact": true}))?["active"].clone();
+    // In a plugin run the app shifts a hole's position by where the component stands,
+    // so a cabinet that has been moved is drilled on the origin and then put back.
+    // ponytail: this leaves the cabinet grounded, as the cabinet entry made it, also
+    // if the user had freed it since.
+    let occurrence = format!("{}:1", found.name);
+    let shift = |by: [f64; 3], run: Run| {
+        run(
+            "occurrence.move",
+            json!({"occurrence": occurrence, "translate": by}),
+        )
+    };
+    let away = origin.iter().any(|v| v.abs() > 1e-6);
+    if away {
+        run(
+            "occurrence.ground",
+            json!({"occurrence": occurrence, "grounded": false}),
+        )?;
+        shift(origin.map(|v| -v), run)?;
+    }
+    run("component.activate", json!({"component": found.name}))?;
+    for (command, args) in commands {
+        run(command, args)?;
+    }
+    run("component.activate", json!({"component": before}))?;
+    if away {
+        shift(origin, run)?;
+        run(
+            "occurrence.ground",
+            json!({"occurrence": occurrence, "grounded": true}),
+        )?;
+    }
+    let about = run("component.metadata", json!({"component": found.name}))?;
+    let mut ours = about["metadata"][edit::KEY].clone();
+    if ours.is_object() {
+        ours["joinery"] = json!(kind);
+        run(
+            "component.metadata.set",
+            json!({"component": found.name, "values": { edit::KEY: ours }}),
+        )?;
+    }
+    Ok(())
+}
 
 /// Writes a file into a folder the user approved at install: folder grant, file name, bytes.
 pub type Write<'a> = &'a mut dyn FnMut(&str, &str, &[u8]) -> Result<(), String>;
@@ -69,31 +158,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     beside = Some(found);
                 }
             }
-            let (commands, mut summary) = match entry {
-                "cabinet" => cabinet::build(&params)?,
-                _ => corner::build(&params)?,
-            };
-            // The cabinet is a component of its own, inside whichever component is active:
-            // it moves as one piece, and a room can hold its cabinets.
-            let made = run(
-                "component.create",
-                json!({"name": summary["name"], "grounded": false}),
-            )?;
-            summary["occurrence"] = made["occurrence"].clone();
-            for (command, args) in commands {
-                run(command, args)?;
-            }
-            let board = params["material"].as_str().unwrap_or("Birch plywood");
-            if board != "none" {
-                let bodies = summary["bodies"].as_array().into_iter().flatten();
-                let bodies: Vec<String> = bodies
-                    .filter_map(|b| b.as_str())
-                    .map(String::from)
-                    .collect();
-                material::assign(run, board, &bodies)?;
-            }
-            // Back to where the user was working.
-            run("component.activate", json!({"component": made["parent"]}))?;
+            let (mut summary, made) = make(entry, &params, run)?;
             if let Some(other) = beside {
                 // Against that cabinet's side, or on top of it, turned the way it is turned.
                 let size = |key: &str| summary["size"][key].as_f64().unwrap_or(0.0);
@@ -116,48 +181,80 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             )?;
             Ok(summary)
         }
+        "edit" => {
+            // The selected cabinet, built again where it stands with some of its values
+            // changed. Its parameters stay, so what is linked to them still follows.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let measure = run("inspect.measure", json!({}))?;
+            let name = select::cabinet(&design, &measure)?.name;
+            let about = run("component.metadata", json!({"component": name}))?;
+            let (entry, params) = edit::merge(&about["metadata"][edit::KEY], params, &design)
+                .map_err(|e| format!("`{name}`: {e}"))?;
+            // Checked before anything is taken away.
+            match entry.as_str() {
+                "cabinet" => cabinet::build(&params)?,
+                _ => corner::build(&params)?,
+            };
+            let tree = run("component.list", json!({}))?;
+            let (parent, matrix, grounded) = edit::placement(&tree, &name)?;
+            let materials = edit::materials(&measure, &select::parts(&measure, &name));
+            run("component.activate", json!({"component": parent}))?;
+            let gone = run("component.delete", json!({"component": name}))?;
+            let (mut summary, made) = make(&entry, &params, run)?;
+            // Boards that had another material than the rest get it back.
+            for (material, bodies) in materials {
+                let still: Vec<&String> = (bodies.iter())
+                    .filter(|b| {
+                        summary["bodies"]
+                            .as_array()
+                            .is_some_and(|all| all.contains(&json!(b)))
+                    })
+                    .collect();
+                if !still.is_empty() {
+                    run(
+                        "material.assign",
+                        json!({"bodies": still, "material": material}),
+                    )?;
+                }
+            }
+            // Its screw or dowel holes went with the old boards: drilled again, before it is
+            // put back where it stood.
+            if let Some(kind) = about["metadata"][edit::KEY]["joinery"].as_str() {
+                let found = select::named(&run("inspect.measure", json!({}))?, &name)?;
+                drill(&found, kind, run)?;
+                summary["joinery"] = json!(kind);
+            }
+            run(
+                "occurrence.move",
+                json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
+            )?;
+            run(
+                "occurrence.ground",
+                json!({"occurrence": made["occurrence"], "grounded": grounded}),
+            )?;
+            // Back to where the user was working, unless that was inside the old cabinet.
+            let inside = gone["deleted"]
+                .as_array()
+                .is_some_and(|ids| ids.contains(&tree["active"]));
+            if !inside {
+                run("component.activate", json!({"component": tree["active"]}))?;
+            }
+            summary["edited"] = json!(true);
+            Ok(summary)
+        }
         "joinery" => {
             // Screw or dowel holes at the corners of the selected cabinet, drilled inside its
             // component.
             let design = run(
                 "document.inspect",
-                json!({"bodies": false, "timeline": "summary"}),
+                json!({"bodies": false, "timeline": false}),
             )?;
             let found = select::cabinet(&design, &run("inspect.measure", json!({}))?)?;
             let kind = params["type"].as_str().unwrap_or("confirmat");
-            let (commands, origin) = joinery::build(&found, &design, kind)?;
-            let before = run("component.list", json!({"compact": true}))?["active"].clone();
-            // In a plugin run the app shifts a hole's position by where the component stands,
-            // so a cabinet that has been moved is drilled on the origin and then put back.
-            // ponytail: this leaves the cabinet grounded, as the cabinet entry made it, also
-            // if the user had freed it since.
-            let occurrence = format!("{}:1", found.name);
-            let shift = |by: [f64; 3], run: Run| {
-                run(
-                    "occurrence.move",
-                    json!({"occurrence": occurrence, "translate": by}),
-                )
-            };
-            let away = origin.iter().any(|v| v.abs() > 1e-6);
-            if away {
-                run(
-                    "occurrence.ground",
-                    json!({"occurrence": occurrence, "grounded": false}),
-                )?;
-                shift(origin.map(|v| -v), run)?;
-            }
-            run("component.activate", json!({"component": found.name}))?;
-            for (command, args) in commands {
-                run(command, args)?;
-            }
-            run("component.activate", json!({"component": before}))?;
-            if away {
-                shift(origin, run)?;
-                run(
-                    "occurrence.ground",
-                    json!({"occurrence": occurrence, "grounded": true}),
-                )?;
-            }
+            drill(&found, kind, run)?;
             Ok(json!({"cabinet": found.name, "type": kind, "joints": 4}))
         }
         "material" => {

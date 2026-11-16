@@ -32,3 +32,23 @@ fn a_taken_name_gets_the_next_free_number() {
     assert_eq!(free_name("Base_1", &design), "Base_1 2"); // same parameters as Base 1
     assert_eq!(free_name(" Tall ", &design), "Tall");
 }
+
+#[test]
+fn a_cabinet_built_again_keeps_its_parameters() {
+    // `_existing` has the parameters the design already holds, in mm.
+    let p = json!({"name": "A", "units": "in", "_existing": {"width": 609.6, "plinth": 100.0}});
+    let kit = Kit::new(&p).unwrap();
+    assert_eq!(kit.parameter("width", 609.6, "w"), "A_width"); // as it is: left alone
+    kit.parameter("plinth", 127.0, "p"); // another value: changed, not added again
+    kit.parameter("depth", 508.0, "d"); // new: added
+    let (commands, _) = kit.finish(vec![], [0.0; 3]);
+    let made: Vec<_> = commands
+        .iter()
+        .filter(|c| c.0.starts_with("parameters."))
+        .collect();
+    assert_eq!(made.len(), 2);
+    assert_eq!(made[0].0, "parameters.change");
+    assert_eq!(made[0].1, json!({"name": "A_plinth", "expression": "5 in"}));
+    assert_eq!(made[1].0, "parameters.add");
+    assert_eq!(made[1].1["name"], "A_depth");
+}

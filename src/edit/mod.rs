@@ -1,0 +1,135 @@
+//! Changing a cabinet after it is made. Its dialog values are remembered on its component, so
+//! Edit can build it again with some of them changed, in the same place.
+
+use crate::kit;
+use serde_json::{json, Map, Value};
+use std::collections::BTreeMap;
+
+/// Our key in a component's metadata.
+pub const KEY: &str = "io.github.tomasdjo.woodwork";
+
+/// The sizes that are design parameters: on an edit they are read from the design, where the
+/// user may have changed them, not from what was remembered.
+const SIZES: [&str; 7] = [
+    "width",
+    "height",
+    "depth",
+    "thickness",
+    "back_thickness",
+    "plinth",
+    "return",
+];
+
+/// What a cabinet's component remembers, as `component.metadata.set` takes it: the entry that
+/// made it and the values it was made with. Where it was placed and what it was matched to
+/// are not part of that.
+pub fn remember(entry: &str, params: &Value, name: &str) -> Value {
+    let mut params = params.as_object().cloned().unwrap_or_default();
+    for key in ["place", "match", "_match", "_existing"] {
+        params.remove(key);
+    }
+    params.insert("name".into(), json!(name));
+    json!({ KEY: {"entry": entry, "version": env!("CARGO_PKG_VERSION"), "params": params} })
+}
+
+/// The entry and the values to build a cabinet again with: what it `remembered`, its sizes as
+/// they are in the design now, and the fields of the Edit dialog that were filled in.
+/// `design` is `document.inspect`'s reply. `_existing` in the result tells `Kit` which
+/// parameters the design already has, in mm.
+pub fn merge(
+    remembered: &Value,
+    changes: &Value,
+    design: &Value,
+) -> Result<(String, Value), String> {
+    let (Some(entry), Some(params)) = (
+        remembered["entry"].as_str(),
+        remembered["params"].as_object(),
+    ) else {
+        return Err("it does not remember how it was made: only a cabinet made by Woodwork 0.1.7 or later can be edited".into());
+    };
+    let corner = entry == "corner";
+    let mut params = params.clone();
+    let scale = if params.get("units") == Some(&json!("in")) {
+        25.4
+    } else {
+        1.0
+    };
+    let prefix = kit::prefix(params["name"].as_str().unwrap_or_default());
+    let mut existing = Map::new();
+    for key in SIZES {
+        let id = format!("{prefix}_{key}");
+        let all = design["params"].as_array().into_iter().flatten();
+        let found = all.into_iter().find(|p| p["name"] == id.as_str());
+        if let Some(mm) = found.and_then(|p| p["value"].as_f64()) {
+            params.insert(key.into(), json!((mm / scale * 1e6).round() / 1e6));
+            existing.insert(key.into(), json!(mm));
+        }
+    }
+    for (key, value) in changes.as_object().into_iter().flatten() {
+        if value.is_null() || value == "keep" {
+            continue;
+        }
+        let only = |wanted: bool, kind: &str| match corner == wanted {
+            true => Ok(()),
+            false => Err(format!("`{key}` is only for a {kind}")),
+        };
+        let (to, value) = match key.as_str() {
+            "shelves" | "handles" | "handle_position" | "plinth" => (key.as_str(), value.clone()),
+            "shelf_pins" => (key.as_str(), json!(value == "yes")),
+            "doors" | "dividers" | "drawers" | "back" => {
+                only(false, "box cabinet")?;
+                (key.as_str(), value.clone())
+            }
+            "shape" => {
+                only(true, "corner cabinet")?;
+                (key.as_str(), value.clone())
+            }
+            "corner_doors" => {
+                only(true, "corner cabinet")?;
+                ("doors", value.clone())
+            }
+            _ => return Err(format!("`{key}` cannot be edited")),
+        };
+        params.insert(to.into(), value);
+    }
+    params.insert("_existing".into(), Value::Object(existing));
+    Ok((entry.into(), Value::Object(params)))
+}
+
+/// Where a cabinet's component stands, from `component.list`'s reply: the component it is in,
+/// its placement there as `occurrence.move` takes it in `to_matrix`, and whether it is grounded.
+pub fn placement(tree: &Value, name: &str) -> Result<(Value, Value, bool), String> {
+    let components = tree["components"].as_array().into_iter().flatten();
+    let occurrence = components
+        .filter(|c| c["name"] == name)
+        .find_map(|c| c["occurrences"].get(0))
+        .ok_or(format!("`{name}` has no component"))?;
+    // The list gives the placement with its translation in the last row; the move wants it
+    // in the last column.
+    let at = |row: usize, column: usize| occurrence["transform"][column][row].clone();
+    let rows: Vec<Vec<Value>> = (0..3).map(|r| (0..4).map(|c| at(r, c)).collect()).collect();
+    let grounded = occurrence["grounded"].as_bool().unwrap_or(true);
+    Ok((occurrence["parent"].clone(), json!(rows), grounded))
+}
+
+/// Which of `bodies` have which material, from `inspect.measure`'s reply: so boards that got
+/// another material than the rest keep it.
+pub fn materials(measure: &Value, bodies: &[String]) -> BTreeMap<String, Vec<String>> {
+    let mut by_material: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for body in measure["bodies"].as_array().into_iter().flatten() {
+        let (Some(name), Some(material)) = (body["name"].as_str(), body["material"].as_str())
+        else {
+            continue;
+        };
+        if material != "Default" && bodies.iter().any(|b| b == name) {
+            by_material
+                .entry(material.into())
+                .or_default()
+                .push(name.into());
+        }
+    }
+    by_material
+}
+
+#[cfg(test)]
+mod tests;
