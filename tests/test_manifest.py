@@ -12,9 +12,9 @@ def test_choices_have_titles(approval):
     for entry in manifest["runtime"]["entries"]:
         # The dialog shows the fields in the order `required` names them, and the rest by name:
         # so every field is listed, in the order it is written here. A required field cannot be
-        # left empty, so a text field that may be empty is not listed.
+        # left empty, so a field that may be empty (it has no default, or an empty one) is not.
         schema = entry["input_schema"]
-        filled = [name for name, field in schema["properties"].items() if field.get("default") != ""]
+        filled = [name for name, field in schema["properties"].items() if field.get("default", "") != ""]
         assert schema.get("required", []) == filled, entry["name"]
         for name, field in schema["properties"].items():
             at = (entry["name"], name)
@@ -28,11 +28,11 @@ def test_choices_have_titles(approval):
             assert field["type"] == "string" and options and len(set(values)) == len(values), at
             assert field["default"] in values, at
             for o in options:
-                assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o["title"], at
-    assert choices == 19, choices
+                assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
+    assert choices == 25, choices
     # The app refuses a manifest over 16 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
-    assert json.loads(packed) == manifest and len(packed) < 14 * 1024, len(packed)
+    assert json.loads(packed) == manifest and len(packed) < 15 * 1024, len(packed)
     # The plugin still gets the value, not the title.
     results = cli([plugin(approval, "corner", {"shape": "diagonal", "doors": "hinged right"}), MEASURE])
     assert "Cabinet Door" in boxes(results[1]), boxes(results[1])

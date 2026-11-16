@@ -55,6 +55,12 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   - **Diagonal**: one front straight across the corner at 45 degrees, with one door. The
     depth at the end of the return follows from the width and the return, and equals Depth
     when the two are the same.
+- **Edit cabinet** changes a cabinet after it is made: select any part of it, fill in only
+  what should change (shelves, dividers, doors, drawers, back, shelf pin holes, handles,
+  plinth, a corner cabinet's shape) and leave the rest empty or on Keep. The cabinet is built
+  again where it stands, under the same name. Its sizes stay as they are in Parameters, its
+  doors keep their material, its joinery is drilled again, and cabinets matched to it still
+  follow. Doors and drawers come back closed. Works on cabinets made by 0.1.7 or later.
 - **Joinery** drills the selected cabinet where its sides meet the bottom and top: holes for
   7 x 50 confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their number is set when they are drilled.
 - **Material** gives the selected cabinet, or only the selected parts (the doors, say), a

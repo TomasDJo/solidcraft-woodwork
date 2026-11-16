@@ -122,7 +122,11 @@ pub fn cabinet(design: &Value, measure: &Value) -> Result<Cabinet, String> {
     let picked = picked(design);
     let picked = picked.first().ok_or("select a part of a cabinet first")?;
     let name = owner(measure, picked).ok_or(format!("`{picked}` is not part of a cabinet"))?;
+    named(measure, name)
+}
 
+/// The cabinet with that name.
+pub fn named(measure: &Value, name: &str) -> Result<Cabinet, String> {
     // ponytail: world bounding box, so this is only right for a cabinet that still stands
     // square to the axes. Read the component's placement if turned cabinets matter.
     let (mut min, mut max) = ([f64::INFINITY; 3], [f64::NEG_INFINITY; 3]);

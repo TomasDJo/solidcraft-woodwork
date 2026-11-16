@@ -60,6 +60,7 @@ materials, joinery and cut lists.
 | `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
+| `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list and sheet estimate from `inspect.measure` |
@@ -74,7 +75,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `joinery`, `material` (all edit) and `cutlist` (read).
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material` (all edit) and `cutlist` (read).
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -131,6 +132,16 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   on another moving part: a corner cabinet's second door is jointed to the first (`Door return
   fold`, or `Door fold` when the pair hangs on the return), not to the cabinet, so it follows it.
   The fold turns out of the cabinet, onto the first door's face.
+- **A cabinet remembers how it was made.** `make` in `lib.rs` stores the entry and the dialog
+  values on the cabinet's component (`edit::remember`, metadata key
+  `io.github.tomasdjo.woodwork`; Joinery adds its kind there). Edit reads them, takes the
+  sizes from the design's parameters instead, applies the filled-in fields, deletes the
+  component and builds it again: same name, same parameters (`Kit` gets them as `_existing`
+  and only changes one whose value the edit changed, so links survive), same placement
+  (`component.list`'s transform, transposed for `occurrence.move`'s `to_matrix`), the boards'
+  own materials, and the joinery drilled again. A new dialog field must survive this round
+  trip; a field Edit should offer goes into `edit::merge` and the `edit` schema, where an
+  empty number or `keep` means unchanged.
 - **Body names are the data model.** Bodies are `<Cabinet> <Part>`; a cabinet is recognised by
   its `<Cabinet> Side L` body, and the longest matching cabinet name owns a body. Never name
   another part with the suffix ` Side L` (drawer box sides are `Left` and `Right` for that
