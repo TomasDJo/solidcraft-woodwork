@@ -153,6 +153,11 @@ fn a_diagonal_front_is_one_turned_door() {
     assert_eq!(turn, 1);
     let joint = named(&commands, "Cabinet Door hinge");
     assert_eq!(joint["angle"], "45 deg");
+    // hinged at the other end the axis points down, and the door's turn about it is the other way
+    let p = json!({"shape": "diagonal", "doors": "hinged left"});
+    let (other, _) = build(&p).unwrap();
+    assert_eq!(hinge(&other, "Cabinet Door hinge").2, -1);
+    assert_eq!(named(&other, "Cabinet Door hinge")["angle"], "-45 deg");
     // its own line is along the door, and made before the door is turned
     let own = named(&commands, "Cabinet Door hinge axis");
     assert_eq!(own["b"]["plane"]["origin"][1], "-2 mm - Cabinet_thickness");
