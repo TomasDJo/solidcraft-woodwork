@@ -17,7 +17,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Cabinet** builds a box carcass: sides, top, bottom, shelves, back and optional plinth.
   Vertical dividers split it into equal compartments, each with the same shelves.
   Options: back in a groove or overlaid, 32 mm shelf pin holes, overlay doors with hinge cup
-  holes (one, two, or one per compartment). Each panel is an ordinary named body.
+  holes (one, two, or one per compartment). **First door hinged** sets the side the first
+  door is hinged on, left or right; the next ones alternate, and two doors always open from
+  the middle. Each panel is an ordinary named body.
   The cabinet stands on Z = 0, centred on the origin.
   - It is a component of its own, inside whichever component is active, so it moves as one
     piece and a room component can hold its cabinets.
@@ -72,7 +74,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     depth at the end of the return follows from the width and the return, and equals Depth
     when the two are the same.
 - **Edit cabinet** changes a cabinet after it is made: select any part of it, fill in only
-  what should change (shelves, dividers, doors, drawers, back, shelf pin holes, handles,
+  what should change (shelves, dividers, doors, the side the first door is hinged on, drawers, back, shelf pin holes, handles,
   plinth, a corner cabinet's shape) and leave the rest empty or on Keep. The cabinet is built
   again where it stands, under the same name. Its sizes stay as they are in Parameters, its
   doors keep their material, its joinery is drilled again, and cabinets matched to it still

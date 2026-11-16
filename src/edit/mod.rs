@@ -76,7 +76,7 @@ pub fn merge(
         let (to, value) = match key.as_str() {
             "shelves" | "handles" | "handle_position" | "plinth" => (key.as_str(), value.clone()),
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
-            "doors" | "dividers" | "drawers" | "back" => {
+            "doors" | "dividers" | "drawers" | "back" | "door_hinge" => {
                 only(false, "box cabinet")?;
                 (key.as_str(), value.clone())
             }

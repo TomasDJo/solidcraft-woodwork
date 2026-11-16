@@ -29,7 +29,7 @@ fn an_edit_keeps_what_is_not_changed() {
         "A",
     );
     let changes = json!({"shelves": 3, "doors": null, "handles": "keep", "shelf_pins": "yes",
-        "labels": "no"});
+        "labels": "no", "door_hinge": "right"});
     let (entry, params) = merge(&made[KEY], &changes, &design()).unwrap();
     assert_eq!(entry, "cabinet");
     assert_eq!(params["shelves"], 3);
@@ -37,6 +37,7 @@ fn an_edit_keeps_what_is_not_changed() {
     assert_eq!(params.get("handles"), None); // keep: as it was, the default
     assert_eq!(params["shelf_pins"], true);
     assert_eq!(params["labels"], false);
+    assert_eq!(params["door_hinge"], "right");
     // the width is the design's, where it was changed since, and its parameter is kept
     assert_eq!(params["width"], 800.0);
     assert_eq!(

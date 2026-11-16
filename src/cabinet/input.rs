@@ -23,6 +23,7 @@ pub struct Input<'a> {
     pub back: &'a str,
     pub handles: &'a str,
     pub handle_at: &'a str,
+    pub hinge_right: bool, // the first door is hinged on its right
     /// One compartment's width, and the height between the bottom and top panels.
     pub cell_w: f64,
     pub clear_h: f64,
@@ -133,6 +134,15 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "handles must be none, knob or pull",
     )?;
     let handle_at = crate::fittings::handle_position(p)?;
+    let hinge_right = match p
+        .get("door_hinge")
+        .and_then(Value::as_str)
+        .unwrap_or("left")
+    {
+        "left" => false,
+        "right" => true,
+        _ => return Err("door_hinge must be left or right".into()),
+    };
     check(
         handles == "none" || doors == 0.0 || (w - (doors + 1.0) * DOOR_GAP) / doors >= 150.0,
         "doors are too narrow for handles",
@@ -170,6 +180,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         back,
         handles,
         handle_at,
+        hinge_right,
         cell_w,
         clear_h,
         shelf_d,
