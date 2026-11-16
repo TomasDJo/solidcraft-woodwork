@@ -20,19 +20,20 @@ SCENE = HERE.parent / "dist" / "banner.sc"
 SHOT = HERE.parent / "dist" / "banner-shot.png"
 OUT = HERE / "banner.png"
 SIZE = (1280, 640)
-CAMERA = '{"target":[1100,-350,400],"yaw":0.5,"pitch":0.42,"distance":6800,"fov":0.5}'
+CAMERA = '{"target":[1100,-350,400],"yaw":0.3,"pitch":0.4,"distance":6800,"fov":0.5}'
 
 UNIT = {"material": "White melamine", "height": 870, "depth": 560, "plinth": 120, "handles": "pull"}
 NEXT = {**UNIT, "match": "selected", "place": "right"}
 # Left to right; each is placed against the one before it, the last along the corner's return.
 RUN = [
-    ("cabinet", "Drawers", {**UNIT, "width": 500, "drawers": 3}),
-    ("cabinet", "Doors", {**NEXT, "width": 900, "dividers": 1, "shelves": 2, "shelf_pins": True, "doors": 2}),
+    ("cabinet", "Doors", {**UNIT, "width": 900, "dividers": 1, "shelves": 2, "shelf_pins": True, "doors": 2}),
+    ("cabinet", "Drawers", {**NEXT, "width": 500, "drawers": 3}),
     ("corner", "Corner", {**NEXT, "corner": "right", "width": 900, "return": 900, "doors": "hinged right"}),
     ("cabinet", "End", {**NEXT, "width": 450, "doors": 1}),
 ]
-OPEN = {"Drawers Drawer 2 slide": 320, "Doors Door R hinge": 105, "Corner Door return hinge": 70,
-        "Corner Door fold": 75}
+# Both doors of the first cabinet stand open, so its divider, shelves and pin holes show.
+OPEN = {"Doors Door L hinge": 115, "Doors Door R hinge": 88, "Drawers Drawer 2 slide": 260,
+        "Corner Door return hinge": 70, "Corner Door fold": 75}
 
 
 def step(command, **params):
