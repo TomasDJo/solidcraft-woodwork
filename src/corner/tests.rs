@@ -140,12 +140,15 @@ fn a_diagonal_front_is_one_turned_door() {
     // (x = 498.586, y = -139.700 at this size), given along the door too, which stands at 45
     let (x, y, turn) = hinge(&commands, "Cabinet Door hinge");
     let along = "(Cabinet_thickness + 4 mm) + (sqrt(2) * (Cabinet_return - Cabinet_depth)) - 2*(Cabinet_thickness + 4 mm)";
-    let (sin, across) = ("(0.7071067811865476)", "(-2 mm - Cabinet_thickness)");
+    // the last digit of a sine differs between platforms, so it is worked out here as there
+    let (sin, cos) = 45f64.to_radians().sin_cos();
+    let (sin, cos) = (format!("({sin})"), format!("({cos})"));
+    let across = "(-2 mm - Cabinet_thickness)";
     let start = "(Cabinet_width - Cabinet_return + Cabinet_depth) - Cabinet_width/2";
-    assert_eq!(x, format!("{start} + ({along}) * {sin} - {across} * {sin}"));
+    assert_eq!(x, format!("{start} + ({along}) * {cos} - {across} * {sin}"));
     assert_eq!(
         y,
-        format!("0 mm - Cabinet_return/2 + ({along}) * {sin} + {across} * {sin}")
+        format!("0 mm - Cabinet_return/2 + ({along}) * {sin} + {across} * {cos}")
     );
     assert_eq!(turn, 1);
     let joint = named(&commands, "Cabinet Door hinge");
