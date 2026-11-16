@@ -33,7 +33,7 @@ RUN = [
 ]
 # Both doors of the first cabinet stand open, so its divider, shelves and pin holes show.
 OPEN = {"Doors Door L hinge": 115, "Doors Door R hinge": 88, "Drawers Drawer 2 slide": 260,
-        "Corner Door return hinge": 70, "Corner Door fold": 75}
+        "Corner Door return hinge": 40, "Corner Door fold": 75}
 
 
 def step(command, **params):
