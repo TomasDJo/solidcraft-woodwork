@@ -140,3 +140,53 @@ fn refuses_bad_input() {
     let (commands, _) = build(&json!({"width": 908, "dividers": 2, "doors": 3})).unwrap();
     assert!(commands.iter().any(|c| c.1["name"] == "Cabinet Door 3"));
 }
+
+#[test]
+fn a_door_hinges_on_its_outer_front_edge() {
+    let (commands, summary) = build(&json!({"doors": 2})).unwrap();
+    assert_eq!(
+        summary["joints"],
+        json!(["Cabinet Door L hinge", "Cabinet Door R hinge"])
+    );
+    let named = |name: &str| &commands.iter().find(|c| c.1["name"] == name).unwrap().1;
+    // The hinge line is where two planes meet, in the door and in the cabinet, both by the
+    // cabinet's parameters: so it follows a resize. Left door: 2 mm in from the left side.
+    // The planes are given outright, so nothing but the axis is added to the design.
+    for side in ["", "seat "] {
+        let axis = named(&format!("Cabinet Door L hinge {side}axis"));
+        let x = "2 mm + (((Cabinet_width - 4 mm - 1*2 mm) / 2) + 2 mm) * 0 - Cabinet_width/2";
+        let y = "-2 mm - Cabinet_thickness - Cabinet_depth/2";
+        // the order of the planes is the way it opens: this one about -Z
+        assert_eq!(
+            axis["a"],
+            json!({"plane": {"origin": ["0 mm", y, "0 mm"], "normal": [0, 1, 0]}})
+        );
+        assert_eq!(
+            axis["b"],
+            json!({"plane": {"origin": [x, "0 mm", "0 mm"], "normal": [1, 0, 0]}})
+        );
+    }
+    // and the two doors open away from each other
+    assert_eq!(
+        named("Cabinet Door R hinge axis")["a"]["plane"]["normal"],
+        json!([1, 0, 0])
+    );
+    assert!(commands
+        .iter()
+        .all(|c| c.0 != "construct.plane.offset" && c.0 != "browser.visibility"));
+    let joint = named("Cabinet Door L hinge");
+    assert_eq!(
+        joint["a"],
+        json!({"occurrence": "Cabinet:1", "axis": "Cabinet Door L hinge seat axis"})
+    );
+    assert_eq!(
+        joint["b"],
+        json!({"occurrence": "Cabinet Door L:1", "axis": "Cabinet Door L hinge axis"})
+    );
+    // the axes are folded into the cabinet's history folder
+    let group = &commands.last().unwrap().1["features"];
+    assert!(group
+        .as_array()
+        .unwrap()
+        .contains(&json!("Cabinet Door L hinge seat axis")));
+}

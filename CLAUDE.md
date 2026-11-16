@@ -132,6 +132,19 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   on another moving part: a corner cabinet's second door is jointed to the first (`Door return
   fold`, or `Door fold` when the pair hangs on the return), not to the cabinet, so it follows it.
   The fold turns out of the cabinet, onto the first door's face.
+- **A hinge follows the parameters.** `Kit::hinge` makes the hinge line twice, as a
+  construction axis (`construct.axis.two_planes`): once in the door's component and once in
+  what it hangs on, and `joint.create` mates the two axes. Both follow a resize, which a
+  joint at a point (`joint.as_built`) did not: the door then swung about where the hinge
+  used to be. The two planes are given outright in the command (`{plane: {origin, normal}}`
+  with expressions), not made as features: a plugin cannot hide what it makes
+  (`browser.visibility` in a plugin run is not kept), and plane features showed across every
+  door. Such a plane is read in world coordinates when made and in the component's own
+  afterwards, so a turned part (the diagonal door) gets its line before it is turned
+  (`Kit::hinge_line`) and its turn as the joint's `angle`. The order of the two planes is
+  the way the axis points, so the way the door opens. The axes sit in the cabinet's history
+  folder. Four commands a hinge more than before. `solidcraft-cli snapshot` does not draw
+  construction planes or axes, so a render does not show whether a design is cluttered.
 - **A cabinet remembers how it was made.** `make` in `lib.rs` stores the entry and the dialog
   values on the cabinet's component (`edit::remember`, metadata key
   `io.github.tomasdjo.woodwork`; Joinery adds its kind there). Edit reads them, takes the
@@ -179,8 +192,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   extra command per such board, so about 250 of them at most.
 - A cabinet with doors or drawers cannot be made inside a component that has been moved:
   the hinge cup holes fail with "not on a face of a body" (the shift described above).
-- Joints use a fixed point from creation time. They do not follow a resize, and they are off
-  if the cabinet is made inside a component that has already been moved.
+- A drawer's slide is `joint.as_built` at a fixed point from creation time. That is harmless
+  for a slide (only its direction matters), but it is off if the cabinet is made inside a
+  component that has already been moved.
 - A cabinet is grounded at the end of a run, because a joint only moves against something
   fixed. Moving it later means ungrounding it first.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,

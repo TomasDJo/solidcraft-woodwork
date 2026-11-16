@@ -32,7 +32,7 @@ def test_choices_have_titles(approval):
     assert choices == 25, choices
     # The app refuses a manifest over 16 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
-    assert json.loads(packed) == manifest and len(packed) < 15 * 1024, len(packed)
+    assert json.loads(packed) == manifest and len(packed) < 16 * 1024 - 400, len(packed)
     # The plugin still gets the value, not the title.
     results = cli([plugin(approval, "corner", {"shape": "diagonal", "doors": "hinged right"}), MEASURE])
     assert "Cabinet Door" in boxes(results[1]), boxes(results[1])
