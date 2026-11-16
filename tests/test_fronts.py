@@ -16,6 +16,9 @@ def test_drawers(approval):
     front = box["Cabinet Drawer 2 Front"]  # (720 - 4 gaps of 2) / 3 high
     assert round(front[5] - front[2], 3) == round(712 / 3, 3), front
     assert box["Cabinet Drawer 1 Bottom"][4] <= 280 - 12 - 6, box["Cabinet Drawer 1 Bottom"]  # clear of the back
+    # the lowest box clears the cabinet's bottom and the highest its top, by 10 mm
+    assert box["Cabinet Drawer 1 Left"][2] == box["Cabinet Bottom"][5] + 10, box["Cabinet Drawer 1 Left"]
+    assert box["Cabinet Drawer 3 Left"][5] == box["Cabinet Top"][2] - 10, box["Cabinet Drawer 3 Left"]
     box = {b["name"]: [round(v, 4) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[3]["bodies"]}
     assert box["Cabinet Drawer 1 Right"][3] == 400 - 18 - 12.7, box["Cabinet Drawer 1 Right"]
 

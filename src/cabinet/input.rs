@@ -1,6 +1,6 @@
 //! Reads and checks the dialog's fields. The numbers here only check the input.
 
-use super::drawers::{BOX_LOWER, SLIDE};
+use super::drawers::{BOX_CLEAR, SLIDE};
 use super::GROOVE_INSET;
 use crate::fittings::{DOOR_GAP, PITCH};
 use crate::kit::{check, num, Kit};
@@ -116,7 +116,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     // Height of one drawer front, and width of the box between the slides.
     let front_h = (h - plinth - (drawers + 1.0) * DOOR_GAP) / drawers.max(1.0);
     check(
-        drawers == 0.0 || front_h >= BOX_LOWER + 50.0,
+        drawers == 0.0 || front_h >= 2.0 * (t + BOX_CLEAR) + 50.0,
         "too low for that many drawers",
     )?;
     check(
