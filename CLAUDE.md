@@ -57,6 +57,7 @@ materials, joinery and cut lists.
 | `src/select/` | Finds the selected cabinet and its parts by body name |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
 | `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
+| `docs/banner.py` | Draws `docs/banner.png`, the first picture in the README (plugin lists show it): a small run of cabinets built through the CLI, on a dark background beside the name. Needs Pillow. Rerun it when the cabinets look different |
 | `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it and re-render `docs/kitchen.png` when the plugin's output changes |
 
 The pattern: a module is plain Rust that turns input into `Vec<(command, json args)>`, so
