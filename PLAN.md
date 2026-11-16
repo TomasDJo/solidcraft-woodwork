@@ -2,7 +2,7 @@
 
 A SolidCraft plugin for designing cabinets and furniture in sheet goods and timber.
 
-## How SolidCraft plugins work (0.41 and 0.42)
+## How SolidCraft plugins work (0.41 to 0.43)
 
 - A plugin is a folder with `plugin.json` (manifest) and one WebAssembly **component**.
 - The component exports `execute(entry, params_json)` and can only call the app's normal
@@ -69,6 +69,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Diagonal corner cabinet: one front at 45 degrees with one door
 - [x] Handle position on doors: top, middle, bottom or auto, for knobs and pulls on both cabinets
 - [x] SolidCraft 0.42: ribbon buttons, tests run against 0.42
+- [x] SolidCraft 0.43: every dropdown shows titles and an explanation per choice, tests run against 0.43
 
 ## Open
 
