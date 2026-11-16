@@ -12,6 +12,7 @@ const BOX_BOTTOM: f64 = 6.0;
 // lowest box then clears the cabinet's bottom, and the highest its top, by this and the gap.
 pub const BOX_CLEAR: f64 = 8.0;
 const BOX_BEHIND: f64 = 10.0; // room behind the box
+const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front's edge
 
 /// A stack of equal drawers: an overlay front, and behind it a box that runs on slides.
 pub fn build(cabinet: &Cabinet) {
@@ -58,13 +59,13 @@ pub fn build(cabinet: &Cabinet) {
             [&gap_mm, &y, &z],
             [&front_w, et, &front_h],
         );
-        // In the middle of the front, lying across.
-        cabinet.handle(
-            &format!("{drawer} Front"),
-            &format!("{ew}/2"),
-            &format!("{z} + {front_h}/2"),
-            0,
-        );
+        // Lying across, in the middle of the front unless the top or the bottom is asked for.
+        let handle_z = match cabinet.input.handle_at {
+            "top" => format!("{z} + {front_h} - {}", mm(HANDLE_EDGE)),
+            "bottom" => format!("{z} + {}", mm(HANDLE_EDGE)),
+            _ => format!("{z} + {front_h}/2"),
+        };
+        cabinet.handle(&format!("{drawer} Front"), &format!("{ew}/2"), &handle_z, 0);
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
         let (x, y, z) = (

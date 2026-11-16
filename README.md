@@ -21,7 +21,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   - **Handle holes** drills the doors and drawer fronts for a knob (one 5 mm hole) or a
     pull (two, 128 mm apart). **Handle position** puts a door's handle near the top, in the
     middle or near the bottom; left on auto it is near the top on a floor unit and near the
-    bottom on a wall unit. Drawer fronts get theirs in the middle.
+    bottom on a wall unit. On a drawer front the handle lies across: in the middle on auto, or 40 mm from
+    the front's top or bottom edge.
   - **Labels** writes each board's name on it, the name the cut list has, as text in a
     sketch on the board's face. It stays in the middle of the board when the cabinet
     changes size.
