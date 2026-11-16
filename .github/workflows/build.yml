@@ -61,3 +61,4 @@ jobs:
         with:
           files: dist/woodwork-*.zip
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }} # v0.1.7-rc.1 is a release candidate

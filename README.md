@@ -65,7 +65,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
 ## Install
 
-1. Download `woodwork-<version>.zip` from the [latest release](../../releases/latest)
+1. Download `woodwork-<version>.zip` from the [latest release](../../releases/latest).
+   To try new functions early, take the newest release candidate (marked Pre-release) from
+   the [releases page](../../releases) instead: it may still change before the full release
    (under **Assets**, not the source code zip).
 2. In SolidCraft open **Preferences > Plugins** and choose **Install plugin...**
 
