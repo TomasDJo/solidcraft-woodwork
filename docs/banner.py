@@ -31,8 +31,8 @@ RUN = [
     ("corner", "Corner", {**NEXT, "corner": "right", "width": 900, "return": 900, "doors": "hinged right"}),
     ("cabinet", "End", {**NEXT, "width": 450, "doors": 1}),
 ]
-# Both doors of the first cabinet stand open, so its divider, shelves and pin holes show.
-OPEN = {"Doors Door L hinge": 115, "Doors Door R hinge": 88, "Drawers Drawer 2 slide": 260,
+# The first cabinet has its left door wide open and its right one ajar: shelves, divider and pin holes show.
+OPEN = {"Doors Door L hinge": 115, "Doors Door R hinge": 15, "Drawers Drawer 2 slide": 260,
         "Corner Door return hinge": 40, "Corner Door fold": 75}
 
 
