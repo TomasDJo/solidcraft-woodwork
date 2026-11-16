@@ -26,8 +26,14 @@ materials, joinery and cut lists.
   field. Plugin code runs only after OK.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
   features, so a design opens without the plugin.
-- Limits per run: 256 app commands, 30 s, 1 MiB result. No file or network access (file grants
-  exist but the app has no way to give them yet), no storage.
+- Limits per run: 256 app commands, 30 s, 1 MiB result. No network access, no storage.
+  Files: only `files.write-file` into a folder the manifest asks for under
+  `runtime.permissions.files` and the user approves when installing (0.43: the install
+  screen asks for a path). The plugin names the grant and a relative path and never learns
+  where the folder is. A refused write fails the whole run, so the cut list only writes when
+  its Save as field is filled. A `read` entry may write files. Through the CLI a grant comes
+  from `plugin.install` with `approve` earlier in the same script; `tests/test_cutlist.py`
+  does that in a profile folder of its own (`LOCALAPPDATA` and friends pointed at `dist/`).
 - A `read` entry may only call read commands. `selection.get`, `component.list` and
   `assembly.mass_properties` count as edits; `document.inspect` (which also returns the
   selection), `inspect.measure` and `model.mesh` are read.

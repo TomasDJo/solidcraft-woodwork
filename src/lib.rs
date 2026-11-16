@@ -19,6 +19,24 @@ pub type Commands = Vec<(&'static str, Value)>;
 /// Runs one app command and returns its result.
 pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
 
+/// Writes a file into a folder the user approved at install: folder grant, file name, bytes.
+pub type Write<'a> = &'a mut dyn FnMut(&str, &str, &[u8]) -> Result<(), String>;
+
+/// Saves the cut list in `result` as a CSV file when its `file` field asks for one, and notes
+/// the name in the result.
+pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Result<(), String> {
+    if let Some(name) = cutlist::file_name(entry, params)? {
+        let csv = result["csv"].as_str().unwrap_or_default();
+        write(cutlist::FOLDER, &name, csv.as_bytes()).map_err(|reason| {
+            format!(
+                "could not save {name}: {reason}. Saving needs a folder for cut lists, approved when the plugin is installed: install it again and enter a folder, or clear Save as"
+            )
+        })?;
+        result["saved"] = json!(name);
+    }
+    Ok(())
+}
+
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     match entry {
         "cabinet" | "corner" => {
@@ -212,9 +230,12 @@ mod guest {
                 )?;
                 serde_json::from_str(&reply).map_err(|e| format!("{command}: bad reply: {e}"))
             };
-            crate::execute(&entry, &params, &mut run)
-                .map(|v| v.to_string())
-                .map_err(invalid)
+            let mut result = crate::execute(&entry, &params, &mut run).map_err(invalid)?;
+            let mut write = |folder: &str, name: &str, data: &[u8]| {
+                craft::plugin::files::write_file(folder, name, data).map_err(|e| format!("{e:?}"))
+            };
+            crate::save(&entry, &params, &mut result, &mut write).map_err(invalid)?;
+            Ok(result.to_string())
         }
     }
 

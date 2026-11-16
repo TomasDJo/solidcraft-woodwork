@@ -95,10 +95,16 @@
         "name": "cutlist",
         "effect": "read",
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],
-        "input_schema": { "type": "object", "properties": {} }
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string", "title": "Save as", "description": "A file name, such as kitchen.csv, to also save the cut list as a CSV file in the folder for cut lists that you approved when installing the plugin. Empty: only show the list.", "default": "", "maxLength": 80 }
+          }
+        }
       }
     ],
     "commands": ["solid.box", "solid.hole", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "model.mesh", "joint.as_built", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
+    "permissions": { "files": [{ "name": "cutlists", "read": false, "write": true }] },
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
   }
 }

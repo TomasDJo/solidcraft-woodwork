@@ -11,9 +11,11 @@ def test_choices_have_titles(approval):
     choices = 0
     for entry in manifest["runtime"]["entries"]:
         # The dialog shows the fields in the order `required` names them, and the rest by name:
-        # so every field is listed, in the order it is written here.
+        # so every field is listed, in the order it is written here. A required field cannot be
+        # left empty, so a text field that may be empty is not listed.
         schema = entry["input_schema"]
-        assert schema.get("required", []) == list(schema["properties"]), entry["name"]
+        filled = [name for name, field in schema["properties"].items() if field.get("default") != ""]
+        assert schema.get("required", []) == filled, entry["name"]
         for name, field in schema["properties"].items():
             at = (entry["name"], name)
             # A keyword the dialog cannot draw leaves the entry with Run turned off.

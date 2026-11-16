@@ -86,3 +86,21 @@ fn inches_as_fractions() {
     );
     assert_eq!(list["parts"][1]["length"], "30");
 }
+
+#[test]
+fn the_file_to_save_as() {
+    let name = |entry: &str, file: &str| file_name(entry, &json!({"file": file}));
+    assert_eq!(name("cutlist", ""), Ok(None));
+    assert_eq!(name("cutlist", "  "), Ok(None));
+    assert_eq!(file_name("cutlist", &json!({})), Ok(None));
+    assert_eq!(name("cabinet", "a"), Ok(None)); // only the cut list saves
+    assert_eq!(name("cutlist", "kitchen"), Ok(Some("kitchen.csv".into())));
+    assert_eq!(
+        name("cutlist", " My kitchen 2.CSV "),
+        Ok(Some("My kitchen 2.CSV".into()))
+    );
+    // a name only: the folder is the one the user approved
+    for bad in ["../a", "a/b", r"a\b", "C:a", ".hidden"] {
+        assert!(name("cutlist", bad).is_err(), "{bad}");
+    }
+}
