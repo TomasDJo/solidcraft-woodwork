@@ -52,3 +52,79 @@ fn a_cabinet_built_again_keeps_its_parameters() {
     assert_eq!(made[1].0, "parameters.add");
     assert_eq!(made[1].1["name"], "A_depth");
 }
+
+#[test]
+fn a_board_gets_its_name_written_on_it() {
+    let kit = Kit::new(&json!({"name": "A", "labels": true})).unwrap();
+    kit.centre("A_width", "A_depth");
+    // a side stands in YZ, a top lies in XY, a door stands in XZ; a cut and a board that is
+    // not flat along the axes get nothing
+    kit.panel(
+        "Side L",
+        ["0 mm", "0 mm", "0 mm"],
+        ["A_thickness", "A_depth", "A_height"],
+        None,
+    );
+    kit.panel(
+        "Top",
+        ["0 mm", "0 mm", "A_height - A_thickness"],
+        ["A_width", "A_depth", "A_thickness"],
+        None,
+    );
+    kit.panel(
+        "Door",
+        ["2 mm", "-20 mm", "2 mm"],
+        ["A_width - 4 mm", "A_thickness", "A_height - 4 mm"],
+        None,
+    );
+    kit.panel(
+        "Groove",
+        ["0 mm", "0 mm", "0 mm"],
+        ["A_width", "A_back_thickness", "A_height"],
+        Some(&[]),
+    );
+    kit.panel(
+        "Box",
+        ["0 mm", "0 mm", "0 mm"],
+        ["A_width", "12 mm", "100 mm"],
+        None,
+    );
+    let (commands, _) = kit.finish(vec![], [0.0; 3]);
+    let sketch = |name: &str| &commands.iter().find(|c| c.1["name"] == name).unwrap().1["plane"];
+    let labels: Vec<_> = commands.iter().filter(|c| c.0 == "sketch.text").collect();
+    assert_eq!(labels.len(), 3);
+    assert_eq!(labels[0].1["text"], "A Side L");
+    // in the middle of the face, by the board's own expressions, so it stays there
+    let side = sketch("A Side L label");
+    assert_eq!(
+        side["origin"],
+        json!([
+            "0 mm - A_width/2",
+            "0 mm - A_depth/2 + (A_depth) / 2",
+            "0 mm + (A_height) / 2"
+        ])
+    );
+    assert_eq!(side["x_dir"], json!([0, -1, 0])); // read from the left
+    let top = sketch("A Top label");
+    assert_eq!(top["origin"][2], "A_height - A_thickness + A_thickness"); // on its upper face
+    assert_eq!(top["y_dir"], json!([0, 1, 0])); // read from above
+    let door = sketch("A Door label");
+    assert_eq!(door["origin"][1], "-20 mm - A_depth/2"); // on its front face
+    assert_eq!(door["y_dir"], json!([0, 0, 1])); // read from the front
+                                                 // the sketches sit in the cabinet's history folder, between its boards
+    let group = &commands.last().unwrap().1["features"];
+    assert!(group.as_array().unwrap().contains(&json!("A Top label")));
+    // and without the field there are none
+    let plain = Kit::new(&json!({"name": "A"})).unwrap();
+    plain.panel(
+        "Top",
+        ["0 mm"; 3],
+        ["A_width", "A_depth", "A_thickness"],
+        None,
+    );
+    assert!(plain
+        .finish(vec![], [0.0; 3])
+        .0
+        .iter()
+        .all(|c| c.0 != "sketch.text"));
+}

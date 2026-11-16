@@ -227,6 +227,11 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - Joinery covers the four carcass corners only, and tells an overlaid back from a grooved one
   by comparing the side depth with the depth parameter.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
+- A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
+  from parameters takes whole parameters (`number(Width)`), not expressions. A board is told
+  from its one size that is a thickness parameter, so the drawer boxes' 12 mm boards get
+  none. The label sits in the middle of the board's bounding box, which on a corner
+  cabinet's L-shaped board can be over the cut-out; a side's label is on its left face.
 - Functions that use the selection (Place, Material, Joinery) were tested through MCP and the
   CLI only. Whether the selection survives opening the Plugins menu dialog has not been
   confirmed in the app.

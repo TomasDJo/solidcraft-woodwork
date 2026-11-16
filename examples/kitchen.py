@@ -15,6 +15,7 @@ It uses every function of the plugin:
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
+- Labels: the tall unit has each board's name written on it
 - Cut list: written out as CSV, with the sheets and the hardware to buy
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
@@ -39,7 +40,7 @@ WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
 # placed against the one before it.
 FLOOR = [
     ("Tall", {**WHITE, "width": 600, "height": 2100, "depth": 560, "plinth": 150, "shelves": 4, "doors": 1,
-              "handles": "pull"}),
+              "handles": "pull", "labels": True}),
     ("Base 1", {**BASE, "width": 800, "dividers": 1, "doors": 2}),
     ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3}),
     ("Base 3", {**BASE, **MATCH, "width": 900, "dividers": 2, "doors": 3}),
