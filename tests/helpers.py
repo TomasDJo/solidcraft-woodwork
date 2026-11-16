@@ -1,5 +1,5 @@
 """Shared by the end-to-end tests: steps for a CLI script, and readers for its results."""
-from build import ROOT, cli, plugin  # noqa: F401 (the tests use them through `import *`)
+from build import PKG, ROOT, cli, plugin  # noqa: F401 (the tests use them through `import *`)
 
 MEASURE = {"command": "inspect.measure", "params": {}}
 

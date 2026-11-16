@@ -46,9 +46,12 @@ def build():
     PKG.mkdir(parents=True, exist_ok=True)
     sh("wasm-tools", "component", "new",
        "target/wasm32-unknown-unknown/release/woodwork.wasm", "-o", str(PKG / "woodwork.wasm"))
-    shutil.copy(ROOT / "plugin.json", PKG)
+    # The app refuses a manifest over 16 KiB, so the packaged one carries no white space.
+    manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
+    (PKG / "plugin.json").write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
+                                     encoding="utf-8", newline=chr(10))
     shutil.copy(ROOT / "LICENSE", PKG)
-    version = json.loads((PKG / "plugin.json").read_text(encoding="utf-8"))["version"]
+    version = manifest["version"]
     archive = ROOT / "dist" / f"woodwork-{version}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         for name in ("plugin.json", "woodwork.wasm", "LICENSE"):

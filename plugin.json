@@ -13,6 +13,7 @@
         "slots": [{ "kind": "menu", "name": "Cabinet" }, { "kind": "ribbon", "name": "Cabinet" }],
         "input_schema": {
           "type": "object",
+          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "handles", "handle_position", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm: with inches, enter each size in inches.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "width": { "type": "number", "title": "Width", "description": "Outside width.", "default": 600, "minimum": 4, "maximum": 5000 },
@@ -42,6 +43,7 @@
         "slots": [{ "kind": "menu", "name": "Corner cabinet" }, { "kind": "ribbon", "name": "Corner cabinet" }],
         "input_schema": {
           "type": "object",
+          "required": ["units", "corner", "shape", "width", "return", "depth", "height", "thickness", "shelves", "plinth", "shelf_pins", "doors", "handles", "handle_position", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm: with inches, enter each size in inches.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "corner": { "type": "string", "title": "Corner", "description": "Which corner of the room the cabinet is for.", "default": "left", "oneOf": [{"const": "left", "title": "Left", "description": "The corner is at the back left, and the return runs forward along the left wall."}, {"const": "right", "title": "Right", "description": "The mirror image."}] },
@@ -70,6 +72,7 @@
         "slots": [{ "kind": "menu", "name": "Joinery" }, { "kind": "ribbon", "name": "Joinery" }],
         "input_schema": {
           "type": "object",
+          "required": ["type"],
           "properties": {
             "type": { "type": "string", "title": "Type", "description": "Drills where the sides meet the bottom and top of the cabinet you selected a part of.", "default": "confirmat", "oneOf": [{"const": "confirmat", "title": "Confirmat screws", "description": "7 mm through the side and a 5 mm pilot, for 7 x 50 screws."}, {"const": "dowel", "title": "Dowels", "description": "8 mm holes for 8 x 35 dowels."}] }
           }
@@ -81,6 +84,7 @@
         "slots": [{ "kind": "menu", "name": "Material" }, { "kind": "ribbon", "name": "Material" }],
         "input_schema": {
           "type": "object",
+          "required": ["material", "scope"],
           "properties": {
             "material": { "type": "string", "title": "Material", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood", "title": "Birch plywood"}, {"const": "MDF", "title": "MDF"}, {"const": "White melamine", "title": "White melamine"}, {"const": "Oak", "title": "Oak"}] },
             "scope": { "type": "string", "title": "Apply to", "description": "What gets the material.", "default": "cabinet", "oneOf": [{"const": "cabinet", "title": "Whole cabinet", "description": "Every panel of the cabinet you selected a part of."}, {"const": "parts", "title": "Selected parts", "description": "Only the selected parts, such as the doors."}] }
