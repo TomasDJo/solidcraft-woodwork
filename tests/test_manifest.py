@@ -10,9 +10,13 @@ def test_choices_have_titles(approval):
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     choices = 0
     for entry in manifest["runtime"]["entries"]:
-        for name, field in entry["input_schema"]["properties"].items():
+        # The dialog shows the fields in the order `required` names them, and the rest by name:
+        # so every field is listed, in the order it is written here.
+        schema = entry["input_schema"]
+        assert schema.get("required", []) == list(schema["properties"]), entry["name"]
+        for name, field in schema["properties"].items():
             at = (entry["name"], name)
-            # A keyword the dialog cannot draw removes the whole entry from the menu.
+            # A keyword the dialog cannot draw leaves the entry with Run turned off.
             assert set(field) <= DRAWN, (at, set(field) - DRAWN)
             if "oneOf" not in field:
                 continue
@@ -24,6 +28,9 @@ def test_choices_have_titles(approval):
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o["title"], at
     assert choices == 19, choices
+    # The app refuses a manifest over 16 KiB; the package carries it without white space.
+    packed = (PKG / "plugin.json").read_bytes()
+    assert json.loads(packed) == manifest and len(packed) < 14 * 1024, len(packed)
     # The plugin still gets the value, not the title.
     results = cli([plugin(approval, "corner", {"shape": "diagonal", "doors": "hinged right"}), MEASURE])
     assert "Cabinet Door" in boxes(results[1]), boxes(results[1])

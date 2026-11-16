@@ -70,6 +70,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Handle position on doors: top, middle, bottom or auto, for knobs and pulls on both cabinets
 - [x] SolidCraft 0.42: ribbon buttons, tests run against 0.42
 - [x] SolidCraft 0.43: every dropdown shows titles and an explanation per choice, tests run against 0.43
+- [x] Dialog fields in a sensible order (sizes first) instead of alphabetical
 
 ## Open
 

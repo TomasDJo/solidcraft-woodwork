@@ -15,9 +15,12 @@ materials, joinery and cut lists.
 - The app draws each entry's dialog from its schema and shows the entry under the Plugins menu
   (a Woodwork submenu, and one button per entry in a Woodwork group on the Plugins ribbon tab;
   a `ribbon` slot named after a host tab such as Model would put it there instead).
-  A schema keyword the dialog cannot draw or check (`pattern`, `readOnly`, ...) removes the
-  entry from the menu; ours use only type, title, description, default, oneOf, bounds and
-  lengths. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
+  A schema keyword the dialog cannot draw or check (`pattern`, `readOnly`, ...) leaves the
+  entry in the menu with Run turned off; ours use only type, title, description, default,
+  oneOf, bounds and lengths. The dialog shows the fields that `required` names first, in that
+  order, and the rest by key: so every schema lists all its fields in `required`, which also
+  puts a ` *` after each label. `build.py` packs the manifest without white space, because
+  the app refuses one over 16 KiB. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
   bare values, and 0.42 cannot draw `oneOf`). `tests/test_manifest.py` checks all of this.
   The dialog is **static**: no dependent fields, no stored values, no preview, no pick-a-body
   field. Plugin code runs only after OK.
