@@ -3,6 +3,8 @@
 Woodworking plugin for SolidCraft: parametric cabinets, materials, joinery and a cut list.
 Works with SolidCraft 0.43; older plugin versions work with 0.41 and 0.42. See [PLAN.md](PLAN.md) for the roadmap.
 
+![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
+
 ![Demo kitchen built by examples/kitchen.py](docs/kitchen.png)
 
 ## Functions
