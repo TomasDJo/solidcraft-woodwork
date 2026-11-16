@@ -1,6 +1,6 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.41+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.43+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
 `README.md` is the user-facing description, `PLAN.md` the roadmap with what is done and open.
 
@@ -13,10 +13,12 @@ materials, joinery and cut lists.
   calls. A command that is not listed is refused. Entry names: lowercase letters, digits,
   hyphens (no underscores).
 - The app draws each entry's dialog from its schema and shows the entry under the Plugins menu
-  (0.42: a Woodwork submenu, and one ribbon button per entry, labelled by its `ribbon` slot).
+  (a Woodwork submenu, and one button per entry in a Woodwork group on the Plugins ribbon tab;
+  a `ribbon` slot named after a host tab such as Model would put it there instead).
   A schema keyword the dialog cannot draw or check (`pattern`, `readOnly`, ...) removes the
-  entry from the menu in 0.42; ours use only type, title, description, default, enum, bounds
-  and lengths.
+  entry from the menu; ours use only type, title, description, default, oneOf, bounds and
+  lengths. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
+  bare values, and 0.42 cannot draw `oneOf`). `tests/test_manifest.py` checks all of this.
   The dialog is **static**: no dependent fields, no stored values, no preview, no pick-a-body
   field. Plugin code runs only after OK.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary

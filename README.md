@@ -1,13 +1,13 @@
 # solidcraft-woodwork
 
 Woodworking plugin for SolidCraft: parametric cabinets, materials, joinery and a cut list.
-Works with SolidCraft 0.41 and 0.42. See [PLAN.md](PLAN.md) for the roadmap.
+Works with SolidCraft 0.43; older plugin versions work with 0.41 and 0.42. See [PLAN.md](PLAN.md) for the roadmap.
 
 ![Demo kitchen built by examples/kitchen.py](docs/kitchen.png)
 
 ## Functions
 
-Under **Plugins > Woodwork**, and in SolidCraft 0.42 also as buttons on the Model ribbon:
+Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
 - **Cabinet** builds a box carcass: sides, top, bottom, shelves, back and optional plinth.
   Vertical dividers split it into equal compartments, each with the same shelves.
@@ -75,8 +75,9 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.42 | 0.1.4 and later | Tested on every change. Adds a button per function in the Plugins group of the Model ribbon. |
-| 0.41 | 0.1.0 and later | The first version with plugins. 0.1.0 to 0.1.3 were tested on it; later versions should work but are no longer tested there. |
+| 0.43 | 0.1.6 and later | Tested on every change. The dropdowns show a title and an explanation for each choice, and installing asks you to approve the plugin. |
+| 0.42 | 0.1.4 and 0.1.5 | Adds a button per function on the ribbon. From 0.1.6 the functions no longer show in its menu. |
+| 0.41 | 0.1.0 to 0.1.5 | The first version with plugins. 0.1.0 to 0.1.3 were tested on it; 0.1.4 and 0.1.5 should work but were not tested there. |
 | 0.40 and earlier | none | No plugin support. |
 
 A design made with the plugin is ordinary bodies, joints and parameters: it opens in any
