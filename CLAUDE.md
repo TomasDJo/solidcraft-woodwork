@@ -57,8 +57,8 @@ materials, joinery and cut lists.
 | `src/select/` | Finds the selected cabinet and its parts by body name |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
 | `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
-| `docs/banner.py` | Draws the README's pictures on one dark background: `docs/banner.png`, the first picture (plugin lists show it), a small run of cabinets beside the name, and `docs/kitchen.png` from `examples/kitchen.sc`. Needs Pillow. Rerun it when the cabinets look different |
-| `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it and re-render `docs/kitchen.png` when the plugin's output changes |
+| `docs/banner.py` | Draws `docs/banner.png`, the README's one picture (plugin lists show it): a small run of cabinets on a dark background beside the name. Needs Pillow. Rerun it when the cabinets look different |
+| `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it when the plugin's output changes |
 
 The pattern: a module is plain Rust that turns input into `Vec<(command, json args)>`, so
 `cargo test` covers it without SolidCraft. `lib.rs` runs the list. Anything that needs a reply
@@ -98,8 +98,8 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   warnings as errors, and `python build.py` (unit and end-to-end tests against a downloaded
   SolidCraft CLI) on every push and pull request. Run `cargo fmt` before committing.
 - **The sample kitchen shows everything.** A new function goes into `examples/kitchen.py` in
-  the same branch; rerun it (it rewrites `examples/kitchen.sc` and the cut list CSV) and
-  redraw the pictures with `python docs/banner.py`.
+  the same branch; rerun it (it rewrites `examples/kitchen.sc` and the cut list CSV), and
+  redraw the banner with `python docs/banner.py` when the cabinets look different.
 - **Releases come from tags.** Pushing a tag `vX.Y.Z` that matches the version in
   `plugin.json` makes the same workflow attach `woodwork-X.Y.Z.zip` to a GitHub Release.
 - **Release candidates often, full releases rarely.** New work goes out as `X.Y.Z-rc.N`

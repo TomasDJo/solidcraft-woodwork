@@ -5,8 +5,6 @@ Works with SolidCraft 0.43; older plugin versions work with 0.41 and 0.42. See [
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
 
-![Demo kitchen built by examples/kitchen.py](docs/kitchen.png)
-
 ## Functions
 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
