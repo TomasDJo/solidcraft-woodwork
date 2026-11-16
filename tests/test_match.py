@@ -12,7 +12,7 @@ def test_match_selected(approval):
                    plugin(approval, "cabinet", {"name": "B", "units": "in", "width": 20, "doors": 1,
                                                 "match": "selected", "place": "right"}),
                    select("B Top"),
-                   plugin(approval, "corner", {"name": "K", "corner": "right", "match": "selected", "place": "right"}),
+                   plugin(approval, "corner", {"name": "K", "match": "selected", "place": "right"}),
                    {"command": "inspect.measure", "params": {}},
                    {"command": "parameters.change", "params": {"changes": {"A_height": "800 mm", "A_plinth": "150 mm"}}},
                    {"command": "inspect.measure", "params": {}},

@@ -65,3 +65,17 @@ def test_a_corner_cabinet_and_what_cannot_be_edited(approval):
         except subprocess.CalledProcessError:
             continue
         raise AssertionError("an edit that should be refused went through")
+
+
+def test_a_corner_that_followed_its_place_stays_that_corner(approval):
+    # Placed right of a cabinet a corner cabinet becomes a right corner by itself. Edit builds
+    # it again without knowing where it was placed: it must still be a right corner, there.
+    results = cli([plugin(approval, "cabinet", {"name": "A"}), select("A Top"),
+                   plugin(approval, "corner", {"name": "K", "place": "right"}), MEASURE,
+                   select("K Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE])
+    before, after = boxes(results[3]), boxes(results[6])
+    # the return's end is its right side, forward at the far end of the run
+    assert before["K Side R"] == [640, -620, 0, 1200, -602, 720], before["K Side R"]
+    # every board but the shelves, which are spaced anew, is where it was
+    fixed = lambda box: {name: b for name, b in box.items() if "Shelf" not in name}
+    assert "K Shelf 2" in after and fixed(after) == fixed(before), (fixed(after), fixed(before))

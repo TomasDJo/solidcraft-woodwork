@@ -25,7 +25,7 @@ def test_along_a_return_and_a_turned_run(approval):
     results = cli([plugin(approval, "corner", {"name": "K", "corner": "right"}), select("K Top"),
                    plugin(approval, "cabinet", {**box_cabinet, "name": "R"}), select("R Top"),
                    plugin(approval, "cabinet", {**box_cabinet, "name": "S"}), select("S Top"),
-                   plugin(approval, "corner", {"name": "U", "corner": "right", "place": "right"}), select("S Top"),
+                   plugin(approval, "corner", {"name": "U", "place": "right"}), select("S Top"),
                    plugin(approval, "cabinet", {**box_cabinet, "name": "T", "place": "above", "depth": 300}),
                    {"command": "inspect.measure", "params": {}}])
     box = boxes(results[9])

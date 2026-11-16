@@ -214,6 +214,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are
   cut with `solid.chamfer`, picking the edge by a point in mm that is worked out twice: as an
   expression for the board and as a number for the pick.
+- A corner cabinet's `corner` field is auto by default (`corner::hand`): right when it is
+  placed right of the selected cabinet, else left. `lib.rs` settles it before building, so
+  the cabinet remembers left or right and Edit keeps it.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
   see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). Place
   puts a new cabinet against the selected one's Side R (right) or Side L (left), whichever

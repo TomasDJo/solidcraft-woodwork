@@ -171,3 +171,30 @@ fn refuses_bad_input() {
     assert!(build(&json!({"doors": "hinged right", "thickness": 12})).is_err());
     assert!(build(&json!({"height": 200, "shelves": 8})).is_err());
 }
+
+#[test]
+fn the_corner_follows_where_the_cabinet_is_placed() {
+    // against a cabinet's right side only a right corner makes sense
+    assert_eq!(hand(&json!({"place": "right"})), Ok("right"));
+    assert_eq!(
+        hand(&json!({"corner": "auto", "place": "right"})),
+        Ok("right")
+    );
+    for place in ["left", "origin", "above"] {
+        assert_eq!(hand(&json!({"place": place})), Ok("left"));
+    }
+    assert_eq!(hand(&json!({})), Ok("left"));
+    // and either can be asked for
+    assert_eq!(
+        hand(&json!({"corner": "left", "place": "right"})),
+        Ok("left")
+    );
+    assert_eq!(hand(&json!({"corner": "right"})), Ok("right"));
+    assert!(hand(&json!({"corner": "up"})).is_err());
+    // the builder reads it the same way: the return's end is the right side
+    let (commands, _) = build(&json!({"place": "right"})).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Side R")["length"],
+        "Cabinet_depth"
+    );
+}

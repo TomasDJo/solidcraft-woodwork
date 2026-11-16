@@ -54,11 +54,11 @@ HANGING = [
 BACK = 280  # the wall: the tall unit is 560 deep and centred on the origin
 # The corner cabinet goes right of the last base unit; its return runs forward along the right
 # wall, and one more base unit continues it, turned to face into the room.
-CORNER = {**FLOOR_UNIT, **MATCH, "corner": "right", "width": 1000, "return": 1000, "doors": "hinged left",
+CORNER = {**FLOOR_UNIT, **MATCH, "width": 1000, "return": 1000, "doors": "hinged left",
           "handles": "pull", "place": "right"}
 RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"]  # the right wall
 RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "doors": 1, "handles": "pull"}
-WALL_CORNER = {**WHITE, **MATCH, "corner": "right", "width": 1000, "return": 1000, "height": 700, "depth": 320,
+WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "depth": 320,
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
                "place": "right"}

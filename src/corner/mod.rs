@@ -18,6 +18,7 @@ mod input;
 use crate::fittings::{self, PinRows, PIN_SETBACK, PITCH};
 use crate::kit::{mm, Kit};
 use crate::Commands;
+pub use input::hand;
 use input::Input;
 use serde_json::{json, Value};
 

@@ -82,6 +82,7 @@ Cabinets:
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
 - [x] Labels: each board's name written on it
+- [x] Corner cabinet: left or right follows where it is placed (Auto)
 - [x] Holes that survive a rebuild of the history: cut as cylinders (deleting a cabinet in a big design broke drilled holes)
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [ ] Worktop and plinth run over the selected cabinets
