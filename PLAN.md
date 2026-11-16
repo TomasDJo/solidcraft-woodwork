@@ -84,6 +84,7 @@ Cabinets:
 - [ ] Worktop and plinth run over the selected cabinets
 
 Cut list and shop output:
+- [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
 - [ ] Edge banding and grain direction in the cut list
 - [ ] Sheet cutting diagrams (nesting, kerf, grain)
 - [ ] DXF per part, labels

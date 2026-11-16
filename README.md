@@ -64,6 +64,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   It also estimates the 2440 x 1220 sheets to buy per material and thickness (area plus
   15 % waste, not a cutting layout).
   And it counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles.
+  Fill in **Save as** to also get the list as a CSV file. It goes into the folder for cut
+  lists that SolidCraft asks you for when you install the plugin (0.43 and later); without
+  such a folder, leave the field empty.
 
 ## Install
 

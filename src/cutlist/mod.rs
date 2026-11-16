@@ -126,6 +126,31 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         .collect()
 }
 
+/// The folder grant in `plugin.json` that a cut list is saved into.
+pub const FOLDER: &str = "cutlists";
+
+/// The file the cut list is to be saved as, from its `file` field: none when that is empty.
+/// A name only, since the folder is the one the user approved; `.csv` is added when missing.
+pub fn file_name(entry: &str, params: &Value) -> Result<Option<String>, String> {
+    let name = params["file"].as_str().unwrap_or("").trim();
+    if entry != "cutlist" || name.is_empty() {
+        return Ok(None);
+    }
+    let plain = |c: char| c.is_alphanumeric() || " -_.".contains(c);
+    if !name.chars().all(plain) || name.starts_with('.') {
+        return Err(
+            "file: a file name of letters, digits, spaces, - _ and . only, such as kitchen.csv"
+                .into(),
+        );
+    }
+    let csv = name.to_lowercase().ends_with(".csv");
+    Ok(Some(if csv {
+        name.into()
+    } else {
+        format!("{name}.csv")
+    }))
+}
+
 /// `local` holds the sizes of the turned bodies, measured in their own component.
 pub fn cutlist(
     measure: &Value,
