@@ -36,8 +36,8 @@ pub fn build(corner: &Corner, on_return: bool) {
     let (z0, z1) = (format!("{epl} + {gap}"), format!("{eh} - {gap}"));
     let door_h = format!("{eh} - {epl} - {}", mm(2.0 * DOOR_GAP));
     let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * DOOR_GAP);
-    // The second door, the one that folds, carries the handle: upright beside the fold, at
-    // the height the box cabinet would put it.
+    // The second door, the one that folds, carries the handle: upright at its free end, away
+    // from the fold, at the height the box cabinet would put it.
     let handle_z = fittings::handle_height(
         handles,
         handle_at,
@@ -83,7 +83,7 @@ pub fn build(corner: &Corner, on_return: bool) {
             true => format!("{short_x} + {cup_c}"),
             false => format!("{ea} - {gap} - {cup_c}"),
         };
-        let pull_x = format!("{short_x} + {edge}");
+        let pull_x = format!("{ea} - {gap} - {edge}");
         holes(
             "Door",
             [&cup_x, face_y],
@@ -107,7 +107,7 @@ pub fn build(corner: &Corner, on_return: bool) {
             true => format!("{gap} + {cup_c}"),
             false => format!("{short_y} - {cup_c}"),
         };
-        let pull_y = format!("{short_y} - {edge}");
+        let pull_y = format!("{gap} + {edge}");
         holes(
             "Door return",
             [face_x, &cup_y],

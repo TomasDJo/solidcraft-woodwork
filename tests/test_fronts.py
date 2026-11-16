@@ -73,6 +73,28 @@ def test_joints(approval):
     assert box["E Drawer 2 Front"][1] == -300, box["E Drawer 2 Front"]
 
 
+def test_a_bifold_handle_is_at_the_free_end(approval):
+    # The second door of a corner cabinet's pair hangs on the first at the fold. Its handle is
+    # 50 mm from its other end, the free one, not beside the fold: in both corners, hinged at either end.
+    for corner in ("left", "right"):
+        for doors in ("hinged left", "hinged right"):
+            params = {"corner": corner, "doors": doors, "handles": "knob"}
+            box = boxes(cli([plugin(approval, "corner", params), MEASURE])[1])
+            first, second = "Cabinet Door", "Cabinet Door return"
+            for name, other, axis in ((first, second, 0), (second, first, 1)):
+                holes = [f["centroid"] for f in cli([plugin(approval, "corner", params), faces(name)])[1]["faces"]
+                         if abs((f.get("cylinder") or {}).get("radius", 0) - 2.5) < 0.01]
+                if not holes:
+                    continue  # the door that is hinged on the cabinet
+                lo, hi = box[name][axis], box[name][axis + 3]
+                middle = (box[other][axis] + box[other][axis + 3]) / 2
+                free = lo if abs(lo - middle) > abs(hi - middle) else hi  # the end away from the other door
+                assert round(abs(holes[0][axis] - free), 3) == 50, (params, name, holes[0], box[name])
+                break
+            else:
+                raise AssertionError(("no handle", params))
+
+
 def test_a_drawer_handle_follows_its_position(approval):
     # Top, middle and bottom move a drawer front's handle holes too: 40 mm from the front's
     # edge, or its middle, which auto also is. Two drawers in 720: the lower front is 2 to 359.
