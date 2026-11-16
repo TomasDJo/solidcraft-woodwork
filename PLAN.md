@@ -72,6 +72,9 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] SolidCraft 0.43: every dropdown shows titles and an explanation per choice, tests run against 0.43
 - [x] Dialog fields in a sensible order (sizes first) instead of alphabetical
 - [x] Edit cabinet: change shelves, doors, drawers, handles and more on a cabinet that is already made
+- [x] Labels: each board's name written on it
+- [x] Corner cabinet: left or right follows where it is placed (Auto)
+- [x] Holes that survive a rebuild of the history: cut as cylinders (deleting a cabinet in a big design broke drilled holes)
 
 ## Open
 
@@ -81,9 +84,6 @@ Cabinets:
 - [ ] Joinery for dividers and fixed shelves
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
-- [x] Labels: each board's name written on it
-- [x] Corner cabinet: left or right follows where it is placed (Auto)
-- [x] Holes that survive a rebuild of the history: cut as cylinders (deleting a cabinet in a big design broke drilled holes)
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [ ] Worktop and plinth run over the selected cabinets
 
