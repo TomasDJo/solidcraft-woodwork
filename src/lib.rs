@@ -141,6 +141,11 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 _ => return Err("match must be no or selected".into()),
             };
             let mut params = params.clone();
+            if entry == "corner" {
+                // Settled here, so the cabinet remembers which it became: Edit builds it
+                // again without knowing where it was placed.
+                params["corner"] = json!(corner::hand(&params)?);
+            }
             let mut beside = None;
             let design = run(
                 "document.inspect",

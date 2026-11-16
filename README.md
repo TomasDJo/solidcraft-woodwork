@@ -49,7 +49,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     the cabinet you have selected, so a whole run is resized by changing one cabinet's
     parameters.
 - **Corner cabinet** builds a cabinet for a corner of the room, with the return on the left
-  or the right: bottom, top and shelves that fill the corner, optional plinth, shelf pin
+  or the right (left on Auto it is on the right when you place the cabinet right of the
+  selected one, as a run that ends in a corner needs it, and else on the left): bottom, top and shelves that fill the corner, optional plinth, shelf pin
   holes, and doors hinged at the end you choose, with handle holes. It is parametric, takes
   a material, and can be placed, named and matched like the box cabinet. Two shapes:
   - **L-shaped**: two fronts at a right angle, with a bi-fold pair of doors. The first door

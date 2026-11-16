@@ -44,11 +44,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "diagonal" => true,
         _ => return Err("shape must be L-shaped or diagonal".into()),
     };
-    let right = match p.get("corner").and_then(Value::as_str).unwrap_or("left") {
-        "left" => false,
-        "right" => true,
-        _ => return Err("corner must be left or right".into()),
-    };
+    let right = hand(p)? == "right";
     // Left and right as you face the corner: the return's end is on the corner's own side.
     let on_return = match p.get("doors").and_then(Value::as_str).unwrap_or("none") {
         "none" => None,
@@ -123,4 +119,18 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         right,
         diagonal,
     })
+}
+
+/// Which corner of the room the cabinet is for, left or right, from its `corner` field. On
+/// auto it follows `place`: against a cabinet's right side only a right corner makes sense,
+/// its return coming forward at the far end of the run; anywhere else it is a left corner.
+pub fn hand(p: &Value) -> Result<&'static str, String> {
+    let placed_right = p.get("place").and_then(Value::as_str) == Some("right");
+    match p.get("corner").and_then(Value::as_str).unwrap_or("auto") {
+        "left" => Ok("left"),
+        "right" => Ok("right"),
+        "auto" if placed_right => Ok("right"),
+        "auto" => Ok("left"),
+        _ => Err("corner must be auto, left or right".into()),
+    }
 }
