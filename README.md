@@ -36,8 +36,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     way it stands: on the return's side of a corner cabinet the new one is turned a quarter
     and continues along the return, and the run carries on from there, corner cabinets too.
   - Its sizes are design parameters (`Name_width`, `Name_height`, `Name_depth`,
-    `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows.
-    The counts (shelves, dividers, doors) are fixed once it is built.
+    `Name_thickness`, ...). Change one in the Parameters table and the cabinet follows,
+    its doors' hinges included.
+    The counts (shelves, dividers, doors) are changed with **Edit cabinet**.
   - **Units** switches the sizes in the dialog between mm and inches.
   - **Name** is numbered when it is taken: Cabinet, Cabinet 2, Cabinet 3; after Base 1
     comes Base 2.

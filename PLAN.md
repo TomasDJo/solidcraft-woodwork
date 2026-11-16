@@ -81,7 +81,7 @@ Cabinets:
 - [ ] Joinery for dividers and fixed shelves
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
-- [ ] Joints that follow a resize (their axis is a fixed point today)
+- [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [ ] Worktop and plinth run over the selected cabinets
 
 Cut list and shop output:

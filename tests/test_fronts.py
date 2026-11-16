@@ -68,3 +68,25 @@ def test_joints(approval):
     assert box["D Door R"][1] < -300 - 297 * 0.9 and box["D Door R"][3] > 298, box["D Door R"]
     assert box["E Drawer 1 Front"][1] == -300 - 300, box["E Drawer 1 Front"]
     assert box["E Drawer 2 Front"][1] == -300, box["E Drawer 2 Front"]
+
+
+def test_hinges_follow_a_resize(approval):
+    # A cabinet made small and then widened and deepened opens its doors exactly as one made
+    # at that size does: the hinge is on the door's edge, not at a point from when it was made.
+    change = lambda name, to: {"command": "parameters.change", "params": {"name": name, "expression": to}}
+    cases = [("cabinet", {"doors": 2}, {"width": 600, "depth": 560}, {"width": 900, "depth": 400},
+              {"Cabinet Door L hinge": 90, "Cabinet Door R hinge": 60}),
+             ("corner", {"doors": "hinged right"}, {"width": 900, "return": 900}, {"width": 1100, "return": 1000},
+              {"Cabinet Door hinge": 70, "Cabinet Door return fold": 80}),
+             ("corner", {"doors": "hinged right", "corner": "right"}, {"width": 900, "return": 900}, {"width": 1100, "return": 1000},
+              {"Cabinet Door return hinge": 70, "Cabinet Door fold": 80}),
+             ("corner", {"shape": "diagonal", "doors": "hinged left"}, {"width": 900, "depth": 560}, {"width": 900, "depth": 400},
+              {"Cabinet Door hinge": 60})]
+    for entry, params, small, large, joints in cases:
+        drives = [drive(joint, value) for joint, value in joints.items()]
+        resized = cli([plugin(approval, entry, {**params, **small}),
+                       *[change(f"Cabinet_{key}", f"{value} mm") for key, value in large.items()], *drives, MEASURE])[-1]
+        made = cli([plugin(approval, entry, {**params, **large}), *drives, MEASURE])[-1]
+        doors = lambda measure: {name: box for name, box in boxes(measure).items() if " Door" in name}
+        assert doors(resized) == doors(made) and doors(made), (entry, params, doors(resized), doors(made))
+

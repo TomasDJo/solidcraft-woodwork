@@ -46,18 +46,14 @@ pub fn door(corner: &Corner, on_return: bool) {
         epl,
         ..
     } = corner;
-    let Corner {
-        b, d, h, t, plinth, ..
-    } = *corner;
+    let Corner { d, h, plinth, .. } = *corner;
     let (g, gap) = (DOOR_GAP, mm(DOOR_GAP));
     let (z0, z1) = (format!("{epl} + {gap}"), format!("{eh} - {gap}"));
     let door_h = format!("{eh} - {epl} - {}", mm(2.0 * g));
     // Each end stops short by the door's own thickness, so its outer corner stays inside the
     // cabinet's footprint and clear of a neighbour's door.
     let inset = format!("({et} + {})", mm(2.0 * g));
-    let inset_mm = t + 2.0 * g;
     let len = format!("{} - 2*{inset}", corner.front_length());
-    let len_mm = 2f64.sqrt() * (b - d) - 2.0 * inset_mm;
     // The front runs towards the back leg's end in a left corner, away from it in a right one.
     let at_end = on_return == corner.right;
     let (x0, x1) = (inset.clone(), format!("{inset} + {len}"));
@@ -107,20 +103,32 @@ pub fn door(corner: &Corner, on_return: bool) {
     for (j, z) in screws.iter().enumerate() {
         hole(&pull_x, z, HANDLE_D, et, format!("handle {}", j + 1));
     }
-    let (start, [ox, oy], degrees) = corner.front();
-    kit.turn("Door", start, degrees);
-    // The hinge, like the box cabinet's: about the door's front edge at its hinged end.
-    let (x, y) = (inset_mm + if at_end { len_mm } else { 0.0 }, -g - t);
+    let (start, _, degrees) = corner.front();
+    // The hinge, like the box cabinet's: about the door's front edge at its hinged end. The
+    // door is turned, so the line is given twice: along the door, and where that is in the
+    // cabinet.
+    let x = match at_end {
+        true => format!("{inset} + {len}"),
+        false => inset.clone(),
+    };
+    let y = format!("-{gap} - {et}");
     let (sin, cos) = (degrees as f64).to_radians().sin_cos();
-    let hinge = [ox + x * cos - y * sin, oy + x * sin + y * cos, plinth + g];
+    let from = |i: usize| start[i].as_str().unwrap_or_default().to_string();
+    let seat = [
+        format!("{} + ({x}) * ({cos}) - ({y}) * ({sin})", from(0)),
+        format!("{} + ({x}) * ({sin}) + ({y}) * ({cos})", from(1)),
+    ];
     let turn = if at_end { 1 } else { -1 };
-    kit.close(
+    kit.hinge_line("Door", "hinge", [&x, &y], turn);
+    kit.turn("Door", start, degrees);
+    let own = Some(degrees);
+    kit.hinge(
         "Door",
         None,
-        "revolute",
         "hinge",
-        hinge,
-        [0, 0, turn],
+        [&seat[0], &seat[1]],
+        own,
+        turn,
         110.0,
     );
 }

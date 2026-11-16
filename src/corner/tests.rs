@@ -6,6 +6,19 @@ fn named<'a>(commands: &'a Commands, name: &str) -> &'a Value {
     &found.unwrap_or_else(|| panic!("no {name}")).1
 }
 
+/// Where a hinge's line is in what the door hangs on, x and y, and the way it opens about Z:
+/// the two planes its axis is made from, and their order.
+fn hinge(commands: &Commands, joint: &str) -> (String, String, i32) {
+    let axis = named(commands, &format!("{joint} seat axis"));
+    let across = |plane: &Value| plane["plane"]["normal"] == json!([1, 0, 0]);
+    let (x, y, turn) = match across(&axis["a"]) {
+        true => (&axis["a"], &axis["b"], 1),
+        false => (&axis["b"], &axis["a"], -1),
+    };
+    let at = |plane: &Value, i: usize| plane["plane"]["origin"][i].as_str().unwrap().to_string();
+    (at(x, 0), at(y, 1), turn)
+}
+
 #[test]
 fn an_l_of_boards_with_the_corner_cut_out() {
     let p = json!({"width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"});
@@ -19,9 +32,20 @@ fn an_l_of_boards_with_the_corner_cut_out() {
     assert_eq!(summary["joints"].as_array().unwrap().len(), 2);
     // the second door folds out of the cabinet: about the corner where the two front faces
     // meet, turning towards the room
+    // (at 1000 x 900, 560 deep: x = 80, y = -130), and it hangs on the first door
+    let (x, y, turn) = hinge(&commands, "Cabinet Door return fold");
+    assert_eq!(
+        x,
+        "Cabinet_depth + 2 mm + Cabinet_thickness - Cabinet_width/2"
+    );
+    assert_eq!(
+        y,
+        "Cabinet_return - Cabinet_depth - 2 mm - Cabinet_thickness - Cabinet_return/2"
+    );
+    assert_eq!(turn, 1);
     let fold = named(&commands, "Cabinet Door return fold");
-    assert_eq!(fold["at"]["point"], json!([80.0, -130.0, 102.0]));
-    assert_eq!(fold["at"]["z"], json!([0, 0, 1]));
+    assert_eq!(fold["a"]["occurrence"], "Cabinet Door:1");
+    assert_eq!(fold["b"]["occurrence"], "Cabinet Door return:1");
     // the return's end is the left side, across the front of the footprint
     assert_eq!(
         named(&commands, "Cabinet Side L")["length"],
@@ -74,15 +98,15 @@ fn a_right_corner_is_the_mirror_image() {
     );
     let cup = named(&commands, "Cabinet Door return hinge cup 1");
     assert_eq!(cup["direction"], json!([-1, 0, 0]));
-    let joint = commands
-        .iter()
-        .find(|c| c.1["name"] == "Cabinet Door hinge");
-    // hinged at the left end of the back leg: 2 mm in from x = -450
-    assert_eq!(joint.unwrap().1["at"]["point"][0], -448.0);
-    assert_eq!(joint.unwrap().1["at"]["z"], json!([0, 0, -1]));
+    // hinged at the left end of the back leg: 2 mm in from the left, x = -448 at 900 wide
+    let (x, _, turn) = hinge(&commands, "Cabinet Door hinge");
+    assert_eq!(
+        x,
+        "Cabinet_width - (Cabinet_width - 2 mm) - (0 mm) - Cabinet_width/2"
+    );
+    assert_eq!(turn, -1);
     // and each joint turns the other way
-    let fold = named(&commands, "Cabinet Door return fold");
-    assert_eq!(fold["at"]["z"], json!([0, 0, -1]));
+    assert_eq!(hinge(&commands, "Cabinet Door return fold").2, -1);
 }
 
 #[test]
@@ -113,9 +137,26 @@ fn a_diagonal_front_is_one_turned_door() {
     assert_eq!(turns.len(), 2); // plinth and door
     assert_eq!(turns[1]["angle"], "45 deg");
     // hinged at the back leg's end: the far end of the door, on its front edge
-    let hinge = named(&commands, "Cabinet Door hinge");
-    let at = |i: usize| hinge["at"]["point"][i].as_f64().unwrap();
-    assert!((at(0) - 498.586).abs() < 0.01 && (at(1) + 139.700).abs() < 0.01);
+    // (x = 498.586, y = -139.700 at this size), given along the door too, which stands at 45
+    let (x, y, turn) = hinge(&commands, "Cabinet Door hinge");
+    let along = "(Cabinet_thickness + 4 mm) + (sqrt(2) * (Cabinet_return - Cabinet_depth)) - 2*(Cabinet_thickness + 4 mm)";
+    let (sin, across) = ("(0.7071067811865476)", "(-2 mm - Cabinet_thickness)");
+    let start = "(Cabinet_width - Cabinet_return + Cabinet_depth) - Cabinet_width/2";
+    assert_eq!(x, format!("{start} + ({along}) * {sin} - {across} * {sin}"));
+    assert_eq!(
+        y,
+        format!("0 mm - Cabinet_return/2 + ({along}) * {sin} + {across} * {sin}")
+    );
+    assert_eq!(turn, 1);
+    let joint = named(&commands, "Cabinet Door hinge");
+    assert_eq!(joint["angle"], "45 deg");
+    // its own line is along the door, and made before the door is turned
+    let own = named(&commands, "Cabinet Door hinge axis");
+    assert_eq!(own["b"]["plane"]["origin"][1], "-2 mm - Cabinet_thickness");
+    let order: Vec<_> = commands.iter().map(|c| (c.0, &c.1["name"])).collect();
+    let made = order.iter().position(|c| *c.1 == "Cabinet Door hinge axis");
+    let turned = order.iter().rposition(|c| c.0 == "occurrence.move");
+    assert!(made < turned);
     // a return too long for the width leaves no depth at its end
     assert!(build(&json!({"shape": "diagonal", "width": 800, "return": 1300})).is_err());
 }

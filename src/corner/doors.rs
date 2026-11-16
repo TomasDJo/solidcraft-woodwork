@@ -20,15 +20,7 @@ pub fn build(corner: &Corner, on_return: bool) {
         epl,
         ..
     } = corner;
-    let Corner {
-        a,
-        b,
-        d,
-        h,
-        t,
-        plinth,
-        ..
-    } = *corner;
+    let Corner { d, h, plinth, .. } = *corner;
     let flip = corner.flip();
     let gap = mm(DOOR_GAP);
     // Each door's end at the inner corner: the first's, and the second's a panel and a
@@ -75,7 +67,6 @@ pub fn build(corner: &Corner, on_return: bool) {
             hole(pull, z, HANDLE_D, et, format!("handle {}", j + 1));
         }
     };
-    let (g, floor) = (DOOR_GAP, plinth + DOOR_GAP);
     let (cup_c, edge) = (mm(CUP_CENTRE), mm(HANDLE_EDGE));
     // On the back leg, facing the front.
     let face_y = &long_y; // the back leg door's back face
@@ -129,22 +120,24 @@ pub fn build(corner: &Corner, on_return: bool) {
     // so the door clears the next cabinet. The fold is where the two front faces meet: 90
     // degrees lays the second door on the face of the first, out of the cabinet, so it
     // opens on its own too.
-    let (front_y, meet_x) = (b / 2.0 - d - g - t, (d + g + t - a / 2.0) * flip as f64);
-    let fold = [meet_x, front_y, floor];
-    let close = |part: &str, on: Option<&str>, joint: &str, at: [f64; 3], turn: i32| {
+    let front_y = format!("{eb} - {ed} - {gap} - {et}");
+    let meet_x = format!("{ed} + {gap} + {et}");
+    let close = |part: &str, on: Option<&str>, joint: &str, [x, y]: [&str; 2], turn: i32| {
         let limit = if on.is_some() { 90.0 } else { 110.0 };
-        kit.close(part, on, "revolute", joint, at, [0, 0, turn], limit)
+        let line = kit.at(&corner.point(x), y, &z0);
+        let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
+        kit.hinge(part, on, joint, line, None, turn, limit)
     };
+    let fold = [meet_x.as_str(), front_y.as_str()];
     if on_return {
         door_return();
-        let hinge = [meet_x, g - b / 2.0, floor];
-        close("Door return", None, "hinge", hinge, -flip);
+        close("Door return", None, "hinge", [&meet_x, &gap], -flip);
         door();
         close("Door", Some("Door return"), "fold", fold, -flip);
     } else {
         door();
-        let hinge = [(a / 2.0 - g) * flip as f64, front_y, floor];
-        close("Door", None, "hinge", hinge, flip);
+        let end = format!("{ea} - {gap}");
+        close("Door", None, "hinge", [&end, &front_y], flip);
         door_return();
         close("Door return", Some("Door"), "fold", fold, flip);
     }

@@ -247,6 +247,87 @@ impl Kit {
         ));
     }
 
+    /// A hinge line: a construction axis in `component`, upright through `at` (x and y,
+    /// expressions in that component's coordinates), that follows the cabinet's parameters.
+    /// `turn` is 1 or -1, the way a door on it opens about Z. Returns the axis's name.
+    ///
+    /// It is where two planes meet that are given outright, not made as features: a plugin
+    /// cannot hide what it makes, and planes across every door are a lot to look at. Such a
+    /// plane is read in the world's coordinates when it is made and in the component's own
+    /// afterwards, so the component must not have been moved or turned yet.
+    fn line(&self, component: &str, name: String, [x, y]: [&str; 2], turn: i32) -> String {
+        self.push(("component.activate", json!({"component": component})));
+        let zero = mm(0.0);
+        let across = json!({"plane": {"origin": [x, zero, zero], "normal": [1, 0, 0]}});
+        let along = json!({"plane": {"origin": [zero, y, zero], "normal": [0, 1, 0]}});
+        // The order of the planes is the way the axis points, and so the way it opens.
+        let (a, b) = if turn < 0 {
+            (along, across)
+        } else {
+            (across, along)
+        };
+        self.push((
+            "construct.axis.two_planes",
+            json!({"a": a, "b": b, "name": name}),
+        ));
+        name
+    }
+
+    /// The hinge line of a part that is about to be turned (`turn`), in its own coordinates:
+    /// made first, while the part still stands square. `hinge` then gets the degrees as `own`.
+    pub fn hinge_line(&self, part: &str, joint: &str, at: [&str; 2], turn: i32) {
+        let name = &self.name;
+        let line = format!("{name} {part} {joint} axis");
+        self.line(&format!("{name} {part}"), line, at, turn);
+    }
+
+    /// A door's hinge: the part turns about the upright line through `at`, x and y as
+    /// expressions in the coordinates of what it hangs on: `on`, the moving part beside it (a
+    /// bi-fold door on the first door), or `None` for the cabinet. `own` is for a part that
+    /// was turned: the degrees it stands at, its own line made before with `hinge_line`.
+    /// `turn` is 1 or -1, the way it opens about Z.
+    ///
+    /// The line is a construction axis in each of the two components, so the hinge follows
+    /// the cabinet's parameters.
+    #[allow(clippy::too_many_arguments)]
+    pub fn hinge(
+        &self,
+        part: &str,
+        on: Option<&str>,
+        joint: &str,
+        at: [&str; 2],
+        own: Option<i32>,
+        turn: i32,
+        limit: f64,
+    ) {
+        let name = &self.name;
+        let joint = format!("{name} {part} {joint}");
+        let base = match on {
+            Some(other) => format!("{name} {other}"),
+            None => name.clone(),
+        };
+        let of_part = match own {
+            Some(_) => format!("{joint} axis"),
+            None => self.line(&format!("{name} {part}"), format!("{joint} axis"), at, turn),
+        };
+        let of_base = self.line(&base, format!("{joint} seat axis"), at, turn);
+        self.push(("component.activate", json!({"component": name})));
+        let mut args = json!({
+            "type": "revolute", "name": joint,
+            "a": {"occurrence": format!("{base}:1"), "axis": of_base},
+            "b": {"occurrence": format!("{name} {part}:1"), "axis": of_part},
+        });
+        if let Some(degrees) = own {
+            args["angle"] = json!(format!("{degrees} deg"));
+        }
+        self.push(("joint.create", args));
+        self.push((
+            "joint.limits",
+            json!({"joint": joint, "min": 0, "max": limit}),
+        ));
+        self.joints.borrow_mut().push(joint);
+    }
+
     // ponytail: the joint's point is a number, where the part is now. It does not follow a
     // resize, and it is off if the cabinet is made inside a component that has been moved.
     /// `on` is the moving part it hangs on (a bi-fold door on the door beside it), or `None`
@@ -291,7 +372,7 @@ impl Kit {
         commands.append(&mut last);
         let features: Vec<&Value> = commands
             .iter()
-            .filter(|c| c.0.starts_with("solid."))
+            .filter(|c| c.0.starts_with("solid.") || c.0.starts_with("construct."))
             .map(|c| &c.1["name"])
             .collect();
         let group = json!({ "name": self.name, "features": features });

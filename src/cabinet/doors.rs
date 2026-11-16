@@ -17,10 +17,8 @@ pub fn build(cabinet: &Cabinet) {
         ..
     } = cabinet;
     let Input {
-        w,
         h,
         d,
-        t,
         plinth,
         doors,
         handles,
@@ -81,14 +79,12 @@ pub fn build(cabinet: &Cabinet) {
         // The hinge: turning outwards up to 110 degrees about the front edge on the door's hinge
         // side. A cup hinge carries the door out and round so that its edge clears the door of
         // the next cabinet; about the back edge it would swing a panel thickness into it.
-        let width = (w - 2.0 * DOOR_GAP - (doors - 1.0) * DOOR_GAP) / doors;
-        let left = -w / 2.0 + DOOR_GAP + (width + DOOR_GAP) * i as f64;
-        let (x, axis) = if i % 2 == 0 {
-            (left, -1)
-        } else {
-            (left + width, 1)
+        let (x, turn) = match i % 2 {
+            0 => (x0.clone(), -1),
+            _ => (format!("{x0} + {door_w}"), 1),
         };
-        let point = [x, -d / 2.0 - DOOR_GAP - t, plinth + DOOR_GAP];
-        kit.close(&part, None, "revolute", "hinge", point, [0, 0, axis], 110.0);
+        let line = kit.at(&x, &y, &z0);
+        let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
+        kit.hinge(&part, None, "hinge", line, None, turn, 110.0);
     }
 }
