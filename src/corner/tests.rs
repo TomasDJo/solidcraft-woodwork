@@ -75,7 +75,7 @@ fn the_handle_is_on_the_door_that_folds() {
                 "handle_position": at});
             let (commands, _) = build(&p).unwrap();
             let hole = named(&commands, &format!("Cabinet {part} handle 1"));
-            hole["position"][2].as_str().unwrap().to_string()
+            hole["base"][2].as_str().unwrap().to_string()
         };
         assert_eq!(height("top"), "Cabinet_height - 2 mm - 100 mm");
         assert_eq!(
@@ -97,7 +97,7 @@ fn a_right_corner_is_the_mirror_image() {
         "Cabinet_width - (0 mm) - (Cabinet_depth) - Cabinet_width/2"
     );
     let cup = named(&commands, "Cabinet Door return hinge cup 1");
-    assert_eq!(cup["direction"], json!([-1, 0, 0]));
+    assert_eq!(cup["axis"], json!([-1, 0, 0]));
     // hinged at the left end of the back leg: 2 mm in from the left, x = -448 at 900 wide
     let (x, _, turn) = hinge(&commands, "Cabinet Door hinge");
     assert_eq!(

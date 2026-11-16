@@ -128,11 +128,12 @@ pub fn build(
                         0 => format!("{label} {side} {panel} {what}"),
                         _ => format!("{label} {side} {panel} {what} {}", k + 1),
                     };
+                    // a cylinder cut, like every hole here: see `fittings::hole`
                     commands.push((
-                        "solid.hole",
+                        "solid.cylinder",
                         json!({
-                            "position": place(x, k, z), "direction": [direction, 0, 0],
-                            "diameter": diameter, "depth": depth,
+                            "base": place(x, k, z), "axis": [direction, 0, 0],
+                            "diameter": diameter, "height": depth, "operation": "cut",
                             "targets": [format!("{name} {target}")], "name": feature,
                         }),
                     ));

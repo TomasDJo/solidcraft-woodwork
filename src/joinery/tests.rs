@@ -20,23 +20,24 @@ fn four_joints_of_two_holes_and_a_row() {
     assert_eq!(origin, [300.0, 280.0, 0.0]);
     // sides 554 deep in a 560 cabinet: 3 screws per joint, and an overlaid back
     assert_eq!(commands.len(), 4 * 2 * 3 + 1);
+    // each is a cylinder cut out of the one board it is for, not a hole kept by a picked face
+    assert_eq!(commands[0].0, "solid.cylinder");
+    assert_eq!(commands[0].1["operation"], "cut");
+    assert_eq!(commands[0].1["targets"], json!(["Base 1 Side L"]));
     assert_eq!(
-        commands[2].1["position"][1],
+        commands[2].1["base"][1],
         "50 mm + ((Base_1_depth - Base_1_back_thickness) - 100 mm) / 2 * 2 - Base_1_depth/2"
     );
     // the screw enters the left side from outside, the bottom sits on the plinth
-    assert_eq!(commands[0].1["position"][0], "0 mm - Base_1_width/2");
+    assert_eq!(commands[0].1["base"][0], "0 mm - Base_1_width/2");
     assert_eq!(
-        commands[0].1["position"][2],
+        commands[0].1["base"][2],
         "Base_1_plinth + Base_1_thickness/2"
     );
     assert_eq!(commands[3].1["targets"][0], "Base 1 Bottom");
 
     let (dowels, _) = build(&found(), &design, "dowel").unwrap();
-    assert_eq!(
-        dowels[0].1["position"][0],
-        "Base_1_thickness - Base_1_width/2"
-    );
+    assert_eq!(dowels[0].1["base"][0], "Base_1_thickness - Base_1_width/2");
 }
 
 #[test]

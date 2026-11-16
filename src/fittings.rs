@@ -59,10 +59,10 @@ pub fn pin_rows(kit: &Kit, top_row: &str, rows: PinRows) -> [(&'static str, Valu
     let feature = format!("{name} {part} pins");
     [
         (
-            "solid.hole",
+            "solid.cylinder",
             json!({
-                "position": rows.position, "direction": rows.into,
-                "diameter": mm(PIN_D), "depth": rows.depth,
+                "base": rows.position, "axis": rows.into,
+                "diameter": mm(PIN_D), "height": rows.depth, "operation": "cut",
                 "targets": [format!("{name} {part}")], "name": feature,
             }),
         ),
@@ -78,6 +78,9 @@ pub fn pin_rows(kit: &Kit, top_row: &str, rows: PinRows) -> [(&'static str, Valu
     ]
 }
 
+// Every hole is a cylinder cut out of the one board it is for, not `solid.hole`: that keeps
+// the face it was picked on, and when the history is built again in a design with many
+// cabinets (after one is deleted, as Edit does) the face is not found and the hole fails.
 /// A hole in a door or a drawer front, from its back face.
 pub fn hole(
     kit: &Kit,
@@ -90,10 +93,10 @@ pub fn hole(
 ) {
     let name = &kit.name;
     kit.push((
-        "solid.hole",
+        "solid.cylinder",
         json!({
-            "position": position, "direction": into,
-            "diameter": mm(d), "depth": depth,
+            "base": position, "axis": into,
+            "diameter": mm(d), "height": depth, "operation": "cut",
             "targets": [format!("{name} {part}")],
             "name": format!("{name} {part} {what}"),
         }),
