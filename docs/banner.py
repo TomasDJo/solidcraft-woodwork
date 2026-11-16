@@ -1,10 +1,11 @@
-"""Draw docs/banner.png, the first picture in the README: a small run of cabinets and the name.
+"""Draw the README's pictures on one dark background: docs/banner.png, a small run of cabinets
+beside the name, and docs/kitchen.png, the sample kitchen in examples/kitchen.sc.
 
     python build.py          # first: builds the plugin into dist/
     python docs/banner.py
 
-Needs Pillow. The cabinets are built and rendered through the CLI, cut out of the render's
-light background, and set on a dark one beside the text.
+Needs Pillow. The cabinets are rendered through the CLI, cut out of the render's light
+background, and set on the dark one.
 """
 import subprocess
 import sys
@@ -20,6 +21,8 @@ SCENE = HERE.parent / "dist" / "banner.sc"
 SHOT = HERE.parent / "dist" / "banner-shot.png"
 OUT = HERE / "banner.png"
 SIZE = (1280, 640)
+KITCHEN = HERE.parent / "examples" / "kitchen.sc"
+KITCHEN_CAMERA = '{"target":[1800,-350,1000],"yaw":0.22,"pitch":0.33,"distance":5600,"fov":0.6}'
 CAMERA = '{"target":[1100,-350,400],"yaw":0.3,"pitch":0.4,"distance":6800,"fov":0.5}'
 
 UNIT = {"material": "White melamine", "height": 870, "depth": 560, "plinth": 120, "handles": "pull"}
@@ -79,13 +82,37 @@ def font(size, bold=False):
     return ImageFont.load_default(size)
 
 
+def shot(design, camera, size):
+    """The design rendered at `size` from `camera`, cut out of its background."""
+    subprocess.run(["solidcraft-cli", "snapshot", "--in", str(design), "--out", str(SHOT), "--camera", camera,
+                    "--no-grid", "--no-axes", "--width", str(size[0]), "--height", str(size[1]), "--quality", "fine"],
+                   check=True, stdout=subprocess.DEVNULL)
+    return cut_out(Image.open(SHOT).convert("RGB"))
+
+
+def backdrop(size, glow_at):
+    """The dark background, with a warm glow in the box `glow_at` (fractions of the size)."""
+    w, h = size
+    x0, y0, x1, y1 = glow_at
+    image = Image.new("RGB", size, "#14110e")
+    glow = Image.new("L", size, 0)
+    ImageDraw.Draw(glow).ellipse((w * x0, h * y0, w * x1, h * y1), fill=150)
+    image.paste(Image.new("RGB", size, "#4a3520"), mask=glow.filter(ImageFilter.GaussianBlur(w // 10)))
+    return image
+
+
+def kitchen():
+    size = (1400, 900)
+    model = shot(KITCHEN, KITCHEN_CAMERA, (2800, 1800))
+    model.thumbnail((int(size[0] * 0.9), int(size[1] * 0.86)), Image.LANCZOS)
+    image = backdrop(size, (0.1, 0.05, 0.9, 0.95))
+    image.paste(model, ((size[0] - model.width) // 2, (size[1] - model.height) // 2), model)
+    image.save(HERE / "kitchen.png")
+
+
 def banner(model):
     w, h = SIZE
-    image = Image.new("RGB", SIZE, "#14110e")
-    # A warm glow behind the cabinets.
-    glow = Image.new("L", SIZE, 0)
-    ImageDraw.Draw(glow).ellipse((w * 0.42, h * 0.05, w * 1.05, h * 0.98), fill=150)
-    image.paste(Image.new("RGB", SIZE, "#4a3520"), mask=glow.filter(ImageFilter.GaussianBlur(120)))
+    image = backdrop(SIZE, (0.42, 0.05, 1.05, 0.98))
 
     box = (int(w * 0.5), int(h * 0.86))
     model.thumbnail(box, Image.LANCZOS)
@@ -103,8 +130,6 @@ def banner(model):
 
 if __name__ == "__main__":
     scene()
-    subprocess.run(["solidcraft-cli", "snapshot", "--in", str(SCENE), "--out", str(SHOT), "--camera", CAMERA,
-                    "--no-grid", "--no-axes", "--width", "2400", "--height", "2000", "--quality", "fine"],
-                   check=True, stdout=subprocess.DEVNULL)
-    banner(cut_out(Image.open(SHOT).convert("RGB")))
-    print(OUT)
+    banner(shot(SCENE, CAMERA, (2400, 2000)))
+    kitchen()
+    print(OUT, HERE / "kitchen.png")
