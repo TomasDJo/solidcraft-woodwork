@@ -128,7 +128,7 @@
         }
       }
     ],
-    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "joint.as_built", "joint.create", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
+    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "joint.as_built", "joint.create", "joint.edit", "joint.list", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect"],
     "permissions": { "files": [{ "name": "cutlists", "read": false, "write": true }] },
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
   }

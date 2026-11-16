@@ -147,6 +147,19 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   the way the axis points, so the way the door opens. The axes sit in the cabinet's history
   folder. Four commands a hinge more than before. `solidcraft-cli snapshot` does not draw
   construction planes or axes, so a render does not show whether a design is cluttered.
+- **A placed cabinet is held to its neighbour.** `link` in `lib.rs` makes a rigid joint
+  `<Name> link` from the cabinet it was placed against (side a) to the new one (side b), with
+  the distance between their middles as the joint's `offset`: an expression such as
+  `A_width/2 + B_width/2` (`A_return/2 + ...` from the end of a corner cabinet's return,
+  `A_height` on top; `select::Cabinet::toward`), which the app works out again when a
+  parameter changes. Both sides are explicit frames in world coordinates, given where the
+  cabinets stand, with `flip: true`, so making the joint moves nothing. A held cabinet is
+  not grounded: it is fixed through the chain to the first cabinet of the run, which is.
+  The link is noted on the component (`link: {to, place}` beside the remembered values).
+  Edit deletes the component and its joints with it, so it makes the cabinet's own link
+  again and those of the cabinets that hang on it (`edit::links`, from `joint.list`).
+  A cabinet with any link cannot be moved (`occurrence.move` answers `reverted: true`, and
+  nothing fails), so Joinery suppresses all its links while the cabinet is on the origin.
 - **A cabinet remembers how it was made.** `make` in `lib.rs` stores the entry and the dialog
   values on the cabinet's component (`edit::remember`, metadata key
   `io.github.tomasdjo.woodwork`; Joinery adds its kind there). Edit reads them, takes the
@@ -205,7 +218,15 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   for a slide (only its direction matters), but it is off if the cabinet is made inside a
   component that has already been moved.
 - A cabinet is grounded at the end of a run, because a joint only moves against something
-  fixed. Moving it later means ungrounding it first.
+  fixed. Moving it later means ungrounding it first. A cabinet placed against another is
+  held by its link instead; moving it means deleting that joint (and grounding it, or its
+  doors do not open). Deleting the first cabinet of a run leaves the rest floating.
+- A link follows along one direction only (a joint's sideways offsets are worked out once):
+  backs do not stay flush when one of two cabinets is made deeper afterwards; a cabinet on
+  top keeps its place sideways; a cabinet at the end of a corner cabinet's return does not
+  move sideways when the corner cabinet's width changes, and a corner cabinet whose return
+  is made longer grows half to the back. Parametric axes in each cabinet, as the hinges
+  have, would fix that at the price of two more features a cabinet.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
   `joint`, `Drawer n Front`), so renaming those breaks it.
 - The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.

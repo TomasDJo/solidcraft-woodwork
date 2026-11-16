@@ -56,6 +56,75 @@ fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String>
     Ok((summary, made))
 }
 
+/// Holds a cabinet that was placed against another to that one, with a rigid joint whose
+/// distance is an expression over the two cabinets' parameters: when either changes size the
+/// placed one keeps standing against its neighbour, and what is placed against it in turn
+/// follows. `at` is where the placed cabinet's origin is now. Notes the link on its component,
+/// so Edit can make it again. False when the other cabinet has no such parameter.
+// ponytail: only the distance follows. A cabinet that is made deeper than its neighbour
+// afterwards keeps its middle where it was, so the backs are no longer flush: the joint's
+// sideways offsets are worked out once. A second joint cannot hold the same two parts.
+fn link(
+    other: &select::Cabinet,
+    place: &str,
+    name: &str,
+    at: [f64; 3],
+    run: Run,
+) -> Result<bool, String> {
+    let design = run(
+        "document.inspect",
+        json!({"bodies": false, "timeline": false}),
+    )?;
+    let value = |id: &str| {
+        let all = design["params"].as_array().into_iter().flatten();
+        let found = all.into_iter().find(|p| p["name"] == id);
+        found.and_then(|p| p["value"].as_f64())
+    };
+    let (toward, size) = other.toward(place);
+    let (theirs, ours) = (
+        format!("{}_{size}", kit::prefix(&other.name)),
+        format!("{}_width", kit::prefix(name)),
+    );
+    let (offset, gap) = match (place, value(&theirs), value(&ours)) {
+        ("above", Some(height), _) => (theirs, height),
+        (_, Some(a), Some(b)) if place != "above" => {
+            (format!("{theirs}/2 + {ours}/2"), (a + b) / 2.0)
+        }
+        _ => return Ok(false),
+    };
+    // Both frames are given where the cabinets stand: the placed one's at its origin, the
+    // other's that distance back, with the same directions, so nothing moves now.
+    let from: Vec<f64> = (0..3).map(|i| at[i] - toward[i] * gap).collect();
+    let x = if place == "above" {
+        [1, 0, 0]
+    } else {
+        [0, 0, 1]
+    };
+    let frame = |cabinet: &str, origin: &[f64]| {
+        json!({
+            "occurrence": format!("{cabinet}:1"),
+            "frame": {"origin": origin, "z": toward, "x": x},
+        })
+    };
+    run(
+        "joint.create",
+        json!({
+            "type": "rigid", "name": format!("{name} link"), "flip": true, "offset": offset,
+            "a": frame(&other.name, &from), "b": frame(name, &at), "quiet": true,
+        }),
+    )?;
+    let about = run("component.metadata", json!({"component": name}))?;
+    let mut ours = about["metadata"][edit::KEY].clone();
+    if ours.is_object() {
+        ours["link"] = json!({"to": other.name, "place": place});
+        run(
+            "component.metadata.set",
+            json!({"component": name, "values": { edit::KEY: ours }}),
+        )?;
+    }
+    Ok(true)
+}
+
 /// Drills a cabinet's screw or dowel holes inside its component, and notes the kind on the
 /// component so that Edit can drill them again.
 fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
@@ -64,24 +133,44 @@ fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
         json!({"bodies": false, "timeline": "summary"}),
     )?;
     let (commands, origin) = joinery::build(found, &design, kind)?;
-    let before = run("component.list", json!({"compact": true}))?["active"].clone();
+    let tree = run("component.list", json!({"compact": true}))?;
+    let before = tree["active"].clone();
     // In a plugin run the app shifts a hole's position by where the component stands,
     // so a cabinet that has been moved is drilled on the origin and then put back.
-    // ponytail: this leaves the cabinet grounded, as the cabinet entry made it, also
-    // if the user had freed it since.
+    // ponytail: this leaves a cabinet that is not held to another grounded, as the cabinet
+    // entry made it, also if the user had freed it since.
     let occurrence = format!("{}:1", found.name);
     let shift = |by: [f64; 3], run: Run| {
-        run(
+        let moved = run(
             "occurrence.move",
             json!({"occurrence": occurrence, "translate": by}),
+        )?;
+        // a joint to something else puts it straight back, and the holes would miss
+        check(
+            moved["reverted"] != true,
+            "the cabinet is held by a joint and cannot be moved to drill it",
         )
     };
     let away = origin.iter().any(|v| v.abs() > 1e-6);
+    // Any link holds the cabinet where it is, its own to the cabinet it stands against and
+    // those of the cabinets that stand against it: all are put aside for the move. Without
+    // one of its own it is grounded instead.
+    let links = edit::links(&tree, &run("joint.list", json!({}))?, &found.name);
+    let held = links.iter().any(|link| link.1);
+    let free = |free: bool, run: Run| -> Result<(), String> {
+        for (link, _) in &links {
+            run("joint.edit", json!({"joint": link, "suppressed": free}))?;
+        }
+        if !held {
+            run(
+                "occurrence.ground",
+                json!({"occurrence": occurrence, "grounded": !free}),
+            )?;
+        }
+        Ok(())
+    };
     if away {
-        run(
-            "occurrence.ground",
-            json!({"occurrence": occurrence, "grounded": false}),
-        )?;
+        free(true, run)?;
         shift(origin.map(|v| -v), run)?;
     }
     run("component.activate", json!({"component": found.name}))?;
@@ -91,10 +180,7 @@ fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
     run("component.activate", json!({"component": before}))?;
     if away {
         shift(origin, run)?;
-        run(
-            "occurrence.ground",
-            json!({"occurrence": occurrence, "grounded": true}),
-        )?;
+        free(false, run)?;
     }
     let about = run("component.metadata", json!({"component": found.name}))?;
     let mut ours = about["metadata"][edit::KEY].clone();
@@ -164,6 +250,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 }
             }
             let (mut summary, made) = make(entry, &params, run)?;
+            let mut held = false;
             if let Some(other) = beside {
                 // Against that cabinet's side, or on top of it, turned the way it is turned.
                 let size = |key: &str| summary["size"][key].as_f64().unwrap_or(0.0);
@@ -177,13 +264,19 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 }
                 run("occurrence.move", to)?;
                 summary["placed"] = json!(format!("{place} of {}", other.name));
+                let name = summary["name"].as_str().unwrap_or_default().to_string();
+                held = link(&other, place, &name, at, run)?;
+                summary["linked"] = json!(held);
             }
-            // Grounded, so that its doors and drawers have something fixed to open against.
-            // To move the cabinet later, unground it first.
-            run(
-                "occurrence.ground",
-                json!({"occurrence": made["occurrence"], "grounded": true}),
-            )?;
+            // Grounded, so that its doors and drawers have something fixed to open against,
+            // unless it is held to the cabinet it stands against, which is. To move the
+            // cabinet later, unground it first, or delete its link.
+            if !held {
+                run(
+                    "occurrence.ground",
+                    json!({"occurrence": made["occurrence"], "grounded": true}),
+                )?;
+            }
             Ok(summary)
         }
         "edit" => {
@@ -206,6 +299,9 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             let tree = run("component.list", json!({}))?;
             let (parent, matrix, grounded) = edit::placement(&tree, &name)?;
             let materials = edit::materials(&measure, &select::parts(&measure, &name));
+            // The cabinets held to this one lose their link with it: found now, held again after.
+            let joints = run("joint.list", json!({}))?;
+            let hanging = edit::hanging(&tree, &joints, &name);
             run("component.activate", json!({"component": parent}))?;
             let gone = run("component.delete", json!({"component": name}))?;
             let (mut summary, made) = make(&entry, &params, run)?;
@@ -236,10 +332,39 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 "occurrence.move",
                 json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
             )?;
-            run(
-                "occurrence.ground",
-                json!({"occurrence": made["occurrence"], "grounded": grounded}),
-            )?;
+            // Held again to the cabinet it stood against, when that is still there; and the
+            // cabinets that were held to it, to the new one.
+            let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
+            let was = &about["metadata"][edit::KEY]["link"];
+            let measure = run("inspect.measure", json!({}))?;
+            let mut held = false;
+            if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
+                if let Ok(other) = select::named(&measure, to) {
+                    held = link(&other, place, &name, stands(&matrix), run)?;
+                }
+            }
+            if !held {
+                run(
+                    "occurrence.ground",
+                    json!({"occurrence": made["occurrence"], "grounded": grounded}),
+                )?;
+            }
+            let this = select::named(&measure, &name)?;
+            for other in hanging {
+                let about = run("component.metadata", json!({"component": other}))?;
+                let place = about["metadata"][edit::KEY]["link"]["place"].as_str();
+                let (_, matrix, _) = edit::placement(&tree, &other)?;
+                let held = match place {
+                    Some(place) => link(&this, place, &other, stands(&matrix), run)?,
+                    None => false,
+                };
+                if !held {
+                    run(
+                        "occurrence.ground",
+                        json!({"occurrence": format!("{other}:1"), "grounded": true}),
+                    )?;
+                }
+            }
             // Back to where the user was working, unless that was inside the old cabinet.
             let inside = gone["deleted"]
                 .as_array()
