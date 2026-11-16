@@ -103,6 +103,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   `solidcraft-cli snapshot --in examples/kitchen.sc --out docs/kitchen.png --camera '{"target":[1800,-350,1000],"yaw":0.22,"pitch":0.33,"distance":5600,"fov":0.6}' --no-grid --no-axes --width 1400 --height 900 --quality fine`
 - **Releases come from tags.** Pushing a tag `vX.Y.Z` that matches the version in
   `plugin.json` makes the same workflow attach `woodwork-X.Y.Z.zip` to a GitHub Release.
+- **Release candidates often, full releases rarely.** New work goes out as `X.Y.Z-rc.N`
+  (that version in `plugin.json` and `Cargo.toml`, tag `vX.Y.Z-rc.N`): a tag with a hyphen
+  becomes a GitHub pre-release, which the README's latest-release link skips. When the
+  candidates have settled, the version loses its suffix and `vX.Y.Z` is the full release.
 - **Branches and pull requests, never straight to main.** One branch per function, one commit
   per function, with `README.md` updated and `PLAN.md` ticked in the same commit. Do not push
   until the user says so.
