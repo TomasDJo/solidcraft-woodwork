@@ -5,8 +5,10 @@ Works with SolidCraft 0.43; older plugin versions work with 0.41 and 0.42. See [
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
 
-Videos: a one minute tour and three how-tos are in the
-[Woodwork for SolidCraft playlist](https://www.youtube.com/playlist?list=PLCpxga1LxgoA) on YouTube.
+[![Watch the one minute introduction on YouTube](docs/intro-video.jpg)](https://www.youtube.com/watch?v=N4oWhdVGvVY)
+
+The picture opens a one minute introduction on YouTube. Three how-tos follow it in the
+[Woodwork for SolidCraft playlist](https://www.youtube.com/playlist?list=PLCpxga1LxgoA).
 
 ## Functions
 
