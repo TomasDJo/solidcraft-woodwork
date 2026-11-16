@@ -74,6 +74,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Edit cabinet: change shelves, doors, drawers, handles and more on a cabinet that is already made
 - [x] Labels: each board's name written on it
 - [x] Corner cabinet: left or right follows where it is placed (Auto)
+- [x] Box cabinet: the first door hinged left or right
 - [x] A placed cabinet is held to its neighbour, so a run follows a change of width or height
 - [x] Holes that survive a rebuild of the history: cut as cylinders (deleting a cabinet in a big design broke drilled holes)
 

@@ -5,8 +5,10 @@ use super::Cabinet;
 use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, DOOR_GAP, HANDLE_EDGE};
 use crate::kit::mm;
 
-/// Equal overlay doors across the front. They hinge left, right, left... so pairs open from
-/// the middle. One door per compartment puts every gap on a divider (within half a panel).
+/// Equal overlay doors across the front. They hinge left, right, left..., or right, left,
+/// right... when the first is asked to hinge on its right. Two doors are a pair that opens
+/// from the middle whatever is asked: hinged the other way both would hang in the middle.
+/// One door per compartment puts every gap on a divider (within half a panel).
 pub fn build(cabinet: &Cabinet) {
     let Cabinet {
         kit,
@@ -23,9 +25,11 @@ pub fn build(cabinet: &Cabinet) {
         doors,
         handles,
         handle_at,
+        hinge_right,
         ..
     } = cabinet.input;
     let count = doors as usize;
+    let first = usize::from(hinge_right && count != 2); // 1: the first door hinges on its right
     let gap_mm = mm(DOOR_GAP);
     let door_w = format!(
         "(({ew} - {} - {}*{gap_mm}) / {count})",
@@ -53,7 +57,7 @@ pub fn build(cabinet: &Cabinet) {
         let y = format!("-{gap_mm} - {et}");
         kit.open(&part);
         kit.panel(&part, [&x0, &y, &z0], [&door_w, et, &door_h], None);
-        let cup_x = match i % 2 {
+        let cup_x = match (i + first) % 2 {
             0 => format!("{x0} + {}", mm(CUP_CENTRE)),
             _ => format!("{x0} + {door_w} - {}", mm(CUP_CENTRE)),
         };
@@ -71,7 +75,7 @@ pub fn build(cabinet: &Cabinet) {
             );
         }
         // The handle is on the side away from the hinges.
-        let handle_x = match i % 2 {
+        let handle_x = match (i + first) % 2 {
             0 => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),
             _ => format!("{x0} + {}", mm(HANDLE_EDGE)),
         };
@@ -79,7 +83,7 @@ pub fn build(cabinet: &Cabinet) {
         // The hinge: turning outwards up to 110 degrees about the front edge on the door's hinge
         // side. A cup hinge carries the door out and round so that its edge clears the door of
         // the next cabinet; about the back edge it would swing a panel thickness into it.
-        let (x, turn) = match i % 2 {
+        let (x, turn) = match (i + first) % 2 {
             0 => (x0.clone(), -1),
             _ => (format!("{x0} + {door_w}"), 1),
         };

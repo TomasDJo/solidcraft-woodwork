@@ -163,6 +163,41 @@ fn a_door_hinges_on_its_outer_front_edge() {
             json!({"plane": {"origin": [x, "0 mm", "0 mm"], "normal": [1, 0, 0]}})
         );
     }
+    // one door hinged on its right instead: the same line at the door's other edge, opening
+    // the other way, with the cups there and the handle at the left
+    let p = json!({"doors": 1, "door_hinge": "right", "handles": "knob"});
+    let (right, _) = build(&p).unwrap();
+    let of = |name: &str| &right.iter().find(|c| c.1["name"] == name).unwrap().1;
+    let axis = of("Cabinet Door hinge axis");
+    assert_eq!(axis["a"]["plane"]["normal"], json!([1, 0, 0]));
+    assert_eq!(
+        axis["a"]["plane"]["origin"][0],
+        "2 mm + (((Cabinet_width - 4 mm - 0*2 mm) / 1) + 2 mm) * 0 + ((Cabinet_width - 4 mm - 0*2 mm) / 1) - Cabinet_width/2"
+    );
+    assert!(of("Cabinet Door hinge cup 1")["base"][0]
+        .as_str()
+        .unwrap()
+        .contains("- 22.5 mm"));
+    assert!(of("Cabinet Door handle 1")["base"][0]
+        .as_str()
+        .unwrap()
+        .contains("* 0 + 50 mm"));
+    // a pair opens from the middle whatever is asked, and three alternate from the first
+    let (pair, _) = build(&json!({"doors": 2, "door_hinge": "right"})).unwrap();
+    assert_eq!(pair, commands);
+    let p = json!({"width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"});
+    let (three, _) = build(&p).unwrap();
+    let way = |door: usize| {
+        let name = format!("Cabinet Door {door} hinge axis");
+        let axis = &three
+            .iter()
+            .find(|c| c.1["name"] == name.as_str())
+            .unwrap()
+            .1;
+        axis["a"]["plane"]["normal"] == json!([1, 0, 0]) // true: hinged on its right
+    };
+    assert_eq!([way(1), way(2), way(3)], [true, false, true]);
+    assert!(build(&json!({"doors": 1, "door_hinge": "top"})).is_err());
     // and the two doors open away from each other
     assert_eq!(
         named("Cabinet Door R hinge axis")["a"]["plane"]["normal"],
