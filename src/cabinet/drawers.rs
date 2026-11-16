@@ -8,8 +8,9 @@ use crate::kit::mm;
 pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
 const BOX_T: f64 = 12.0; // drawer box sides, front and back
 const BOX_BOTTOM: f64 = 6.0;
-pub const BOX_LOWER: f64 = 40.0; // the box is this much lower than its front
-const BOX_LIFT: f64 = 15.0; // and starts this far above the front's lower edge
+// The box stays a panel thickness and this much inside its front's lower and upper edge: the
+// lowest box then clears the cabinet's bottom, and the highest its top, by this and the gap.
+pub const BOX_CLEAR: f64 = 8.0;
 const BOX_BEHIND: f64 = 10.0; // room behind the box
 
 /// A stack of equal drawers: an overlay front, and behind it a box that runs on slides.
@@ -43,7 +44,8 @@ pub fn build(cabinet: &Cabinet) {
     );
     let box_w = format!("({eiw} - {})", mm(2.0 * SLIDE));
     let box_d = format!("({eshelf_d} - {})", mm(BOX_BEHIND));
-    let box_h = format!("({front_h} - {})", mm(BOX_LOWER));
+    let lift = format!("({et} + {})", mm(BOX_CLEAR));
+    let box_h = format!("({front_h} - 2*{lift})");
     let (bt, back_y) = (mm(BOX_T), format!("-{gap_mm} + {box_d} - {}", mm(BOX_T)));
     for i in 0..count {
         let drawer = format!("Drawer {}", i + 1);
@@ -68,7 +70,7 @@ pub fn build(cabinet: &Cabinet) {
         let (x, y, z) = (
             format!("{et} + {}", mm(SLIDE)),
             format!("-{gap_mm}"),
-            format!("{z} + {}", mm(BOX_LIFT)),
+            format!("{z} + {lift}"),
         );
         let right = format!("{x} + {box_w} - {bt}");
         let inner_x = format!("{x} + {bt}");
