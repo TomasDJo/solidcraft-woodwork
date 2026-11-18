@@ -2,7 +2,8 @@
 
 A plugin for SolidCraft (0.44+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
-`README.md` is the user-facing description, `PLAN.md` the roadmap with what is done and open.
+`README.md` is the short user-facing description, `docs/usage.md` how to use each function,
+`PLAN.md` the roadmap with what is done and open.
 
 ## How SolidCraft plugins work
 
@@ -133,7 +134,8 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   becomes a GitHub pre-release, which the README's latest-release link skips. When the
   candidates have settled, the version loses its suffix and `vX.Y.Z` is the full release.
 - **Branches and pull requests, never straight to main.** One branch per function, one commit
-  per function, with `README.md` updated and `PLAN.md` ticked in the same commit. Do not push
+  per function, with `docs/usage.md` updated (and `README.md`'s short list when a function is
+  added) and `PLAN.md` ticked in the same commit. Do not push
   until the user says so.
 - **Every length sent to the app carries its unit** (`"582 mm"`). A bare number in a size field
   is read in the design's unit, so an inch design would get 582 inches. Exceptions that take
