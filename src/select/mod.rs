@@ -117,12 +117,12 @@ fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
         .max_by_key(|cabinet| cabinet.len())
 }
 
-/// The selected bodies, by name: what the dialog's `bodies` field holds (SolidCraft 0.44 picks
+/// The selected bodies, by name: what the dialog's `selection` field holds (SolidCraft 0.44 picks
 /// it in the viewport), else the design's selection, which is what a script has. Both are
 /// selection references; for a face or an edge, the body it is on. A plain name is taken too.
 /// `design` is `document.inspect`'s reply.
 pub fn picked(params: &Value, design: &Value) -> Vec<String> {
-    let field = params["bodies"]
+    let field = params["selection"]
         .as_array()
         .filter(|items| !items.is_empty());
     let items = field.or(design["selection"].as_array());

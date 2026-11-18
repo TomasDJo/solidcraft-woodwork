@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Corner cabinet</title>
+  <path d="M7 7L57 7L57 31L31 31L31 57L7 57Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M12 12L52 12L52 26L26 26L26 52L12 52Z" fill="#236ead" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -29,6 +29,9 @@ fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String>
         "cabinet" => cabinet::build(params)?,
         _ => corner::build(params)?,
     };
+    // Which copy of the active component the user is working in: a component can stand in
+    // the design several times, and its id alone would bring back the first copy.
+    let path = run("component.list", json!({"compact": true}))?["active_path"].clone();
     let made = run(
         "component.create",
         json!({"name": summary["name"], "grounded": false}),
@@ -52,7 +55,12 @@ fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String>
         json!({"component": name, "values": edit::remember(entry, params, name)}),
     )?;
     // Back to where the user was working.
-    run("component.activate", json!({"component": made["parent"]}))?;
+    let mut back = json!({"component": made["parent"]});
+    if let Some(copy) = path.as_array().and_then(|path| path.last()) {
+        back["occurrence"] = copy.clone();
+        back["path"] = path.clone();
+    }
+    run("component.activate", back)?;
     Ok((summary, made))
 }
 

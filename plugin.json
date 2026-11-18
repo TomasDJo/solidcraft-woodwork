@@ -12,8 +12,8 @@
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Cabinet" }, { "kind": "ribbon", "name": "Cabinet" }],
         "input_schema": {
-          "type": "object",
-          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "door_hinge", "handles", "handle_position", "labels", "bodies", "match", "material", "place", "name"],
+          "type": "object", "x-solidcraft-icon": "icons/cabinet.svg",
+          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "door_hinge", "handles", "handle_position", "labels", "selection", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "width": { "type": "number", "title": "Width", "description": "Outside width.", "default": 600, "minimum": 4, "maximum": 5000 },
@@ -22,9 +22,9 @@
             "thickness": { "type": "number", "title": "Panel thickness", "default": 18, "minimum": 0.125, "maximum": 50 },
             "back": { "type": "string", "title": "Back", "description": "The back panel.", "default": "groove", "oneOf": [{"const": "groove", "title": "In a groove", "description": "In a groove 12 mm from the rear."}, {"const": "overlay", "title": "Overlaid", "description": "Fixed on the rear edges."}, {"const": "none", "title": "None", "description": "Open back."}] },
             "back_thickness": { "type": "number", "title": "Back thickness", "default": 6, "minimum": 0.125, "maximum": 50 },
-            "dividers": { "type": "integer", "title": "Dividers", "description": "Vertical dividers, splitting the inside into equal compartments.", "default": 0, "minimum": 0, "maximum": 10 },
+            "dividers": { "type": "integer", "title": "Dividers", "description": "Vertical dividers: equal compartments.", "default": 0, "minimum": 0, "maximum": 10 },
             "shelves": { "type": "integer", "title": "Shelves", "description": "Shelves in each compartment, evenly spaced.", "default": 1, "minimum": 0, "maximum": 20 },
-            "drawers": { "type": "integer", "title": "Drawers", "description": "A stack of equal drawers with overlay fronts, boxes sized for 12.7 mm slides. Shelves are then left out; not with doors or dividers.", "default": 0, "minimum": 0, "maximum": 8 },
+            "drawers": { "type": "integer", "title": "Drawers", "description": "Equal drawers with overlay fronts, boxes for 12.7 mm slides. No shelves then; not with doors or dividers.", "default": 0, "minimum": 0, "maximum": 8 },
             "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth board sits 50 mm back from the front.", "default": 0, "minimum": 0, "maximum": 500 },
             "shelf_pins": { "type": "boolean", "title": "Shelf pin holes", "description": "32 mm system: rows of 5 mm holes 37 mm from the front and back. The shelves rest on them.", "default": false },
             "doors": { "type": "integer", "title": "Doors", "description": "Overlay doors with 35 mm hinge cups: 0, 1, 2, or one per compartment.", "default": 0, "minimum": 0, "maximum": 11 },
@@ -32,11 +32,11 @@
             "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes in the doors, on the opening side, and the drawer fronts.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "knob", "title": "Knob", "description": "One hole."}, {"const": "pull", "title": "Pull", "description": "Two holes, 128 mm apart."}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle holes go. On a drawer front Auto is the middle.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Top on a floor unit, bottom on a wall unit, middle on a door over 1200 mm."}, {"const": "top", "title": "Top", "description": "100 mm from the top."}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom", "description": "100 mm from the bottom."}] },
             "labels": { "type": "boolean", "title": "Labels", "description": "Writes each board's name on it, the name the cut list has.", "default": false },
-            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1, "x-solidcraft-selection": {"version": 1, "accept": ["body", "face", "edge"]} },
-            "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Resize that cabinet later and this one follows."}] },
+            "selection": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "match": { "type": "string", "title": "Match selected", "description": "Take height, depth, panel thickness and plinth from the selected cabinet, linked to it.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Resize that cabinet later and this one follows."}] },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
-            "place": { "type": "string", "title": "Place", "description": "All but the origin go against the selected cabinet.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Against the selected board when it is a side or the top, else at the origin."}, {"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
-            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Cabinet, Cabinet 2, Cabinet 3.", "default": "Cabinet", "minLength": 1, "maxLength": 40 }
+            "place": { "type": "string", "title": "Place", "description": "All but the origin go against the selected cabinet.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Against the selected side or top; else at the origin."}, {"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush; turned to continue a corner cabinet's return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
+            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A taken name gets the next free number.", "default": "Cabinet", "minLength": 1, "maxLength": 40 }
           }
         }
       },
@@ -45,29 +45,29 @@
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Corner cabinet" }, { "kind": "ribbon", "name": "Corner cabinet" }],
         "input_schema": {
-          "type": "object",
-          "required": ["units", "corner", "shape", "width", "return", "depth", "height", "thickness", "shelves", "plinth", "shelf_pins", "doors", "handles", "handle_position", "labels", "bodies", "match", "material", "place", "name"],
+          "type": "object", "x-solidcraft-icon": "icons/corner.svg",
+          "required": ["units", "corner", "shape", "width", "return", "depth", "height", "thickness", "shelves", "plinth", "shelf_pins", "doors", "handles", "handle_position", "labels", "selection", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
-            "corner": { "type": "string", "title": "Corner", "description": "Which corner of the room the cabinet is for.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Right when placed right of the selected cabinet, else left."}, {"const": "left", "title": "Left", "description": "The corner is at the back left, and the return runs forward along the left wall."}, {"const": "right", "title": "Right", "description": "The mirror image."}] },
-            "shape": { "type": "string", "title": "Shape", "description": "The shape of the front.", "default": "L-shaped", "oneOf": [{"const": "L-shaped", "description": "Two fronts at a right angle, with a bi-fold pair of doors."}, {"const": "diagonal", "title": "Diagonal", "description": "One front straight across the open corner at 45 degrees, with one door."}] },
+            "corner": { "type": "string", "title": "Corner", "description": "Which corner of the room the cabinet is for.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Right when placed right of the selected cabinet, else left."}, {"const": "left", "title": "Left", "description": "Corner at the back left; the return runs forward along the left wall."}, {"const": "right", "title": "Right", "description": "The mirror image."}] },
+            "shape": { "type": "string", "title": "Shape", "description": "The shape of the front.", "default": "L-shaped", "oneOf": [{"const": "L-shaped", "description": "Two fronts at a right angle, with a bi-fold pair of doors."}, {"const": "diagonal", "title": "Diagonal", "description": "One front across the open corner at 45 degrees, with one door."}] },
             "width": { "type": "number", "title": "Width", "description": "Along the back wall, from the corner.", "default": 900, "minimum": 4, "maximum": 5000 },
             "return": { "type": "number", "title": "Return", "description": "Along the side wall, from the corner.", "default": 900, "minimum": 4, "maximum": 5000 },
-            "depth": { "type": "number", "title": "Depth", "description": "Depth of both legs, wall to front. diagonal: the depth at the end of the width; at the end of the return it is width - return + depth, so the same when width and return are equal.", "default": 560, "minimum": 4, "maximum": 5000 },
+            "depth": { "type": "number", "title": "Depth", "description": "Depth of both legs, wall to front. Diagonal: at the end of the width; at the return's end it is width - return + depth.", "default": 560, "minimum": 4, "maximum": 5000 },
             "height": { "type": "number", "title": "Height", "description": "Outside height, plinth included.", "default": 720, "minimum": 4, "maximum": 5000 },
             "thickness": { "type": "number", "title": "Panel thickness", "default": 18, "minimum": 0.125, "maximum": 50 },
             "shelves": { "type": "integer", "title": "Shelves", "description": "L-shaped shelves, evenly spaced.", "default": 1, "minimum": 0, "maximum": 20 },
             "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth sits 50 mm back from the fronts.", "default": 0, "minimum": 0, "maximum": 500 },
             "shelf_pins": { "type": "boolean", "title": "Shelf pin holes", "description": "32 mm system: rows of 5 mm holes in both ends and both backs. The shelves rest on them.", "default": false },
-            "doors": { "type": "string", "title": "Doors", "description": "Overlay doors with 35 mm hinge cups. L-shaped: a bi-fold pair, the second hinged to the first. Diagonal: one door.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "hinged left", "title": "Hinged left", "description": "Hinged at the cabinet's left end, as you face the corner."}, {"const": "hinged right", "title": "Hinged right", "description": "Hinged at its right end."}] },
+            "doors": { "type": "string", "title": "Doors", "description": "Overlay doors with 35 mm hinge cups. L-shaped: a bi-fold pair. Diagonal: one door.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "hinged left", "title": "Hinged left", "description": "Hinged at the cabinet's left end, as you face the corner."}, {"const": "hinged right", "title": "Hinged right", "description": "Hinged at its right end."}] },
             "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes. L-shaped: in the door that folds, at its free end. Diagonal: at the opening edge.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "knob", "title": "Knob", "description": "One hole."}, {"const": "pull", "title": "Pull", "description": "Two holes, 128 mm apart."}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle holes go.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Top on a floor unit, bottom on a wall unit, middle on a door over 1200 mm."}, {"const": "top", "title": "Top", "description": "100 mm from the top."}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom", "description": "100 mm from the bottom."}] },
             "labels": { "type": "boolean", "title": "Labels", "description": "Writes each board's name on it, the name the cut list has.", "default": false },
-            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1, "x-solidcraft-selection": {"version": 1, "accept": ["body", "face", "edge"]} },
-            "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Resize that cabinet later and this one follows."}] },
+            "selection": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "match": { "type": "string", "title": "Match selected", "description": "Take height, depth, panel thickness and plinth from the selected cabinet, linked to it.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Resize that cabinet later and this one follows."}] },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
-            "place": { "type": "string", "title": "Place", "description": "All but the origin go against the selected cabinet.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Against the selected board when it is a side or the top, else at the origin."}, {"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
-            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Corner, Corner 2.", "default": "Corner", "minLength": 1, "maxLength": 40 }
+            "place": { "type": "string", "title": "Place", "description": "All but the origin go against the selected cabinet.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Against the selected side or top; else at the origin."}, {"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush; turned to continue a corner cabinet's return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
+            "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A taken name gets the next free number.", "default": "Corner", "minLength": 1, "maxLength": 40 }
           }
         }
       },
@@ -76,13 +76,13 @@
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Edit cabinet" }, { "kind": "ribbon", "name": "Edit cabinet" }],
         "input_schema": {
-          "type": "object",
-          "required": ["bodies", "door_hinge", "corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position", "labels"],
+          "type": "object", "x-solidcraft-icon": "icons/edit.svg",
+          "required": ["selection", "door_hinge", "corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position", "labels"],
           "properties": {
-            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1, "x-solidcraft-selection": {"version": 1, "accept": ["body", "face", "edge"]} },
+            "selection": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
             "shelves": { "type": "integer", "title": "Shelves", "description": "Empty: as it is.", "minimum": 0, "maximum": 20 },
             "dividers": { "type": "integer", "title": "Dividers", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 10 },
-            "doors": { "type": "integer", "title": "Doors", "description": "Empty: as it is. Box cabinet only: 0, 1, 2, or one per compartment.", "minimum": 0, "maximum": 11 },
+            "doors": { "type": "integer", "title": "Doors", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 11 },
             "drawers": { "type": "integer", "title": "Drawers", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 8 },
             "door_hinge": { "type": "string", "title": "First door hinged", "description": "Box cabinet only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "left", "title": "Left"}, {"const": "right", "title": "Right"}] },
             "corner_doors": { "type": "string", "title": "Corner doors", "description": "Corner cabinet only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "none", "title": "None"}, {"const": "hinged left", "title": "Hinged left"}, {"const": "hinged right", "title": "Hinged right"}] },
@@ -92,7 +92,7 @@
             "handles": { "type": "string", "title": "Handle holes", "description": "On doors and drawer fronts.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "none", "title": "None"}, {"const": "knob", "title": "Knob"}, {"const": "pull", "title": "Pull"}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle goes.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "auto", "title": "Auto"}, {"const": "top", "title": "Top"}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom"}] },
             "labels": { "type": "string", "title": "Labels", "description": "Each board's name written on it.", "default": "keep", "oneOf": [{ "const": "keep", "title": "Keep" }, { "const": "yes", "title": "Yes" }, { "const": "no", "title": "No" }] },
-            "plinth": { "type": "number", "title": "Plinth height", "description": "Empty: as it is. In the unit the cabinet was made in; 0 for none.", "minimum": 0, "maximum": 500 }
+            "plinth": { "type": "number", "title": "Plinth height", "description": "Empty: as it is. In the cabinet's unit; 0 for none.", "minimum": 0, "maximum": 500 }
           }
         }
       },
@@ -101,11 +101,11 @@
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Joinery" }, { "kind": "ribbon", "name": "Joinery" }],
         "input_schema": {
-          "type": "object",
-          "required": ["bodies", "type"],
+          "type": "object", "x-solidcraft-icon": "icons/joinery.svg",
+          "required": ["selection", "type"],
           "properties": {
-            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1, "x-solidcraft-selection": {"version": 1, "accept": ["body", "face", "edge"]} },
-            "type": { "type": "string", "title": "Type", "description": "Drills where the sides meet the bottom and top of the cabinet you selected a part of.", "default": "confirmat", "oneOf": [{"const": "confirmat", "title": "Confirmat screws", "description": "7 mm through the side and a 5 mm pilot, for 7 x 50 screws."}, {"const": "dowel", "title": "Dowels", "description": "8 mm holes for 8 x 35 dowels."}] }
+            "selection": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "type": { "type": "string", "title": "Type", "description": "Drills where the sides meet the bottom and top of the selected cabinet.", "default": "confirmat", "oneOf": [{"const": "confirmat", "title": "Confirmat screws", "description": "7 mm through the side and a 5 mm pilot, for 7 x 50 screws."}, {"const": "dowel", "title": "Dowels", "description": "8 mm holes for 8 x 35 dowels."}] }
           }
         }
       },
@@ -114,10 +114,10 @@
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Material" }, { "kind": "ribbon", "name": "Material" }],
         "input_schema": {
-          "type": "object",
-          "required": ["bodies", "material", "scope"],
+          "type": "object", "x-solidcraft-icon": "icons/material.svg",
+          "required": ["selection", "material", "scope"],
           "properties": {
-            "bodies": { "type": "array", "title": "Selected", "x-solidcraft-selection": {"version": 1, "accept": ["body", "face", "edge"]} },
+            "selection": { "type": "array", "title": "Selected" },
             "material": { "type": "string", "title": "Material", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}] },
             "scope": { "type": "string", "title": "Apply to", "description": "What gets the material.", "default": "cabinet", "oneOf": [{"const": "cabinet", "title": "Whole cabinet", "description": "Every panel of the cabinet you selected a part of."}, {"const": "parts", "title": "Selected parts", "description": "Only the selected parts, such as the doors."}] }
           }
@@ -128,9 +128,9 @@
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],
         "input_schema": {
-          "type": "object",
+          "type": "object", "x-solidcraft-icon": "icons/cutlist.svg",
           "properties": {
-            "file": { "type": "string", "title": "Save as", "description": "A file name such as kitchen.csv: also saves the list as CSV in the folder for cut lists you approved when installing. Empty: only show it.", "default": "", "maxLength": 80 }
+            "file": { "type": "string", "title": "Save as", "description": "A name such as kitchen.csv also saves the list as CSV, in the folder for cut lists approved when installing.", "default": "", "maxLength": 80 }
           }
         }
       }

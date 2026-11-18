@@ -77,7 +77,8 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Box cabinet: the first door hinged left or right
 - [x] A placed cabinet is held to its neighbour, so a run follows a change of width or height
 - [x] Holes that survive a rebuild of the history: cut as cylinders (deleting a cabinet in a big design broke drilled holes)
-- [x] SolidCraft 0.45: the selection is a field in the dialog, picked in the model; the cabinet is previewed before it is added; tests run against 0.45
+- [x] SolidCraft 0.44: the selection is a field in the dialog, picked in the model; the cabinet is previewed before it is added; tests run against 0.44.1
+- [x] An icon for each function, on the ribbon, in the menu and in its dialog
 - [x] Place: Auto, the default, by the selected board (left of a left side, right of a right side, above a top)
 
 ## Open
@@ -107,5 +108,6 @@ that is planned upstream:
 
 Possible since 0.44, not done:
 
-- Pictures or icons for choices such as a left or right corner, and an icon per function
-  (`x-solidcraft-icon`, SVG files in the package)
+- Pictures for choices such as a left or right corner (`x-solidcraft-icon` on a choice's
+  options). Each costs manifest bytes, and 0.44 allows 16 KiB: for when 0.45, which allows
+  64 KiB, is the oldest version supported.

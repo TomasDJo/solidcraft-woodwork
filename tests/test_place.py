@@ -46,14 +46,14 @@ def test_auto_goes_by_the_selected_board(approval):
     auto = {"width": 400, "place": "auto"}
     results = cli([plugin(approval, "cabinet", {"name": "A", "width": 600}),
                    select("A Side R"),
-                   plugin(approval, "cabinet", {**auto, "name": "L", "bodies": [{"type": "face", "body": "A Side L", "index": 0}]}),
+                   plugin(approval, "cabinet", {**auto, "name": "L", "selection": [{"type": "face", "body": "A Side L", "index": 0}]}),
                    plugin(approval, "cabinet", {**auto, "name": "R"}),  # the selection: A Side R
-                   plugin(approval, "corner", {"place": "auto", "name": "T", "bodies": [{"type": "body", "name": "A Top"}]}),
+                   plugin(approval, "corner", {"place": "auto", "name": "T", "selection": [{"type": "body", "name": "A Top"}]}),
                    pick(),
                    plugin(approval, "cabinet", {**auto, "name": "O"}),
-                   plugin(approval, "joinery", {"bodies": ["L Shelf 1"]}),
-                   plugin(approval, "material", {"material": "Oak", "scope": "parts", "bodies": ["R Top", "R Bottom"]}),
-                   plugin(approval, "edit", {"shelves": 3, "bodies": ["R Side L"]}),
+                   plugin(approval, "joinery", {"selection": ["L Shelf 1"]}),
+                   plugin(approval, "material", {"material": "Oak", "scope": "parts", "selection": ["R Top", "R Bottom"]}),
+                   plugin(approval, "edit", {"shelves": 3, "selection": ["R Side L"]}),
                    MEASURE])
     box = boxes(results[10])
     assert box["L Side R"][3] == -300 and box["R Side L"][0] == 300, (box["L Side R"], box["R Side L"])
@@ -65,6 +65,6 @@ def test_auto_goes_by_the_selected_board(approval):
     assert "R Shelf 3" in box and "L Shelf 3" not in box, sorted(box)
     # any other board does not say which side: at the origin, as with nothing selected
     results = cli([plugin(approval, "cabinet", {"name": "A"}),
-                   plugin(approval, "cabinet", {**auto, "name": "B", "bodies": ["A Shelf 1"]}),
+                   plugin(approval, "cabinet", {**auto, "name": "B", "selection": ["A Shelf 1"]}),
                    MEASURE])
     assert boxes(results[2])["B Side L"][0] == -200, boxes(results[2])["B Side L"]

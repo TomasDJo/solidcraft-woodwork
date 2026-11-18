@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Cut list</title>
+  <path d="M8 6L56 6L56 58L8 58Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 6L32 6L32 26L8 26Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 26L56 26" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 6L32 26" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M42 26L42 58" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 42L42 42" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

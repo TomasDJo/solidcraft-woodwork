@@ -26,11 +26,11 @@ fn finds_the_cabinet_of_a_selected_part() {
     assert_eq!(picked(&none, &design), ["Base 2 Door"]);
 
     // the dialog's field, when it holds something, goes before the selection
-    let field = json!({"bodies": ["Base Side R"]});
+    let field = json!({"selection": ["Base Side R"]});
     assert_eq!(picked(&field, &design), ["Base Side R"]);
-    let field = json!({"bodies": [{"type": "edge", "body": "Base Door", "index": 1}]});
+    let field = json!({"selection": [{"type": "edge", "body": "Base Door", "index": 1}]});
     assert_eq!(picked(&field, &design), ["Base Door"]);
-    assert_eq!(picked(&json!({"bodies": []}), &design), ["Base 2 Door"]);
+    assert_eq!(picked(&json!({"selection": []}), &design), ["Base 2 Door"]);
 
     // Auto goes by the board: a side or the top, and the origin with anything else or nothing
     let side_of = |body: &str| side(&[body.to_string()], &measure);

@@ -55,3 +55,21 @@ def test_dividers_and_a_resize(approval):
     assert [round(v, 6) for v in side["bbox"]["max"]] == [750, 280, 1000], side["bbox"]
     # clear height 964: pin rows 2..28
     assert side["face_types"]["cylinder"] == 54, side["face_types"]
+
+
+def test_the_copy_of_a_component_one_works_in_stays_active(approval):
+    # A room that stands in the design twice, the second copy active: the cabinet is made in
+    # the room, and afterwards that copy is still the active one, not the first.
+    tree = {"command": "component.list", "params": {"compact": True}}
+    results = cli([{"command": "component.create", "params": {"name": "Room", "grounded": False}},
+                   {"command": "occurrence.copy", "params": {"component": "Room", "translate": [5000, 0, 0]}},
+                   tree])
+    copy = results[1]["occurrence"]
+    assert copy != results[0]["occurrence"], results[:2]
+    activate = {"command": "component.activate", "params": {"component": "Room", "occurrence": copy, "path": [copy]}}
+    results = cli([{"command": "component.create", "params": {"name": "Room", "grounded": False}},
+                   {"command": "occurrence.copy", "params": {"component": "Room", "translate": [5000, 0, 0]}},
+                   activate, tree, plugin(approval, "cabinet", {"name": "A"}), tree])
+    assert results[3]["active_path"] == [copy], results[3]["active_path"]
+    assert results[5]["active_path"] == [copy], results[5]["active_path"]
+    assert results[5]["active"] == results[3]["active"]

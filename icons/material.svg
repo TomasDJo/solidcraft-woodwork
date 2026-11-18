@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Material</title>
+  <path d="M6 30L40 30L40 57L6 57Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M15 19L49 19L49 46L15 46Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M24 7L58 7L58 34L24 34Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M30 15L52 15" fill="none" stroke="#236ead" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M30 21L46 21" fill="none" stroke="#236ead" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M36 27L52 27" fill="none" stroke="#236ead" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
