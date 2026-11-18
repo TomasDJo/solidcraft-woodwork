@@ -15,18 +15,34 @@ fn finds_the_cabinet_of_a_selected_part() {
     ]});
     // a face of "Base 2 Door": the longer name, not "Base"
     let design = json!({"selection": [{"type": "face", "body": "Base 2 Door", "index": 3}]});
-    let found = cabinet(&design, &measure).unwrap();
+    let none = json!({});
+    let found = cabinet(&picked(&none, &design), &measure).unwrap();
     assert_eq!(found.name, "Base 2");
     assert_eq!((found.min[0], found.max[0]), (600.0, 1200.0));
     assert_eq!(
         parts(&measure, "Base"),
         ["Base Side L", "Base Side R", "Base Door"]
     );
-    assert_eq!(picked(&design), ["Base 2 Door"]);
+    assert_eq!(picked(&none, &design), ["Base 2 Door"]);
+
+    // the dialog's field, when it holds something, goes before the selection
+    let field = json!({"selection": ["Base Side R"]});
+    assert_eq!(picked(&field, &design), ["Base Side R"]);
+    let field = json!({"selection": [{"type": "edge", "body": "Base Door", "index": 1}]});
+    assert_eq!(picked(&field, &design), ["Base Door"]);
+    assert_eq!(picked(&json!({"selection": []}), &design), ["Base 2 Door"]);
+
+    // Auto goes by the board: a side or the top, and the origin with anything else or nothing
+    let side_of = |body: &str| side(&[body.to_string()], &measure);
+    assert_eq!(side_of("Base Side R"), "right");
+    assert_eq!(side_of("Base 2 Side L"), "left");
+    assert_eq!(side(&[], &measure), "origin");
+    assert_eq!(side_of("Base 2 Door"), "origin");
+    assert_eq!(side_of("Worktop"), "origin");
 
     let design = json!({"selection": [{"type": "body", "name": "Worktop"}]});
-    assert!(cabinet(&design, &measure).is_err());
-    assert!(cabinet(&json!({"selection": []}), &measure).is_err());
+    assert!(cabinet(&picked(&none, &design), &measure).is_err());
+    assert!(cabinet(&[], &measure).is_err());
 }
 
 fn stands(sides: [Plan; 2], back: Plan) -> Cabinet {

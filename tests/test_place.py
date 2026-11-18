@@ -36,3 +36,35 @@ def test_along_a_return_and_a_turned_run(approval):
     assert box["S Side R"] == [-110, -1250, 0, 450, -1232, 720], box["S Side R"]  # and on along it
     assert box["T Side L"] == [150, -868, 720, 450, -850, 1440], box["T Side L"]  # above S, left sides flush
     assert box["R Door"] == [-130, -848, 2, -112, -452, 718], box["R Door"]  # facing into the room
+
+
+def test_auto_goes_by_the_selected_board(approval):
+    # Auto: left of a Side L, right of a Side R, above a Top, and at the origin with nothing
+    # or another board selected. The board comes from the dialog's field here (SolidCraft 0.44 sends what was
+    # picked in it as selection references: a body, or a face or an edge of one), which goes
+    # before the selection: Edit, Joinery and Material read it the same way.
+    auto = {"width": 400, "place": "auto"}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "width": 600}),
+                   select("A Side R"),
+                   plugin(approval, "cabinet", {**auto, "name": "L", "selection": [{"type": "face", "body": "A Side L", "index": 0}]}),
+                   plugin(approval, "cabinet", {**auto, "name": "R"}),  # the selection: A Side R
+                   plugin(approval, "corner", {"place": "auto", "name": "T", "selection": [{"type": "body", "name": "A Top"}]}),
+                   pick(),
+                   plugin(approval, "cabinet", {**auto, "name": "O"}),
+                   plugin(approval, "joinery", {"selection": ["L Shelf 1"]}),
+                   plugin(approval, "material", {"material": "Oak", "scope": "parts", "selection": ["R Top", "R Bottom"]}),
+                   plugin(approval, "edit", {"shelves": 3, "selection": ["R Side L"]}),
+                   MEASURE])
+    box = boxes(results[10])
+    assert box["L Side R"][3] == -300 and box["R Side L"][0] == 300, (box["L Side R"], box["R Side L"])
+    assert box["T Side L"][0] == -300 and box["T Side L"][2] == 720, box["T Side L"]  # above, left sides flush
+    assert box["O Side L"][0] == -200, box["O Side L"]  # nothing selected: at the origin
+    assert cylinders(results[10], "L Side L") > 0 and cylinders(results[10], "R Side L") == 0
+    material = {b["name"]: b["material"] for b in results[10]["bodies"]}
+    assert material["R Bottom"] == "Oak" and material["R Side L"] != "Oak", material
+    assert "R Shelf 3" in box and "L Shelf 3" not in box, sorted(box)
+    # any other board does not say which side: at the origin, as with nothing selected
+    results = cli([plugin(approval, "cabinet", {"name": "A"}),
+                   plugin(approval, "cabinet", {**auto, "name": "B", "selection": ["A Shelf 1"]}),
+                   MEASURE])
+    assert boxes(results[2])["B Side L"][0] == -200, boxes(results[2])["B Side L"]

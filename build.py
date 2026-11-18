@@ -46,15 +46,17 @@ def build():
     PKG.mkdir(parents=True, exist_ok=True)
     sh("wasm-tools", "component", "new",
        "target/wasm32-unknown-unknown/release/woodwork.wasm", "-o", str(PKG / "woodwork.wasm"))
-    # The app refuses a manifest over 16 KiB, so the packaged one carries no white space.
+    # SolidCraft 0.44 refuses a manifest over 16 KiB: the packaged one carries no white space.
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     (PKG / "plugin.json").write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
                                      encoding="utf-8", newline=chr(10))
     shutil.copy(ROOT / "LICENSE", PKG)
+    shutil.copytree(ROOT / "icons", PKG / "icons", dirs_exist_ok=True)
     version = manifest["version"]
     archive = ROOT / "dist" / f"woodwork-{version}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
-        for name in ("plugin.json", "woodwork.wasm", "LICENSE"):
+        icons = sorted(f"icons/{icon.name}" for icon in (ROOT / "icons").glob("*.svg"))
+        for name in ("plugin.json", "woodwork.wasm", "LICENSE", *icons):
             z.write(PKG / name, f"woodwork/{name}")
     return archive
 
