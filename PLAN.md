@@ -78,7 +78,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] A placed cabinet is held to its neighbour, so a run follows a change of width or height
 - [x] Holes that survive a rebuild of the history: cut as cylinders (deleting a cabinet in a big design broke drilled holes)
 - [x] SolidCraft 0.45: the selection is a field in the dialog, picked in the model; the cabinet is previewed before it is added; tests run against 0.45
-- [x] Place: Auto, by the selected board (left of a left side, right of a right side, above a top)
+- [x] Place: Auto, the default, by the selected board (left of a left side, right of a right side, above a top)
 
 ## Open
 

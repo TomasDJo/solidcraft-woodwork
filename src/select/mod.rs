@@ -118,8 +118,8 @@ fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
 }
 
 /// The selected bodies, by name: what the dialog's `bodies` field holds (SolidCraft 0.44 picks
-/// it in the viewport and sends the names), else the design's selection, which is what a
-/// script has; there, for a face or an edge, the body it is on.
+/// it in the viewport), else the design's selection, which is what a script has. Both are
+/// selection references; for a face or an edge, the body it is on. A plain name is taken too.
 /// `design` is `document.inspect`'s reply.
 pub fn picked(params: &Value, design: &Value) -> Vec<String> {
     let field = params["bodies"]
@@ -139,19 +139,18 @@ pub fn picked(params: &Value, design: &Value) -> Vec<String> {
 }
 
 /// Where Place's Auto puts a new cabinet: against the board that is selected, left of a
-/// Side L, right of a Side R, above a Top; at the origin when nothing is selected.
-pub fn side(picked: &[String], measure: &Value) -> Result<&'static str, String> {
-    let Some(body) = picked.first() else {
-        return Ok("origin");
-    };
-    let name = owner(measure, body).ok_or(format!("`{body}` is not part of a cabinet"))?;
-    match &body[name.len() + 1..] {
-        "Side L" => Ok("left"),
-        "Side R" => Ok("right"),
-        "Top" => Ok("above"),
-        _ => Err(format!(
-            "Place: Auto goes by the board that is selected: a cabinet's side or its top, not `{body}`"
-        )),
+/// Side L, right of a Side R, above a Top. At the origin with nothing selected or anything
+/// else: Auto is what the dialog opens with, and a shelf selected for Match selected, or a
+/// body that happens to be selected, must not stop a cabinet from being made.
+pub fn side(picked: &[String], measure: &Value) -> &'static str {
+    let board = picked
+        .first()
+        .and_then(|body| Some(&body[owner(measure, body)?.len() + 1..]));
+    match board {
+        Some("Side L") => "left",
+        Some("Side R") => "right",
+        Some("Top") => "above",
+        _ => "origin",
     }
 }
 

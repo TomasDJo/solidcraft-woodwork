@@ -27,11 +27,12 @@ materials, joinery and cut lists.
   copy of the design each time a field changes, and draws the result. So plugin code runs
   before OK, without folder grants; nothing a run does may depend on being the only run.
 - **The selection is a field (0.44).** Every entry that works on the selected cabinet has a
-  `bodies` array (`maxItems: 1`; Material takes several). That key is reserved by the app:
-  it draws a pick control, fills it with what is selected when the dialog opens, and sends
-  the bodies' names. `select::picked` reads it and falls back to the design's selection
-  when it is empty, which is what scripts and the tests mostly use. Any other array, or
-  more keywords on it, turns Run off. Edit skips the key (`edit::merge`), and a cabinet
+  `bodies` array (`maxItems: 1`; Material takes several) marked `x-solidcraft-selection`
+  for bodies, faces and edges: the app draws a pick control, fills it with what is selected
+  when the dialog opens, and sends selection references. It must take faces: a click on a
+  board selects a face, and a field for bodies only is not filled with it. `select::picked`
+  reads the field and falls back to the design's selection when it is empty, which is what
+  scripts and the tests mostly use. Any other array, or more keywords on it, turns Run off. Edit skips the key (`edit::merge`), and a cabinet
   does not remember it.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
   features, so a design opens without the plugin.
@@ -267,5 +268,11 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   from its one size that is a thickness parameter, so the drawer boxes' 12 mm boards get
   none. The label sits in the middle of the board's bounding box, which on a corner
   cabinet's L-shaped board can be over the cut-out; a side's label is on its left face.
-- Place's Auto goes by the name of the selected board (`select::side`): `Side L`, `Side R`
-  or `Top`. Any other board is refused, also when Match selected only needs the cabinet.
+- Place's Auto, the dialog's default, goes by the name of the selected board
+  (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. A script
+  that leaves `place` out gets the origin, as before.
+- The preview draws a new cabinet where it is built, on its component's origin, not where
+  Place then moves it: the app previews a plugin run on the model before components are
+  placed (`Session::preview`, not `preview_world`, in its `preview.rs`). A cabinet placed
+  against one of the same size that stands on the origin is drawn exactly inside that one,
+  so nothing shows. Read from the app's source at 0.45.0-rc.1; not ours to fix.

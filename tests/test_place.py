@@ -1,6 +1,4 @@
 """Place: a new cabinet against the selected one."""
-import subprocess
-
 from helpers import *
 
 
@@ -42,15 +40,15 @@ def test_along_a_return_and_a_turned_run(approval):
 
 def test_auto_goes_by_the_selected_board(approval):
     # Auto: left of a Side L, right of a Side R, above a Top, and at the origin with nothing
-    # selected. The board comes from the dialog's field here (SolidCraft 0.44 sends the names
-    # of the bodies picked in it), which goes before the selection: Edit, Joinery and Material
-    # read it the same way.
+    # or another board selected. The board comes from the dialog's field here (SolidCraft 0.44 sends what was
+    # picked in it as selection references: a body, or a face or an edge of one), which goes
+    # before the selection: Edit, Joinery and Material read it the same way.
     auto = {"width": 400, "place": "auto"}
     results = cli([plugin(approval, "cabinet", {"name": "A", "width": 600}),
                    select("A Side R"),
-                   plugin(approval, "cabinet", {**auto, "name": "L", "bodies": ["A Side L"]}),
+                   plugin(approval, "cabinet", {**auto, "name": "L", "bodies": [{"type": "face", "body": "A Side L", "index": 0}]}),
                    plugin(approval, "cabinet", {**auto, "name": "R"}),  # the selection: A Side R
-                   plugin(approval, "corner", {"place": "auto", "name": "T", "bodies": ["A Top"]}),
+                   plugin(approval, "corner", {"place": "auto", "name": "T", "bodies": [{"type": "body", "name": "A Top"}]}),
                    pick(),
                    plugin(approval, "cabinet", {**auto, "name": "O"}),
                    plugin(approval, "joinery", {"bodies": ["L Shelf 1"]}),
@@ -65,10 +63,8 @@ def test_auto_goes_by_the_selected_board(approval):
     material = {b["name"]: b["material"] for b in results[10]["bodies"]}
     assert material["R Bottom"] == "Oak" and material["R Side L"] != "Oak", material
     assert "R Shelf 3" in box and "L Shelf 3" not in box, sorted(box)
-    # any other board is refused: it does not say which side
-    try:
-        cli([plugin(approval, "cabinet", {"name": "A"}),
-             plugin(approval, "cabinet", {**auto, "bodies": ["A Shelf 1"]})])
-    except subprocess.CalledProcessError:
-        return
-    raise AssertionError("Auto went by a shelf")
+    # any other board does not say which side: at the origin, as with nothing selected
+    results = cli([plugin(approval, "cabinet", {"name": "A"}),
+                   plugin(approval, "cabinet", {**auto, "name": "B", "bodies": ["A Shelf 1"]}),
+                   MEASURE])
+    assert boxes(results[2])["B Side L"][0] == -200, boxes(results[2])["B Side L"]

@@ -3,7 +3,7 @@ import json
 
 from helpers import *
 
-DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems"}
+DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems", "x-solidcraft-selection"}
 
 
 def test_choices_have_titles(approval):
@@ -22,9 +22,12 @@ def test_choices_have_titles(approval):
             at = (entry["name"], name)
             # A keyword the dialog cannot draw leaves the entry with Run turned off.
             assert set(field) <= DRAWN, (at, set(field) - DRAWN)
-            # The one list the dialog draws: `bodies`, picked in the viewport (0.44). Any other
-            # array, or `items` in it, leaves Run turned off.
+            # The one list the dialog draws: `bodies`, picked in the viewport (0.44). It takes a
+            # face or an edge too, as a click on a board selects one: a field that only took
+            # bodies was not filled with it when the dialog opened.
             assert (field["type"] == "array") == (name == "bodies"), at
+            if name == "bodies":
+                assert field["x-solidcraft-selection"] == {"version": 1, "accept": ["body", "face", "edge"]}, at
             if "oneOf" not in field:
                 continue
             choices += 1

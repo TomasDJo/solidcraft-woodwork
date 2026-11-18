@@ -41,8 +41,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     move it. A cabinet placed against another is held to that one instead, see Place.
   - **Place** puts it against the cabinet you have selected (any part of it): to the right,
     to the left, or on top, backs flush. That cabinet must stand square to the axes.
-    **Auto** goes by the board you selected: left of a left side, right of a right side,
-    above a top, and at the origin with nothing selected.
+    **Auto**, which the dialog opens with, goes by the board you selected: left of a left
+    side, right of a right side, above a top, and at the origin with nothing or any other
+    board selected.
     The selection shows in the dialog as **Selected cabinet**: click the field and pick
     another board in the model while the dialog is open, and the preview follows. Edit
     cabinet, Joinery and Material have the same field.

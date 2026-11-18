@@ -238,7 +238,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             };
             if place == "auto" {
                 // By the board that is selected: its side, or its top.
-                place = select::side(&picked, &measure)?;
+                place = select::side(&picked, &measure);
                 params["place"] = json!(place);
             }
             if entry == "corner" {
