@@ -161,13 +161,20 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   the way the axis points, so the way the door opens. The axes sit in the cabinet's history
   folder. Four commands a hinge more than before. `solidcraft-cli snapshot` does not draw
   construction planes or axes, so a render does not show whether a design is cluttered.
-- **A placed cabinet is held to its neighbour.** `link` in `lib.rs` makes a rigid joint
-  `<Name> link` from the cabinet it was placed against (side a) to the new one (side b), with
-  the distance between their middles as the joint's `offset`: an expression such as
-  `A_width/2 + B_width/2` (`A_return/2 + ...` from the end of a corner cabinet's return,
-  `A_height` on top; `select::Cabinet::toward`), which the app works out again when a
-  parameter changes. Both sides are explicit frames in world coordinates, given where the
-  cabinets stand, with `flip: true`, so making the joint moves nothing. A held cabinet is
+- **A placed cabinet is held to its neighbour**, by a joint `<Name> link` from the cabinet
+  it was placed against (side a) to the new one (side b), made by `link` in `lib.rs`.
+  Beside it, the joint mates two **seats**: every cabinet has an upright construction axis
+  at each back corner (`Kit::seat`, `<Name> seat L` and `seat R`; a corner cabinet has one
+  at the end of its back leg and one at the end of its return, `seat L return`, where the
+  wall is beside it and the placed cabinet stands a quarter turned, the joint's `angle`).
+  The joint is a revolute between the two axes with limits 0 to 0: the app has no rigid
+  joint between axes. Both axes follow their cabinet's parameters, so the two corners at
+  the wall stay together whichever cabinet changes width, depth or return: sides against
+  each other and backs flush. A seat is made while the cabinet is built, as a hinge line is,
+  before it is moved. On top, or against a cabinet made before 0.1.8 (no seats), the joint
+  is the older rigid one with the distance between the middles as its `offset`, an
+  expression such as `A_height` (`select::Cabinet::toward`); that follows one way only.
+  Both sides are then frames in world coordinates with `flip: true`. A held cabinet is
   not grounded: it is fixed through the chain to the first cabinet of the run, which is.
   The link is noted on the component (`link: {to, place}` beside the remembered values).
   Edit deletes the component and its joints with it, so it makes the cabinet's own link
@@ -235,12 +242,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   fixed. Moving it later means ungrounding it first. A cabinet placed against another is
   held by its link instead; moving it means deleting that joint (and grounding it, or its
   doors do not open). Deleting the first cabinet of a run leaves the rest floating.
-- A link follows along one direction only (a joint's sideways offsets are worked out once):
-  backs do not stay flush when one of two cabinets is made deeper afterwards; a cabinet on
-  top keeps its place sideways; a cabinet at the end of a corner cabinet's return does not
-  move sideways when the corner cabinet's width changes, and a corner cabinet whose return
-  is made longer grows half to the back. Parametric axes in each cabinet, as the hinges
-  have, would fix that at the price of two more features a cabinet.
+- A cabinet on top keeps its place sideways when the one under it changes width or depth:
+  that link follows upwards only. So does any link to a cabinet made before 0.1.8.
+- The first cabinet of a run is grounded on its own middle and grows to both sides, also a
+  corner cabinet: half of a longer return then goes to the back. Held to a neighbour it
+  grows away from it.
+- A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
+  its return's end there, not a back corner: it gets the older link.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
   `joint`, `Drawer n Front`), so renaming those breaks it.
 - The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.

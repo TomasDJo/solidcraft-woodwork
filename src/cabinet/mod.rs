@@ -61,6 +61,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     };
     // The cabinet stands on Z = 0, centred on the origin, so the view orbits around it.
     kit.centre(&ew, &ed);
+    // Where a neighbour stands: the two back corners.
+    kit.seat("L", false, &mm(0.0), &ed);
+    kit.seat("R", false, &ew, &ed);
     let cabinet = Cabinet {
         kit: &kit,
         input,

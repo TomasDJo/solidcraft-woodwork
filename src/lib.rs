@@ -81,8 +81,39 @@ fn link(
 ) -> Result<bool, String> {
     let design = run(
         "document.inspect",
-        json!({"bodies": false, "timeline": false}),
+        json!({"bodies": false, "timeline": "summary"}),
     )?;
+    // Beside it: the two cabinets' seats, their corners at the wall, are held together. That
+    // follows a change of width or depth of either, and of a corner cabinet's return.
+    let has = |seat: &str| {
+        let features = design["timeline"].as_array().into_iter().flatten();
+        features.into_iter().any(|feature| feature["name"] == seat)
+    };
+    let (theirs, ours) = match place {
+        "right" => ("R", "L"),
+        _ => ("L", "R"),
+    };
+    // At the end of a corner cabinet's return the placed cabinet stands a quarter turned.
+    let against = [(false, 0), (true, if place == "right" { -90 } else { 90 })];
+    let seats = (against.into_iter())
+        .map(|(end, turn)| (kit::seat(&other.name, theirs, end), turn))
+        .find(|(seat, _)| has(seat));
+    let own = kit::seat(name, ours, false);
+    if let (Some((seat, turn)), true, true) = (seats, has(&own), place != "above") {
+        let joint = format!("{name} link");
+        let mut args = json!({
+            "type": "revolute", "name": joint, "quiet": true,
+            "a": {"occurrence": format!("{}:1", other.name), "axis": seat},
+            "b": {"occurrence": format!("{name}:1"), "axis": own},
+        });
+        if turn != 0 {
+            args["angle"] = json!(format!("{turn} deg"));
+        }
+        run("joint.create", args)?;
+        // A hinge that does not turn: the joint the app has between two axes.
+        run("joint.limits", json!({"joint": joint, "min": 0, "max": 0}))?;
+        return noted(other, place, name, run);
+    }
     let value = |id: &str| {
         let all = design["params"].as_array().into_iter().flatten();
         let found = all.into_iter().find(|p| p["name"] == id);
@@ -121,6 +152,11 @@ fn link(
             "a": frame(&other.name, &from), "b": frame(name, &at), "quiet": true,
         }),
     )?;
+    noted(other, place, name, run)
+}
+
+/// Notes a link on the placed cabinet's component, so Edit can make it again.
+fn noted(other: &select::Cabinet, place: &str, name: &str, run: Run) -> Result<bool, String> {
     let about = run("component.metadata", json!({"component": name}))?;
     let mut ours = about["metadata"][edit::KEY].clone();
     if ours.is_object() {

@@ -16,12 +16,30 @@ fn default_cabinet() {
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 6);
     assert_eq!(summary["inner"]["width"], 564.0);
     // every size is an expression over the parameters
-    let side = &commands[5].1;
+    let side = &commands.iter().find(|c| c.0 == "solid.box").unwrap().1;
     assert_eq!(side["height"], "Cabinet_height");
     assert_eq!(side["corner"][0], "0 mm - Cabinet_width/2");
     // the history folder holds every feature
     let group = &commands.last().unwrap().1;
-    assert_eq!(group["features"].as_array().unwrap().len(), 7);
+    assert_eq!(group["features"].as_array().unwrap().len(), 9);
+    // the two seats, where a neighbour stands: the back corners, by the parameters
+    let seats: Vec<&Value> = (commands.iter())
+        .filter(|c| c.0 == "construct.axis.two_planes")
+        .map(|c| &c.1)
+        .collect();
+    assert_eq!(seats.len(), 2);
+    assert_eq!(seats[1]["name"], "Cabinet seat R");
+    let corner = [
+        &seats[1]["a"]["plane"]["origin"][0],
+        &seats[1]["b"]["plane"]["origin"][1],
+    ];
+    assert_eq!(
+        corner,
+        [
+            "Cabinet_width - Cabinet_width/2",
+            "Cabinet_depth - Cabinet_depth/2"
+        ]
+    );
 }
 
 #[test]

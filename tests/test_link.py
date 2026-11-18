@@ -49,19 +49,41 @@ def test_left_and_above_follow_too(approval):
 
 def test_a_cabinet_on_a_return_follows_the_corner_cabinet(approval):
     # A, then a corner cabinet right of it, then U against the end of its return, turned a
-    # quarter. A return 100 longer pushes U forward by 50: the corner cabinet stands on its own
-    # middle and is held to A sideways only, so it grows 50 to the front and 50 to the back.
+    # quarter. A return 100 longer pushes U forward by all of it: the corner cabinet is held to
+    # A by its corner at the wall, so its back stays on the wall and it grows to the front.
+    # (It used to be held sideways only, and grew half to the back, into the wall.)
     # A wider A pushes the corner cabinet along, and U with it.
     results = cli([*run(approval, [("cabinet", {"name": "A"}), ("corner", {"name": "K", "place": "right"}),
                                    ("cabinet", {"name": "U", "place": "right"})]),
                    MEASURE, change(K_return=1000), MEASURE, change(A_width=800), MEASURE])
     at = lambda measure: boxes(measure)["U Top"][:2]
     start, longer, wider = at(results[5]), at(results[7]), at(results[9])
-    assert [longer[0] - start[0], longer[1] - start[1]] == [0, -50], (start, longer)
+    assert [longer[0] - start[0], longer[1] - start[1]] == [0, -100], (start, longer)
+    assert boxes(results[7])["K Back"][4] == boxes(results[5])["K Back"][4] == 280, boxes(results[7])["K Back"]
     assert [wider[0] - longer[0], wider[1] - longer[1]] == [100, 0], (longer, wider)
     # and U still stands against the end of the return, which is the corner cabinet's right side
     box = boxes(results[9])
     assert box["U Side L"][4] == box["K Side R"][1], (box["U Side L"], box["K Side R"])
+
+
+def test_backs_and_walls_stay_flush(approval):
+    # Held both ways. A run of two with a corner cabinet at its end and U on the return: a
+    # deeper A, or a shallower B, leaves the backs on one line; a wider corner cabinet takes U
+    # along sideways, its back still on the side wall; a deeper U stays on that wall too.
+    results = cli([*run(approval, [("cabinet", {"name": "A"}), ("cabinet", {"name": "B", "place": "right"}),
+                                   ("corner", {"name": "K", "place": "right"}), ("cabinet", {"name": "U", "place": "right"})]),
+                   MEASURE, change(A_depth=700, B_depth=400), MEASURE, change(K_width=1100), MEASURE,
+                   change(U_depth=450), MEASURE])
+    start, deeper, wider, last = (boxes(results[i]) for i in (7, 9, 11, 13))
+    back = lambda box, name: box[f"{name} Side L"][4]  # the far end of a side: the back wall
+    assert [back(start, name) for name in "AB"] == [280, 280]
+    # A stands on its own middle and is the first of the run: its back moves, and the run with it
+    assert [back(deeper, name) for name in "AB"] == [350, 350], [back(deeper, name) for name in "AB"]
+    assert deeper["K Back"][4] == 350 and deeper["B Side L"][1] == -50, (deeper["K Back"], deeper["B Side L"])
+    # U's back is on the side wall, which is the corner cabinet's far end
+    wall = lambda box: (box["K Back return"][3], box["U Side L"][3])
+    assert wall(start)[0] == wall(start)[1] and wall(wider)[0] == wall(wider)[1] == wall(start)[0] + 200, (wall(start), wall(wider))
+    assert wall(last) == wall(wider) and last["U Side L"][0] == wall(wider)[1] - 450, (wall(last), last["U Side L"])
 
 
 def test_edit_and_joinery_keep_the_links(approval):
