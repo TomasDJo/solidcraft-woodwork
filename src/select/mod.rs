@@ -117,16 +117,42 @@ fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
         .max_by_key(|cabinet| cabinet.len())
 }
 
-/// The selected bodies, by name: for a face or an edge, the body it is on.
+/// The selected bodies, by name: what the dialog's `bodies` field holds (SolidCraft 0.44 picks
+/// it in the viewport and sends the names), else the design's selection, which is what a
+/// script has; there, for a face or an edge, the body it is on.
 /// `design` is `document.inspect`'s reply.
-pub fn picked(design: &Value) -> Vec<String> {
-    let items = design["selection"].as_array().into_iter().flatten();
-    let mut bodies: Vec<String> = items
-        .filter_map(|item| item["name"].as_str().or(item["body"].as_str()))
+pub fn picked(params: &Value, design: &Value) -> Vec<String> {
+    let field = params["bodies"]
+        .as_array()
+        .filter(|items| !items.is_empty());
+    let items = field.or(design["selection"].as_array());
+    let mut bodies: Vec<String> = (items.into_iter().flatten())
+        .filter_map(|item| {
+            item.as_str()
+                .or(item["name"].as_str())
+                .or(item["body"].as_str())
+        })
         .map(String::from)
         .collect();
     bodies.dedup();
     bodies
+}
+
+/// Where Place's Auto puts a new cabinet: against the board that is selected, left of a
+/// Side L, right of a Side R, above a Top; at the origin when nothing is selected.
+pub fn side(picked: &[String], measure: &Value) -> Result<&'static str, String> {
+    let Some(body) = picked.first() else {
+        return Ok("origin");
+    };
+    let name = owner(measure, body).ok_or(format!("`{body}` is not part of a cabinet"))?;
+    match &body[name.len() + 1..] {
+        "Side L" => Ok("left"),
+        "Side R" => Ok("right"),
+        "Top" => Ok("above"),
+        _ => Err(format!(
+            "Place: Auto goes by the board that is selected: a cabinet's side or its top, not `{body}`"
+        )),
+    }
 }
 
 /// Every body of a cabinet. `measure` is `inspect.measure`'s reply.
@@ -138,8 +164,7 @@ pub fn parts(measure: &Value, cabinet: &str) -> Vec<String> {
 }
 
 /// The cabinet of the first selected body.
-pub fn cabinet(design: &Value, measure: &Value) -> Result<Cabinet, String> {
-    let picked = picked(design);
+pub fn cabinet(picked: &[String], measure: &Value) -> Result<Cabinet, String> {
     let picked = picked.first().ok_or("select a part of a cabinet first")?;
     let name = owner(measure, picked).ok_or(format!("`{picked}` is not part of a cabinet"))?;
     named(measure, name)

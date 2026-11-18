@@ -13,7 +13,7 @@
         "slots": [{ "kind": "menu", "name": "Cabinet" }, { "kind": "ribbon", "name": "Cabinet" }],
         "input_schema": {
           "type": "object",
-          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "door_hinge", "handles", "handle_position", "labels", "match", "material", "place", "name"],
+          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "door_hinge", "handles", "handle_position", "labels", "bodies", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "width": { "type": "number", "title": "Width", "description": "Outside width.", "default": 600, "minimum": 4, "maximum": 5000 },
@@ -32,9 +32,10 @@
             "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes in the doors, on the opening side, and the drawer fronts.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "knob", "title": "Knob", "description": "One hole."}, {"const": "pull", "title": "Pull", "description": "Two holes, 128 mm apart."}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle holes go. On a drawer front Auto is the middle.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Top on a floor unit, bottom on a wall unit, middle on a door over 1200 mm."}, {"const": "top", "title": "Top", "description": "100 mm from the top."}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom", "description": "100 mm from the bottom."}] },
             "labels": { "type": "boolean", "title": "Labels", "description": "Writes each board's name on it, the name the cut list has.", "default": false },
-            "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Select any part of it first. Resize that cabinet later and this one follows."}] },
+            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Resize that cabinet later and this one follows."}] },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
-            "place": { "type": "string", "title": "Place", "description": "Right, left and above go against the selected cabinet: select any part of it first.", "default": "origin", "oneOf": [{"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
+            "place": { "type": "string", "title": "Place", "description": "All but the origin go against the selected cabinet.", "default": "origin", "oneOf": [{"const": "origin", "title": "At the origin"}, {"const": "auto", "title": "Auto", "description": "Against the selected board: a side or the top."}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
             "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Cabinet, Cabinet 2, Cabinet 3.", "default": "Cabinet", "minLength": 1, "maxLength": 40 }
           }
         }
@@ -45,7 +46,7 @@
         "slots": [{ "kind": "menu", "name": "Corner cabinet" }, { "kind": "ribbon", "name": "Corner cabinet" }],
         "input_schema": {
           "type": "object",
-          "required": ["units", "corner", "shape", "width", "return", "depth", "height", "thickness", "shelves", "plinth", "shelf_pins", "doors", "handles", "handle_position", "labels", "match", "material", "place", "name"],
+          "required": ["units", "corner", "shape", "width", "return", "depth", "height", "thickness", "shelves", "plinth", "shelf_pins", "doors", "handles", "handle_position", "labels", "bodies", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "corner": { "type": "string", "title": "Corner", "description": "Which corner of the room the cabinet is for.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Right when placed right of the selected cabinet, else left."}, {"const": "left", "title": "Left", "description": "The corner is at the back left, and the return runs forward along the left wall."}, {"const": "right", "title": "Right", "description": "The mirror image."}] },
@@ -62,9 +63,10 @@
             "handles": { "type": "string", "title": "Handle holes", "description": "5 mm screw holes. L-shaped: in the door that folds, at its free end. Diagonal: at the opening edge.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "knob", "title": "Knob", "description": "One hole."}, {"const": "pull", "title": "Pull", "description": "Two holes, 128 mm apart."}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where on a door the handle holes go.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Top on a floor unit, bottom on a wall unit, middle on a door over 1200 mm."}, {"const": "top", "title": "Top", "description": "100 mm from the top."}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom", "description": "100 mm from the bottom."}] },
             "labels": { "type": "boolean", "title": "Labels", "description": "Writes each board's name on it, the name the cut list has.", "default": false },
-            "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Select any part of it first. Resize that cabinet later and this one follows."}] },
+            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "match": { "type": "string", "title": "Match selected", "description": "Link height, depth, panel thickness and plinth to the selected cabinet instead of reading them here.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "selected", "title": "Selected cabinet", "description": "Resize that cabinet later and this one follows."}] },
             "material": { "type": "string", "title": "Material", "description": "Board material of every panel. Change it later with Material.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
-            "place": { "type": "string", "title": "Place", "description": "Right, left and above go against the selected cabinet: select any part of it first.", "default": "origin", "oneOf": [{"const": "origin", "title": "At the origin"}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
+            "place": { "type": "string", "title": "Place", "description": "All but the origin go against the selected cabinet.", "default": "origin", "oneOf": [{"const": "origin", "title": "At the origin"}, {"const": "auto", "title": "Auto", "description": "Against the selected board: a side or the top."}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush. On a corner cabinet's return it is turned to continue the return."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}, {"const": "above", "title": "Above selected", "description": "On top of it, backs flush."}] },
             "name": { "type": "string", "title": "Name", "description": "Prefix for the panel names. A name that is taken gets the next free number: Corner, Corner 2.", "default": "Corner", "minLength": 1, "maxLength": 40 }
           }
         }
@@ -75,8 +77,9 @@
         "slots": [{ "kind": "menu", "name": "Edit cabinet" }, { "kind": "ribbon", "name": "Edit cabinet" }],
         "input_schema": {
           "type": "object",
-          "required": ["door_hinge", "corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position", "labels"],
+          "required": ["bodies", "door_hinge", "corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position", "labels"],
           "properties": {
+            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
             "shelves": { "type": "integer", "title": "Shelves", "description": "Empty: as it is.", "minimum": 0, "maximum": 20 },
             "dividers": { "type": "integer", "title": "Dividers", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 10 },
             "doors": { "type": "integer", "title": "Doors", "description": "Empty: as it is. Box cabinet only: 0, 1, 2, or one per compartment.", "minimum": 0, "maximum": 11 },
@@ -99,8 +102,9 @@
         "slots": [{ "kind": "menu", "name": "Joinery" }, { "kind": "ribbon", "name": "Joinery" }],
         "input_schema": {
           "type": "object",
-          "required": ["type"],
+          "required": ["bodies", "type"],
           "properties": {
+            "bodies": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
             "type": { "type": "string", "title": "Type", "description": "Drills where the sides meet the bottom and top of the cabinet you selected a part of.", "default": "confirmat", "oneOf": [{"const": "confirmat", "title": "Confirmat screws", "description": "7 mm through the side and a 5 mm pilot, for 7 x 50 screws."}, {"const": "dowel", "title": "Dowels", "description": "8 mm holes for 8 x 35 dowels."}] }
           }
         }
@@ -111,8 +115,9 @@
         "slots": [{ "kind": "menu", "name": "Material" }, { "kind": "ribbon", "name": "Material" }],
         "input_schema": {
           "type": "object",
-          "required": ["material", "scope"],
+          "required": ["bodies", "material", "scope"],
           "properties": {
+            "bodies": { "type": "array", "title": "Selected" },
             "material": { "type": "string", "title": "Material", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}] },
             "scope": { "type": "string", "title": "Apply to", "description": "What gets the material.", "default": "cabinet", "oneOf": [{"const": "cabinet", "title": "Whole cabinet", "description": "Every panel of the cabinet you selected a part of."}, {"const": "parts", "title": "Selected parts", "description": "Only the selected parts, such as the doors."}] }
           }
@@ -120,7 +125,7 @@
       },
       {
         "name": "cutlist",
-        "effect": "read",
+        "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],
         "input_schema": {
           "type": "object",

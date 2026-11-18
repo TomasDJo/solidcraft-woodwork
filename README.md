@@ -1,7 +1,7 @@
 # solidcraft-woodwork
 
 Woodworking plugin for SolidCraft: parametric cabinets, materials, joinery and a cut list.
-Works with SolidCraft 0.43; older plugin versions work with 0.41 and 0.42. See [PLAN.md](PLAN.md) for the roadmap.
+Works with SolidCraft 0.45; older plugin versions work with 0.41 to 0.44. See [PLAN.md](PLAN.md) for the roadmap.
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
 
@@ -41,6 +41,11 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     move it. A cabinet placed against another is held to that one instead, see Place.
   - **Place** puts it against the cabinet you have selected (any part of it): to the right,
     to the left, or on top, backs flush. That cabinet must stand square to the axes.
+    **Auto** goes by the board you selected: left of a left side, right of a right side,
+    above a top, and at the origin with nothing selected.
+    The selection shows in the dialog as **Selected cabinet**: click the field and pick
+    another board in the model while the dialog is open, and the preview follows. Edit
+    cabinet, Joinery and Material have the same field.
     Right is against that cabinet's right side and left against its left side, whichever
     way it stands: on the return's side of a corner cabinet the new one is turned a quarter
     and continues along the return, and the run carries on from there, corner cabinets too.
@@ -89,7 +94,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   15 % waste, not a cutting layout).
   And it counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles.
   Fill in **Save as** to also get the list as a CSV file. It goes into the folder for cut
-  lists that SolidCraft asks you for when you install the plugin (0.43 and later); without
+  lists that SolidCraft asks you for when you install the plugin; without
   such a folder, leave the field empty.
 
 ## Install
@@ -106,7 +111,8 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.43 | 0.1.6 and later | Tested on every change. The dropdowns show a title and an explanation for each choice, and installing asks you to approve the plugin. |
+| 0.45 | 0.1.8 and later | Tested on every change. A cabinet is previewed in the model before it is added, and the selection is a field in the dialog. |
+| 0.43 and 0.44 | 0.1.6 and 0.1.7 | The dropdowns show a title and an explanation for each choice, and installing asks you to approve the plugin. |
 | 0.42 | 0.1.4 and 0.1.5 | Adds a button per function on the ribbon. From 0.1.6 the functions no longer show in its menu. |
 | 0.41 | 0.1.0 to 0.1.5 | The first version with plugins. 0.1.0 to 0.1.3 were tested on it; 0.1.4 and 0.1.5 should work but were not tested there. |
 | 0.40 and earlier | none | No plugin support. |

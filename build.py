@@ -46,7 +46,7 @@ def build():
     PKG.mkdir(parents=True, exist_ok=True)
     sh("wasm-tools", "component", "new",
        "target/wasm32-unknown-unknown/release/woodwork.wasm", "-o", str(PKG / "woodwork.wasm"))
-    # The app refuses a manifest over 16 KiB, so the packaged one carries no white space.
+    # The app refuses a manifest over 64 KiB (16 before 0.45): the packaged one carries no white space.
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     (PKG / "plugin.json").write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
                                      encoding="utf-8", newline=chr(10))

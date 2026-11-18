@@ -216,10 +216,10 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     match entry {
         "cabinet" | "corner" => {
             // Where it goes: on the origin, or against the cabinet that is selected.
-            let place = params["place"].as_str().unwrap_or("origin");
+            let mut place = params["place"].as_str().unwrap_or("origin");
             check(
-                matches!(place, "origin" | "right" | "left" | "above"),
-                "place must be origin, right, left or above",
+                matches!(place, "origin" | "auto" | "right" | "left" | "above"),
+                "place must be origin, auto, right, left or above",
             )?;
             let matching = match params["match"].as_str().unwrap_or("no") {
                 "no" => false,
@@ -227,21 +227,31 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 _ => return Err("match must be no or selected".into()),
             };
             let mut params = params.clone();
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let picked = select::picked(&params, &design);
+            let measure = match matching || place != "origin" {
+                true => run("inspect.measure", json!({}))?,
+                false => Value::Null,
+            };
+            if place == "auto" {
+                // By the board that is selected: its side, or its top.
+                place = select::side(&picked, &measure)?;
+                params["place"] = json!(place);
+            }
             if entry == "corner" {
                 // Settled here, so the cabinet remembers which it became: Edit builds it
                 // again without knowing where it was placed.
                 params["corner"] = json!(corner::hand(&params)?);
             }
             let mut beside = None;
-            let design = run(
-                "document.inspect",
-                json!({"bodies": false, "timeline": false}),
-            )?;
             // A name that is taken gets the next free number: Cabinet, Cabinet 2, Cabinet 3.
             let name = params["name"].as_str().unwrap_or("Cabinet");
             params["name"] = json!(kit::free_name(name, &design));
             if matching || place != "origin" {
-                let found = select::cabinet(&design, &run("inspect.measure", json!({}))?)?;
+                let found = select::cabinet(&picked, &measure)?;
                 if matching {
                     params["_match"] = kit::matched(&found.name, &design)?;
                 }
@@ -287,7 +297,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 json!({"bodies": false, "timeline": false}),
             )?;
             let measure = run("inspect.measure", json!({}))?;
-            let name = select::cabinet(&design, &measure)?.name;
+            let name = select::cabinet(&select::picked(params, &design), &measure)?.name;
             let about = run("component.metadata", json!({"component": name}))?;
             let (entry, params) = edit::merge(&about["metadata"][edit::KEY], params, &design)
                 .map_err(|e| format!("`{name}`: {e}"))?;
@@ -382,7 +392,8 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
-            let found = select::cabinet(&design, &run("inspect.measure", json!({}))?)?;
+            let picked = select::picked(params, &design);
+            let found = select::cabinet(&picked, &run("inspect.measure", json!({}))?)?;
             let kind = params["type"].as_str().unwrap_or("confirmat");
             drill(&found, kind, run)?;
             Ok(json!({"cabinet": found.name, "type": kind, "joints": 4}))
@@ -393,11 +404,12 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
+            let picked = select::picked(params, &design);
             let bodies = match params["scope"].as_str().unwrap_or("cabinet") {
-                "parts" => select::picked(&design),
+                "parts" => picked,
                 "cabinet" => {
                     let measure = run("inspect.measure", json!({}))?;
-                    select::parts(&measure, &select::cabinet(&design, &measure)?.name)
+                    select::parts(&measure, &select::cabinet(&picked, &measure)?.name)
                 }
                 _ => return Err("scope must be cabinet or parts".into()),
             };

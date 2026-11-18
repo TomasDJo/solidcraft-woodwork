@@ -25,7 +25,7 @@ const SIZES: [&str; 7] = [
 /// are not part of that.
 pub fn remember(entry: &str, params: &Value, name: &str) -> Value {
     let mut params = params.as_object().cloned().unwrap_or_default();
-    for key in ["place", "match", "_match", "_existing"] {
+    for key in ["place", "match", "bodies", "_match", "_existing"] {
         params.remove(key);
     }
     params.insert("name".into(), json!(name));
@@ -66,7 +66,8 @@ pub fn merge(
         }
     }
     for (key, value) in changes.as_object().into_iter().flatten() {
-        if value.is_null() || value == "keep" {
+        // `bodies` is the dialog's selection: which cabinet, not a change to it
+        if value.is_null() || value == "keep" || key == "bodies" {
             continue;
         }
         let only = |wanted: bool, kind: &str| match corner == wanted {

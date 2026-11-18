@@ -10,7 +10,9 @@ permissions:
   contents: write # to attach the package to a release; pull requests from forks get read
 
 env:
-  SOLIDCRAFT: 0.43.0 # the app version the end-to-end tests run against
+  # The app version the end-to-end tests run against. A nightly until 0.45.0 is released:
+  # nightlies are removed after a while, so change this to 0.45.0 then.
+  SOLIDCRAFT: 0.45.0-nightly.20261118.144.1
 
 jobs:
   build:

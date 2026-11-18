@@ -32,7 +32,7 @@ import build
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else HERE / "kitchen.sc").resolve()
 WHITE = {"material": "White melamine"}
 FLOOR_UNIT = {**WHITE, "height": 870, "depth": 560, "plinth": 150}
-BASE = {**FLOOR_UNIT, "handles": "pull", "place": "right"}
+BASE = {**FLOOR_UNIT, "handles": "pull", "place": "auto"}  # auto: by the selected board, a Side R
 WALL = {**WHITE, "height": 700, "depth": 320, "shelves": 2, "shelf_pins": True, "handles": "knob"}
 MATCH = {"match": "selected"}  # sizes from the selected cabinet, and linked to it
 WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
@@ -84,7 +84,7 @@ kitchen = step("component.activate", component="Kitchen")
 steps = [step("component.create", name="Kitchen")]
 for i, (name, params) in enumerate(FLOOR):
     if i:
-        steps.append(select(f"{FLOOR[i - 1][0]} Top"))
+        steps.append(select(f"{FLOOR[i - 1][0]} Side R"))
     steps.append(build.plugin(approval, "cabinet", {**params, "name": name}))
 for name, left, params in HANGING:
     # Made on the origin, then moved up onto the wall. The plugin grounds a cabinet so that

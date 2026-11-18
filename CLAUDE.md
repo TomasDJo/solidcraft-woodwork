@@ -1,6 +1,6 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.43+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.45+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
 `README.md` is the user-facing description, `PLAN.md` the roadmap with what is done and open.
 
@@ -19,11 +19,20 @@ materials, joinery and cut lists.
   entry in the menu with Run turned off; ours use only type, title, description, default,
   oneOf, bounds and lengths. The dialog shows the fields that `required` names first, in that
   order, and the rest by key: so every schema lists all its fields in `required`, which also
-  puts a ` *` after each label. `build.py` packs the manifest without white space, because
-  the app refuses one over 16 KiB. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
+  puts a ` *` after each label. `build.py` packs the manifest without white space: the app
+  refused one over 16 KiB until 0.45 (64 KiB since), and ours is just over 16. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
   bare values, and 0.42 cannot draw `oneOf`). `tests/test_manifest.py` checks all of this.
-  The dialog is **static**: no dependent fields, no stored values, no preview, no pick-a-body
-  field. Plugin code runs only after OK.
+  The dialog is **static**: no dependent fields, no stored values.
+- **Preview (0.44).** While the dialog is open the app runs an edit entry as a dry run on a
+  copy of the design each time a field changes, and draws the result. So plugin code runs
+  before OK, without folder grants; nothing a run does may depend on being the only run.
+- **The selection is a field (0.44).** Every entry that works on the selected cabinet has a
+  `bodies` array (`maxItems: 1`; Material takes several). That key is reserved by the app:
+  it draws a pick control, fills it with what is selected when the dialog opens, and sends
+  the bodies' names. `select::picked` reads it and falls back to the design's selection
+  when it is empty, which is what scripts and the tests mostly use. Any other array, or
+  more keywords on it, turns Run off. Edit skips the key (`edit::merge`), and a cabinet
+  does not remember it.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
   features, so a design opens without the plugin.
 - Limits per run: 256 app commands, 30 s, 1 MiB result. No network access, no storage.
@@ -31,10 +40,11 @@ materials, joinery and cut lists.
   `runtime.permissions.files` and the user approves when installing (0.43: the install
   screen asks for a path). The plugin names the grant and a relative path and never learns
   where the folder is. A refused write fails the whole run, so the cut list only writes when
-  its Save as field is filled. A `read` entry may write files. Through the CLI a grant comes
+  its Save as field is filled. A `read` entry may not write files (0.45), so `cutlist` is
+  an `edit` entry though it changes nothing. Through the CLI a grant comes
   from `plugin.install` with `approve` earlier in the same script; `tests/test_cutlist.py`
   does that in a profile folder of its own (`LOCALAPPDATA` and friends pointed at `dist/`).
-- A `read` entry may only call read commands. `selection.get`, `component.list` and
+- A `read` entry (we have none now) may only call read commands. `selection.get`, `component.list` and
   `assembly.mass_properties` count as edits; `document.inspect` (which also returns the
   selection), `inspect.measure` and `model.mesh` are read.
 - Inside a plugin run, `solid.hole` checks its `position` in the active component's own
@@ -78,7 +88,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material` (all edit) and `cutlist` (read).
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material` and `cutlist`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -257,6 +267,5 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   from its one size that is a thickness parameter, so the drawer boxes' 12 mm boards get
   none. The label sits in the middle of the board's bounding box, which on a corner
   cabinet's L-shaped board can be over the cut-out; a side's label is on its left face.
-- Functions that use the selection (Place, Material, Joinery) were tested through MCP and the
-  CLI only. Whether the selection survives opening the Plugins menu dialog has not been
-  confirmed in the app.
+- Place's Auto goes by the name of the selected board (`select::side`): `Side L`, `Side R`
+  or `Top`. Any other board is refused, also when Match selected only needs the cabinet.
