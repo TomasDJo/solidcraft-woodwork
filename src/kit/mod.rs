@@ -296,6 +296,21 @@ impl Kit {
         ));
     }
 
+    /// A seat: where a cabinet placed against this one's side stands, or this one against
+    /// another's. An upright construction axis through a corner of the footprint, `x` and `y`
+    /// counted from the front left corner like a panel's, so it follows the parameters.
+    /// `side` is L or R, the side it is the seat of; `end` is true at the end of a corner
+    /// cabinet's return, where the wall is beside the seat and not behind it.
+    ///
+    /// A link mates two seats, which holds the cabinets together both ways: side to side and
+    /// back to back, whichever of them changes width or depth.
+    pub fn seat(&self, side: &str, end: bool, x: &str, y: &str) {
+        let [w, d] = self.centre.borrow().clone();
+        let at = [format!("{x} - {w}/2"), format!("{y} - {d}/2")];
+        let name = seat(&self.name, side, end);
+        self.line(&self.name, name, [&at[0], &at[1]], 1);
+    }
+
     /// A hinge line: a construction axis in `component`, upright through `at` (x and y,
     /// expressions in that component's coordinates), that follows the cabinet's parameters.
     /// `turn` is 1 or -1, the way a door on it opens about Z. Returns the axis's name.
@@ -437,6 +452,14 @@ impl Kit {
             "parameters": format!("{0}_width, {0}_height, ...", self.prefix),
         });
         (commands, summary)
+    }
+}
+
+/// The name of a cabinet's seat on its left (L) or right (R) side: see [`Kit::seat`].
+pub fn seat(cabinet: &str, side: &str, end: bool) -> String {
+    match end {
+        true => format!("{cabinet} seat {side} return"),
+        false => format!("{cabinet} seat {side}"),
     }
 }
 

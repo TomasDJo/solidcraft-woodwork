@@ -165,6 +165,11 @@ impl Corner<'_> {
         };
         let (back_end, return_end) = self.ends();
         let zero = mm(0.0);
+        // Where a neighbour stands: at the end of the back leg its back is on the same wall;
+        // at the end of the return the wall is beside it.
+        let side = |end: &'static str| &end[end.len() - 1..];
+        (self.kit).seat(side(back_end), false, &self.point(ea), eb);
+        (self.kit).seat(side(return_end), true, &self.point(&zero), &zero);
         panel(
             back_end,
             [&format!("{ea} - {et}"), &format!("{eb} - {ed}"), &zero],

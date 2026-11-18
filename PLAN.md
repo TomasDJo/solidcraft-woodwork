@@ -79,6 +79,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Holes that survive a rebuild of the history: cut as cylinders (deleting a cabinet in a big design broke drilled holes)
 - [x] SolidCraft 0.44: the selection is a field in the dialog, picked in the model; the cabinet is previewed before it is added; tests run against 0.44.1
 - [x] An icon for each function, on the ribbon, in the menu and in its dialog
+- [x] Cabinets in a run are held by their corners at the wall: backs stay flush and a corner cabinet's return takes its cabinets along, whichever size changes
 - [x] Place: Auto, the default, by the selected board (left of a left side, right of a right side, above a top)
 
 ## Open
