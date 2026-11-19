@@ -36,7 +36,7 @@ def test_choices_have_titles(approval):
             assert field["default"] in values, at
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
-    assert choices == 28, choices
+    assert choices == 29, choices
     # SolidCraft 0.44 refuses a manifest over 16 KiB (0.45: 64 KiB); the package carries it
     # without white space.
     packed = (PKG / "plugin.json").read_bytes()

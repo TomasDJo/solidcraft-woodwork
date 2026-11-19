@@ -22,7 +22,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Edit cabinet**: change shelves, doors, drawers and more on a cabinet that is already made.
 - **Joinery**: confirmat screw or dowel holes at the carcass corners.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
-- **Cut list**: every board with its size and quantity, sheets to buy and hardware, as CSV.
+- **Cut list**: every board with its size and quantity, sheets to buy and hardware, as CSV or a printable PDF.
 
 Every size is a design parameter: change one and the cabinet follows.
 

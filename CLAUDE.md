@@ -79,6 +79,7 @@ materials, joinery and cut lists.
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list and sheet estimate from `inspect.measure` |
+| `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font) |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
