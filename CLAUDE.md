@@ -92,7 +92,7 @@ materials, joinery and cut lists.
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
-| `src/cutlist/` | Cut list and sheet estimate from `inspect.measure` |
+| `src/cutlist/` | Cut list, sheet estimate, edge banding and grain from `inspect.measure` |
 | `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font) |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
@@ -270,6 +270,12 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
   `joint`, `Drawer n Front`), so renaming those breaks it.
 - The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.
+- Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no
+  per-part override (that would need `storage@0.1`). A cabinet's width axis is across its
+  `Side L` in the world, or X for a board measured in its own component, so a cabinet turned
+  off a quarter turn is right only for its turned boards. An L-shaped or diagonal corner
+  shelf gets one front edge marked, not its two (or slanted) front edges. A material that is
+  not ours has no grain (`material::GRAINED`).
 - A diagonal corner cabinet's front is always at 45 degrees: its door and plinth are components
   turned by a fixed angle (`Kit::turn`), since an occurrence's turn cannot follow a parameter.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are

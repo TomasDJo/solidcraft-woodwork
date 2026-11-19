@@ -27,8 +27,8 @@ def test_diagonal_door_resize_and_mirror(approval):
     door = [round(v, 1) for v in box["C Door"]]
     assert door == [177.0, -448.6, 102, 498.6, -127.0, 718], door  # inside the footprint: x <= 500, y >= -450
     csv = results[3]["result"]["csv"]
-    assert '1,24 1/4,17 3/16,23/32,"Birch plywood","C Door"' in csv, csv
-    assert '1,18 15/16,3 15/16,23/32,"Birch plywood","C Plinth"' in csv, csv
+    assert '1,24 1/4,17 3/16,23/32,"Birch plywood",yes,L2 W2,"C Door"' in csv, csv
+    assert '1,18 15/16,3 15/16,23/32,"Birch plywood",yes,,"C Plinth"' in csv, csv
     hardware = {h["item"]: h["qty"] for h in results[3]["result"]["hardware"]}
     assert hardware == {"Hinge, 35 mm cup": 2, "Shelf pin, 5 mm": 8, "Knob": 1}, hardware
     door = [round(v, 1) for v in boxes(results[5])["C Door"]]

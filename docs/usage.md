@@ -136,7 +136,21 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
 
 - estimates the 2440 x 1220 sheets to buy per material and thickness (area plus 15 % waste,
   not a cutting layout);
-- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles.
+- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
+- marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
+  along the width, `L1` one edge along the length. Doors and drawer fronts are banded all round; sides, top,
+  bottom, shelves and dividers at the front; backs, plinths and drawer boxes not. It adds up
+  the metres of banding per material and thickness, plus 10 % waste;
+- lists a board of a material with a grain (Birch plywood, Oak) with its length along the
+  grain, marked `grain`: up on sides, doors, backs, dividers and drawer fronts, along the
+  cabinet's width on top, bottom, shelves and drawer bottoms, and along the drawer box's
+  sides, front and back. Such a part must not be turned on the sheet. Other materials (MDF,
+  White melamine) have the longest side as the length, and so do plinths and the drawer
+  box's sides, front and back.
+
+**Edge banding** is the tape's thickness: none, 0.4, 1 (the default) or 2 mm. **Sizes**:
+finished, as in the model, or cut, the size to saw: the finished size less the tape on each
+banded edge. The list says which it shows.
 
 Fill in **Save as** with a name to also get the list as a file, in the **Format** chosen:
 PDF, a printable A4 list with a tick box per board and per piece of hardware, one table per

@@ -11,7 +11,7 @@ fn measure() -> Value {
 
 #[test]
 fn groups_equal_boards() {
-    let list = cutlist(&measure(), &BTreeMap::new(), false).unwrap();
+    let list = cutlist(&measure(), &BTreeMap::new(), false, &json!({})).unwrap();
     assert_eq!(list["boards"], 3);
     // 6 mm: 0.41 m2, 18 mm: 0.85 m2, one sheet each
     assert_eq!(list["sheets"][0]["thickness"], 6.0);
@@ -21,7 +21,7 @@ fn groups_equal_boards() {
     assert_eq!(list["parts"][1]["length"], 762.0);
     let csv = list["csv"].as_str().unwrap();
     assert!(
-        csv.contains("2,762,558.8,19.1,\"Default\",\"Side L, Side R\""),
+        csv.contains("2,762,558.8,19.1,\"Default\",,,\"Side L, Side R\""),
         "{csv}"
     );
 }
@@ -39,11 +39,11 @@ fn an_open_door_is_measured_in_its_own_component() {
 
     let mesh = json!({"positions": [[0, 0, 0], [397, 18, 716], [397, 0, 0]]});
     let local = BTreeMap::from([("Side L".to_string(), extents(&mesh))]);
-    let list = cutlist(&measure(), &local, false).unwrap();
+    let list = cutlist(&measure(), &local, false, &json!({})).unwrap();
     assert!(list["csv"]
         .as_str()
         .unwrap()
-        .contains("1,716,397,18,\"Default\",\"Side L\""));
+        .contains("1,716,397,18,\"Default\",,,\"Side L\""));
 }
 
 /// A box mesh of the given size turned `degrees` about Z: 8 corners, 12 triangles.
@@ -142,10 +142,10 @@ fn inches_as_fractions() {
     assert_eq!(inches(19.05), "3/4");
     assert_eq!(inches(609.6), "24");
     assert_eq!(inches(590.55), "23 1/4");
-    let list = cutlist(&measure(), &BTreeMap::new(), true).unwrap();
+    let list = cutlist(&measure(), &BTreeMap::new(), true, &json!({})).unwrap();
     let csv = list["csv"].as_str().unwrap();
     assert!(
-        csv.contains("2,30,22,3/4,\"Default\",\"Side L, Side R\""),
+        csv.contains("2,30,22,3/4,\"Default\",,,\"Side L, Side R\""),
         "{csv}"
     );
     assert_eq!(list["parts"][1]["length"], "30");
@@ -175,4 +175,179 @@ fn the_file_to_save_as() {
     for bad in ["../a", "a/b", r"a\b", "C:a", ".hidden"] {
         assert!(name("cutlist", bad).is_err(), "{bad}");
     }
+}
+
+/// A cabinet `A` in oak, 400 high and 560 deep, with an MDF divider: bodies as
+/// `inspect.measure` has them. `turned` sets a quarter turn (width along Y).
+fn cabinet(turned: bool) -> Value {
+    let body = |name: &str, material: &str, max: [f64; 3]| {
+        let max = if turned {
+            [max[1], max[0], max[2]]
+        } else {
+            max
+        };
+        json!({"name": name, "material": material, "bbox": {"min": [0, 0, 0], "max": max}})
+    };
+    json!({"bodies": [
+        body("A Side L", "Oak", [18.0, 560.0, 400.0]),
+        body("A Side R", "Oak", [18.0, 560.0, 400.0]),
+        body("A Divider 1", "MDF", [18.0, 560.0, 400.0]),
+        body("A Shelf 1", "Oak", [500.0, 542.0, 18.0]),
+        body("A Door", "Oak", [600.0, 18.0, 400.0]),
+        body("A Back", "Oak", [564.0, 6.0, 382.0]),
+        body("A Plinth", "Oak", [564.0, 18.0, 100.0]),
+        body("A Drawer 1 Bottom", "Oak", [500.0, 400.0, 6.0]),
+        body("A Drawer 1 Left", "Oak", [12.0, 500.0, 150.0]),
+    ]})
+}
+
+fn row<'a>(list: &'a Value, part: &str) -> &'a Value {
+    let parts = list["parts"].as_array().unwrap();
+    parts.iter().find(|p| p["parts"][0] == part).unwrap()
+}
+
+#[test]
+fn banding_and_grain_by_part() {
+    for turned in [false, true] {
+        let list = cutlist(&cabinet(turned), &BTreeMap::new(), false, &json!({})).unwrap();
+        let size = |part: &str| {
+            let r = row(&list, part);
+            (
+                r["length"].clone(),
+                r["width"].clone(),
+                r["banding"].clone(),
+                r["grain"].clone(),
+            )
+        };
+        let band = |l: u64, w: u64| json!({"length": l, "width": w});
+        // oak sides: grain up, so the length is the 400 height; the front edge is a length edge
+        assert_eq!(
+            size("A Side L"),
+            (json!(400.0), json!(560.0), band(1, 0), json!(true))
+        );
+        // MDF has no grain: the longest side is the length, and the front edge a width edge
+        assert_eq!(
+            size("A Divider 1"),
+            (json!(560.0), json!(400.0), band(0, 1), json!(false))
+        );
+        // a shelf's grain runs along the cabinet's width, turned or not; its front edge too
+        assert_eq!(
+            size("A Shelf 1"),
+            (json!(500.0), json!(542.0), band(1, 0), json!(true))
+        );
+        assert_eq!(
+            size("A Door"),
+            (json!(400.0), json!(600.0), band(2, 2), json!(true))
+        );
+        assert_eq!(
+            size("A Back"),
+            (json!(382.0), json!(564.0), band(0, 0), json!(true))
+        );
+        assert_eq!(
+            size("A Plinth"),
+            (json!(564.0), json!(100.0), band(0, 0), json!(true))
+        );
+        assert_eq!(size("A Drawer 1 Bottom").0, json!(500.0), "turned {turned}");
+        // a drawer box side runs its grain along the box, not up
+        assert_eq!(
+            size("A Drawer 1 Left"),
+            (json!(500.0), json!(150.0), band(0, 0), json!(true))
+        );
+        // oak, 18 mm: two sides 400, the shelf 500, the door 2 x 400 + 2 x 600; plus 10 %
+        assert_eq!(
+            list["banding"],
+            json!([
+                {"material": "MDF", "thickness": 18.0, "metres": 0.44},
+                {"material": "Oak", "thickness": 18.0, "metres": 3.63},
+            ])
+        );
+        assert_eq!(
+            (list["size"].clone(), list["banding_mm"].clone()),
+            (json!("finished"), json!(1.0))
+        );
+        let csv = list["csv"].as_str().unwrap();
+        assert!(
+            csv.contains("1,400,600,18,\"Oak\",yes,L2 W2,\"A Door\""),
+            "{csv}"
+        );
+        assert!(
+            csv.contains(
+                "\nEdge banding 1 mm,Thickness (mm),Metres with 10 % waste\n\"MDF\",18,0.44\n"
+            ),
+            "{csv}"
+        );
+    }
+}
+
+#[test]
+fn cut_size_takes_off_the_banding() {
+    let options = json!({"banding": "2", "size": "cut"});
+    let list = cutlist(&cabinet(false), &BTreeMap::new(), false, &options).unwrap();
+    let size = |part: &str| {
+        (
+            row(&list, part)["length"].clone(),
+            row(&list, part)["width"].clone(),
+        )
+    };
+    assert_eq!(size("A Door"), (json!(396.0), json!(596.0)));
+    assert_eq!(size("A Side L"), (json!(400.0), json!(558.0))); // the front edge runs along the length
+    assert_eq!(size("A Back"), (json!(382.0), json!(564.0)));
+    assert_eq!(list["size"], "cut");
+    assert!(list["csv"]
+        .as_str()
+        .unwrap()
+        .starts_with("Qty,Cut length (mm),Cut width (mm),"));
+    // no banding: no marks, nothing to buy
+    let list = cutlist(
+        &cabinet(false),
+        &BTreeMap::new(),
+        false,
+        &json!({"banding": "none", "size": "cut"}),
+    )
+    .unwrap();
+    assert_eq!(
+        row(&list, "A Door")["banding"],
+        json!({"length": 0, "width": 0})
+    );
+    assert_eq!(row(&list, "A Door")["length"], 400.0);
+    assert_eq!(list["banding"], json!([]));
+    assert!(!list["csv"].as_str().unwrap().contains("Edge banding"));
+    for bad in [json!({"banding": "3"}), json!({"size": "raw"})] {
+        assert!(
+            cutlist(&cabinet(false), &BTreeMap::new(), false, &bad).is_err(),
+            "{bad}"
+        );
+    }
+    // imperial: feet beside the metres
+    let list = cutlist(&cabinet(false), &BTreeMap::new(), true, &json!({})).unwrap();
+    assert_eq!(list["banding"][1]["feet"], 11.909);
+}
+
+#[test]
+fn a_turned_board_is_banded_in_its_own_axes() {
+    // An open door and a turned cabinet's shelf, measured in their own components: X is
+    // the cabinet's width there, whichever way the cabinet's Side L stands in the world.
+    let local = BTreeMap::from([
+        ("A Door".to_string(), [600.0, 18.0, 400.0]),
+        ("A Shelf 1".to_string(), [500.0, 542.0, 18.0]),
+    ]);
+    let list = cutlist(&cabinet(true), &local, false, &json!({})).unwrap();
+    assert_eq!(row(&list, "A Door")["length"], 400.0);
+    assert_eq!(
+        row(&list, "A Door")["banding"],
+        json!({"length": 2, "width": 2})
+    );
+    assert_eq!(row(&list, "A Shelf 1")["length"], 500.0);
+    assert_eq!(
+        row(&list, "A Shelf 1")["banding"],
+        json!({"length": 1, "width": 0})
+    );
+}
+
+#[test]
+fn banding_marks() {
+    assert_eq!(mark(2, 2), "L2 W2");
+    assert_eq!(mark(1, 0), "L1");
+    assert_eq!(mark(0, 1), "W1");
+    assert_eq!(mark(0, 0), "");
 }

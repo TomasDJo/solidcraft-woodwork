@@ -62,7 +62,7 @@ def test_joints(approval):
                   "--save", str(ROOT / "dist" / "joints.sc"))
     # the cut list measures the doors as boards, however far they stand open
     # (716 x 297 x 18 mm, listed in inches in this inch design)
-    assert '2,28 3/16,11 11/16,23/32,"Birch plywood","D Door L, D Door R"' in results[9]["result"]["csv"]
+    assert '2,28 3/16,11 11/16,23/32,"Birch plywood",yes,L2 W2,"D Door L, D Door R"' in results[9]["result"]["csv"], results[9]["result"]["csv"]
     box = {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[8]["bodies"]}
     # left door: turned 90 degrees about its front left edge (x -298, y -300), now along -Y and
     # still inside the cabinet's width, clear of a door on the next cabinet

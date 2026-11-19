@@ -29,3 +29,33 @@ def test_saved_as_a_file(approval):
         pdf = (folder / "My kitchen.pdf").read_bytes()
         assert pdf.startswith(b"%PDF-") and pdf.endswith(b"%%EOF\n") and b"Cabinet Side L" in pdf
         assert (folder / "My kitchen.csv").read_text(encoding="utf-8") == saved["csv"] == shown["csv"]
+
+
+def test_banding_and_grain(approval):
+    # Birch plywood (grained), lower than deep, with an open door; and a narrow cabinet turned a
+    # quarter, whose shelf's grain still runs along the cabinet's width.
+    birch = {"height": 500, "plinth": 100, "doors": 1, "shelves": 1}
+    turn = {"position": [2000, 0, 0], "axis": [0, 0, 1], "angle": "90 deg"}
+    results = cli([plugin(approval, "cabinet", birch), drive("Cabinet Door hinge", 70),
+                   plugin(approval, "cabinet", {"width": 400, "shelves": 1, "name": "T"}),
+                   {"command": "occurrence.ground", "params": {"occurrence": "T:1", "grounded": False}},
+                   {"command": "occurrence.move", "params": {"occurrence": "T:1", "to": turn}},
+                   plugin(approval, "cutlist"), plugin(approval, "cutlist", {"banding": "2", "size": "cut"})])
+    finished, cut = results[-2]["result"], results[-1]["result"]
+
+    def row(listed, part):
+        return next(p for p in listed["parts"] if part in p["parts"])
+
+    door, side, shelf = (row(finished, p) for p in ("Cabinet Door", "Cabinet Side L", "T Shelf 1"))
+    assert door["banding"] == {"length": 2, "width": 2} and door["grain"], door
+    assert door["length"] < door["width"], door  # grain up: the length is the door's height
+    assert side["banding"] == {"length": 1, "width": 0} and (side["length"], side["width"]) == (500, 560), side
+    assert shelf["banding"] == {"length": 1, "width": 0} and shelf["length"] == 364, shelf
+    assert finished["size"] == "finished" and finished["banding_mm"] == 1
+    birch = next(b for b in finished["banding"] if b["thickness"] == 18)
+    # fronts of sides, top, bottom, shelf, the door all round: 4.68 m and 2.53 m (T), plus 10 %
+    assert abs(birch["metres"] - 7.93) < 0.05, finished["banding"]
+    assert "Banding,Parts" in finished["csv"] and "Edge banding 1 mm" in finished["csv"]
+    cut_door = row(cut, "Cabinet Door")
+    assert (cut_door["length"], cut_door["width"]) == (door["length"] - 4, door["width"] - 4), cut_door
+    assert row(cut, "Cabinet Side L")["width"] == 558 and cut["size"] == "cut"

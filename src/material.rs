@@ -16,6 +16,9 @@ const BOARDS: [(&str, f64, (&str, &str)); 4] = [
     ("Oak", 0.75, ("appearance", "Wood - Oak")),
 ];
 
+/// The materials of `BOARDS` with a grain: their parts must not be turned on the sheet.
+pub const GRAINED: [&str; 2] = ["Birch plywood", "Oak"];
+
 pub fn assign(run: Run, material: &str, bodies: &[String]) -> Result<(), String> {
     let (name, density, look) = (BOARDS.iter().find(|board| board.0 == material))
         .ok_or(format!("unknown material `{material}`"))?;

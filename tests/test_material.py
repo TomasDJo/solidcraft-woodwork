@@ -28,5 +28,5 @@ def test_inches(approval):
                    plugin(approval, "cutlist")])
     cutlist = results[2].get("result", results[2])
     assert cutlist["units"] == "in", cutlist
-    assert '2,30,22,3/4,"Birch plywood","Cabinet Side L, Cabinet Side R"' in cutlist["csv"], cutlist["csv"]
+    assert '2,30,22,3/4,"Birch plywood",yes,L1,"Cabinet Side L, Cabinet Side R"' in cutlist["csv"], cutlist["csv"]
 
