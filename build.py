@@ -6,7 +6,8 @@
 
 The end-to-end tests are in tests/, one file per function of the plugin.
 
-Needs: cargo (with the wasm32-unknown-unknown target), wasm-tools, solidcraft-cli.
+Needs: cargo (with the wasm32-unknown-unknown target), wasm-tools, solidcraft-cli (or the path to it
+in SOLIDCRAFT_CLI).
 """
 import json
 import os
@@ -19,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 PKG = ROOT / "dist" / "woodwork"
 os.environ["PATH"] += os.pathsep + str(Path.home() / ".cargo" / "bin")
-CLI = shutil.which("solidcraft-cli") or r"C:\Program Files\SolidCraft\solidcraft-cli.exe"
+CLI = os.environ.get("SOLIDCRAFT_CLI") or shutil.which("solidcraft-cli") or r"C:\Program Files\SolidCraft\solidcraft-cli.exe"
 
 
 def sh(*args):
@@ -46,7 +47,7 @@ def build():
     PKG.mkdir(parents=True, exist_ok=True)
     sh("wasm-tools", "component", "new",
        "target/wasm32-unknown-unknown/release/woodwork.wasm", "-o", str(PKG / "woodwork.wasm"))
-    # SolidCraft 0.44 refuses a manifest over 16 KiB: the packaged one carries no white space.
+    # SolidCraft 0.45 refuses a manifest over 64 KiB: the packaged one carries no white space.
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     (PKG / "plugin.json").write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
                                      encoding="utf-8", newline=chr(10))
@@ -58,6 +59,8 @@ def build():
         icons = sorted(f"icons/{icon.name}" for icon in (ROOT / "icons").glob("*.svg"))
         for name in ("plugin.json", "woodwork.wasm", "LICENSE", *icons):
             z.write(PKG / name, f"woodwork/{name}")
+    # What Install would refuse: an error stops the build, a warning is only printed.
+    sh(CLI, "plugin", "check", str(archive))
     return archive
 
 

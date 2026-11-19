@@ -1,7 +1,34 @@
 """Shared by the end-to-end tests: steps for a CLI script, and readers for its results."""
+import contextlib
+import json
+import os
+import shutil
+
 from build import PKG, ROOT, cli, plugin  # noqa: F401 (the tests use them through `import *`)
 
 MEASURE = {"command": "inspect.measure", "params": {}}
+
+
+@contextlib.contextmanager
+def own_profile(*folders):
+    """A SolidCraft profile of its own in dist/, so installing leaves the user's alone. Empties
+    `folders` too. Yields the install step for the built package, folder grants to add."""
+    profile = ROOT / "dist" / "profile"
+    for path in (profile, *folders):
+        shutil.rmtree(path, ignore_errors=True)
+        path.mkdir(parents=True)
+    keys = ("LOCALAPPDATA", "APPDATA", "XDG_DATA_HOME", "XDG_CONFIG_HOME")
+    before = {key: os.environ.get(key) for key in keys}
+    os.environ.update({key: str(profile) for key in keys})
+    version = json.loads((PKG / "plugin.json").read_text(encoding="utf-8"))["version"]
+    install = {"command": "plugin.install", "params": {
+        "path": str(ROOT / "dist" / f"woodwork-{version}.zip"), "replace": True,
+        "approve": {"command_groups": [], "folders": []}}}
+    try:
+        yield install
+    finally:
+        for key, value in before.items():
+            os.environ.pop(key, None) if value is None else os.environ.__setitem__(key, value)
 
 
 def select(name):

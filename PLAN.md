@@ -81,6 +81,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] An icon for each function, on the ribbon, in the menu and in its dialog
 - [x] Cabinets in a run are held by their corners at the wall: backs stay flush and a corner cabinet's return takes its cabinets along, whichever size changes
 - [x] Place: Auto, the default, by the selected board (left of a left side, right of a right side, above a top)
+- [x] SolidCraft 0.45: the view is framed after a cabinet is added, each function is a tool for agents, the package is checked when built; tests run against 0.45.0
 
 ## Open
 
@@ -102,8 +103,8 @@ Cut list and shop output:
 
 ## Waiting for the app
 
-The dialog is drawn by the app from a fixed schema. These need the `ui` or `storage` capability
-that is planned upstream:
+The dialog is drawn by the app from a fixed schema. These need the `ui` capability that is planned
+upstream (`storage`, from 0.45, keeps data in a design, not in the dialog):
 
 - A dialog that stays open to add several cabinets, and remembers the last values
 - Fields that depend on each other (defaults in inches, options that hide)
@@ -111,5 +112,4 @@ that is planned upstream:
 Possible since 0.44, not done:
 
 - Pictures for choices such as a left or right corner (`x-solidcraft-icon` on a choice's
-  options). Each costs manifest bytes, and 0.44 allows 16 KiB: for when 0.45, which allows
-  64 KiB, is the oldest version supported.
+  options). Each costs manifest bytes; 0.45 allows 64 KiB.
