@@ -94,11 +94,19 @@ fn the_file_to_save_as() {
     assert_eq!(name("cutlist", "  "), Ok(None));
     assert_eq!(file_name("cutlist", &json!({})), Ok(None));
     assert_eq!(name("cabinet", "a"), Ok(None)); // only the cut list saves
-    assert_eq!(name("cutlist", "kitchen"), Ok(Some("kitchen.csv".into())));
+    let saved = |file: &str, format: &str| {
+        file_name("cutlist", &json!({"file": file, "format": format})).map(Option::unwrap)
+    };
+    // PDF unless the format says CSV; the format gives the ending, whatever was typed
+    assert_eq!(name("cutlist", "kitchen"), Ok(Some("kitchen.pdf".into())));
+    assert_eq!(saved("kitchen", "csv"), Ok("kitchen.csv".into()));
+    assert_eq!(saved("kitchen.PDF", "csv"), Ok("kitchen.csv".into()));
     assert_eq!(
-        name("cutlist", " My kitchen 2.CSV "),
-        Ok(Some("My kitchen 2.CSV".into()))
+        saved(" My kitchen 2.csv ", "pdf"),
+        Ok("My kitchen 2.pdf".into())
     );
+    assert_eq!(saved("kitchen.txt", "pdf"), Ok("kitchen.txt.pdf".into()));
+    assert!(saved("kitchen", "xlsx").is_err());
     // a name only: the folder is the one the user approved
     for bad in ["../a", "a/b", r"a\b", "C:a", ".hidden"] {
         assert!(name("cutlist", bad).is_err(), "{bad}");

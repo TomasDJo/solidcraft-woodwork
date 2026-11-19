@@ -138,7 +138,9 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
   not a cutting layout);
 - counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles.
 
-Fill in **Save as** to also get the list as a CSV file. It goes into the folder for cut
+Fill in **Save as** with a name to also get the list as a file, in the **Format** chosen:
+PDF, a printable A4 list with a tick box per board and per piece of hardware, one table per
+material and thickness, and the sheets to buy; or CSV, for a spreadsheet. It goes into the folder for cut
 lists that SolidCraft asks you for when you install the plugin; without such a folder, leave
 the field empty.
 

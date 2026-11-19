@@ -9,6 +9,7 @@ mod fittings;
 mod joinery;
 mod kit;
 mod material;
+mod pdf;
 mod select;
 
 use kit::check;
@@ -241,12 +242,19 @@ fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
 /// Writes a file into a folder the user approved at install: folder grant, file name, bytes.
 pub type Write<'a> = &'a mut dyn FnMut(&str, &str, &[u8]) -> Result<(), String>;
 
-/// Saves the cut list in `result` as a CSV file when its `file` field asks for one, and notes
-/// the name in the result.
+/// Saves the cut list in `result` as a CSV or PDF file when its `file` field asks for one, and
+/// notes the name in the result.
 pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Result<(), String> {
     if let Some(name) = cutlist::file_name(entry, params)? {
-        let csv = result["csv"].as_str().unwrap_or_default();
-        write(cutlist::FOLDER, &name, csv.as_bytes()).map_err(|reason| {
+        let data = match name.to_lowercase().strip_suffix(".pdf") {
+            Some(_) => pdf::render(result, &name[..name.len() - 4]),
+            None => result["csv"]
+                .as_str()
+                .unwrap_or_default()
+                .as_bytes()
+                .to_vec(),
+        };
+        write(cutlist::FOLDER, &name, &data).map_err(|reason| {
             format!(
                 "could not save {name}: {reason}. Saving needs a folder for cut lists, approved when the plugin is installed: install it again and enter a folder, or clear Save as"
             )

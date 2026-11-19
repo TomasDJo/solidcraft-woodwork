@@ -22,10 +22,14 @@ def test_saved_as_a_file(approval):
             "path": str(ROOT / "dist" / f"woodwork-{version}.zip"), "replace": True,
             "approve": {"command_groups": [], "folders": [grant]}}}
         cabinet = plugin(approval, "cabinet", {})
-        results = cli([install, cabinet, plugin(approval, "cutlist", {"file": "My kitchen"}), plugin(approval, "cutlist")])
+        results = cli([install, cabinet, plugin(approval, "cutlist", {"file": "My kitchen", "format": "csv"}), plugin(approval, "cutlist"),
+                       plugin(approval, "cutlist", {"file": "My kitchen"})])
         saved, shown = results[2]["result"], results[3]["result"]
         assert saved["saved"] == "My kitchen.csv" and "saved" not in shown, (saved.get("saved"), shown.get("saved"))
-        assert [p.name for p in folder.iterdir()] == ["My kitchen.csv"]
+        assert results[4]["result"]["saved"] == "My kitchen.pdf"
+        assert sorted(p.name for p in folder.iterdir()) == ["My kitchen.csv", "My kitchen.pdf"]
+        pdf = (folder / "My kitchen.pdf").read_bytes()
+        assert pdf.startswith(b"%PDF-") and pdf.endswith(b"%%EOF\n") and b"Cabinet Side L" in pdf
         assert (folder / "My kitchen.csv").read_text(encoding="utf-8") == saved["csv"] == shown["csv"]
     finally:
         for key, value in before.items():

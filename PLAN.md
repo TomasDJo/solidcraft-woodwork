@@ -95,6 +95,7 @@ Cabinets:
 
 Cut list and shop output:
 - [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
+- [x] Cut list saved as a printable PDF, with tick boxes for boards and hardware
 - [ ] Edge banding and grain direction in the cut list
 - [ ] Sheet cutting diagrams (nesting, kerf, grain)
 - [ ] DXF per part, labels
