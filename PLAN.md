@@ -92,7 +92,8 @@ Cabinets:
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
-- [ ] Worktop and plinth run over the selected cabinets
+- [x] Worktop over a straight run of the selected cabinets (sink and hob cutouts dropped by decision: simple to cut afterwards)
+- [ ] Plinth run over the selected cabinets
 
 Cut list and shop output:
 - [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)

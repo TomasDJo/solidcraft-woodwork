@@ -14,6 +14,7 @@ mod nesting;
 mod pdf;
 mod prices;
 mod select;
+mod worktop;
 
 use kit::check;
 use serde_json::{json, Value};
@@ -29,10 +30,29 @@ pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
 /// leaves on the component how it was made, for Edit. Returns the summary and
 /// `component.create`'s reply.
 fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String> {
-    let (commands, mut summary) = match entry {
+    let built = match entry {
         "cabinet" => cabinet::build(params)?,
         _ => corner::build(params)?,
     };
+    let (summary, made) = component(built, params, "Birch plywood", run)?;
+    let name = summary["name"].as_str().unwrap_or_default();
+    run(
+        "component.metadata.set",
+        json!({"component": name, "values": edit::remember(entry, params, name)}),
+    )?;
+    Ok((summary, made))
+}
+
+/// Runs a builder's commands in a new component named after it, inside whichever component
+/// is active, gives its bodies the `material` field's board (`default` without one), and goes
+/// back to the component the user was working in. Returns the summary and
+/// `component.create`'s reply.
+fn component(
+    (commands, mut summary): (Commands, Value),
+    params: &Value,
+    default: &str,
+    run: Run,
+) -> Result<(Value, Value), String> {
     // Which copy of the active component the user is working in: a component can stand in
     // the design several times, and its id alone would bring back the first copy.
     let path = run("component.list", json!({"compact": true}))?["active_path"].clone();
@@ -44,7 +64,7 @@ fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String>
     for (command, args) in commands {
         run(command, args)?;
     }
-    let board = params["material"].as_str().unwrap_or("Birch plywood");
+    let board = params["material"].as_str().unwrap_or(default);
     if board != "none" {
         let bodies = summary["bodies"].as_array().into_iter().flatten();
         let bodies: Vec<String> = bodies
@@ -53,11 +73,6 @@ fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String>
             .collect();
         material::assign(run, board, &bodies)?;
     }
-    let name = summary["name"].as_str().unwrap_or_default();
-    run(
-        "component.metadata.set",
-        json!({"component": name, "values": edit::remember(entry, params, name)}),
-    )?;
     // Back to where the user was working.
     let mut back = json!({"component": made["parent"]});
     if let Some(copy) = path.as_array().and_then(|path| path.last()) {
@@ -285,7 +300,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
     // preview's dry runs leave the camera alone). Fit frames the selection when there is one,
     // such as the board a cabinet was placed against, so that is cleared first.
-    if matches!(entry, "cabinet" | "corner" | "edit") {
+    if matches!(entry, "cabinet" | "corner" | "edit" | "worktop") {
         run("select.clear", json!({}))?;
         run("view.fit", json!({}))?;
     }
@@ -500,6 +515,52 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             material::assign(run, board, &bodies)?;
             Ok(json!({"material": board, "bodies": bodies}))
         }
+        "worktop" => {
+            // One board over the selected cabinets, in a component of its own, moved to the
+            // point of the run that holds still and grounded: its parameters follow the cabinets'.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let measure = run("inspect.measure", json!({}))?;
+            let mut params = params.clone();
+            let name = params["name"].as_str().unwrap_or("Worktop");
+            params["name"] = json!(kit::free_name(name, &design));
+            let picked = select::picked(&params, &design);
+            // Which of them is grounded or held to a cabinet outside the run, and how.
+            let tree = run("component.list", json!({}))?;
+            let mut held = serde_json::Map::new();
+            for body in &picked {
+                let Some(cabinet) = select::owner(&measure, body) else {
+                    continue; // worktop::build says so
+                };
+                if !held.contains_key(cabinet) {
+                    let grounded = edit::placement(&tree, cabinet).is_ok_and(|p| p.2);
+                    let about = run("component.metadata", json!({"component": cabinet}))?;
+                    let link = &about["metadata"][edit::KEY]["link"];
+                    held.insert(cabinet.into(), json!({"grounded": grounded, "link": link}));
+                }
+            }
+            params["_held"] = held.into();
+            let built = worktop::build(&params, &picked, &measure, &design)?;
+            let (summary, made) = component(built, &params, "Oak", run)?;
+            // ponytail: no joint to the cabinets (Edit deletes a cabinet's joints): it stands
+            // where the run's fixed point is now, and follows through its expressions only. A
+            // cabinet ungrounded or relinked afterwards is not followed. A joint to a seat,
+            // made again by Edit, would fix that.
+            // plain numbers: this command takes mm whatever the design's unit is
+            let mut to = json!({"occurrence": made["occurrence"], "space": "world", "translate": summary["at"]});
+            if summary["turn"] != 0 {
+                to["axis"] = json!([0, 0, 1]);
+                to["angle"] = json!(format!("{} deg", summary["turn"]));
+            }
+            run("occurrence.move", to)?;
+            run(
+                "occurrence.ground",
+                json!({"occurrence": made["occurrence"], "grounded": true}),
+            )?;
+            Ok(summary)
+        }
         "cutlist" => {
             // Inches when the design is in inches or feet, else mm.
             let design = run(
@@ -515,9 +576,21 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 let mesh = run("model.mesh", json!({"body": body, "tolerance": 1.0}))?;
                 local.insert(body, cutlist::extents(&mesh));
             }
-            let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
+            // The worktops made by Worktop, whatever their names: by their length's comment.
+            let all = design["params"].as_array().into_iter().flatten();
+            let worktops: Vec<&str> = all
+                .filter_map(|p| {
+                    p["comment"]
+                        .as_str()?
+                        .strip_suffix(worktop::ALONG)?
+                        .strip_suffix(": ")
+                })
+                .collect();
+            let mut params = params.clone();
+            params["_worktops"] = json!(worktops);
+            let mut list = cutlist::cutlist(&measure, &local, imperial, &params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
-            if params["format"] == "dxf" && cutlist::file_name(entry, params)?.is_some() {
+            if params["format"] == "dxf" && cutlist::file_name(entry, &params)?.is_some() {
                 // The holes of each drilled board, for the DXF files: one command a board.
                 // ponytail: past the 256-command limit (less what this run used) the rest of
                 // the boards get outlines only, named in `dxf_holes_skipped`.

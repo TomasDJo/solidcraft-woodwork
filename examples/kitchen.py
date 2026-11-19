@@ -17,6 +17,8 @@ It uses every function of the plugin:
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
+- Worktop: one over the floor run from Base 1 to the corner cabinet, and one over the return,
+  butting against the first
 - Prices: what sheets, banding, the worktop and the hardware cost, kept in the design
 - Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy,
   and what it all costs
@@ -117,14 +119,18 @@ for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner")
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
-# An oak worktop over the floor units, 40 mm past the carcass fronts, in two pieces.
-steps += [step("solid.box", length=f"{RIGHT - 300} mm", width="600 mm", height="30 mm",
-               corner=[300, BACK - 600, 870], name="Worktop", body_name="Worktop"),
-          step("solid.box", length="600 mm", width=f"{CORNER['return'] - 600 + RETURN['width']} mm", height="30 mm",
-               corner=[RIGHT - 600, end - RETURN["width"], 870], name="Worktop return", body_name="Worktop return"),
-          step("material.assign", bodies=["Worktop", "Worktop return"], material="Oak")]
+# Oak worktops, one per straight run. The first covers Base 1 to the corner cabinet. The second
+# covers Base 4 and butts against the first one's front edge: its left end, seen from its front,
+# is the corner end, and overhangs by the return less the corner's depth and the first worktop's
+# front overhang (40, the default).
+CORNER_END = CORNER["return"] - CORNER["depth"] - 40  # to the first worktop's front edge
+steps += [select("Base 1 Top", "Base 2 Top", "Base 3 Top", "Corner Top"),
+          build.plugin(approval, "worktop"),
+          select("Base 4 Top"),
+          build.plugin(approval, "worktop", {"name": "Worktop return", "left_overhang": CORNER_END, "right_overhang": 20})]
 results = build.cli(steps, "--save", str(OUT))
-made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})]
+made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})
+        and "cabinets" not in r["result"]]  # the cabinets, not the worktops
 
 # 2. Oak fronts, joinery, and a few doors and a drawer left open.
 steps = [kitchen]

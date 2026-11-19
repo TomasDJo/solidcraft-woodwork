@@ -315,7 +315,7 @@ const SHEETS: [(&str, [f64; 2]); 4] = [
 /// the dialog: `banding` (the tape's thickness, `none`, `0.4`, `1` or `2` mm), `size`
 /// (`finished`, or `cut`: less the tape on each banded edge), and for the cutting layouts
 /// `sheet` (one of `SHEETS`), `kerf` and `trim` in mm, and `diagrams` (`yes` or `no`, read by
-/// the PDF).
+/// the PDF); and `_worktops`, from lib.rs: the names of the worktops made by Worktop.
 pub fn cutlist(
     measure: &Value,
     local: &BTreeMap<String, [f64; 3]>,
@@ -450,8 +450,10 @@ pub fn cutlist(
         let grain = crate::material::GRAINED.contains(&material.as_str());
         let (row, one_m2) = (parts.len(), mm(*l) * mm(*w) / 1e6);
         for name in names {
-            // ponytail: a worktop is told by its name, like the banding roles
-            if name.contains("Worktop") {
+            // A worktop made by Worktop (`_worktops`, from lib.rs), or a board named so (a
+            // hand-made one in an older design).
+            let mut made = params["_worktops"].as_array().into_iter().flatten();
+            if name.contains("Worktop") || made.any(|w| w == name.as_str()) {
                 let mut worktop = json!({"part": name, "material": material, "thickness": shown(*t),
                                          "length": shown(cl), "width": shown(cw)});
                 if imperial {

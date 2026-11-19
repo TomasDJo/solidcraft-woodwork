@@ -141,16 +141,21 @@ impl Kit {
         num(p, key, default_mm / self.scale).map(|v| v * self.scale)
     }
 
+    /// A length in mm as an expression in the dialog's unit: "20 mm", or "1.5 in".
+    pub fn length(&self, mm_value: f64) -> String {
+        // rounded: 24 in must not come back from mm as 23.999999999999996
+        let value = (mm_value / self.scale * 1e6).round() / 1e6;
+        format!("{value} {}", self.unit)
+    }
+
     /// Makes a design parameter `<Prefix>_<key>` and returns its name.
     pub fn parameter(&self, key: &str, mm_value: f64, comment: &str) -> String {
         let id = format!("{}_{key}", self.prefix);
-        // rounded: 24 in must not come back from mm as 23.999999999999996
-        let value = (mm_value / self.scale * 1e6).round() / 1e6;
         // A cabinet that is built again keeps its parameters, and whatever they are linked
         // to: one is only touched when the edit gave it another value.
         if let Some(now) = self.existing.get(key).and_then(Value::as_f64) {
             if (now - mm_value).abs() > 1e-6 {
-                let expression = format!("{value} {}", self.unit);
+                let expression = self.length(mm_value);
                 self.push((
                     "parameters.change",
                     json!({"name": id, "expression": expression}),
@@ -161,7 +166,7 @@ impl Kit {
         // A matched size is the selected cabinet's parameter: change it there, both follow.
         let expression = match self.link["values"].get(key) {
             Some(_) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
-            None => format!("{value} {}", self.unit),
+            None => self.length(mm_value),
         };
         self.push((
             "parameters.add",

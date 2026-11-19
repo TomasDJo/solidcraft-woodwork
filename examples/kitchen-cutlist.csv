@@ -47,8 +47,8 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 1,982,870,18,"White melamine",,,"Corner Back return"
 1,1946,596,18,"Oak",yes,L2 W2,"Tall Door"
 2,2100,560,18,"White melamine",,L1,"Tall Side L, Tall Side R"
-1,1000,600,30,"Oak",yes,,"Worktop return"
-1,3300,600,30,"Oak",yes,,"Worktop"
+1,1020,600,38,"Oak",yes,,"Worktop return"
+1,3300,600,38,"Oak",yes,,"Worktop"
 
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
 "Oak",18,51.188
@@ -61,7 +61,7 @@ Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
 "Sheet, White melamine 18 mm",13,sheet,45,585
 "Edge banding 1 mm, Oak 18 mm",51.188,m,0.6,30.71
 "Edge banding 1 mm, White melamine 18 mm",57.836,m,0.6,34.7
-"Worktop, Worktop return",1,m,180,180
+"Worktop, Worktop return",1.02,m,180,183.6
 "Worktop, Worktop",3.3,m,180,594
 "Hinge, 35 mm cup",35,piece,2.5,87.5
 "Drawer slide, pair",3,pair,12,36
@@ -70,4 +70,4 @@ Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
 "Dowel, 8 x 35 mm",32,piece,0.05,1.6
 "Knob",8,piece,3.5,28
 "Pull, 128 mm",11,piece,6,66
-Total,,,,2094.31
+Total,,,,2097.91
