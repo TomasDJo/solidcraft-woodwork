@@ -124,6 +124,25 @@
         }
       },
       {
+        "name": "worktop",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Worktop" }, { "kind": "ribbon", "name": "Worktop" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/worktop.svg",
+          "required": ["selection", "units", "thickness", "front_overhang", "left_overhang", "right_overhang", "material", "name"],
+          "properties": {
+            "selection": { "type": "array", "title": "Selected cabinets" },
+            "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
+            "thickness": { "type": "number", "title": "Thickness", "default": 38, "minimum": 0.125, "maximum": 200 },
+            "front_overhang": { "type": "number", "title": "Front overhang", "description": "Past the carcass front of the deepest cabinet; doors and drawer fronts stand about 20 mm proud. The back is flush with the cabinets' backs.", "default": 40, "minimum": 0, "maximum": 1000 },
+            "left_overhang": { "type": "number", "title": "Left end overhang", "description": "Past the run's left end, seen from the front.", "default": 0, "minimum": 0, "maximum": 2000 },
+            "right_overhang": { "type": "number", "title": "Right end overhang", "default": 0, "minimum": 0, "maximum": 2000 },
+            "material": { "type": "string", "title": "Material", "default": "Oak", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
+            "name": { "type": "string", "title": "Name", "description": "The board's name. A taken name gets the next free number.", "default": "Worktop", "minLength": 1, "maxLength": 40 }
+          }
+        }
+      },
+      {
         "name": "cutlist",
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],

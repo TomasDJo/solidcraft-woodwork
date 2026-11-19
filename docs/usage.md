@@ -10,6 +10,7 @@ dialog; the cabinet you are about to make is previewed in the model before you p
 - [Edit cabinet](#edit-cabinet)
 - [Joinery](#joinery)
 - [Material](#material)
+- [Worktop](#worktop)
 - [Cut list](#cut-list)
 - [Good to know](#good-to-know)
 
@@ -129,6 +130,43 @@ number is set when they are drilled.
 Gives the selected cabinet, or only the selected parts (the doors, say), a board material:
 birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 
+## Worktop
+
+Lays one board over a straight run of cabinets. Select a part of each cabinet of the run (the
+**Selected cabinets** field takes several), then open **Worktop**. The cabinets must stand
+side by side with no gap, backs flush, facing the same way, on the same floor and equally high;
+a corner cabinet may be at either end, and the leg that lies along the run counts.
+
+| Field | What it does |
+|---|---|
+| **Units** | The sizes in the dialog in mm or inches. |
+| **Thickness** | Of the board. |
+| **Front overhang** | Past the carcass front of the deepest cabinet; doors and drawer fronts stand about 20 mm proud, so the default 40 leaves 20 mm past them. The back is flush with the cabinets' backs. |
+| **Left end overhang**, **Right end overhang** | Past the run's ends, left and right as seen from the front. |
+| **Material** | The board's material. |
+| **Name** | The board's name. A name that is taken is numbered: Worktop, Worktop 2. |
+
+The worktop is a component of its own, grounded, with its sizes as parameters: `Worktop_width`
+is the sum of the cabinets' widths plus the end overhangs, `Worktop_depth` the deepest
+cabinet's depth plus the front overhang, `Worktop_thickness`, and it sits on the cabinets'
+height. Make a cabinet wider, deeper or higher and the worktop follows. Cut a sink or hob hole
+yourself afterwards. Edit cabinet leaves it alone.
+It holds where the run holds: on the middle of a grounded cabinet of the run (which grows to
+both sides), or at the side by which the run is held to a cabinet outside it, so a run built
+leftwards grows to the left with it. A cabinet that is ungrounded, linked or moved after the
+worktop was made is not followed, and only the deepest cabinet at that time sets its depth.
+
+To change a worktop afterwards (Edit cabinet does not take it): delete its component and make
+it again, or change `Worktop_thickness`, and the overhang terms in the expressions of
+`Worktop_width` and `Worktop_depth`, in the Parameters table.
+
+**An L-shaped kitchen** gets two worktops, one per straight run. The corner cabinet belongs to
+one of them; the other run's worktop butts against the first one's front edge, with its end
+overhang at the corner set to the corner cabinet's other leg less its depth less the first
+worktop's front overhang. For a 1000 mm return, 560 deep, under a worktop with 40 mm front
+overhang: 1000 - 560 - 40 = 400 mm. Which end that is goes by the front of the run: for a run
+along the return of a right-hand corner, the corner is at its left end.
+
 ## Cut list
 
 Returns every board as length x width x thickness with quantities, and as CSV. In a design
@@ -173,7 +211,8 @@ reply lists it under `oversize` with the reason, and the PDF names it under the 
 Sheet sizes, kerf and trim are metric mm: a 4 x 8 ft sheet is 2438.4 x 1219.2 mm, so pick
 2440 x 1220 and leave the trim on.
 
-A board whose name contains `Worktop` is not sheet stock: it is left out of the layouts and
+A worktop made by the Worktop function, whatever its name, or a board whose name contains
+`Worktop`, is not sheet stock: it is left out of the layouts and
 the sheets, and listed as bought to length (the reply's `worktops`, and a table "Worktops,
 bought to length" in the PDF). It still appears in the cut list's rows.
 

@@ -47,8 +47,8 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 1,982,870,18,"White melamine",,,"Corner Back return"
 1,1946,596,18,"Oak",yes,L2 W2,"Tall Door"
 2,2100,560,18,"White melamine",,L1,"Tall Side L, Tall Side R"
-1,1000,600,30,"Oak",yes,,"Worktop return"
-1,3300,600,30,"Oak",yes,,"Worktop"
+1,1020,600,38,"Oak",yes,,"Worktop return"
+1,3300,600,38,"Oak",yes,,"Worktop"
 
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
 "Oak",18,51.188
