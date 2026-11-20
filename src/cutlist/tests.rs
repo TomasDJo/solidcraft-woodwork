@@ -170,6 +170,7 @@ fn the_file_to_save_as() {
         Ok("My kitchen 2.pdf".into())
     );
     assert_eq!(saved("kitchen.txt", "pdf"), Ok("kitchen.txt.pdf".into()));
+    assert_eq!(saved("kitchen.csv", "labels"), Ok("kitchen.pdf".into()));
     assert!(saved("kitchen", "xlsx").is_err());
     // a name only: the folder is the one the user approved
     for bad in ["../a", "a/b", r"a\b", "C:a", ".hidden"] {

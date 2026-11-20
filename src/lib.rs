@@ -243,11 +243,12 @@ fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
 /// Writes a file into a folder the user approved at install: folder grant, file name, bytes.
 pub type Write<'a> = &'a mut dyn FnMut(&str, &str, &[u8]) -> Result<(), String>;
 
-/// Saves the cut list in `result` as a CSV or PDF file when its `file` field asks for one, and
+/// Saves the cut list in `result` as a CSV or PDF file, or a PDF of part labels, when its `file` field asks for one, and
 /// notes the name in the result.
 pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Result<(), String> {
     if let Some(name) = cutlist::file_name(entry, params)? {
         let data = match name.to_lowercase().strip_suffix(".pdf") {
+            _ if params["format"] == "labels" => pdf::labels::render(result),
             Some(_) => pdf::render(result, &name[..name.len() - 4], params["diagrams"] != "no"),
             None => result["csv"]
                 .as_str()

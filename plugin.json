@@ -137,7 +137,7 @@
             "kerf": { "type": "number", "title": "Saw kerf (mm)", "description": "Left between parts on the sheet.", "default": 4, "minimum": 0, "maximum": 10 },
             "trim": { "type": "number", "title": "Edge trim (mm)", "description": "Cut off each edge of the sheet.", "default": 10, "minimum": 0, "maximum": 50 },
             "diagrams": { "type": "string", "title": "Cutting diagrams", "description": "A drawing of each sheet in the PDF.", "oneOf": [{ "const": "yes", "title": "Yes" }, { "const": "no", "title": "No" }], "default": "yes" },
-            "format": { "type": "string", "title": "Format", "oneOf": [{ "const": "pdf", "title": "PDF" }, { "const": "csv", "title": "CSV" }], "default": "pdf" },
+            "format": { "type": "string", "title": "Format", "oneOf": [{ "const": "pdf", "title": "PDF" }, { "const": "csv", "title": "CSV" }, { "const": "labels", "title": "Labels (PDF)", "description": "A sticker per board, 24 on an A4 sheet." }], "default": "pdf" },
             "file": { "type": "string", "title": "Save as", "description": "Saved in the folder approved at install.", "default": "", "maxLength": 80 }
           }
         }
