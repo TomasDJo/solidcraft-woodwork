@@ -20,6 +20,7 @@ It uses every function of the plugin:
 - Labels: the tall unit has each board's name written on it
 - Worktop: one over the floor run from Base 1 to the corner cabinet, and one over the return,
   butting against the first
+- Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
 - Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
@@ -139,6 +140,7 @@ for cabinet in made:
 steps += [select("Wall 2 Top"), build.plugin(approval, "edit", {"shelves": 3})]
 steps += [step("joint.drive", joint=joint, value=value) for joint, value in OPEN.items()]
 steps += [step("select.clear"), step("component.activate", component="root"),
+          build.plugin(approval, "drawing", {"scope": "all"}),
           build.plugin(approval, "cutlist")]
 cutlist = build.cli(steps, "--in", str(OUT), "--save", str(OUT))[-1]["result"]
 

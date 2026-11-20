@@ -97,6 +97,7 @@ materials, joinery and cut lists.
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
 | `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font), with a cutting diagram per sheet |
 | `src/dxf/` | The cutting layouts as DXF R12, a file per sheet, written by hand: sheet, part outlines and names, and holes (read with `model.faces`, mapped onto the part as it lies on the sheet) on a layer per diameter and depth |
+| `src/drawing/` | Shop drawings: a sheet per cabinet in the drawing `Woodwork`, as steps whose args name ids from earlier replies (`$sheet`, `$front`): scale, layout, the dimension corners and the board list as notes |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
@@ -110,7 +111,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `worktop` and `cutlist`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `worktop`, `cutlist` and `drawing`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -366,3 +367,16 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.
 - `cabinet::build` refuses a cabinet of more than 230 commands (the run itself takes the rest
   of the app's 256): a wide tall cabinet with many doors, shelves, pins and labels can reach it.
+- Drawing (`drawing::sheet`): the drawing commands (0.45) run inside a plugin run; while a
+  drawing is open the model's commands wait, so `lib.rs` reads everything first, then opens or
+  makes `Woodwork`, draws, deletes the replaced sheets and closes it. The board list is four notes
+  (a note's `at` is the middle of its text, so a column's left edge comes from our Helvetica
+  widths), not a native parts list, which lists components only. A dimension's corner must be a
+  corner of one body (sides and back, with the cabinet's occurrence `path`), or the whole run
+  fails. Corner cabinets get no dimensions; quarter turns only; A3 and mm only. 12 commands a
+  sheet, so about 20 cabinets a run (`drawing::budget`). Doors are closed by a `pose` of the
+  cabinet's ` hinge`, ` fold` and ` slide` joints at 0. The drawing is set to mm (create and
+  `drawing.set`), also in an inch design. A sheet points at the cabinet's component and bodies:
+  after Edit (which builds a new component) its views are blank and its dimensions lost until it
+  is drawn again, and a deleted cabinet's sheet stays. The board list is text, so it does not
+  follow a resize either.

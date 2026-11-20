@@ -12,6 +12,7 @@ dialog; the cabinet you are about to make is previewed in the model before you p
 - [Material](#material)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
+- [Drawing](#drawing)
 - [Good to know](#good-to-know)
 
 ## Cabinet
@@ -296,6 +297,36 @@ sheet's length from its corner; when saving DXF also `holes`, each `[x, y, diame
 null, back]` on the sheet), `oversize` (`part`, `material`, `thickness`, `length`, `width`
 in mm and `reason`) and `worktops` (`part`, `material`, `thickness`, `length`, `width` as the
 list shows them). Layouts are always in mm (`layout_units`), also in a design in inches.
+
+## Drawing
+
+Draws the selected cabinet, or every cabinet (**Draw: Every cabinet**), on a sheet of its own in
+the design's drawing **Woodwork**, which it makes the first time. A sheet is A3 landscape and is
+named after the cabinet; drawing a cabinet again replaces its sheet, and the other sheets stay.
+Each sheet has:
+
+- the cabinet's front view, the right view beside it and an iso view above, at the largest ISO
+  scale that fits (1:1 to 1:50), with its doors and drawers closed whatever they are in the model;
+- its width and height on the front view and its depth on the right view, in mm, measured on the
+  sides (and the back where it stands out behind them); the views and sizes follow a change of the
+  cabinet's parameters, the board list does not (draw it again);
+- its boards, grouped by size as in the cut list (quantity, part, length x width x thickness,
+  material), at the top right; a list longer than the room above the title block ends with a line
+  that sends you to the cut list;
+- the cabinet's name, material and mass in the title block.
+
+The drawing is with the design's drawings; print or export it from there. A turned cabinet (a
+quarter turn) is drawn from its own front.
+
+- **A corner cabinet gets no dimensions**, only its views and boards, seen from the front of the
+  room.
+- **The board list is text, not the drawing's parts list.** A parts list counts components, and a
+  cabinet's boards are bodies of one component, so it would only list the doors and drawers.
+- **About 20 cabinets in one run**: a sheet takes 12 of the 256 commands a run may make (and an
+  open door one more to measure). With more, Every cabinet says so; draw them one at a time.
+- **Draw a cabinet again after Edit cabinet**: Edit builds the cabinet anew, and the old sheet's
+  views go blank and its sizes are lost. A deleted cabinet's sheet stays until you delete it.
+- The drawing is in mm also in a design in inches.
 
 ## Good to know
 
