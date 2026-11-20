@@ -266,8 +266,10 @@ the design's drawing **Woodwork**, which it makes the first time. A sheet is A3 
 named after the cabinet; drawing a cabinet again replaces its sheet, and the other sheets stay.
 Each sheet has:
 
-- the cabinet's front view, the right view beside it and an iso view above, at the largest ISO
-  scale that fits (1:1 to 1:50), with its doors and drawers closed whatever they are in the model;
+- the cabinet's front view with the right view beside it on the left of the sheet, and an iso view
+  on the right between the board list and the title block, each at the largest scale that fits
+  there (1:1, 1:2, 1:4, 1:5, 1:8, 1:10, 1:15, 1:20, 1:25 or 1:50; the iso view may have its own),
+  with its doors and drawers closed whatever they are in the model;
 - its width and height on the front view and its depth on the right view, in mm, measured on the
   sides (and the back where it stands out behind them); the views and sizes follow a change of the
   cabinet's parameters, the board list does not (draw it again);
@@ -279,8 +281,8 @@ Each sheet has:
 The drawing is with the design's drawings; print or export it from there. A turned cabinet (a
 quarter turn) is drawn from its own front.
 
-- **A corner cabinet gets no dimensions**, only its views and boards, seen from the front of the
-  room.
+- **A corner cabinet gets no dimensions**, only its views and boards, seen from the side of its
+  open corner, and its iso view looks into that corner (from the front left for a right corner).
 - **The board list is text, not the drawing's parts list.** A parts list counts components, and a
   cabinet's boards are bodies of one component, so it would only list the doors and drawers.
 - **About 20 cabinets in one run**: a sheet takes 12 of the 256 commands a run may make (and an

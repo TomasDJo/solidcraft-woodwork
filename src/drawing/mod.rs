@@ -115,32 +115,53 @@ fn views(f: [f64; 2]) -> (&'static str, &'static str) {
     }
 }
 
-/// The ISO scales a sheet is drawn at, largest first.
-const SCALES: [(&str, f64); 6] = [
-    ("1:1", 1.0),
-    ("1:2", 0.5),
-    ("1:5", 0.2),
-    ("1:10", 0.1),
-    ("1:20", 0.05),
-    ("1:50", 0.02),
-];
+/// The view an L-shaped or diagonal corner cabinet is drawn from, and its iso view: from the
+/// side and the diagonal of its open corner, so that its fronts face the viewer. That corner
+/// is where the end panel standing thin in X (the end of one leg) meets the line of the one
+/// standing thin in Y (the other's).
+fn corner_views(l: &Box3, r: &Box3) -> ([f64; 2], &'static str) {
+    let thin_x = |b: &Box3| b[1][0] - b[0][0] < b[1][1] - b[0][1];
+    let (ex, ey) = if thin_x(l) { (l, r) } else { (r, l) };
+    let mid = |b: &Box3, i: usize| (b[0][i] + b[1][i]) / 2.0;
+    let right = mid(ex, 0) > mid(ey, 0);
+    let front = mid(ey, 1) < mid(ex, 1);
+    let iso = match (front, right) {
+        (true, true) => "iso",
+        (true, false) => "iso_front_left",
+        (false, true) => "iso_back_right",
+        (false, false) => "iso_back_left",
+    };
+    ([0.0, if front { -1.0 } else { 1.0 }], iso)
+}
 
-/// Where the views go on A3 landscape (420 x 297): left of the board list, which is above the
-/// title block on the right. The front view's lower left corner, with room for the dimensions
-/// left of and under it, and the top and right of the space the views may take.
+/// The scales a sheet is drawn at, largest first, as 1:n: ISO 5455's and the 1:4, 1:8, 1:15
+/// and 1:25 of shop drawings.
+const SCALES: [u32; 10] = [1, 2, 4, 5, 8, 10, 15, 20, 25, 50];
+
+/// Where the views go on A3 landscape (420 x 297). Front and right views: left of the board
+/// list and the title block, with room for the dimensions left of and under them. The iso
+/// view: right of them, under the board list and over the title block.
 const VIEWS: [f64; 2] = [40.0, 40.0];
 const TOP: f64 = 282.0;
 const RIGHT: f64 = 225.0;
+const ISO_RIGHT: f64 = 405.0;
 const GAP: f64 = 20.0; // between views: a projected view stands 20 mm past its parent
 
-/// The largest scale at which a cabinet `w` wide, `h` high and `d` deep fits: front and right
-/// views side by side, the iso view above them.
-fn scale(w: f64, h: f64, d: f64) -> (&'static str, f64) {
-    let iso = |s: f64| (w + d) * 0.4082 * s + h * 0.8165 * s;
-    let fits = |&&(_, s): &&(&str, f64)| {
-        VIEWS[0] + (w + d) * s + GAP <= RIGHT && VIEWS[1] + h * s + GAP + iso(s) <= TOP
-    };
-    *SCALES.iter().find(fits).unwrap_or(&SCALES[5])
+/// The largest scale, 1:n, at which a drawing `size` mm big fits into `room` mm.
+fn fit(size: [f64; 2], room: [f64; 2]) -> u32 {
+    let fits = |n: &&u32| (0..2).all(|i| size[i] / **n as f64 <= room[i]);
+    *SCALES
+        .iter()
+        .find(fits)
+        .unwrap_or(&SCALES[SCALES.len() - 1])
+}
+
+/// The size of a `w` x `h` x `d` box's iso view, at 1:1.
+fn iso_size(w: f64, h: f64, d: f64) -> [f64; 2] {
+    [
+        (w + d) * std::f64::consts::FRAC_1_SQRT_2,
+        (w + d) * 0.4082 + h * 0.8165,
+    ]
 }
 
 /// Points of a dimension: a corner of a body placed through `path`.
@@ -229,8 +250,13 @@ pub fn sheet(
     let (l, r) = (side("Side L")?, side("Side R")?);
     let back = bbox(measure, &format!("{name} Back"));
     let turn = facing(&l, &r);
-    // A corner cabinet is drawn from the world's front.
-    let (u, f) = turn.unwrap_or(([1.0, 0.0], [0.0, -1.0]));
+    let (u, f, iso) = match turn {
+        Some((u, f)) => (u, f, views(f).1),
+        None => {
+            let (f, iso) = corner_views(&l, &r);
+            ([-f[1], f[0]], f, iso)
+        }
+    };
     let neg = |d: [f64; 2]| d.map(|v| -v);
     let all = [Some(l), Some(r), back];
     let span = |d: [f64; 2]| {
@@ -241,15 +267,32 @@ pub fn sheet(
     let (z0, z1) = (l[0][2], l[1][2]);
     // ponytail: 20 mm in front of the carcass for the doors and drawer fronts, closed.
     let (w, h, d) = (span(u), z1 - z0, span(f) + 20.0);
-    let (scale, s) = scale(w, h, d);
-    let (view, iso) = views(f);
-    let front = [VIEWS[0] + w * s / 2.0, VIEWS[1] + h * s / 2.0];
-    let iso_h = ((w + d) * 0.4082 + h * 0.8165) * s;
-    let iso_at = [
-        VIEWS[0] + ((w + d) * s + GAP) / 2.0,
-        VIEWS[1] + h * s + GAP + iso_h / 2.0,
+    let parts = select::parts(measure, name);
+    let bodies = measure["bodies"].as_array().into_iter().flatten();
+    let own: Vec<&Value> = bodies
+        .filter(|b| parts.iter().any(|p| b["name"] == p.as_str()))
+        .collect();
+    let notes = board_list(&json!({ "bodies": own }), local, name)?;
+    let (view, room) = (views(f).0, [RIGHT - VIEWS[0] - GAP, TOP - VIEWS[1]]);
+    // Front and right views side by side, in the middle of their room.
+    let n = fit([w + d, h], room);
+    let s = 1.0 / n as f64;
+    let front = [
+        VIEWS[0] + (room[0] - (w + d) * s) / 2.0 + w * s / 2.0,
+        VIEWS[1] + room[1] / 2.0,
     ];
-    let mut base = json!({"sheet": "$sheet", "scale": scale, "source": {"occurrences": [path]}});
+    // The iso view at its own scale, under the board list's longest column.
+    // ponytail: a list that reaches the title block leaves it no room: it then gets 1:50.
+    let rows = notes
+        .iter()
+        .map(|(t, _)| t.lines().count())
+        .max()
+        .unwrap_or(0);
+    let (low, high) = (LIST_BOTTOM, TOP + 2.0 - rows as f64 * PITCH - GAP / 2.0);
+    let iso_n = fit(iso_size(w, h, d), [ISO_RIGHT - LIST_LEFT, high - low]);
+    let iso_at = [(LIST_LEFT + ISO_RIGHT) / 2.0, (low + high) / 2.0];
+    let mut base = json!({"sheet": "$sheet", "scale": format!("1:{n}"),
+                          "source": {"occurrences": [path]}});
     let closed = fronts(joints, measure, name);
     if !closed.is_empty() {
         base["pose"] = json!(closed);
@@ -260,6 +303,8 @@ pub fn sheet(
         base["position_mm"] = json!(at);
         base
     };
+    let mut iso_base = base.clone();
+    iso_base["scale"] = json!(format!("1:{iso_n}"));
     let mut steps: Steps = vec![
         (
             "drawing.sheet.add",
@@ -272,7 +317,7 @@ pub fn sheet(
             json!({"parent": "$front", "side": "right"}),
             "right",
         ),
-        ("drawing.view.base", at(&base, iso, iso_at), ""),
+        ("drawing.view.base", at(&iso_base, iso, iso_at), ""),
     ];
     if turn.is_some() {
         // Corners in the world, from the cabinet's own width and front: on Side L, Side R and
@@ -307,7 +352,7 @@ pub fn sheet(
                     left(z0),
                     left(z1),
                     "vertical",
-                    [VIEWS[0] - 10.0, front[1]],
+                    [front[0] - w * s / 2.0 - 10.0, front[1]],
                 ),
                 "",
             ),
@@ -318,12 +363,6 @@ pub fn sheet(
             ),
         ]);
     }
-    let parts = select::parts(measure, name);
-    let bodies = measure["bodies"].as_array().into_iter().flatten();
-    let own: Vec<&Value> = bodies
-        .filter(|b| parts.iter().any(|p| b["name"] == p.as_str()))
-        .collect();
-    let notes = board_list(&json!({ "bodies": own }), local, name)?;
     for (content, x) in notes {
         // A note's `at` is the middle of its text: the columns' first lines line up.
         let y = TOP + 2.0 - content.lines().count() as f64 * PITCH / 2.0;
