@@ -103,15 +103,13 @@ def test_drawing_in_mm_in_an_inch_design(approval):
     assert texts == ["559", "610", "762"], texts  # 22, 24 and 30 in, as whole mm
 
 
-def test_drawing_of_appliance_cabinets_and_a_worktop(approval):
-    # A tall cabinet, a sink base right of it and a worktop over it: a sheet for each cabinet,
-    # none for the worktop.
+def test_drawing_of_appliance_cabinets(approval):
+    # A tall cabinet and a sink base right of it: a sheet for each cabinet.
     saved = ROOT / "dist" / "drawing-kinds.sc"
     results = cli([plugin(approval, "cabinet", {"name": "O", "height": 2100, "doors": 1}),
                    select("O Side R"), plugin(approval, "cabinet", {"name": "S", "kind": "sink", "doors": 2, "place": "auto"}),
-                   pick("S Rail front"), plugin(approval, "worktop"),
                    plugin(approval, "drawing", {"scope": "all"})], "--save", str(saved))
-    assert results[5]["result"]["sheets"] == ["O", "S"], results[5]
+    assert results[3]["result"]["sheets"] == ["O", "S"], results[3]
     drawing, _ = read(saved)
     sheets = {s["name"]: s for s in drawing["sheets"]}
     dims = [d for v in sheets["S"]["views"] for d in v["dimensions"]]
@@ -123,4 +121,3 @@ def test_drawing_of_appliance_cabinets_and_a_worktop(approval):
     assert all(d["status"] == "ok" for d in replies[:3])
     parts = " ".join(n["text"] for n in replies[3:])
     assert all(b in parts for b in ("Rail front", "Rail back", "Shelf 1")), parts
-    assert "Worktop" not in parts, parts

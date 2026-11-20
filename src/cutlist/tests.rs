@@ -462,34 +462,6 @@ fn sheets_from_cutting_layouts() {
 }
 
 #[test]
-fn a_worktop_made_by_worktop_is_known_whatever_its_name() {
-    let top = json!({"name": "Island top", "material": "Oak", "bbox": {"min": [0, 0, 0], "max": [2400.0, 900.0, 38.0]}});
-    let measured = json!({"bodies": [top]});
-    let laid = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
-    assert_eq!(
-        laid["worktops"],
-        json!([]),
-        "not a worktop by its name alone"
-    );
-    let options = json!({"_worktops": ["Island top"]});
-    let list = cutlist(&measured, &BTreeMap::new(), false, &options).unwrap();
-    assert_eq!(
-        list["worktops"],
-        json!([{"part": "Island top", "material": "Oak", "thickness": 38.0, "length": 2400.0, "width": 900.0}])
-    );
-    assert!(list["sheets"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|s| s["sheets"] == 0));
-    assert_eq!(list["layouts"], json!([]));
-    // bought with finished edges: no banding
-    let band = json!({"length": 0, "width": 0});
-    assert_eq!(row(&list, "Island top")["banding"], band);
-    assert_eq!(list["banding"], json!([]));
-}
-
-#[test]
 fn a_sink_base() {
     // the rails: banded at the front, grain along the width, but the back rail, hidden under
     // the worktop

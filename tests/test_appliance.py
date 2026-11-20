@@ -29,15 +29,3 @@ def test_a_sink_base(approval):
     # the cut list counts the rails' screws too: 2 x 3 into the bottom, 2 x 2 into the rails
     hardware = {h["item"]: h["qty"] for h in results[10]["result"]["hardware"]}
     assert hardware["Confirmat screw, 7 x 50 mm"] == 6 + 4, hardware
-
-
-def test_a_worktop_over_a_run_with_a_sink_base(approval):
-    # A standard cabinet and a sink base right of it; one worktop over both; the 900 wide sink
-    # base ends at x = 1200.
-    results = cli([plugin(approval, "cabinet", {"name": "A"}), select("A Side R"),
-                   plugin(approval, "cabinet", {"name": "S", "kind": "sink", "width": 900, "doors": 2, "place": "auto"}),
-                   pick("A Top", "S Rail front"), plugin(approval, "worktop"),
-                   MEASURE])
-    box = boxes(results[5])
-    assert box["S Side L"][0] == 300 and box["S Side R"][3] == 1200, (box["S Side L"], box["S Side R"])
-    assert box["Worktop"] == [-300, -320, 720, 1200, 280, 758], box["Worktop"]

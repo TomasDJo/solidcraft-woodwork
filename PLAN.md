@@ -92,7 +92,7 @@ Cabinets:
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
-- [x] Worktop over a straight run of the selected cabinets (sink and hob cutouts dropped by decision: simple to cut afterwards)
+- [ ] Worktop over a straight run of the selected cabinets: postponed until it handles corners and joints (#62)
 - [ ] Drawers over doors and a graduated drawer stack (the top drawer's height given, the rest equal) (postponed until conditional dialog fields, SolidCraft 0.46)
 - [ ] Plinth run over the selected cabinets
 - [ ] End panels and fillers on a cabinet's end, kept by Edit cabinet (postponed until conditional dialog fields, SolidCraft 0.46)

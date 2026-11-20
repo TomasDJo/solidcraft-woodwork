@@ -18,8 +18,6 @@ It uses every function of the plugin:
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
-- Worktop: one over the floor run from Base 1 to the corner cabinet, and one over the return,
-  butting against the first
 - Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
 - Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy
 
@@ -114,18 +112,8 @@ for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner")
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
-# Oak worktops, one per straight run. The first covers Base 1 to the corner cabinet. The second
-# covers Base 4 and butts against the first one's front edge: its left end, seen from its front,
-# is the corner end, and overhangs by the return less the corner's depth and the first worktop's
-# front overhang (40, the default).
-CORNER_END = CORNER["return"] - CORNER["depth"] - 40  # to the first worktop's front edge
-steps += [select("Base 1 Top", "Base 2 Top", "Base 3 Rail front", "Corner Top"),
-          build.plugin(approval, "worktop"),
-          select("Base 4 Top"),
-          build.plugin(approval, "worktop", {"name": "Worktop return", "left_overhang": CORNER_END, "right_overhang": 20})]
 results = build.cli(steps, "--save", str(OUT))
-made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})
-        and "cabinets" not in r["result"]]  # the cabinets, not the worktops
+made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})]
 
 # 2. Oak fronts, joinery, and a few doors and a drawer left open.
 steps = [kitchen]
@@ -147,8 +135,6 @@ cutlist = build.cli(steps, "--in", str(OUT), "--save", str(OUT))[-1]["result"]
 OUT.with_name(OUT.stem + "-cutlist.csv").write_text(cutlist["csv"], encoding="utf-8", newline="\n")
 for sheet in cutlist["sheets"]:
     print(f"{sheet['sheets']} sheets of {sheet['thickness']:g} mm {sheet['material']} ({sheet['area_m2']} m2, {sheet['yield_pct']} % yield)")
-for part in cutlist["worktops"]:
-    print(f"worktop, bought to length: {part['part']} ({part['length']:g} x {part['width']:g} x {part['thickness']:g} mm)")
 for part in cutlist["oversize"]:
     print(f"not laid out: {part['part']} ({part['length']:g} x {part['width']:g} mm), {part['reason']}")
 for item in cutlist["hardware"]:
