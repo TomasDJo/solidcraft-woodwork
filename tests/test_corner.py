@@ -108,3 +108,29 @@ def test_inset_doors(approval):
     results = cli([plugin(approval, "corner", CORNER), select("C Top"),
                    plugin(approval, "edit", {"fronts": "inset"}), MEASURE])
     assert boxes(results[3])["C Door"] == [42, -110, 120, 480, -92, 700], boxes(results[3])["C Door"]
+
+
+def test_plinth_types(approval):
+    # Notched ends (no plinth boards), and on legs: six under the L, five under the diagonal.
+    corner = {**CORNER, "doors": "none"}
+    results = cli([plugin(approval, "corner", corner), MEASURE,
+                   plugin(approval, "corner", {**corner, "name": "N", "plinth_type": "notch"}), MEASURE,
+                   plugin(approval, "corner", {**corner, "name": "L", "plinth_type": "legs"}),
+                   plugin(approval, "corner", {**corner, "name": "D", "shape": "diagonal", "plinth_type": "legs"}),
+                   MEASURE, plugin(approval, "cutlist")])
+    plain, notched, legs = results[1], results[3], results[6]
+    box = boxes(notched)
+    assert not [n for n in box if n.startswith("N Plinth")], sorted(box)
+    # the toe kick, 50 x 100, out of the front bottom corner of each end
+    for end in ("Side L", "Side R"):
+        assert volume(plain, f"C {end}") - volume(notched, f"N {end}") == 18 * 50 * 100, end
+        assert box[f"N {end}"] == boxes(plain)[f"C {end}"], end
+    box = boxes(legs)
+    assert sorted(n for n in box if n.startswith("L Leg ")) == [f"L Leg {n}" for n in range(1, 7)], sorted(box)
+    assert len([n for n in box if n.startswith("D Leg ")]) == 5, sorted(box)
+    assert box["L Leg 1"] == [430, -80, 0, 470, -40, 100], box["L Leg 1"]
+    assert box["L Leg 6"] == [-10, -80, 0, 30, -40, 100], box["L Leg 6"]  # the L's inner corner
+    for part in ("L Side L", "L Back", "L Back return"):
+        assert box[part][2] == 100 and box[part][5] == 720, (part, box[part])
+    assert not [n for n in box if n.startswith(("L Plinth", "D Plinth"))], sorted(box)
+    assert {"item": "Adjustable leg", "qty": 11} in results[7]["result"]["hardware"], results[7]["result"]["hardware"]

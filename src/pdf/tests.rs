@@ -226,3 +226,16 @@ fn labels_escape_and_shorten_names() {
     assert!(size == 7.0 && cut.ends_with("...") && width(&cut, 7.0) * 1.06 <= 174.0);
     assert_eq!(labels::fit("Side L", 11.0, 174.0), (11.0, "Side L".into()));
 }
+
+#[test]
+fn a_notched_side_says_so() {
+    let mut cut = list(1);
+    cut["parts"][0]["note"] = json!("notched");
+    let pdf = render(&cut, "Kitchen", false);
+    assert!(String::from_utf8_lossy(&pdf).contains("notched"));
+    assert!(!String::from_utf8_lossy(&render(&list(1), "Kitchen", false)).contains("notched"));
+    let mut boards = boards(2);
+    boards["parts"][0]["note"] = json!("notched");
+    let text = String::from_utf8_lossy(&labels::render(&boards)).to_string();
+    assert!(text.contains("(#1, sheet 1 of 1, notched)"), "{text}");
+}

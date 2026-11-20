@@ -147,6 +147,15 @@ fn lists_the_boards_in_columns() {
     let texts: Vec<&str> = notes.iter().map(|(t, _)| t.as_str()).collect();
     assert_eq!(texts[0], "Qty\n1\n1\n2");
     assert_eq!(texts[1], "Part\nBack\nDoor\nSide L, Side R");
+    // a notched side says so, as in the cut list
+    let mut notched = own.clone();
+    notched["notched"] = json!(["Base Side L", "Base Side R"]);
+    let marked = board_list(&notched, &Local::new(), "Base").unwrap();
+    assert!(
+        marked[1].0.ends_with("Side L, Side R (notched)"),
+        "{}",
+        marked[1].0
+    );
     assert_eq!(
         texts[2],
         "L x W x T\n702 x 582 x 6\n716 x 596 x 18\n720 x 560 x 18"
@@ -234,7 +243,8 @@ fn draws_a_sheet_per_cabinet() {
     assert_eq!(at[0], json!(320.0));
     assert!((at[1].as_f64().unwrap() - 159.9).abs() < 0.01, "{at}");
     // width and height on Side L and Side R, under and left of the front view; the depth from
-    // Side R's front to its rear, the grooved back standing inside it
+    // Side R's front to its rear, the grooved back standing inside it. At the top, and the
+    // height from Side L's rear bottom corner: a notched side has no front bottom corner.
     let dim = |i: usize| &steps[i].1;
     let ends = |i: usize| {
         let linear = &dim(i)["kind"]["linear"];
@@ -247,15 +257,15 @@ fn draws_a_sheet_per_cabinet() {
     assert_eq!(
         ends(4),
         (
-            json!([-300.0, -280.0, 0.0]),
-            json!([300.0, -280.0, 0.0]),
+            json!([-300.0, -280.0, 720.0]),
+            json!([300.0, -280.0, 720.0]),
             json!("horizontal")
         )
     );
     assert_eq!(
         ends(5),
         (
-            json!([-300.0, -280.0, 0.0]),
+            json!([-300.0, 280.0, 0.0]),
             json!([-300.0, -280.0, 720.0]),
             json!("vertical")
         )
@@ -263,8 +273,8 @@ fn draws_a_sheet_per_cabinet() {
     assert_eq!(
         ends(6),
         (
-            json!([300.0, -280.0, 0.0]),
-            json!([300.0, 280.0, 0.0]),
+            json!([300.0, -280.0, 720.0]),
+            json!([300.0, 280.0, 720.0]),
             json!("horizontal")
         )
     );
@@ -289,7 +299,23 @@ fn draws_a_sheet_per_cabinet() {
     let steps = sheet(&over, &Local::new(), &tree(), &joints(), "Base").unwrap();
     assert_eq!(
         steps[6].1["kind"]["linear"]["b"]["point"],
-        json!([300.0, 298.0, 9.0])
+        json!([300.0, 298.0, 711.0])
+    );
+
+    // legs under it: the views take them in, so the width goes lower; the height stays the
+    // carcass's, from Side L's rear bottom corner
+    let mut legs = m.clone();
+    let leg = body(
+        "Base Leg 1",
+        [-280.0, -260.0, -200.0],
+        [-240.0, -220.0, 0.0],
+    );
+    legs["bodies"].as_array_mut().unwrap().push(leg);
+    let steps = sheet(&legs, &Local::new(), &tree(), &joints(), "Base").unwrap();
+    assert!(steps[4].1["line_through_mm"][1].as_f64().unwrap() < 106.0);
+    assert_eq!(
+        steps[5].1["kind"]["linear"]["a"]["point"],
+        json!([-300.0, 280.0, 0.0])
     );
 
     // a corner cabinet gets its views and boards, no dimensions; without joints no pose

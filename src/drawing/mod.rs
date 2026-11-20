@@ -170,10 +170,12 @@ fn corner(p: [f64; 3], path: &[u64]) -> Value {
 }
 
 /// The board list: a note per column (part, size, material, quantity) at the top right, the
-/// boards as the cut list groups them. `measure` holds the cabinet's bodies only, `local` the
+/// boards as the cut list groups them. `measure` holds the cabinet's bodies only (and
+/// `notched`, the sides `cutlist::notched` found), `local` the
 /// sizes of its turned boards (`cutlist::cutlist`). Each note's text and the middle of its column.
 fn board_list(measure: &Value, local: &Local, name: &str) -> Result<Vec<(String, f64)>, String> {
-    let list = crate::cutlist::cutlist(measure, local, false, &json!({}))?;
+    let notched = json!({"_notched": measure["notched"]});
+    let list = crate::cutlist::cutlist(measure, local, false, &notched)?;
     let mut columns = [
         vec!["Qty".to_string()],
         vec!["Part".into()],
@@ -188,7 +190,11 @@ fn board_list(measure: &Value, local: &Local, name: &str) -> Result<Vec<(String,
             .filter_map(|n| n.as_str())
             .map(|n| n.strip_prefix(name).unwrap_or(n).trim_start())
             .collect();
-        let lines = crate::pdf::wrap(&parts.join(", "), SIZE, PART_ROOM);
+        let mut text = parts.join(", ");
+        if row["note"].is_string() {
+            text += " (notched)";
+        }
+        let lines = crate::pdf::wrap(&text, SIZE, PART_ROOM);
         let size = format!(
             "{} x {} x {}",
             shown(&row["length"]),
@@ -259,9 +265,12 @@ pub fn sheet(
     };
     let neg = |d: [f64; 2]| d.map(|v| -v);
     let parts = select::parts(measure, name);
-    // The views take in its end panels and fillers too.
+    // The views take in its end panels, fillers and legs too.
     let panels = (parts.iter())
-        .filter(|p| p.get(name.len() + 1..).is_some_and(crate::panel::is_panel))
+        .filter(|p| {
+            p.get(name.len() + 1..).is_some_and(crate::panel::is_panel)
+                || crate::fittings::is_leg(p)
+        })
         .map(|p| bbox(measure, p));
     let all: Vec<Option<Box3>> = [Some(l), Some(r), back].into_iter().chain(panels).collect();
     let span = |d: [f64; 2]| {
@@ -269,14 +278,21 @@ pub fn sheet(
         let most = |d: [f64; 2]| boxes.clone().map(|b| reach(b, d)).fold(f64::MIN, f64::max);
         most(d) + most(neg(d))
     };
-    let (z0, z1) = (l[0][2], l[1][2]);
+    let z1 = l[1][2];
+    // legs reach lower
+    let z0 = all
+        .iter()
+        .flatten()
+        .map(|b| b[0][2])
+        .fold(l[0][2], f64::min);
     // ponytail: 20 mm in front of the carcass for the doors and drawer fronts, closed.
     let (w, h, d) = (span(u), z1 - z0, span(f) + 20.0);
     let bodies = measure["bodies"].as_array().into_iter().flatten();
     let own: Vec<&Value> = bodies
         .filter(|b| parts.iter().any(|p| b["name"] == p.as_str()))
         .collect();
-    let notes = board_list(&json!({ "bodies": own }), local, name)?;
+    let own = json!({ "bodies": own, "notched": measure["notched"] });
+    let notes = board_list(&own, local, name)?;
     let (view, room) = (views(f).0, [RIGHT - VIEWS[0] - GAP, TOP - VIEWS[1]]);
     // Front and right views side by side, in the middle of their room.
     let n = fit([w + d, h], room);
@@ -325,7 +341,8 @@ pub fn sheet(
     ];
     if turn.is_some() {
         // Corners in the world, from the cabinet's own width and front: on Side L, Side R and
-        // the back, so that each is a corner of one body.
+        // the back, so that each is a corner of one body. At the top: a notched side has no
+        // front bottom corner.
         // A side with an end panel or a filler: with inset fronts its corners are the panel's
         // too, so the dimensions go to the panel's outer corners, the width over all. A filler
         // and its return together: each outer corner is one of the two boards'.
@@ -349,13 +366,14 @@ pub fn sheet(
         let p = |along: f64, out: f64, z: f64| {
             [along * u[0] + out * f[0], along * u[1] + out * f[1], z]
         };
-        let left = |z: f64| p(-reach(&l, neg(u)), reach(&l, f), z);
-        let right = p(reach(&r, u), reach(&r, f), r[0][2]);
+        let left = p(-reach(&l, neg(u)), reach(&l, f), l[1][2]);
+        let left_rear = p(-reach(&l, neg(u)), -reach(&l, neg(f)), l[0][2]);
+        let right = p(reach(&r, u), reach(&r, f), r[1][2]);
         let rear = match back {
             Some(b) if reach(&b, neg(f)) > reach(&r, neg(f)) + 0.01 => {
-                p(reach(&b, u), -reach(&b, neg(f)), b[0][2])
+                p(reach(&b, u), -reach(&b, neg(f)), b[1][2])
             }
-            _ => p(reach(&r, u), -reach(&r, neg(f)), r[0][2]),
+            _ => p(reach(&r, u), -reach(&r, neg(f)), r[1][2]),
         };
         let under = front[1] - h * s / 2.0 - 10.0;
         let dimension = |view: &str, a: [f64; 3], b: [f64; 3], dir: &str, line: [f64; 2]| {
@@ -366,15 +384,15 @@ pub fn sheet(
         steps.extend([
             (
                 "drawing.dimension.add",
-                dimension("$front", left(z0), right, "horizontal", [front[0], under]),
+                dimension("$front", left, right, "horizontal", [front[0], under]),
                 "",
             ),
             (
                 "drawing.dimension.add",
                 dimension(
                     "$front",
-                    left(z0),
-                    left(z1),
+                    left_rear,
+                    left,
                     "vertical",
                     [front[0] - w * s / 2.0 - 10.0, front[1]],
                 ),

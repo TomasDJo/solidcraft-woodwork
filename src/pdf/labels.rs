@@ -104,7 +104,11 @@ pub fn render(list: &Value) -> Vec<u8> {
         let (size, material) = fit(material, 8.5, room);
         doc.text(x, top - 36.0, size, false, INK, &material);
         let bottom = top - LH + 2.0 * PAD;
-        doc.text(x, bottom, 8.5, false, GREY, cut);
+        let cut = match row["note"].is_string() {
+            true => format!("{cut}, notched"),
+            false => cut.clone(),
+        };
+        doc.text(x, bottom, 8.5, false, GREY, &cut);
         part(&mut doc, x, bottom, room, row);
     }
     if doc.pages.is_empty() {

@@ -48,6 +48,19 @@ fn finds_the_cabinet_of_a_selected_part() {
     assert!(cabinet(&[], &measure).is_err());
 }
 
+#[test]
+fn a_cabinet_on_legs_stands_on_the_floor_under_them() {
+    let body = |name: &str, z: f64| json!({"name": name, "bbox": {"min": [0, 0, z], "max": [18, 560, 720]}});
+    let measure = json!({"bodies": [
+        body("A Side L", 100.0), body("A Side R", 100.0), body("A Leg 1", 0.0),
+        body("A 2 Side L", 300.0), body("A 2 Side R", 300.0), body("A 2 Leg 1", 200.0),
+    ]});
+    assert_eq!(named(&measure, "A").unwrap().min[2], 0.0);
+    assert_eq!(named(&measure, "A 2").unwrap().min[2], 200.0);
+    let next = named(&measure, "A").unwrap().seat("right", 600.0, 560.0).0;
+    assert_eq!(next[2], 0.0);
+}
+
 fn stands(sides: [Plan; 2], back: Plan) -> Cabinet {
     let both = |i: usize, pick: fn(f64, f64) -> f64| pick(sides[0][i], sides[1][i]);
     Cabinet {

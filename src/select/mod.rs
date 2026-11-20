@@ -225,6 +225,12 @@ pub fn named(measure: &Value, name: &str) -> Result<Cabinet, String> {
         }
         sides[n] = plan(body);
     }
+    // On legs the sides stand on them: the floor is under the legs.
+    let ours = |n: &str| crate::fittings::is_leg(n) && owner(measure, n) == Some(name);
+    let bodies = measure["bodies"].as_array().into_iter().flatten();
+    for leg in bodies.filter(|b| b["name"].as_str().is_some_and(ours)) {
+        min[2] = min[2].min(leg["bbox"]["min"][2].as_f64().unwrap_or(min[2]));
+    }
     Ok(Cabinet {
         name: name.to_string(),
         min,

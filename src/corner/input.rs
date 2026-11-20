@@ -12,6 +12,8 @@ pub struct Input<'a> {
     pub h: f64,
     pub t: f64,
     pub plinth: f64,
+    /// board, notch or legs (`fittings::plinth_type`).
+    pub plinth_type: &'a str,
     /// Depth at the return's end: `d` on the L.
     pub dr: f64,
     pub shelves: u32,
@@ -38,6 +40,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     );
     let t = size("thickness", 18.0)?;
     let plinth = size("plinth", 0.0)?;
+    let plinth_type = crate::fittings::plinth_type(p)?;
     let shelves = num(p, "shelves", 1.0)?;
     let pins = p
         .get("shelf_pins")
@@ -124,6 +127,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         h,
         t,
         plinth,
+        plinth_type,
         dr,
         shelves: shelves as u32,
         pins,

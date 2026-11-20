@@ -10,14 +10,13 @@ mod doors;
 mod drawers;
 mod input;
 
-use crate::fittings::{self, PinRows, HANDLE_D, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, HANDLE_D, KICK_RECESS, LEG_INSET, PIN_SETBACK, PITCH};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
 use input::Input;
 use serde_json::{json, Value};
 
 const GROOVE_INSET: f64 = 12.0; // back groove, from the rear edge
-const KICK_RECESS: f64 = 50.0; // plinth board, back from the front
 const RAIL_D: f64 = 100.0; // a sink base's rails, front to back
 
 /// What the steps of a build share: the checked input, and the sizes as expressions.
@@ -235,13 +234,19 @@ impl Cabinet<'_> {
         };
 
         let zero = mm(0.0);
-        panel("Side L", [&zero, &zero, &zero], [et, eside_d, eh], false);
-        panel(
-            "Side R",
-            [&format!("{ew} - {et}"), &zero, &zero],
-            [et, eside_d, eh],
-            false,
-        );
+        let plinth = match input.plinth > 0.0 {
+            true => input.plinth_type,
+            false => "none",
+        };
+        // On legs the whole carcass stands on them; else the sides reach the floor.
+        let (side_z, side_h) = match plinth {
+            "legs" => (epl.clone(), format!("{eh} - {epl}")),
+            _ => (zero.clone(), eh.clone()),
+        };
+        let right_x = format!("{ew} - {et}");
+        for (side, x) in [("Side L", &zero), ("Side R", &right_x)] {
+            panel(side, [x, &zero, &side_z], [et, eside_d, &side_h], false);
+        }
         panel("Bottom", [et, &zero, epl], [eiw, eside_d, et], false);
         let top_z = format!("{eh} - {et}");
         match sink {
@@ -285,13 +290,32 @@ impl Cabinet<'_> {
         if let Some(rail) = erail {
             panel("Rail", [et, ein, rail], [eiw, eshelf_d, et], false);
         }
-        if input.plinth > 0.0 {
-            panel(
-                "Plinth",
-                [et, &mm(KICK_RECESS), &zero],
-                [eiw, et, epl],
-                false,
-            );
+        let kick = mm(KICK_RECESS);
+        match plinth {
+            "board" => panel("Plinth", [et, &kick, &zero], [eiw, et, epl], false),
+            // The toe kick cut out of each side's front bottom corner: a board across a whole
+            // run goes there later. Named `<Side> notch`, which the cut list notes.
+            "notch" => {
+                for (side, x) in [("Side L", &zero), ("Side R", &right_x)] {
+                    let target = [format!("{name} {side}")];
+                    let part = format!("{side} notch");
+                    kit.panel(&part, [x, &zero, &zero], [et, &kick, epl], Some(&target));
+                }
+            }
+            "legs" => {
+                let inset = mm(LEG_INSET);
+                let mut xs = vec![inset.clone(), format!("{ew} - {inset}")];
+                // ponytail: the count is fixed when it is built, as the shelves' is.
+                if input.w > 900.0 {
+                    xs.push(format!("{ew}/2"));
+                }
+                let ys = [inset.clone(), format!("{eside_d} - {inset}")];
+                let at = xs.iter().flat_map(|x| ys.iter().map(move |y| (x, y)));
+                for (n, (x, y)) in at.enumerate() {
+                    fittings::leg(kit, n + 1, kit.at(x, y, &zero), epl);
+                }
+            }
+            _ => {}
         }
         match input.back {
             "overlay" => {

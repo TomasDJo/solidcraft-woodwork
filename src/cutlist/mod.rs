@@ -34,9 +34,11 @@ pub fn turned(measure: &Value) -> Vec<String> {
         let sides = (0..3).filter_map(side).map(|(max, min)| max - min);
         (body["volume_mm3"].as_f64()).is_some_and(|volume| volume < 0.97 * sides.product::<f64>())
     };
+    // A leg is round: not a board, so never measured.
     bodies
         .filter(loose)
         .filter_map(|body| body["name"].as_str().map(String::from))
+        .filter(|name| !crate::fittings::is_leg(name))
         .collect()
 }
 
@@ -222,6 +224,10 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             "Dowel, 8 x 35 mm",
             cabinets(" joint Side L Bottom dowel end").map(holes).sum(),
         ),
+        (
+            "Adjustable leg",
+            bodies.iter().filter(|b| crate::fittings::is_leg(b)).count() as u64,
+        ),
         ("Knob", (ending(" handle 1") - pulls) as u64),
         ("Pull, 128 mm", pulls as u64),
     ];
@@ -230,6 +236,21 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect()
 }
+
+/// The sides cut with a toe-kick notch, from the features that cut them (`<Side> notch`) in
+/// `timeline` (`document.inspect`'s reply): the cut list gives such a board's size over the
+/// notch and says so.
+pub fn notched(design: &Value) -> Vec<String> {
+    let features = design["timeline"].as_array().into_iter().flatten();
+    let sides = features.filter_map(|f| f["name"].as_str()?.strip_suffix(" notch"));
+    sides
+        .filter(|s| s.ends_with(" Side L") || s.ends_with(" Side R"))
+        .map(String::from)
+        .collect()
+}
+
+/// What a notched side's line in the cut list says.
+pub const NOTCHED: &str = "notched for the toe kick; size over the notch";
 
 /// The folder grant in `plugin.json` that a cut list is saved into.
 pub const FOLDER: &str = "cutlists";
@@ -328,7 +349,7 @@ const SHEETS: [(&str, [f64; 2]); 4] = [
 /// the dialog: `banding` (the tape's thickness, `none`, `0.4`, `1` or `2` mm), `size`
 /// (`finished`, or `cut`: less the tape on each banded edge), and for the cutting layouts
 /// `sheet` (one of `SHEETS`), `kerf` and `trim` in mm, and `diagrams` (`yes` or `no`, read by
-/// the PDF).
+/// the PDF); and `_notched`, the boards `notched` found. Legs are hardware, not boards.
 pub fn cutlist(
     measure: &Value,
     local: &BTreeMap<String, [f64; 3]>,
@@ -362,9 +383,15 @@ pub fn cutlist(
     if !matches!(params["diagrams"].as_str().unwrap_or("yes"), "yes" | "no") {
         return Err("diagrams must be yes or no".into());
     }
-    let bodies = measure["bodies"]
-        .as_array()
-        .ok_or("inspect.measure returned no bodies")?;
+    let bodies: Vec<&Value> = (measure["bodies"].as_array())
+        .ok_or("inspect.measure returned no bodies")?
+        .iter()
+        .filter(|b| !crate::fittings::is_leg(b["name"].as_str().unwrap_or("")))
+        .collect();
+    let notched = |name: &str| {
+        let all = params["_notched"].as_array().into_iter().flatten();
+        all.into_iter().any(|n| n == name)
+    };
     if bodies.is_empty() {
         return Err("the design has no boards to list".into());
     }
@@ -391,11 +418,11 @@ pub fn cutlist(
             _ => 0,
         })
     };
-    // Key: thickness, length, width in tenths of a mm, material, then the banded edges along
-    // the length and along the width.
-    type Key = (i64, i64, i64, String, u64, u64);
+    // Key: thickness, length, width in tenths of a mm, material, the banded edges along the
+    // length and along the width, and whether it is notched.
+    type Key = (i64, i64, i64, String, u64, u64, bool);
     let mut rows: BTreeMap<Key, Vec<String>> = BTreeMap::new();
-    for body in bodies {
+    for &body in &bodies {
         let name = body["name"].as_str().unwrap_or("?").to_string();
         let tenths = size(body)?.map(|mm| (mm * 10.0).round() as i64);
         let material = body["material"].as_str().unwrap_or("").to_string();
@@ -420,7 +447,15 @@ pub fn cutlist(
             Edges::Front if grain == Some(w) => (0, 1),
             Edges::Front => (1, 0),
         };
-        let key = (tenths[t], tenths[l], tenths[w], material, le, we);
+        let key = (
+            tenths[t],
+            tenths[l],
+            tenths[w],
+            material,
+            le,
+            we,
+            notched(&name),
+        );
         rows.entry(key).or_default().push(name);
     }
 
@@ -451,7 +486,7 @@ pub fn cutlist(
     type Laid = (crate::nesting::Part, String, usize); // a part, its name and its row
     let mut pieces: BTreeMap<(String, i64), Vec<Laid>> = BTreeMap::new(); // to lay out, the same
     let mut worktops = Vec::new();
-    for ((t, l, w, material, le, we), names) in &rows {
+    for ((t, l, w, material, le, we, notch), names) in &rows {
         let qty = names.len();
         let row_m2 = mm(*l) * mm(*w) * qty as f64 / 1e6;
         area_m2 += row_m2;
@@ -493,13 +528,20 @@ pub fn cutlist(
             quoted(material),
             if grain { "yes" } else { "" },
             mark(*le, *we),
-            quoted(&names.join(", "))
+            quoted(&match notch {
+                true => format!("{} ({NOTCHED})", names.join(", ")),
+                false => names.join(", "),
+            })
         );
-        parts.push(json!({
+        let mut part = json!({
             "qty": qty, "length": l, "width": w, "thickness": t,
             "material": material, "grain": grain,
             "banding": {"length": le, "width": we}, "parts": names,
-        }));
+        });
+        if *notch {
+            part["note"] = json!(NOTCHED);
+        }
+        parts.push(part);
     }
     let round = |v: f64| (v * 1000.0).round() / 1000.0;
     // The sheets to buy are those of the cutting layouts, in mm whatever the design's units.
