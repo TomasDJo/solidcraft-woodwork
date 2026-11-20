@@ -83,3 +83,66 @@ def test_banding_and_grain(approval):
     cut_door = row(cut, "Cabinet Door")
     assert (cut_door["length"], cut_door["width"]) == (door["length"] - 4, door["width"] - 4), cut_door
     assert row(cut, "Cabinet Side L")["width"] == 558 and cut["size"] == "cut"
+
+
+def dxf_entities(path):
+    """A DXF's entities as (type, {group code: value}), and its layer table."""
+    lines = path.read_text(encoding="ascii").splitlines()
+    pairs = list(zip(lines[::2], lines[1::2]))
+    assert pairs[:4] == [("0", "SECTION"), ("2", "HEADER"), ("9", "$ACADVER"), ("1", "AC1009")] and pairs[-1] == ("0", "EOF")
+    table = [b[1] for a, b in zip(pairs, pairs[1:]) if a == ("0", "LAYER")]
+    start = pairs.index(("2", "ENTITIES"))
+    entities = []
+    for code, value in pairs[start + 1:]:
+        if code == "0":
+            entities.append((value, {}))
+        else:
+            entities[-1][1].setdefault(code, value)
+    return entities, table
+
+
+def test_saved_as_dxf(approval):
+    # A cabinet with shelves on pins, two doors with hinge cups and knobs, moved off the origin:
+    # one DXF per sheet, with every hole on the part it is drilled in.
+    folder = ROOT / "dist" / "cutlists"
+    with own_profile(folder) as install:
+        grant = {"name": "cutlists", "path": str(folder), "read": False, "write": True}
+        install["params"]["approve"]["folders"].append(grant)
+        cabinet = plugin(approval, "cabinet", {"shelves": 2, "shelf_pins": True, "doors": 2, "handles": "knob"})
+        moved = [{"command": "occurrence.ground", "params": {"occurrence": "Cabinet:1", "grounded": False}},
+                 {"command": "occurrence.move", "params": {"occurrence": "Cabinet:1", "translate": [1000, 500, 300]}}]
+        results = cli([install, cabinet, *moved, MEASURE, plugin(approval, "cutlist", {"file": "Box.pdf", "format": "dxf"})])
+        measure, listed = results[-2], results[-1]["result"]
+        names = listed["saved"]
+        assert sorted(names) == sorted(p.name for p in folder.iterdir()) and len(names) == len(listed["layouts"]) >= 2, names
+        assert names == ["Box-Birch plywood-6-1.dxf", "Box-Birch plywood-18-1.dxf", "Box-Birch plywood-18-2.dxf"], names
+        circles, layers = [], set()
+        for name, layout in zip(names, listed["layouts"]):
+            entities, table = dxf_entities(folder / name)
+            used = {e[1]["8"] for e in entities if e[0] in ("POLYLINE", "CIRCLE", "TEXT")}
+            assert set(table) == used and {"SHEET", "OUTLINE", "TEXT"} <= used, (table, used)
+            kinds = lambda layer, kind: sum(1 for e in entities if e[0] == kind and e[1]["8"] == layer)
+            assert kinds("OUTLINE", "POLYLINE") == kinds("TEXT", "TEXT") == len(layout["parts"])
+            assert kinds("SHEET", "POLYLINE") == 2  # the sheet and its trim
+            for e in entities:
+                if e[0] == "CIRCLE":
+                    x, y, r = float(e[1]["10"]), float(e[1]["20"]), float(e[1]["40"])
+                    part = next(p for p in layout["parts"] if p["x"] < x < p["x"] + p["w"] and p["y"] < y < p["y"] + p["h"])
+                    circles.append((e[1]["8"], part, x, y, r))
+            layers |= used
+        # Every hole the model has is drawn, or counted as drilled into an edge.
+        holes = sum(b["face_types"].get("cylinder", 0) for b in measure["bodies"])
+        assert len(circles) + listed["dxf_edge_holes"] == holes and "dxf_holes_skipped" not in listed, (len(circles), holes)
+        hardware = {h["item"]: h["qty"] for h in listed["hardware"]}
+        cups = [c for c in circles if c[0] == "DRILL_35_D13"]
+        assert len(cups) == hardware["Hinge, 35 mm cup"] == 4, layers
+        # a cup's middle is 22.5 mm in from the door's hinge edge
+        for _, p, x, y, _ in cups:
+            assert "Door" in p["part"] and abs(min(x - p["x"], p["x"] + p["w"] - x, y - p["y"], p["y"] + p["h"] - y) - 22.5) < 0.1, (p, x, y)
+        pins = [c for c in circles if c[0] == "DRILL_5_D12"]
+        assert len(pins) == cylinders(measure, "Cabinet Side L") + cylinders(measure, "Cabinet Side R") > 0 and all("Side" in c[1]["part"] for c in pins), pins
+        knobs = [c for c in circles if c[0] == "DRILL_5_THRU"]
+        assert len(knobs) == hardware["Knob"] == 2 and all("Door" in c[1]["part"] for c in knobs)
+        # The sheet drawing reads back into a sketch.
+        back = cli([{"command": "sketch.insert_dxf", "params": {"path": str(folder / names[0])}}])[0]
+        assert back["curves"] >= 4 * (len(listed["layouts"][0]["parts"]) + 2), back

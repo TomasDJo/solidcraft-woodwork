@@ -4,6 +4,7 @@
 mod cabinet;
 mod corner;
 mod cutlist;
+mod dxf;
 mod edit;
 mod fittings;
 mod joinery;
@@ -244,10 +245,26 @@ fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
 /// Writes a file into a folder the user approved at install: folder grant, file name, bytes.
 pub type Write<'a> = &'a mut dyn FnMut(&str, &str, &[u8]) -> Result<(), String>;
 
-/// Saves the cut list in `result` as a CSV or PDF file, or a PDF of part labels, when its `file` field asks for one, and
-/// notes the name in the result.
+/// Saves the cut list in `result` as a CSV or PDF file, a PDF of part labels, or a DXF file per
+/// sheet, when its `file` field asks for one, and notes the name (the names for DXF) in the result.
 pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Result<(), String> {
+    let refused = |name: &str, reason: String| {
+        format!(
+            "could not save {name}: {reason}. Saving needs a folder for cut lists, approved when the plugin is installed: install it again and enter a folder, or clear Save as"
+        )
+    };
     if let Some(name) = cutlist::file_name(entry, params)? {
+        if params["format"] == "dxf" {
+            let layouts = result["layouts"].as_array().cloned().unwrap_or_default();
+            let names = dxf::files(&name[..name.len() - 4], &layouts);
+            let trim = result["trim_mm"].as_f64().unwrap_or(0.0);
+            for (layout, name) in layouts.iter().zip(&names) {
+                let data = dxf::render(layout, trim);
+                write(cutlist::FOLDER, name, data.as_bytes()).map_err(|r| refused(name, r))?;
+            }
+            result["saved"] = json!(names);
+            return Ok(());
+        }
         let data = match name.to_lowercase().strip_suffix(".pdf") {
             _ if params["format"] == "labels" => pdf::labels::render(result),
             Some(_) => pdf::render(result, &name[..name.len() - 4], params["diagrams"] != "no"),
@@ -257,11 +274,7 @@ pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Re
                 .as_bytes()
                 .to_vec(),
         };
-        write(cutlist::FOLDER, &name, &data).map_err(|reason| {
-            format!(
-                "could not save {name}: {reason}. Saving needs a folder for cut lists, approved when the plugin is installed: install it again and enter a folder, or clear Save as"
-            )
-        })?;
+        write(cutlist::FOLDER, &name, &data).map_err(|r| refused(&name, r))?;
         result["saved"] = json!(name);
     }
     Ok(())
@@ -504,6 +517,39 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             }
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
+            if params["format"] == "dxf" && cutlist::file_name(entry, params)?.is_some() {
+                // The holes of each drilled board, for the DXF files: one command a board.
+                // ponytail: past the 256-command limit (less what this run used) the rest of
+                // the boards get outlines only, named in `dxf_holes_skipped`.
+                let mut left = 256usize.saturating_sub(4 + local.len());
+                let drilled = |name: &str| {
+                    let all = measure["bodies"].as_array().into_iter().flatten();
+                    all.into_iter().any(|b| {
+                        b["name"] == name && b["face_types"]["cylinder"].as_u64() > Some(0)
+                    })
+                };
+                let (mut into_edge, mut skipped) = (0, Vec::new());
+                let layouts = list["layouts"].as_array_mut().into_iter().flatten();
+                for part in layouts.flat_map(|l| l["parts"].as_array_mut().into_iter().flatten()) {
+                    let name = part["part"].as_str().unwrap_or_default().to_string();
+                    if !drilled(&name) {
+                        continue;
+                    }
+                    if left == 0 {
+                        skipped.push(name);
+                        continue;
+                    }
+                    left -= 1;
+                    let faces = run("model.faces", json!({"body": name}))?;
+                    let (holes, edge) = dxf::holes(&faces, part);
+                    part["holes"] = json!(holes);
+                    into_edge += edge;
+                }
+                list["dxf_edge_holes"] = json!(into_edge);
+                if !skipped.is_empty() {
+                    list["dxf_holes_skipped"] = json!(skipped);
+                }
+            }
             let stored = run("storage.get", json!({}))?;
             prices::estimate(&mut list, &stored["document"]);
             Ok(list)

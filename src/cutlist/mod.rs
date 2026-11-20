@@ -233,7 +233,8 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
 pub const FOLDER: &str = "cutlists";
 
 /// The file the cut list is to be saved as, from its `file` field (none when that is empty)
-/// and its `format`, `pdf` (the default), `csv`, or `labels` (a PDF too), which gives the ending. A name only, since
+/// and its `format`, `pdf` (the default), `csv`, `labels` (a PDF too) or `dxf` (`save` writes one
+/// file per sheet from it), which gives the ending. A name only, since
 /// the folder is the one the user approved; an ending typed in the name gives way to the format.
 pub fn file_name(entry: &str, params: &Value) -> Result<Option<String>, String> {
     let name = params["file"].as_str().unwrap_or("").trim();
@@ -250,10 +251,11 @@ pub fn file_name(entry: &str, params: &Value) -> Result<Option<String>, String> 
     let ending = match format {
         "pdf" | "labels" => "pdf",
         "csv" => "csv",
-        _ => return Err("format must be pdf, csv or labels".into()),
+        "dxf" => "dxf",
+        _ => return Err("format must be pdf, csv, labels or dxf".into()),
     };
     let lower = name.to_lowercase();
-    let typed = lower.ends_with(".csv") || lower.ends_with(".pdf");
+    let typed = [".csv", ".pdf", ".dxf"].iter().any(|e| lower.ends_with(e));
     let stem = if typed { &name[..name.len() - 4] } else { name };
     Ok(Some(format!("{stem}.{ending}")))
 }
