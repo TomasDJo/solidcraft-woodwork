@@ -174,3 +174,55 @@ fn cutting_diagrams_follow_the_field() {
         assert!(has(pdf, b"(2)") && has(pdf, b"(SHEETS 2440 \xd7 1220)"));
     }
 }
+
+/// A cut list of `boards` boards in one row, all laid out on one sheet but the last.
+fn boards(boards: usize) -> Value {
+    let names: Vec<String> = (0..boards).map(|i| format!("Base Shelf {i}")).collect();
+    let placed: Vec<Value> = (names[..boards - 1].iter())
+        .map(|n| json!({"part": n, "row": 0, "x": 10.0, "y": 10.0, "w": 500.0, "h": 300.0}))
+        .collect();
+    json!({
+        "units": "mm",
+        "parts": [{"qty": boards, "length": 500.0, "width": 300.0, "thickness": 18.0,
+                   "material": "Oak", "grain": true, "banding": {"length": 1, "width": 0},
+                   "parts": names}],
+        "sheets": [{"material": "Oak", "thickness": 18.0, "sheets": 1}],
+        "layouts": [{"parts": placed}],
+    })
+}
+
+#[test]
+fn a_label_per_board_24_a_page() {
+    let pdf = labels::render(&boards(30));
+    well_formed(&pdf);
+    let text = String::from_utf8_lossy(&pdf);
+    assert!(text.contains("/Count 2 "), "two pages");
+    assert_eq!(text.matches("(Base Shelf ").count(), 30);
+    assert_eq!(text.matches("(#1, sheet 1 of 1)").count(), 29);
+    // the one on no sheet comes last
+    let last = text.find("(Base Shelf 29)").unwrap();
+    assert!(text.rfind("(not on a sheet)").unwrap() > last);
+    assert!(text.contains("(500 \u{fffd} 300 \u{fffd} 18 mm)")); // × in WinAnsi
+    assert!(
+        text.contains("2.4 w") && text.contains("(edges L1)"),
+        "the banded edge"
+    );
+    assert!(text.contains(" l f\n"), "the grain arrow's head");
+    assert_eq!(labels::render(&json!({})), assemble(&[Vec::new()]));
+}
+
+#[test]
+fn labels_escape_and_shorten_names() {
+    let mut list = boards(2);
+    list["parts"][0]["parts"] = json!(["Side (L)", "A very long cabinet name Drawer 3 Front"]);
+    list["parts"][0]["banding"] = json!({"length": 0, "width": 0});
+    list["layouts"] = json!([]);
+    list["worktops"] = json!([{"part": "Side (L)"}]);
+    let pdf = labels::render(&list);
+    let text = String::from_utf8_lossy(&pdf);
+    assert!(text.contains(r"(Side \(L\))") && text.contains("(bought to length)"));
+    assert!(!text.contains("2.4 w"), "no banded edge");
+    let (size, cut) = labels::fit(&"Drawer ".repeat(10), 11.0, 174.0);
+    assert!(size == 7.0 && cut.ends_with("...") && width(&cut, 7.0) * 1.06 <= 174.0);
+    assert_eq!(labels::fit("Side L", 11.0, 174.0), (11.0, "Side L".into()));
+}

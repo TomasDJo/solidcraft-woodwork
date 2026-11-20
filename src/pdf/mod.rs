@@ -4,6 +4,8 @@
 
 use serde_json::Value;
 
+pub mod labels;
+
 const W: f64 = 595.0; // A4 in points
 const H: f64 = 842.0;
 const M: f64 = 48.0; // margin

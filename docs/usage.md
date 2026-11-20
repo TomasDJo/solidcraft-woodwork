@@ -154,7 +154,8 @@ banded edge. The list says which it shows.
 
 Fill in **Save as** with a name to also get the list as a file, in the **Format** chosen:
 PDF, a printable A4 list with a tick box per board and per piece of hardware, one table per
-material and thickness, the sheets to buy and the cutting diagrams; or CSV, for a spreadsheet. It goes into the folder for cut
+material and thickness, the sheets to buy and the cutting diagrams; CSV, for a spreadsheet; or
+Labels (PDF), a sticker per board to stick on after cutting (see [Part labels](#part-labels)). It goes into the folder for cut
 lists that SolidCraft asks you for when you install the plugin; without such a folder, leave
 the field empty.
 
@@ -185,6 +186,19 @@ parts share a number), then each sheet with its parts outlined and numbered with
 (the number only on a small part), the offcuts grey and the trim dashed. Each sheet's heading
 gives the material, thickness, sheet n of m and its yield, the share of the sheet that becomes
 parts.
+
+### Part labels
+
+**Format** Labels (PDF) saves `<name>.pdf` with one label per board (a part of quantity 2 gets
+two), on A4 sheets of 3 x 8 labels of 70 x 37 mm without margins (Herma or Avery 3474), with
+thin lines where the labels meet. Each label has the board's name, its size (length x width x
+thickness, as the list shows it), its material, its number and sheet in the cutting diagrams
+(`#12, sheet 3 of 5`, sheets counted per material and thickness), and a small drawing of the
+part, length across: its banded edges thick (named too, `edges L1`) and an arrow along the
+length when it has a grain. The labels follow the cutting diagrams sheet by sheet, so a
+sheet's parts come off it in label order; boards on no sheet come last, marked "bought to
+length" (worktops) or "not on a sheet" (too big). A long name is set smaller, down to 7 pt,
+then cut short with `...`.
 
 For scripts the reply has, beside the rows: `sheets` per material and thickness (`area_m2`,
 `sheets` to buy, `yield_pct`), `sheet_mm` (length and width), `kerf_mm`, `trim_mm`,

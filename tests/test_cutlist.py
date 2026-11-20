@@ -24,11 +24,12 @@ def test_saved_as_a_file(approval):
         worktop = {"command": "solid.box", "params": {"length": "2000 mm", "width": "600 mm", "height": "38 mm",
                    "corner": [1000, 0, 0], "name": "Worktop", "body_name": "Worktop"}}
         results = cli([install, cabinet, worktop, plugin(approval, "cutlist", {"file": "My kitchen", "format": "csv"}), plugin(approval, "cutlist"),
-                       plugin(approval, "cutlist", {"file": "My kitchen"}), plugin(approval, "cutlist", {"file": "Plain", "diagrams": "no"})])
+                       plugin(approval, "cutlist", {"file": "My kitchen"}), plugin(approval, "cutlist", {"file": "Plain", "diagrams": "no"}),
+                       plugin(approval, "cutlist", {"file": "Stickers", "format": "labels"})])
         saved, shown = results[3]["result"], results[4]["result"]
         assert saved["saved"] == "My kitchen.csv" and "saved" not in shown, (saved.get("saved"), shown.get("saved"))
         assert results[5]["result"]["saved"] == "My kitchen.pdf"
-        assert sorted(p.name for p in folder.iterdir()) == ["My kitchen.csv", "My kitchen.pdf", "Plain.pdf"]
+        assert sorted(p.name for p in folder.iterdir()) == ["My kitchen.csv", "My kitchen.pdf", "Plain.pdf", "Stickers.pdf"]
         pdf = (folder / "My kitchen.pdf").read_bytes()
         assert pdf.startswith(b"%PDF-") and pdf.endswith(b"%%EOF\n") and b"Cabinet Side L" in pdf
         assert (folder / "My kitchen.csv").read_text(encoding="utf-8") == saved["csv"] == shown["csv"]
@@ -44,6 +45,14 @@ def test_saved_as_a_file(approval):
         pages = lambda pdf: pdf.count(b"/Type /Page ")
         assert b"(Worktops, bought to length)" in pdf and b"(Cutting diagrams)" in pdf and b"sheet 1 of 1" in pdf and b"Cutting diagrams" not in plain
         assert pages(pdf) > pages(plain), (pages(pdf), pages(plain))
+        # Labels: one per board, in the order of the cutting diagrams, then the worktop on no sheet.
+        labels = (folder / "Stickers.pdf").read_bytes()
+        assert results[7]["result"]["saved"] == "Stickers.pdf" and labels.endswith(b"%%EOF\n")
+        on_sheets = [p["part"] for layout in shown["layouts"] for p in layout["parts"]]
+        assert labels.count(b", sheet ") == len(on_sheets) and b"(bought to length)" in labels
+        assert labels.count(b"0.6 w ") == shown["boards"] == len(on_sheets) + 1, shown["boards"]
+        assert pages(labels) == -(-shown["boards"] // 24)
+        assert labels.index(f"({on_sheets[0]})".encode()) < labels.index(b"(Worktop)")
 
 
 def test_banding_and_grain(approval):

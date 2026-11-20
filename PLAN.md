@@ -99,7 +99,8 @@ Cut list and shop output:
 - [x] Cut list saved as a printable PDF, with tick boxes for boards and hardware
 - [x] Edge banding and grain direction in the cut list
 - [x] Sheet cutting diagrams (nesting, kerf, grain)
-- [ ] DXF per part, labels
+- [x] Part labels, a sticker per board (A4, 3 x 8)
+- [ ] DXF per part
 
 ## Waiting for the app
 
