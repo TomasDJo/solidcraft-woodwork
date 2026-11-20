@@ -500,3 +500,31 @@ fn a_worktop_made_by_worktop_is_known_whatever_its_name() {
     assert_eq!(row(&list, "Island top")["banding"], band);
     assert_eq!(list["banding"], json!([]));
 }
+
+#[test]
+fn a_rail_is_banded_at_the_front_like_a_shelf() {
+    for turned in [false, true] {
+        let mut measured = cabinet(turned);
+        let max = if turned {
+            [300.0, 564.0, 18.0]
+        } else {
+            [564.0, 300.0, 18.0]
+        };
+        let rail =
+            json!({"name": "A Rail", "material": "Oak", "bbox": {"min": [0, 0, 0], "max": max}});
+        measured["bodies"].as_array_mut().unwrap().push(rail);
+        let list = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
+        let r = row(&list, "A Rail");
+        // grain along the cabinet's width, the front edge (along the grain) banded
+        assert_eq!(
+            (r["length"].clone(), r["width"].clone()),
+            (json!(564.0), json!(300.0))
+        );
+        assert_eq!(
+            r["banding"],
+            json!({"length": 1, "width": 0}),
+            "turned {turned}"
+        );
+        assert_eq!(r["grain"], json!(true));
+    }
+}

@@ -23,6 +23,31 @@ def test_drawers(approval):
     assert box["Cabinet Drawer 1 Right"][3] == 400 - 18 - 12.7, box["Cabinet Drawer 1 Right"]
 
 
+def test_drawers_over_doors_and_a_graduated_stack(approval):
+    # A 150 mm drawer over two doors, in 870 on a 150 plinth: the doors from 152 to 716, the front
+    # from 718 to 868, and a rail centred behind the gap between them (717), where both lap it.
+    # The shelf and its pins are below the rail. The drawer slides out and a door turns.
+    made = plugin(approval, "cabinet", {"drawers": 1, "doors": 2, "height": 870, "plinth": 150,
+                                        "shelf_pins": True, "handles": "knob"})
+    results = cli([made, MEASURE, drive("Cabinet Drawer 1 slide", 300), drive("Cabinet Door L hinge", 90), MEASURE],
+                  "--save", str(ROOT / "dist" / "drawer-over-doors.sc"))
+    box = boxes(results[1])
+    assert box["Cabinet Door L"][2:6:3] == [152, 716] and box["Cabinet Door R"][2:6:3] == [152, 716], box["Cabinet Door L"]
+    assert box["Cabinet Drawer 1 Front"][2:6:3] == [718, 868], box["Cabinet Drawer 1 Front"]
+    assert box["Cabinet Rail"] == [-282, -280, 708, 282, 262, 726], box["Cabinet Rail"]
+    assert box["Cabinet Shelf 1"][5] < 708 and box["Cabinet Drawer 1 Bottom"][2] > 726, (box["Cabinet Shelf 1"], box["Cabinet Drawer 1 Bottom"])
+    assert box["Cabinet Drawer 1 Left"][5] < box["Cabinet Top"][2], box["Cabinet Drawer 1 Left"]
+    assert cylinders(results[1], "Cabinet Door L") == 3, cylinders(results[1], "Cabinet Door L")  # 2 cups, a knob
+    moved = boxes(results[4])
+    assert moved["Cabinet Drawer 1 Front"][1] == -300 - 300 and moved["Cabinet Rail"] == box["Cabinet Rail"], moved["Cabinet Drawer 1 Front"]
+    assert moved["Cabinet Door L"] == [-298, -597, 152, -280, -300, 716], moved["Cabinet Door L"]
+    # Graduated: the top front 140 mm, the two below share the rest of 720: 286 each.
+    box = boxes(cli([plugin(approval, "cabinet", {"drawers": 3, "drawer_height": 140}), MEASURE])[1])
+    heights = [round(box[f"Cabinet Drawer {n} Front"][5] - box[f"Cabinet Drawer {n} Front"][2], 3) for n in (1, 2, 3)]
+    assert heights == [286, 286, 140] and box["Cabinet Drawer 3 Front"][5] == 718, (heights, box["Cabinet Drawer 3 Front"])
+    assert box["Cabinet Drawer 3 Left"][5] - box["Cabinet Drawer 3 Left"][2] == 140 - 2 * 26, box["Cabinet Drawer 3 Left"]
+
+
 def test_handles(approval):
     # Handles: a pull is two holes through each front, next to a door's two hinge cups.
     results = cli([plugin(approval, "cabinet", {"name": "H", "doors": 2, "plinth": 100, "handles": "pull"}),

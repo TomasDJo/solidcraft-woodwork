@@ -29,7 +29,8 @@ component can hold its cabinets.
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
-| **Drawers** | Makes it a drawer unit: a stack of equal drawers with overlay fronts and boxes sized for 12.7 mm ball-bearing slides. |
+| **Drawers** | Drawers with overlay fronts and boxes sized for 12.7 mm ball-bearing slides. Alone they fill the front, and the cabinet has no shelves. With one or two doors they sit at the top, over the doors: a fixed rail (`Name Rail`) runs between the sides behind the gap under the lowest drawer, and the shelves are below it. Not with dividers. |
+| **Drawer front height** | Over doors: the height of each drawer front, 0 for 150 mm. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below); 0 makes them all alike. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: a height, so going back to all alike (or 150 mm over doors) is done with Edit cabinet, not by setting the parameter to 0. |
 | **Plinth height** | 0 for none. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
 | **Doors** | Overlay doors with 35 mm hinge cup holes: one, two, or one per compartment. |
@@ -112,7 +113,8 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 Changes a cabinet after it is made. Select any part of it, fill in only what should change
 and leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is
-hinged on, drawers, back, shelf pin holes, handles, plinth, a corner cabinet's shape.
+hinged on, drawers, drawer front height, back, shelf pin holes, handles, plinth, a corner
+cabinet's shape. Drawers added to a cabinet with doors go over the doors.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
@@ -178,13 +180,13 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
 - counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
 - marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
   along the width, `L1` one edge along the length. Doors and drawer fronts are banded all round; sides, top,
-  bottom, shelves and dividers at the front; backs, plinths and drawer boxes not. It adds up
+  bottom, shelves, rails and dividers at the front; backs, plinths and drawer boxes not. It adds up
   the metres of banding per material and thickness, plus 10 % waste;
 - adds up what it costs, when the design has prices (see [Prices](#prices) and
   [Cost estimate](#cost-estimate));
 - lists a board of a material with a grain (Birch plywood, Oak) with its length along the
   grain, marked `grain`: up on sides, doors, backs, dividers and drawer fronts, along the
-  cabinet's width on top, bottom, shelves and drawer bottoms, and along the drawer box's
+  cabinet's width on top, bottom, shelves, rails and drawer bottoms, and along the drawer box's
   sides, front and back. Such a part must not be turned on the sheet. Other materials (MDF,
   White melamine) have the longest side as the length, and so do plinths and the drawer
   box's sides, front and back.

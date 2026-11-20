@@ -29,8 +29,13 @@ pub struct Input<'a> {
     pub clear_h: f64,
     /// Depth of the shelves, which stop at the back.
     pub shelf_d: f64,
-    /// Height of one drawer front.
+    /// Height of a drawer front: of each below the top one, and of the top one, which is
+    /// `drawer_height` (0 when the drawers are all alike: no parameter then).
     pub front_h: f64,
+    pub drawer_h: f64,
+    /// Where the doors' top edge is: under the drawers, on the plinth when the drawers fill
+    /// the front.
+    pub door_top: f64,
 }
 
 pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
@@ -55,8 +60,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
         "drawers must be 0 to 8",
     )?;
+    let dh = size("drawer_height", 0.0)?;
+    check(dh >= 0.0, "drawer front height cannot be negative")?;
+    // Drawers over doors: the drawers at the top, 150 mm high unless asked, the doors below.
+    let over = drawers > 0.0 && doors > 0.0;
     // A drawer cabinet is all drawers: no shelves behind them.
-    let (shelves, pins) = if drawers > 0.0 {
+    let (shelves, pins) = if drawers > 0.0 && !over {
         (0.0, false)
     } else {
         (shelves, pins)
@@ -83,7 +92,29 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
 
     let inner_w = w - 2.0 * t;
-    let clear_h = h - plinth - 2.0 * t; // between bottom and top panels
+    let g = DOOR_GAP;
+    let drawer_h = if over && dh == 0.0 {
+        150.0
+    } else if over || drawers > 1.0 {
+        dh // the top drawer; the rest share what is left
+    } else {
+        0.0
+    };
+    let (front_h, door_top) = if over {
+        (drawer_h, h - g - drawers * (drawer_h + g))
+    } else if drawer_h > 0.0 {
+        let rest = h - plinth - (drawers + 1.0) * g - drawer_h;
+        (rest / (drawers - 1.0), plinth)
+    } else if drawers > 0.0 {
+        ((h - plinth - (drawers + 1.0) * g) / drawers, plinth)
+    } else {
+        (0.0, h - g)
+    };
+    // Between the bottom panel and the top panel, or the rail under the drawers.
+    let clear_h = match over {
+        true => door_top + g / 2.0 - 1.5 * t - plinth,
+        false => h - plinth - 2.0 * t,
+    };
     let gap = (clear_h - shelves * t) / (shelves + 1.0);
     check(
         (0.0..=10.0).contains(&dividers) && dividers.fract() == 0.0,
@@ -111,14 +142,18 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "doors must be 0, 1, 2 or one per compartment (dividers + 1)",
     )?;
     check(
-        drawers == 0.0 || (doors == 0.0 && dividers == 0.0),
-        "drawers cannot be combined with doors or dividers",
+        drawers == 0.0 || dividers == 0.0,
+        "drawers cannot be combined with dividers",
     )?;
-    // Height of one drawer front, and width of the box between the slides.
-    let front_h = (h - plinth - (drawers + 1.0) * DOOR_GAP) / drawers.max(1.0);
+    // Room for a drawer box behind each front, and the width of the box between the slides.
+    let lowest = 2.0 * (t + BOX_CLEAR) + 50.0;
     check(
-        drawers == 0.0 || front_h >= 2.0 * (t + BOX_CLEAR) + 50.0,
+        drawers == 0.0 || front_h >= lowest,
         "too low for that many drawers",
+    )?;
+    check(
+        drawer_h == 0.0 || drawer_h >= lowest,
+        "the drawer front height is too low for a drawer box",
     )?;
     check(
         drawers == 0.0 || inner_w - 2.0 * SLIDE >= 100.0,
@@ -148,7 +183,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "doors are too narrow for handles",
     )?;
     check(
-        doors == 0.0 || h - plinth >= 300.0,
+        doors == 0.0 || door_top + g - plinth >= 300.0,
         "too low for a door with two hinges",
     )?;
     check(
@@ -185,5 +220,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         clear_h,
         shelf_d,
         front_h,
+        drawer_h,
+        door_top,
     })
 }

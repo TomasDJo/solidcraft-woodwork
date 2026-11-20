@@ -298,6 +298,11 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   off a quarter turn is right only for its turned boards. An L-shaped or diagonal corner
   shelf gets one front edge marked, not its two (or slanted) front edges. A material that is
   not ours has no grain (`material::GRAINED`).
+- A box cabinet's drawers go over its doors when it has both (not with dividers), above a
+  fixed `<Name> Rail` behind the gap; the shelves and pins are in the doors' part below it.
+  `drawer_height` (over doors each front, else the top one with the rest equal) is the
+  parameter `<Prefix>_drawer_height` only while it is used; an edit that stops using it sets
+  it to 0 (`Kit::has`), so the next Edit does not take the old value up again.
 - A diagonal corner cabinet's front is always at 45 degrees: its door and plinth are components
   turned by a fixed angle (`Kit::turn`), since an occurrence's turn cannot follow a parameter.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are

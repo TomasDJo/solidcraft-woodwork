@@ -14,8 +14,8 @@ The picture opens a one minute introduction on YouTube. Three how-tos follow it 
 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
-- **Cabinet**: a box carcass with shelves, dividers, back and plinth; doors or drawers that
-  open on their joints; shelf pin and handle holes.
+- **Cabinet**: a box carcass with shelves, dividers, back and plinth; doors, drawers or
+  drawers over doors that open on their joints; shelf pin and handle holes.
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door.
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
   a run stays together when a cabinet changes size.

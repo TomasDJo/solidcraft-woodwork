@@ -14,7 +14,7 @@
         "slots": [{ "kind": "menu", "name": "Cabinet" }, { "kind": "ribbon", "name": "Cabinet" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/cabinet.svg",
-          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "door_hinge", "handles", "handle_position", "labels", "selection", "match", "material", "place", "name"],
+          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "drawer_height", "plinth", "shelf_pins", "doors", "door_hinge", "handles", "handle_position", "labels", "selection", "match", "material", "place", "name"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "width": { "type": "number", "title": "Width", "description": "Outside width.", "default": 600, "minimum": 4, "maximum": 5000 },
@@ -25,7 +25,8 @@
             "back_thickness": { "type": "number", "title": "Back thickness", "default": 6, "minimum": 0.125, "maximum": 50 },
             "dividers": { "type": "integer", "title": "Dividers", "description": "Vertical dividers: equal compartments.", "default": 0, "minimum": 0, "maximum": 10 },
             "shelves": { "type": "integer", "title": "Shelves", "description": "Shelves in each compartment, evenly spaced.", "default": 1, "minimum": 0, "maximum": 20 },
-            "drawers": { "type": "integer", "title": "Drawers", "description": "Equal drawers with overlay fronts, boxes for 12.7 mm slides. No shelves then; not with doors or dividers.", "default": 0, "minimum": 0, "maximum": 8 },
+            "drawers": { "type": "integer", "title": "Drawers", "description": "Drawers with overlay fronts, boxes for 12.7 mm slides. With doors they sit over them; alone they fill the front, without shelves. Not with dividers.", "default": 0, "minimum": 0, "maximum": 8 },
+            "drawer_height": { "type": "number", "title": "Drawer front height", "description": "Over doors: each drawer front, 0 for 150 mm. Drawers only: the top front, the rest share what is left; 0 for all alike.", "default": 0, "minimum": 0, "maximum": 1000 },
             "plinth": { "type": "number", "title": "Plinth height", "description": "0 for none. The plinth board sits 50 mm back from the front.", "default": 0, "minimum": 0, "maximum": 500 },
             "shelf_pins": { "type": "boolean", "title": "Shelf pin holes", "description": "32 mm system: rows of 5 mm holes 37 mm from the front and back. The shelves rest on them.", "default": false },
             "doors": { "type": "integer", "title": "Doors", "description": "Overlay doors with 35 mm hinge cups: 0, 1, 2, or one per compartment.", "default": 0, "minimum": 0, "maximum": 11 },
@@ -85,6 +86,7 @@
             "dividers": { "type": "integer", "title": "Dividers", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 10 },
             "doors": { "type": "integer", "title": "Doors", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 11 },
             "drawers": { "type": "integer", "title": "Drawers", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 8 },
+            "drawer_height": { "type": "number", "title": "Drawer front height", "description": "Empty: as it is. In the cabinet's unit; 0 for 150 mm over doors, all alike without.", "minimum": 0, "maximum": 1000 },
             "door_hinge": { "type": "string", "title": "First door hinged", "description": "Box cabinet only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "left", "title": "Left"}, {"const": "right", "title": "Right"}] },
             "corner_doors": { "type": "string", "title": "Corner doors", "description": "Corner cabinet only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "none", "title": "None"}, {"const": "hinged left", "title": "Hinged left"}, {"const": "hinged right", "title": "Hinged right"}] },
             "shape": { "type": "string", "title": "Corner shape", "description": "Corner cabinet only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "L-shaped"}, {"const": "diagonal", "title": "Diagonal"}] },

@@ -13,13 +13,13 @@ pub fn build(cabinet: &Cabinet) {
     let Cabinet {
         kit,
         ew,
-        eh,
         et,
         epl,
+        ez1,
         ..
     } = cabinet;
     let Input {
-        h,
+        door_top,
         d,
         plinth,
         doors,
@@ -36,15 +36,16 @@ pub fn build(cabinet: &Cabinet) {
         mm(2.0 * DOOR_GAP),
         count.max(1) - 1
     );
-    let door_h = format!("{eh} - {epl} - {}", mm(2.0 * DOOR_GAP));
-    let (z0, z1) = (format!("{epl} + {gap_mm}"), format!("{eh} - {gap_mm}"));
-    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * DOOR_GAP);
+    // From the plinth up to the top, or to under the drawers.
+    let door_h = format!("{ez1} - {epl} - {gap_mm}");
+    let (z0, z1) = (format!("{epl} + {gap_mm}"), ez1.clone());
+    let cups = fittings::cup_heights(&z0, &z1, door_top - plinth - DOOR_GAP);
     let handle_z = fittings::handle_height(
         handles,
         handle_at,
         &z0,
         &z1,
-        h - plinth,
+        door_top + DOOR_GAP - plinth,
         fittings::floor_unit(plinth, d),
     );
     for i in 0..count {

@@ -47,6 +47,35 @@ fn an_edit_keeps_what_is_not_changed() {
 }
 
 #[test]
+fn the_drawer_front_height_is_the_designs() {
+    // made with 140, changed in the design since: the design's value is built again
+    let made = remember("cabinet", &json!({"drawers": 3, "drawer_height": 140}), "A");
+    let design = json!({"params": [{"name": "A_drawer_height", "value": 160.0}]});
+    let (_, params) = merge(&made[KEY], &json!({"doors": 1}), &design).unwrap();
+    assert_eq!(params["drawer_height"], 160.0);
+    assert_eq!(params["doors"], 1);
+    let (_, params) = merge(&made[KEY], &json!({"drawer_height": 120}), &design).unwrap();
+    assert_eq!(params["drawer_height"], 120);
+    assert_eq!(params["_existing"]["drawer_height"], 160.0);
+    let corner = remember("corner", &json!({}), "A");
+    assert!(merge(&corner[KEY], &json!({"drawer_height": 120}), &design).is_err());
+    // over doors the empty height was kept as 150: taking the doors away makes them alike again
+    let over = remember("cabinet", &json!({"drawers": 3, "doors": 1}), "A");
+    let design = json!({"params": [{"name": "A_drawer_height", "value": 150.0}]});
+    let (_, params) = merge(&over[KEY], &json!({"doors": 0}), &design).unwrap();
+    assert_eq!(params["drawer_height"], 0);
+    let (_, params) = merge(
+        &over[KEY],
+        &json!({"doors": 0, "drawer_height": 140}),
+        &design,
+    )
+    .unwrap();
+    assert_eq!(params["drawer_height"], 140);
+    let (_, params) = merge(&over[KEY], &json!({"shelves": 2}), &design).unwrap();
+    assert_eq!(params["drawer_height"], 150.0);
+}
+
+#[test]
 fn sizes_come_back_in_the_unit_they_were_given_in() {
     let made = remember("cabinet", &json!({"units": "in", "width": 24}), "A");
     let design = json!({"params": [{"name": "A_width", "value": 609.6}]});

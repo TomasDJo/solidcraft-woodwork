@@ -34,12 +34,24 @@ struct Cabinet<'a> {
     // Depth of the sides, top and bottom, and of the shelves (which stop at the back).
     eside_d: String,
     eshelf_d: String,
+    // The doors' top edge, and the top drawer's front height when it is a parameter.
+    ez1: String,
+    edh: Option<String>,
 }
 
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let kit = Kit::new(p)?;
     let input = input::read(&kit, p)?;
-    let Input { w, h, d, back, .. } = input;
+    let Input {
+        w,
+        h,
+        d,
+        back,
+        drawers,
+        doors,
+        drawer_h,
+        ..
+    } = input;
 
     let parameter = |key: &str, mm_value: f64, comment: &str| kit.parameter(key, mm_value, comment);
     let ew = parameter("width", w, "outside width");
@@ -59,6 +71,17 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         "groove" => (ed.clone(), format!("({ed} - {} - {ebt})", mm(GROOVE_INSET))),
         _ => (ed.clone(), ed.clone()),
     };
+    // A parameter only while it is used; one an edit stopped using goes to 0, so that the
+    // next edit does not take it up again.
+    let edh = (drawer_h > 0.0 || kit.has("drawer_height"))
+        .then(|| parameter("drawer_height", drawer_h, "drawer front height"))
+        .filter(|_| drawer_h > 0.0);
+    let gap = mm(DOOR_GAP);
+    let ez1 = match (drawers > 0.0, doors > 0.0, &edh) {
+        (false, ..) => format!("{eh} - {gap}"),
+        (true, true, Some(edh)) => format!("({eh} - {gap} - {drawers}*({edh} + {gap}))"),
+        _ => epl.clone(), // all drawers
+    };
     // The cabinet stands on Z = 0, centred on the origin, so the view orbits around it.
     kit.centre(&ew, &ed);
     // Where a neighbour stands: the two back corners.
@@ -77,6 +100,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         epl,
         eside_d,
         eshelf_d,
+        ez1,
+        edh,
     };
     let drill = cabinet.carcass(); // holes, run after the panels exist
     doors::build(&cabinet);
@@ -104,14 +129,25 @@ impl Cabinet<'_> {
             ech,
             eside_d,
             eshelf_d,
+            ez1,
+            ..
         } = self;
         let name = kit.name.as_str();
         // Derived sizes, as expressions.
         let n = input.dividers as u32;
         let s = input.shelves as u32;
         let ecell = format!("(({eiw} - {n}*{et}) / {})", n + 1); // one compartment
-        let egap = format!("(({ech} - {s}*{et}) / {})", s + 1); // between shelves
-        let elast = fittings::top_pin_row(ech);
+
+        // Drawers over doors: a rail between the sides, behind the gap under the lowest drawer
+        // front. The shelves are in the doors' part below it.
+        let rail = input.drawers > 0.0 && input.doors > 0.0;
+        let rail_z = format!("{ez1} + {} - {et}/2", mm(DOOR_GAP / 2.0));
+        let ezone = match rail {
+            true => format!("({rail_z} - {epl} - {et})"),
+            false => ech.clone(),
+        };
+        let egap = format!("(({ezone} - {s}*{et}) / {})", s + 1); // between shelves
+        let elast = fittings::top_pin_row(&ezone);
 
         let carcass = ["Side L", "Side R", "Bottom", "Top"].map(|part| format!("{name} {part}"));
         // A panel, or with `cut` its volume taken out of the carcass panels.
@@ -157,6 +193,9 @@ impl Cabinet<'_> {
                 let z = format!("{bottom_top} + {over}");
                 panel(&part, [&x, &zero, &z], [&ecell, eshelf_d, et], false);
             }
+        }
+        if rail {
+            panel("Rail", [et, &zero, &rail_z], [eiw, eshelf_d, et], false);
         }
         if input.plinth > 0.0 {
             panel(

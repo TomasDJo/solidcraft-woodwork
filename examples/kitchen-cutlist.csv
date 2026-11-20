@@ -1,5 +1,5 @@
 Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Banding,Parts
-3,514.6,508,6,"White melamine",,,"Base 2 Drawer 1 Bottom, Base 2 Drawer 2 Bottom, Base 2 Drawer 3 Bottom"
+4,514.6,508,6,"White melamine",,,"Base 4 Drawer 1 Bottom, Base 2 Drawer 1 Bottom, Base 2 Drawer 2 Bottom, Base 2 Drawer 3 Bottom"
 2,682,582,6,"White melamine",,,"Wall 4 Back, Wall 2 Back"
 2,702,582,6,"White melamine",,,"Base 2 Back, Base 4 Back"
 1,782,682,6,"White melamine",,,"Wall 1 Back"
@@ -7,9 +7,15 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 1,882,682,6,"White melamine",,,"Wall 3 Back"
 1,882,702,6,"White melamine",,,"Base 3 Back"
 1,1932,582,6,"White melamine",,,"Tall Back"
-6,514.6,185.3,12,"White melamine",,,"Base 2 Drawer 1 Box front, Base 2 Drawer 1 Box back, Base 2 Drawer 2 Box front, Base 2 Drawer 2 Box back, Base 2 Drawer 3 Box front, Base 2 Drawer 3 Box back"
-6,532,185.3,12,"White melamine",,,"Base 2 Drawer 1 Left, Base 2 Drawer 1 Right, Base 2 Drawer 2 Left, Base 2 Drawer 2 Right, Base 2 Drawer 3 Left, Base 2 Drawer 3 Right"
-3,237.3,596,18,"Oak",yes,L2 W2,"Base 2 Drawer 1 Front, Base 2 Drawer 2 Front, Base 2 Drawer 3 Front"
+2,514.6,88,12,"White melamine",,,"Base 2 Drawer 3 Box front, Base 2 Drawer 3 Box back"
+2,514.6,98,12,"White melamine",,,"Base 4 Drawer 1 Box front, Base 4 Drawer 1 Box back"
+4,514.6,234,12,"White melamine",,,"Base 2 Drawer 1 Box front, Base 2 Drawer 1 Box back, Base 2 Drawer 2 Box front, Base 2 Drawer 2 Box back"
+2,532,88,12,"White melamine",,,"Base 2 Drawer 3 Left, Base 2 Drawer 3 Right"
+2,532,98,12,"White melamine",,,"Base 4 Drawer 1 Left, Base 4 Drawer 1 Right"
+4,532,234,12,"White melamine",,,"Base 2 Drawer 1 Left, Base 2 Drawer 1 Right, Base 2 Drawer 2 Left, Base 2 Drawer 2 Right"
+1,140,596,18,"Oak",yes,L2 W2,"Base 2 Drawer 3 Front"
+1,150,596,18,"Oak",yes,L2 W2,"Base 4 Drawer 1 Front"
+2,286,596,18,"Oak",yes,L2 W2,"Base 2 Drawer 1 Front, Base 2 Drawer 2 Front"
 6,302,276,18,"White melamine",,W1,"Wall 3 Shelf 1.1, Wall 3 Shelf 1.2, Wall 3 Shelf 2.1, Wall 3 Shelf 2.2, Wall 3 Shelf 3.1, Wall 3 Shelf 3.2"
 1,472,150,18,"White melamine",,,"Corner Plinth return"
 1,490,150,18,"White melamine",,,"Corner Plinth"
@@ -18,8 +24,9 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 3,564,150,18,"White melamine",,,"Tall Plinth, Base 2 Plinth, Base 4 Plinth"
 5,564,302,18,"White melamine",,L1,"Wall 4 Shelf 1, Wall 4 Shelf 2, Wall 2 Shelf 1, Wall 2 Shelf 2, Wall 2 Shelf 3"
 4,564,320,18,"White melamine",,L1,"Wall 4 Bottom, Wall 4 Top, Wall 2 Bottom, Wall 2 Top"
-5,564,542,18,"White melamine",,L1,"Tall Shelf 1, Tall Shelf 2, Tall Shelf 3, Tall Shelf 4, Base 4 Shelf 1"
+6,564,542,18,"White melamine",,L1,"Tall Shelf 1, Tall Shelf 2, Tall Shelf 3, Tall Shelf 4, Base 4 Shelf 1, Base 4 Rail"
 6,564,560,18,"White melamine",,L1,"Tall Bottom, Tall Top, Base 2 Bottom, Base 2 Top, Base 4 Bottom, Base 4 Top"
+1,564,596,18,"Oak",yes,L2 W2,"Base 4 Door"
 2,664,302,18,"White melamine",,L1,"Wall 3 Divider 1, Wall 3 Divider 2"
 3,684,542,18,"White melamine",,L1,"Base 1 Divider 1, Base 3 Divider 1, Base 3 Divider 2"
 3,696,297.3,18,"Oak",yes,L2 W2,"Wall 3 Door 1, Wall 3 Door 2, Wall 3 Door 3"
@@ -31,7 +38,6 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 2,716,397,18,"Oak",yes,L2 W2,"Base 1 Door L, Base 1 Door R"
 1,716,416,18,"Oak",yes,L2 W2,"Corner Door return"
 1,716,436,18,"Oak",yes,L2 W2,"Corner Door"
-1,716,596,18,"Oak",yes,L2 W2,"Base 4 Door"
 1,764,150,18,"White melamine",,,"Base 1 Plinth"
 2,764,302,18,"White melamine",,L1,"Wall 1 Shelf 1, Wall 1 Shelf 2"
 2,764,320,18,"White melamine",,L1,"Wall 1 Bottom, Wall 1 Top"
@@ -51,23 +57,23 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 1,3300,600,38,"Oak",yes,,"Worktop"
 
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
-"Oak",18,51.188
-"White melamine",18,57.836
+"Oak",18,52.495
+"White melamine",18,58.456
 
 Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
 "Sheet, Oak 18 mm",3,sheet,120,360
 "Sheet, White melamine 6 mm",3,sheet,15,45
 "Sheet, White melamine 12 mm",1,sheet,30,30
 "Sheet, White melamine 18 mm",13,sheet,45,585
-"Edge banding 1 mm, Oak 18 mm",51.188,m,0.6,30.71
-"Edge banding 1 mm, White melamine 18 mm",57.836,m,0.6,34.7
+"Edge banding 1 mm, Oak 18 mm",52.495,m,0.6,31.5
+"Edge banding 1 mm, White melamine 18 mm",58.456,m,0.6,35.07
 "Worktop, Worktop return",1.02,m,180,183.6
 "Worktop, Worktop",3.3,m,180,594
 "Hinge, 35 mm cup",35,piece,2.5,87.5
-"Drawer slide, pair",3,pair,12,36
+"Drawer slide, pair",4,pair,12,48
 "Shelf pin, 5 mm",68,piece,0.1,6.8
 "Confirmat screw, 7 x 50 mm",60,piece,0.15,9
 "Dowel, 8 x 35 mm",32,piece,0.05,1.6
 "Knob",8,piece,3.5,28
-"Pull, 128 mm",11,piece,6,66
-Total,,,,2097.91
+"Pull, 128 mm",12,piece,6,72
+Total,,,,2117.07

@@ -270,7 +270,7 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
     let drawer = part.starts_with("Drawer ");
     match part {
         "Side L" | "Side R" => (Edges::Front, Some(2)),
-        "Top" | "Bottom" => (Edges::Front, Some(width)),
+        "Top" | "Bottom" | "Rail" => (Edges::Front, Some(width)),
         _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
         _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),
         _ if part.starts_with("Door") || drawer && part.ends_with(" Front") => {

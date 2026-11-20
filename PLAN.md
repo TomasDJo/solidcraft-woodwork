@@ -93,6 +93,7 @@ Cabinets:
       (today: turn the component afterwards)
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [x] Worktop over a straight run of the selected cabinets (sink and hob cutouts dropped by decision: simple to cut afterwards)
+- [x] Drawers over doors and a graduated drawer stack (the top drawer's height given, the rest equal)
 - [ ] Plinth run over the selected cabinets
 
 Cut list and shop output:

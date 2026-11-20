@@ -148,6 +148,11 @@ impl Kit {
         format!("{value} {}", self.unit)
     }
 
+    /// Whether an edited cabinet already has the parameter `<Prefix>_<key>`.
+    pub fn has(&self, key: &str) -> bool {
+        self.existing.get(key).is_some()
+    }
+
     /// Makes a design parameter `<Prefix>_<key>` and returns its name.
     pub fn parameter(&self, key: &str, mm_value: f64, comment: &str) -> String {
         let id = format!("{}_{key}", self.prefix);
