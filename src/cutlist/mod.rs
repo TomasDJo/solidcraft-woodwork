@@ -355,6 +355,9 @@ pub fn cutlist(
     let bodies = measure["bodies"]
         .as_array()
         .ok_or("inspect.measure returned no bodies")?;
+    if bodies.is_empty() {
+        return Err("the design has no boards to list".into());
+    }
     let size = |body: &Value| -> Result<[f64; 3], String> {
         let name = body["name"].as_str().unwrap_or("?");
         let mut size = [0.0; 3];
