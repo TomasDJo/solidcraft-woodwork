@@ -17,7 +17,7 @@ It uses every function of the plugin:
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
-- Cut list: written out as CSV, with grain, banded edges, the sheets, banding and hardware to buy
+- Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
 and drawer a component inside its cabinet, on a joint. A few are left open.
@@ -137,7 +137,11 @@ cutlist = build.cli(steps, "--in", str(OUT), "--save", str(OUT))[-1]["result"]
 
 OUT.with_name(OUT.stem + "-cutlist.csv").write_text(cutlist["csv"], encoding="utf-8", newline="\n")
 for sheet in cutlist["sheets"]:
-    print(f"{sheet['sheets_2440x1220']:.0f} sheets of {sheet['thickness']:g} mm {sheet['material']} ({sheet['area_m2']} m2)")
+    print(f"{sheet['sheets']} sheets of {sheet['thickness']:g} mm {sheet['material']} ({sheet['area_m2']} m2, {sheet['yield_pct']} % yield)")
+for part in cutlist["worktops"]:
+    print(f"worktop, bought to length: {part['part']} ({part['length']:g} x {part['width']:g} x {part['thickness']:g} mm)")
+for part in cutlist["oversize"]:
+    print(f"not laid out: {part['part']} ({part['length']:g} x {part['width']:g} mm), {part['reason']}")
 for item in cutlist["hardware"]:
     print(item["qty"], "x", item["item"])
 print(cutlist["boards"], "boards ->", OUT)

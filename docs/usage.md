@@ -134,8 +134,8 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 Returns every board as length x width x thickness with quantities, and as CSV. In a design
 set to inches or feet it lists inches as fractions to 1/32. It also:
 
-- estimates the 2440 x 1220 sheets to buy per material and thickness (area plus 15 % waste,
-  not a cutting layout);
+- lays the parts out on sheets per material and thickness, and counts the sheets to buy from
+  those layouts (see [Cutting layouts](#cutting-layouts));
 - counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
 - marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
   along the width, `L1` one edge along the length. Doors and drawer fronts are banded all round; sides, top,
@@ -154,9 +154,45 @@ banded edge. The list says which it shows.
 
 Fill in **Save as** with a name to also get the list as a file, in the **Format** chosen:
 PDF, a printable A4 list with a tick box per board and per piece of hardware, one table per
-material and thickness, and the sheets to buy; or CSV, for a spreadsheet. It goes into the folder for cut
+material and thickness, the sheets to buy and the cutting diagrams; or CSV, for a spreadsheet. It goes into the folder for cut
 lists that SolidCraft asks you for when you install the plugin; without such a folder, leave
 the field empty.
+
+### Cutting layouts
+
+The parts are laid out on sheets of the **Sheet size** chosen (2440 x 1220, the default,
+2500 x 1250, 2800 x 2070 or 3050 x 1530 mm), with the **Saw kerf** (4 mm) left between parts
+and the **Edge trim** (10 mm) cut off every edge of the sheet. Each layout can be cut on a panel
+saw: every cut runs right across the piece it is made in. A part of a material with a grain
+keeps its length along the sheet's length; any other part may be turned. Parts are laid out at
+the size the list shows, so at the cut size when **Sizes** is Cut. A part that is too big for
+the sheet less its trim (or fits only with its grain across the sheet) is not laid out: the
+reply lists it under `oversize` with the reason, and the PDF names it under the sheets to buy.
+Sheet sizes, kerf and trim are metric mm: a 4 x 8 ft sheet is 2438.4 x 1219.2 mm, so pick
+2440 x 1220 and leave the trim on.
+
+A board whose name contains `Worktop` is not sheet stock: it is left out of the layouts and
+the sheets, and listed as bought to length (the reply's `worktops`, and a table "Worktops,
+bought to length" in the PDF). It still appears in the cut list's rows.
+
+The layouts are a quick greedy fit, not an optimiser: a few orders and two ways of choosing
+the free piece are tried and the one with the fewest sheets kept. A cutting program may well
+save a sheet on a big job.
+
+**Cutting diagrams** (Yes, the default, or No) adds a drawing of each sheet to the PDF, after
+the tables: per material and thickness a legend numbering the parts as rows of the list (equal
+parts share a number), then each sheet with its parts outlined and numbered with their size
+(the number only on a small part), the offcuts grey and the trim dashed. Each sheet's heading
+gives the material, thickness, sheet n of m and its yield, the share of the sheet that becomes
+parts.
+
+For scripts the reply has, beside the rows: `sheets` per material and thickness (`area_m2`,
+`sheets` to buy, `yield_pct`), `sheet_mm` (length and width), `kerf_mm`, `trim_mm`,
+`layouts` (one per sheet: `material`, `thickness`, `size`, `yield_pct` and `parts`, each with
+`part`, `row` (its row in `parts`, from 0), `x`, `y`, `w`, `h` and `rotated`; x along the
+sheet's length from its corner), `oversize` (`part`, `material`, `thickness`, `length`, `width`
+in mm and `reason`) and `worktops` (`part`, `material`, `thickness`, `length`, `width` as the
+list shows them). Layouts are always in mm (`layout_units`), also in a design in inches.
 
 ## Good to know
 

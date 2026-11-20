@@ -129,10 +129,14 @@
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/cutlist.svg",
-          "required": ["banding", "size", "format"],
+          "required": ["banding", "size", "sheet", "kerf", "trim", "diagrams", "format"],
           "properties": {
             "banding": { "type": "string", "title": "Edge banding", "description": "Doors and drawer fronts all round, carcass boards and shelves at the front.", "oneOf": [{ "const": "none", "title": "None" }, { "const": "0.4", "title": "0.4 mm" }, { "const": "1", "title": "1 mm" }, { "const": "2", "title": "2 mm" }], "default": "1" },
             "size": { "type": "string", "title": "Sizes", "oneOf": [{ "const": "finished", "title": "Finished", "description": "As in the model, banding included." }, { "const": "cut", "title": "Cut", "description": "Less the banding on each banded edge." }], "default": "finished" },
+            "sheet": { "type": "string", "title": "Sheet size", "description": "For the cutting layouts, length x width in mm.", "oneOf": [{ "const": "2440x1220", "title": "2440 x 1220" }, { "const": "2500x1250", "title": "2500 x 1250" }, { "const": "2800x2070", "title": "2800 x 2070" }, { "const": "3050x1530", "title": "3050 x 1530" }], "default": "2440x1220" },
+            "kerf": { "type": "number", "title": "Saw kerf (mm)", "description": "Left between parts on the sheet.", "default": 4, "minimum": 0, "maximum": 10 },
+            "trim": { "type": "number", "title": "Edge trim (mm)", "description": "Cut off each edge of the sheet.", "default": 10, "minimum": 0, "maximum": 50 },
+            "diagrams": { "type": "string", "title": "Cutting diagrams", "description": "A drawing of each sheet in the PDF.", "oneOf": [{ "const": "yes", "title": "Yes" }, { "const": "no", "title": "No" }], "default": "yes" },
             "format": { "type": "string", "title": "Format", "oneOf": [{ "const": "pdf", "title": "PDF" }, { "const": "csv", "title": "CSV" }], "default": "pdf" },
             "file": { "type": "string", "title": "Save as", "description": "Saved in the folder approved at install.", "default": "", "maxLength": 80 }
           }

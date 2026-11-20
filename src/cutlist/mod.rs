@@ -18,9 +18,6 @@ fn inches(mm: f64) -> String {
     }
 }
 
-const SHEET_M2: f64 = 2.44 * 1.22; // a full sheet, 2440 x 1220 mm (4 x 8 ft)
-const WASTE: f64 = 0.15; // offcuts and saw kerf
-
 /// The bodies that do not fill their world bounding box: a board that stands turned off the
 /// axes, such as an open door, or a part that is not a plain board. A board square to the axes
 /// fills its box but for holes and grooves, which take well under 3 %.
@@ -302,9 +299,19 @@ pub fn mark(length: u64, width: u64) -> String {
 
 const BANDING_WASTE: f64 = 0.10; // ends trimmed off each edge
 
+/// The sheet sizes the dialog offers, length and width in mm.
+const SHEETS: [(&str, [f64; 2]); 4] = [
+    ("2440x1220", [2440.0, 1220.0]),
+    ("2500x1250", [2500.0, 1250.0]),
+    ("2800x2070", [2800.0, 2070.0]),
+    ("3050x1530", [3050.0, 1530.0]),
+];
+
 /// `local` holds the sizes of the turned bodies, measured in their own component. `params` is
-/// the dialog: `banding` (the tape's thickness, `none`, `0.4`, `1` or `2` mm) and `size`
-/// (`finished`, or `cut`: less the tape on each banded edge).
+/// the dialog: `banding` (the tape's thickness, `none`, `0.4`, `1` or `2` mm), `size`
+/// (`finished`, or `cut`: less the tape on each banded edge), and for the cutting layouts
+/// `sheet` (one of `SHEETS`), `kerf` and `trim` in mm, and `diagrams` (`yes` or `no`, read by
+/// the PDF).
 pub fn cutlist(
     measure: &Value,
     local: &BTreeMap<String, [f64; 3]>,
@@ -323,6 +330,21 @@ pub fn cutlist(
         "cut" => true,
         _ => return Err("size must be finished or cut".into()),
     };
+    let sheet_name = params["sheet"].as_str().unwrap_or("2440x1220");
+    let sheet = match SHEETS.iter().find(|(name, _)| *name == sheet_name) {
+        Some((_, size)) => *size,
+        None => return Err("sheet must be 2440x1220, 2500x1250, 2800x2070 or 3050x1530".into()),
+    };
+    let millimetres = |key: &str, default: f64, max: f64| match &params[key] {
+        Value::Null => Ok(default),
+        v => (v.as_f64().filter(|n| (0.0..=max).contains(n)))
+            .ok_or(format!("{key} must be a number of mm from 0 to {max}")),
+    };
+    let kerf = millimetres("kerf", 4.0, 10.0)?;
+    let trim = millimetres("trim", 10.0, 50.0)?;
+    if !matches!(params["diagrams"].as_str().unwrap_or("yes"), "yes" | "no") {
+        return Err("diagrams must be yes or no".into());
+    }
     let bodies = measure["bodies"]
         .as_array()
         .ok_or("inspect.measure returned no bodies")?;
@@ -405,11 +427,13 @@ pub fn cutlist(
     let mut area_m2 = 0.0;
     let mut stock: BTreeMap<(String, i64), f64> = BTreeMap::new(); // area per material and thickness
     let mut tape: BTreeMap<(String, i64), f64> = BTreeMap::new(); // banding in mm, the same
+    type Laid = (crate::nesting::Part, String, usize); // a part, its name and its row
+    let mut pieces: BTreeMap<(String, i64), Vec<Laid>> = BTreeMap::new(); // to lay out, the same
+    let mut worktops = Vec::new();
     for ((t, l, w, material, le, we), names) in &rows {
         let qty = names.len();
         let row_m2 = mm(*l) * mm(*w) * qty as f64 / 1e6;
         area_m2 += row_m2;
-        *stock.entry((material.clone(), *t)).or_insert(0.0) += row_m2;
         let banded = (*le as f64 * mm(*l) + *we as f64 * mm(*w)) * qty as f64;
         if banded > 0.0 {
             *tape.entry((material.clone(), *t)).or_insert(0.0) += banded;
@@ -420,6 +444,25 @@ pub fn cutlist(
             false => (*l, *w),
         };
         let grain = crate::material::GRAINED.contains(&material.as_str());
+        let (row, one_m2) = (parts.len(), mm(*l) * mm(*w) / 1e6);
+        for name in names {
+            // ponytail: a worktop is told by its name, like the banding roles
+            if name.contains("Worktop") {
+                worktops.push(
+                    json!({"part": name, "material": material, "thickness": shown(*t),
+                                     "length": shown(cl), "width": shown(cw)}),
+                );
+                continue;
+            }
+            *stock.entry((material.clone(), *t)).or_insert(0.0) += one_m2;
+            let part = crate::nesting::Part {
+                length: mm(cl),
+                width: mm(cw),
+                grain,
+            };
+            let laid = pieces.entry((material.clone(), *t)).or_default();
+            laid.push((part, name.clone(), row));
+        }
         let (l, w, t) = (shown(cl), shown(cw), shown(*t));
         csv += &format!(
             "{qty},{},{},{},{},{},{},{}\n",
@@ -438,16 +481,49 @@ pub fn cutlist(
         }));
     }
     let round = |v: f64| (v * 1000.0).round() / 1000.0;
-    // ponytail: sheets to buy are estimated from area with 15 % waste, not from a cutting
-    // layout, and a part longer than a sheet is not noticed. Nest the parts for a real count.
-    let sheets: Vec<Value> = (stock.iter())
-        .map(|((material, t), m2)| {
-            json!({
-                "material": material, "thickness": shown(*t), "area_m2": round(*m2),
-                "sheets_2440x1220": (m2 * (1.0 + WASTE) / SHEET_M2).ceil(),
-            })
-        })
-        .collect();
+    // The sheets to buy are those of the cutting layouts, in mm whatever the design's units.
+    let tenth = |v: f64| (v * 10.0).round() / 10.0;
+    let percent =
+        |used: f64, sheets: usize| tenth(used / (sheets as f64 * sheet[0] * sheet[1]) * 100.0);
+    let (mut sheets, mut layouts, mut oversize) = (Vec::new(), Vec::new(), Vec::new());
+    for ((material, t), m2) in &stock {
+        let group = &pieces[&(material.clone(), *t)];
+        let parts: Vec<crate::nesting::Part> = (group.iter()).map(|(p, ..)| *p).collect();
+        let (laid, big) = crate::nesting::nest(&parts, sheet, kerf, trim);
+        let area =
+            |placed: &[crate::nesting::Placed]| placed.iter().map(|p| p.w * p.h).sum::<f64>();
+        let used: f64 = laid.iter().map(|placed| area(placed)).sum();
+        sheets.push(json!({
+            "material": material, "thickness": shown(*t), "area_m2": round(*m2),
+            "sheets": laid.len(), "yield_pct": if laid.is_empty() { 0.0 } else { percent(used, laid.len()) },
+        }));
+        for placed in &laid {
+            let parts: Vec<Value> = (placed.iter())
+                .map(|p| {
+                    let (_, name, row) = &group[p.part];
+                    json!({"part": name, "row": row, "x": tenth(p.x), "y": tenth(p.y), "w": tenth(p.w),
+                           "h": tenth(p.h), "rotated": p.rotated})
+                })
+                .collect();
+            layouts.push(json!({
+                "material": material, "thickness": mm(*t), "size": sheet,
+                "yield_pct": percent(area(placed), 1), "parts": parts,
+            }));
+        }
+        let room = [sheet[0] - 2.0 * trim, sheet[1] - 2.0 * trim];
+        for i in big {
+            let (p, name, _) = &group[i];
+            let turned = p.grain && p.width <= room[0] && p.length <= room[1];
+            let reason = match turned {
+                true => "does not fit with its grain along the sheet",
+                false => "bigger than the sheet less its trim",
+            };
+            oversize.push(
+                json!({"part": name, "material": material, "thickness": mm(*t),
+                                 "length": p.length, "width": p.width, "reason": reason}),
+            );
+        }
+    }
     let feet = |m: f64| round(m / 0.3048);
     let banding: Vec<Value> = (tape.iter())
         .map(|((material, t), mm)| {
@@ -485,6 +561,13 @@ pub fn cutlist(
         "size": if cut { "cut" } else { "finished" },
         "banding_mm": mm(band),
         "sheets": sheets,
+        "sheet_mm": sheet,
+        "kerf_mm": kerf,
+        "trim_mm": trim,
+        "layout_units": "mm",
+        "layouts": layouts,
+        "oversize": oversize,
+        "worktops": worktops,
         "banding": banding,
         "parts": parts,
         "boards": bodies.len(),

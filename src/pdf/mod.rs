@@ -42,6 +42,8 @@ fn byte(c: char) -> u8 {
 fn width(text: &str, size: f64) -> f64 {
     let em = |c: char| match c {
         ' '..='~' => WIDTHS[c as usize - 32] as f64,
+        '—' => 1000.0,
+        '×' => 584.0,
         _ => 556.0, // ponytail: an average for letters outside ASCII
     };
     text.chars().map(em).sum::<f64>() * size / 1000.0
@@ -180,8 +182,9 @@ fn shown(v: &Value) -> String {
         .map_or_else(|| v.as_str().unwrap_or("").into(), |n| n.to_string())
 }
 
-/// The PDF of a cut list, `cutlist::cutlist`'s reply with its `hardware`. `title` heads it.
-pub fn render(list: &Value, title: &str) -> Vec<u8> {
+/// The PDF of a cut list, `cutlist::cutlist`'s reply with its `hardware`. `title` heads it;
+/// with `diagrams` a cutting diagram of each sheet follows the tables.
+pub fn render(list: &Value, title: &str, diagrams: bool) -> Vec<u8> {
     let units = list["units"].as_str().unwrap_or("mm");
     let imperial = units == "in";
     let none = vec![];
@@ -228,12 +231,18 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
             "board area (m²)",
         )
     };
-    let count = |key: &str| sheets.iter().filter_map(|s| s[key].as_f64()).sum::<f64>();
+    let count: u64 = sheets.iter().filter_map(|s| s["sheets"].as_u64()).sum();
+    let size = format!(
+        "{} × {}",
+        shown(&list["sheet_mm"][0]),
+        shown(&list["sheet_mm"][1])
+    );
+    let sheets_label = format!("sheets {size}");
     let tiles = [
         (shown(&list["boards"]), "pieces to cut"),
         (parts.len().to_string(), "part sizes"),
         (area, unit),
-        (count("sheets_2440x1220").to_string(), "sheets 2440 × 1220"),
+        (count.to_string(), sheets_label.as_str()),
     ];
     let (gap, th) = (8.0, 44.0);
     let tw = (W - 2.0 * M - 3.0 * gap) / 4.0;
@@ -256,7 +265,16 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
         ("EDGES", M + 244.0, false, true),
         ("PARTS", M + 284.0, false, false),
     ];
-    for sheet in sheets {
+    // Material, then thickness (the rows come thinnest first), as the sheets to buy.
+    let mut groups: Vec<&Value> = Vec::new();
+    for p in parts {
+        let seen = |g: &&Value| g["material"] == p["material"] && g["thickness"] == p["thickness"];
+        if !groups.iter().any(seen) {
+            groups.push(p);
+        }
+    }
+    groups.sort_by_key(|g| g["material"].as_str().unwrap_or(""));
+    for sheet in groups {
         let same =
             |p: &&Value| p["material"] == sheet["material"] && p["thickness"] == sheet["thickness"];
         let rows: Vec<Vec<String>> = (parts.iter().filter(same))
@@ -306,17 +324,73 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
                 s["material"].as_str().unwrap_or("").into(),
                 format!("{} {units}", shown(&s["thickness"])),
                 format!("{area:.2}"),
-                shown(&s["sheets_2440x1220"]),
+                format!("{} %", shown(&s["yield_pct"])),
+                shown(&s["sheets"]),
             ]
         })
         .collect();
+    let sheets_title = format!("SHEETS {size}");
     let stock_cols = [
         ("MATERIAL", M + 4.0, false, false),
-        ("THICK", M + 300.0, true, false),
-        (area_title, M + 390.0, true, false),
-        ("SHEETS 2440 × 1220", W - M - 4.0, true, false),
+        ("THICK", M + 250.0, true, false),
+        (area_title, M + 330.0, true, false),
+        ("YIELD", M + 400.0, true, false),
+        (&sheets_title, W - M - 4.0, true, false),
     ];
     doc.table(&stock_cols, &stock, false);
+    let mut note = format!(
+        "Sheets are counted from the cutting layouts: {size} mm sheets, {} mm saw kerf between parts, {} mm trimmed off each edge. Yield is the share of the sheets that becomes parts.",
+        shown(&list["kerf_mm"]),
+        shown(&list["trim_mm"])
+    );
+    let oversize = list["oversize"].as_array().unwrap_or(&none);
+    if !oversize.is_empty() {
+        let big: Vec<String> = (oversize.iter())
+            .map(|p| {
+                let (l, w) = (shown(&p["length"]), shown(&p["width"]));
+                let (part, why) = (p["part"].as_str(), p["reason"].as_str());
+                format!(
+                    "{} ({l} × {w} mm): {}",
+                    part.unwrap_or(""),
+                    why.unwrap_or("")
+                )
+            })
+            .collect();
+        note += &format!(" Not laid out and not counted: {}.", big.join("; "));
+    }
+    let lines = wrap(&note, 7.5, W - 2.0 * M);
+    doc.room(6.0 + 10.0 * lines.len() as f64);
+    doc.y -= 6.0;
+    for line in lines {
+        doc.y -= 10.0;
+        doc.text(M, doc.y, 7.5, false, GREY, &line);
+    }
+
+    let worktops = list["worktops"].as_array().unwrap_or(&none);
+    if !worktops.is_empty() {
+        doc.heading("Worktops, bought to length", "");
+        let rows: Vec<Vec<String>> = (worktops.iter())
+            .map(|w| {
+                vec![
+                    String::new(),
+                    shown(&w["length"]),
+                    shown(&w["width"]),
+                    format!("{} {units}", shown(&w["thickness"])),
+                    w["material"].as_str().unwrap_or("").into(),
+                    shown(&w["part"]),
+                ]
+            })
+            .collect();
+        let cols = [
+            ("GOT", M + 4.0, false, false),
+            ("LENGTH", M + 110.0, true, true),
+            ("WIDTH", M + 160.0, true, true),
+            ("THICK", M + 220.0, true, false),
+            ("MATERIAL", M + 240.0, false, false),
+            ("PART", M + 360.0, false, false),
+        ];
+        doc.table(&cols, &rows, true);
+    }
 
     let banding = list["banding"].as_array().unwrap_or(&none);
     if !banding.is_empty() {
@@ -360,16 +434,145 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
         doc.table(&hw_cols, &rows, true);
     }
 
-    let note = "Sheets are estimated from area plus 15 % waste, not from a cutting layout: allow for saw kerf, \
-                trimming and grain direction when laying out.";
-    let lines = wrap(note, 7.5, W - 2.0 * M);
-    doc.room(18.0 + 10.0 * lines.len() as f64);
-    doc.y -= 18.0;
-    for line in lines {
-        doc.text(M, doc.y, 7.5, false, GREY, &line);
-        doc.y -= 10.0;
+    if diagrams {
+        cutting_diagrams(&mut doc, list);
     }
     assemble(&doc.pages)
+}
+
+const OFFCUT: f64 = 0.78;
+
+/// From a new page: per material and thickness, a legend of its parts numbered as in the
+/// whole list, then each sheet drawn to the page's width, parts white with their number and
+/// size, offcuts grey, the trim dashed.
+fn cutting_diagrams(doc: &mut Doc, list: &Value) {
+    let none = vec![];
+    let units = list["units"].as_str().unwrap_or("mm");
+    let parts = list["parts"].as_array().unwrap_or(&none);
+    let layouts = list["layouts"].as_array().unwrap_or(&none);
+    if layouts.is_empty() {
+        return;
+    }
+    // A part's number is its row in the list, so equal parts share it.
+    let row = |p: &Value| {
+        p["row"]
+            .as_u64()
+            .map(|i| i as usize)
+            .filter(|&i| i < parts.len())
+    };
+    let size = |row: &Value| format!("{} × {}", shown(&row["length"]), shown(&row["width"]));
+    doc.pages.push(Vec::new());
+    doc.y = H - M - 4.0;
+    doc.text(M, doc.y - 18.0, 18.0, true, INK, "Cutting diagrams");
+    doc.y -= 30.0;
+    let legend = [
+        ("NO.", M + 22.0, true, true),
+        ("QTY", M + 52.0, true, false),
+        ("LENGTH", M + 110.0, true, true),
+        ("WIDTH", M + 160.0, true, true),
+        ("PARTS", M + 180.0, false, false),
+    ];
+    let mut next = 0;
+    for group in list["sheets"].as_array().unwrap_or(&none) {
+        let n = group["sheets"].as_u64().unwrap_or(0) as usize;
+        let sheets = &layouts[next.min(layouts.len())..(next + n).min(layouts.len())];
+        next += n;
+        if sheets.is_empty() {
+            continue;
+        }
+        let material = match group["material"].as_str().unwrap_or("") {
+            "" => "No material",
+            m => m,
+        };
+        let title = format!("{material} — {} {units}", shown(&group["thickness"]));
+        let s = if n == 1 { "" } else { "s" };
+        doc.heading(&title, &format!("({n} sheet{s}, sizes in {units})"));
+        let mut rows: Vec<usize> = (sheets.iter())
+            .flat_map(|l| l["parts"].as_array().unwrap_or(&none))
+            .filter_map(row)
+            .collect();
+        rows.sort();
+        rows.dedup();
+        let rows: Vec<Vec<String>> = (rows.iter())
+            .map(|&i| {
+                let row = &parts[i];
+                let names = row["parts"].as_array().unwrap_or(&none);
+                let names: Vec<&str> = names.iter().filter_map(Value::as_str).collect();
+                vec![
+                    (i + 1).to_string(),
+                    shown(&row["qty"]),
+                    shown(&row["length"]),
+                    shown(&row["width"]),
+                    names.join(", "),
+                ]
+            })
+            .collect();
+        doc.table(&legend, &rows, false);
+
+        for (k, sheet) in sheets.iter().enumerate() {
+            let (sl, sw) = (
+                sheet["size"][0].as_f64().unwrap_or(2440.0),
+                sheet["size"][1].as_f64().unwrap_or(1220.0),
+            );
+            let scale = (W - 2.0 * M) / sl;
+            let dh = sw * scale;
+            doc.room(dh + 34.0);
+            doc.y -= 18.0;
+            let head = format!("{title}   ·   sheet {} of {n}", k + 1);
+            doc.text(M, doc.y, 9.5, true, INK, &head);
+            let note = format!(
+                "{} × {} mm, yield {} %",
+                shown(&sheet["size"][0]),
+                shown(&sheet["size"][1]),
+                shown(&sheet["yield_pct"])
+            );
+            doc.text(W - M - width(&note, 8.5), doc.y, 8.5, false, GREY, &note);
+            doc.y -= 6.0 + dh;
+            let (x0, y0) = (M, doc.y);
+            doc.raw(&format!(
+                "{OFFCUT} g {INK} G 1 w {x0:.2} {y0:.2} {:.2} {dh:.2} re B\n",
+                W - 2.0 * M
+            ));
+            let trim = list["trim_mm"].as_f64().unwrap_or(0.0) * scale;
+            if trim > 0.0 {
+                doc.raw(&format!(
+                    "{GREY} G 0.4 w [2 2] 0 d {:.2} {:.2} {:.2} {:.2} re S [] 0 d\n",
+                    x0 + trim,
+                    y0 + trim,
+                    W - 2.0 * M - 2.0 * trim,
+                    dh - 2.0 * trim
+                ));
+            }
+            for p in sheet["parts"].as_array().unwrap_or(&none) {
+                let at = |key: &str| p[key].as_f64().unwrap_or(0.0) * scale;
+                let (x, y, w, h) = (x0 + at("x"), y0 + at("y"), at("w"), at("h"));
+                doc.raw(&format!(
+                    "1 g {INK} G 0.6 w {x:.2} {y:.2} {w:.2} {h:.2} re B\n"
+                ));
+                let Some(i) = row(p) else {
+                    continue;
+                };
+                let (label, dims) = ((i + 1).to_string(), size(&parts[i]));
+                let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+                let lw = width(&label, 11.0) * 1.06;
+                let one = format!("{label}  {dims}");
+                if h >= 26.0 && w >= lw.max(width(&dims, 8.0)) + 4.0 {
+                    doc.text(cx - lw / 2.0, cy + 1.0, 11.0, true, INK, &label);
+                    let dx = cx - width(&dims, 8.0) / 2.0;
+                    doc.text(dx, cy - 9.0, 8.0, false, INK, &dims);
+                } else if h >= 10.0 && w >= width(&one, 7.5) * 1.03 + 4.0 {
+                    let x = cx - width(&one, 7.5) * 1.03 / 2.0;
+                    doc.text(x, cy - 2.7, 7.5, true, INK, &label);
+                    let dx = x + width(&format!("{label}  "), 7.5) * 1.06;
+                    doc.text(dx, cy - 2.7, 7.5, false, INK, &dims);
+                } else if h >= 7.0 && w >= width(&label, 6.5) * 1.06 + 2.0 {
+                    let x = cx - width(&label, 6.5) * 1.06 / 2.0;
+                    doc.text(x, cy - 2.2, 6.5, true, INK, &label);
+                }
+            }
+            doc.y -= 10.0;
+        }
+    }
 }
 
 /// The PDF file around the pages' operators: catalog, page tree, the two fonts, then a page
