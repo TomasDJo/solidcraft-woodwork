@@ -100,7 +100,9 @@ Cut list and shop output:
 - [x] Edge banding and grain direction in the cut list
 - [x] Sheet cutting diagrams (nesting, kerf, grain)
 - [x] Part labels, a sticker per board (A4, 3 x 8)
-- [ ] DXF per part
+- [ ] Cost estimate: prices kept in the design, the cost of sheets, banding, worktops and hardware in the cut list (postponed until conditional dialog fields, SolidCraft 0.46)
+- [x] DXF per sheet: parts, names and holes on a layer per diameter and depth
+- [ ] DXF per part (one file per board)
 
 ## Waiting for the app
 

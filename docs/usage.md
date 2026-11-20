@@ -155,7 +155,8 @@ banded edge. The list says which it shows.
 Fill in **Save as** with a name to also get the list as a file, in the **Format** chosen:
 PDF, a printable A4 list with a tick box per board and per piece of hardware, one table per
 material and thickness, the sheets to buy and the cutting diagrams; CSV, for a spreadsheet; or
-Labels (PDF), a sticker per board to stick on after cutting (see [Part labels](#part-labels)). It goes into the folder for cut
+Labels (PDF), a sticker per board to stick on after cutting (see [Part labels](#part-labels)); or
+DXF, a drawing per sheet for a CNC router or CAD program (see [DXF](#dxf)). It goes into the folder for cut
 lists that SolidCraft asks you for when you install the plugin; without such a folder, leave
 the field empty.
 
@@ -200,11 +201,36 @@ sheet's parts come off it in label order; boards on no sheet come last, marked "
 length" (worktops) or "not on a sheet" (too big). A long name is set smaller, down to 7 pt,
 then cut short with `...`.
 
+### DXF
+
+**Format** DXF saves one file per sheet of the cutting layouts, `<name>-<material>-<thickness>-<n>.dxf`
+(`kitchen-White melamine-18-3.dxf`, n counting the sheets of each material and thickness from 1),
+and the reply's `saved` lists them all. Each is an ASCII DXF R12 with every size in mm, x along the sheet's
+length and y across it, as the cutting diagrams, on these layers:
+
+- `SHEET`: the sheet's outline, and the edge trim inside it
+- `OUTLINE`: each part's rectangle, where it lies on the sheet
+- `TEXT`: each part's name in its middle, along its longer side
+- `DRILL_<diameter>_D<depth>`, or `DRILL_<diameter>_THRU` for a hole right through: the holes
+  drilled into the part's face, in mm to 0.1 with a `P` for the decimal point (`DRILL_5_D12`
+  shelf pins, `DRILL_35_D13` hinge cups, `DRILL_5_THRU` handle screws, `DRILL_4P5_D10P9`). A hole drilled from the other face than the one drawn is
+  on the same layer with `_BACK` added. Each part is drawn from the face with the most holes.
+
+The holes are read from the model, one command per drilled board (about 60 in the sample
+kitchen). Limits: a hole drilled into an edge (confirmat pilot, dowel into a board's end) cannot
+be drawn on a sheet and is only counted, in the reply's `dxf_edge_holes`; grooves (the back
+panel's) are not drawn; at Cut sizes a hole is placed from the part's middle, so up to half the
+banding (1 mm) off toward a banded edge; a square or nearly square part may get its holes
+turned a quarter against its grain, as its length is told from its width by size. A design with more drilled boards than a run's 256
+commands allow gets outlines only for the rest, named in `dxf_holes_skipped`. A sketch's
+**Insert DXF** reads the files back.
+
 For scripts the reply has, beside the rows: `sheets` per material and thickness (`area_m2`,
 `sheets` to buy, `yield_pct`), `sheet_mm` (length and width), `kerf_mm`, `trim_mm`,
 `layouts` (one per sheet: `material`, `thickness`, `size`, `yield_pct` and `parts`, each with
 `part`, `row` (its row in `parts`, from 0), `x`, `y`, `w`, `h` and `rotated`; x along the
-sheet's length from its corner), `oversize` (`part`, `material`, `thickness`, `length`, `width`
+sheet's length from its corner; when saving DXF also `holes`, each `[x, y, diameter, depth or
+null, back]` on the sheet), `oversize` (`part`, `material`, `thickness`, `length`, `width`
 in mm and `reason`) and `worktops` (`part`, `material`, `thickness`, `length`, `width` as the
 list shows them). Layouts are always in mm (`layout_units`), also in a design in inches.
 
