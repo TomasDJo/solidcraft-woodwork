@@ -17,7 +17,7 @@ It uses every function of the plugin:
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
-- Cut list: written out as CSV, with the sheets and the hardware to buy
+- Cut list: written out as CSV, with grain, banded edges, the sheets, banding and hardware to buy
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
 and drawer a component inside its cabinet, on a joint. A few are left open.

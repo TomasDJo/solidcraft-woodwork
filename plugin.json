@@ -129,8 +129,10 @@
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/cutlist.svg",
-          "required": ["format"],
+          "required": ["banding", "size", "format"],
           "properties": {
+            "banding": { "type": "string", "title": "Edge banding", "description": "Doors and drawer fronts all round, carcass boards and shelves at the front.", "oneOf": [{ "const": "none", "title": "None" }, { "const": "0.4", "title": "0.4 mm" }, { "const": "1", "title": "1 mm" }, { "const": "2", "title": "2 mm" }], "default": "1" },
+            "size": { "type": "string", "title": "Sizes", "oneOf": [{ "const": "finished", "title": "Finished", "description": "As in the model, banding included." }, { "const": "cut", "title": "Cut", "description": "Less the banding on each banded edge." }], "default": "finished" },
             "format": { "type": "string", "title": "Format", "oneOf": [{ "const": "pdf", "title": "PDF" }, { "const": "csv", "title": "CSV" }], "default": "pdf" },
             "file": { "type": "string", "title": "Save as", "description": "Saved in the folder approved at install.", "default": "", "maxLength": 80 }
           }

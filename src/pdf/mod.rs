@@ -202,8 +202,19 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
     doc.y -= 34.0;
     doc.text(M, doc.y, 22.0, true, INK, &format!("{title} — Cut list"));
     doc.y -= 16.0;
-    let about = format!("All sizes in {units}, length × width × thickness");
+    let sized = match list["size"].as_str() {
+        Some("cut") => format!(
+            "cut sizes: finished less the {} mm banding on each banded edge",
+            shown(&list["banding_mm"])
+        ),
+        _ => "finished sizes".into(),
+    };
+    let about = format!("All sizes in {units}, length × width × thickness, {sized}.");
     doc.text(M, doc.y, 9.0, false, GREY, &about);
+    doc.y -= 11.0;
+    let legend =
+        "Grain runs along the length. Banded edges: L along the length, W along the width.";
+    doc.text(M, doc.y, 9.0, false, GREY, legend);
 
     // Four tiles: pieces, part sizes, board area, sheets.
     let (area, unit) = if imperial {
@@ -241,7 +252,9 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
         ("LENGTH", M + 110.0, true, true),
         ("WIDTH", M + 160.0, true, true),
         ("THICK", M + 200.0, true, false),
-        ("PARTS", M + 216.0, false, false),
+        ("GRAIN", M + 212.0, false, false),
+        ("EDGES", M + 244.0, false, true),
+        ("PARTS", M + 284.0, false, false),
     ];
     for sheet in sheets {
         let same =
@@ -256,6 +269,11 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
                     shown(&p["length"]),
                     shown(&p["width"]),
                     shown(&p["thickness"]),
+                    if p["grain"] == true { "yes" } else { "" }.into(),
+                    crate::cutlist::mark(
+                        p["banding"]["length"].as_u64().unwrap_or(0),
+                        p["banding"]["width"].as_u64().unwrap_or(0),
+                    ),
                     names.join(", "),
                 ]
             })
@@ -300,6 +318,35 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
     ];
     doc.table(&stock_cols, &stock, false);
 
+    let banding = list["banding"].as_array().unwrap_or(&none);
+    if !banding.is_empty() {
+        let note = format!("({} mm, plus 10 % waste)", shown(&list["banding_mm"]));
+        doc.heading("Edge banding to buy", &note);
+        let (key, title) = if imperial {
+            ("feet", "FEET")
+        } else {
+            ("metres", "METRES")
+        };
+        let rows: Vec<Vec<String>> = (banding.iter())
+            .map(|b| {
+                vec![
+                    b["material"].as_str().unwrap_or("").into(),
+                    format!("{} {units}", shown(&b["thickness"])),
+                    format!(
+                        "{:.1}",
+                        (b[key].as_f64().unwrap_or(0.0) * 10.0).ceil() / 10.0
+                    ), // up: to buy
+                ]
+            })
+            .collect();
+        let cols = [
+            ("MATERIAL", M + 4.0, false, false),
+            ("BOARD THICK", M + 300.0, true, false),
+            (title, W - M - 4.0, true, false),
+        ];
+        doc.table(&cols, &rows, false);
+    }
+
     if !hardware.is_empty() {
         doc.heading("Hardware", "");
         let rows: Vec<Vec<String>> = (hardware.iter())
@@ -313,8 +360,7 @@ pub fn render(list: &Value, title: &str) -> Vec<u8> {
         doc.table(&hw_cols, &rows, true);
     }
 
-    let note = "Sizes are the finished sizes of the parts in the model. Sheets are estimated \
-                from area plus 15 % waste, not from a cutting layout: allow for saw kerf, \
+    let note = "Sheets are estimated from area plus 15 % waste, not from a cutting layout: allow for saw kerf, \
                 trimming and grain direction when laying out.";
     let lines = wrap(note, 7.5, W - 2.0 * M);
     doc.room(18.0 + 10.0 * lines.len() as f64);

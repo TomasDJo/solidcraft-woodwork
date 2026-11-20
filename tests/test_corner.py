@@ -38,7 +38,7 @@ def test_l_shape_doors_and_mirror(approval):
         alone = cli([plugin(approval, "corner", {**corner, "corner": side, "doors": doors}),
                      drive("C Door return fold", 90), {"command": "inspect.measure", "params": {}}])
         assert boxes(alone[2])["C Door return"] == flat, (side, boxes(alone[2])["C Door return"])
-    assert '3,964,864,18,"Birch plywood","C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"]
+    assert '3,964,864,18,"Birch plywood",yes,L1,"C Bottom, C Top, C Shelf 1"' in results[7]["result"]["csv"], results[7]["result"]["csv"]
     assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
     results = cli([plugin(approval, "corner", {**corner, "corner": "right", "doors": "hinged left"}),
                    drive("C Door hinge", 60), drive("C Door return fold", 90),

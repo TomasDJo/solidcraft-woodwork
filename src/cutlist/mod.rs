@@ -259,33 +259,126 @@ pub fn file_name(entry: &str, params: &Value) -> Result<Option<String>, String> 
     Ok(Some(format!("{stem}.{format}")))
 }
 
-/// `local` holds the sizes of the turned bodies, measured in their own component.
+/// Which edges of a part are banded, and the axis its grain runs along, by its name in its
+/// cabinet (`Side L`, `Shelf 2.1`): `width` is the cabinet's width axis. The banded edges are
+/// none, all four, or the front edge, which runs along the grain axis. The grain axis is up for
+/// an upright board, the cabinet's width for one lying flat, and none (the longest side) for a
+/// plinth, a drawer box's side, front or back, or a part we do not know.
+fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
+    // ponytail: by name only, no per-part override (that needs storage@0.1 or a body property).
+    let drawer = part.starts_with("Drawer ");
+    match part {
+        "Side L" | "Side R" => (Edges::Front, Some(2)),
+        "Top" | "Bottom" => (Edges::Front, Some(width)),
+        _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
+        _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),
+        _ if part.starts_with("Door") || drawer && part.ends_with(" Front") => {
+            (Edges::All, Some(2))
+        }
+        _ if drawer && part.ends_with(" Bottom") => (Edges::None, Some(width)),
+        "Back" | "Back return" => (Edges::None, Some(2)),
+        // plinths, a drawer box's sides, front and back (grain along the box), and what we
+        // do not know
+        _ => (Edges::None, None),
+    }
+}
+
+enum Edges {
+    None,
+    Front,
+    All,
+}
+
+/// The banded edges as the lists mark them: `L2 W2`, `L1`, `` for none. L counts the edges
+/// along the length, W those along the width.
+pub fn mark(length: u64, width: u64) -> String {
+    let marks = [("L", length), ("W", width)];
+    let banded = marks.iter().filter(|(_, n)| *n > 0);
+    banded
+        .map(|(edge, n)| format!("{edge}{n}"))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+const BANDING_WASTE: f64 = 0.10; // ends trimmed off each edge
+
+/// `local` holds the sizes of the turned bodies, measured in their own component. `params` is
+/// the dialog: `banding` (the tape's thickness, `none`, `0.4`, `1` or `2` mm) and `size`
+/// (`finished`, or `cut`: less the tape on each banded edge).
 pub fn cutlist(
     measure: &Value,
     local: &BTreeMap<String, [f64; 3]>,
     imperial: bool,
+    params: &Value,
 ) -> Result<Value, String> {
+    let band = match params["banding"].as_str().unwrap_or("1") {
+        "none" => 0,
+        "0.4" => 4,
+        "1" => 10,
+        "2" => 20,
+        _ => return Err("banding must be none, 0.4, 1 or 2".into()),
+    }; // in tenths of a mm
+    let cut = match params["size"].as_str().unwrap_or("finished") {
+        "finished" => false,
+        "cut" => true,
+        _ => return Err("size must be finished or cut".into()),
+    };
     let bodies = measure["bodies"]
         .as_array()
         .ok_or("inspect.measure returned no bodies")?;
-    // Key: thickness, length, width in tenths of a mm, then material.
-    let mut rows: BTreeMap<(i64, i64, i64, String), Vec<String>> = BTreeMap::new();
-    for body in bodies {
-        // A board square to the axes is as big as its world bounding box. A turned one is
-        // not, and comes measured in its own component.
-        let name = body["name"].as_str().unwrap_or("?").to_string();
-        let mut size = [0i64; 3];
+    let size = |body: &Value| -> Result<[f64; 3], String> {
+        let name = body["name"].as_str().unwrap_or("?");
+        let mut size = [0.0; 3];
         for (i, s) in size.iter_mut().enumerate() {
             let max = body["bbox"]["max"][i].as_f64().ok_or("body without bbox")?;
             let min = body["bbox"]["min"][i].as_f64().ok_or("body without bbox")?;
-            let mm = local.get(&name).map_or(max - min, |own| own[i]);
-            *s = (mm * 10.0).round() as i64;
+            *s = local.get(name).map_or(max - min, |own| own[i]);
         }
-        size.sort();
+        Ok(size)
+    };
+    // A cabinet's width axis: across its Side L. A turned board is measured in its own
+    // component, whose X is the cabinet's width.
+    let width_axis = |cabinet: &str, name: &str| -> Result<usize, String> {
+        let side = format!("{cabinet} Side L");
+        let found = bodies.iter().find(|b| b["name"] == side.as_str());
+        Ok(match found {
+            Some(body) if !local.contains_key(name) && !local.contains_key(&side) => {
+                let s = size(body)?;
+                usize::from(s[1] < s[0])
+            }
+            _ => 0,
+        })
+    };
+    // Key: thickness, length, width in tenths of a mm, material, then the banded edges along
+    // the length and along the width.
+    type Key = (i64, i64, i64, String, u64, u64);
+    let mut rows: BTreeMap<Key, Vec<String>> = BTreeMap::new();
+    for body in bodies {
+        let name = body["name"].as_str().unwrap_or("?").to_string();
+        let tenths = size(body)?.map(|mm| (mm * 10.0).round() as i64);
         let material = body["material"].as_str().unwrap_or("").to_string();
-        rows.entry((size[0], size[2], size[1], material))
-            .or_default()
-            .push(name);
+        let (edges, grain) = match crate::select::owner(measure, &name) {
+            Some(cabinet) => role(&name[cabinet.len() + 1..], width_axis(cabinet, &name)?),
+            None => (Edges::None, None),
+        };
+        // Thinnest axis is the thickness; the length runs along the grain on a grained board,
+        // else along the longest side.
+        let mut axes = [0, 1, 2];
+        axes.sort_by_key(|&i| tenths[i]);
+        let (t, mut l, mut w) = (axes[0], axes[2], axes[1]);
+        let grained = crate::material::GRAINED.contains(&material.as_str());
+        if grained && grain == Some(w) {
+            (l, w) = (w, l);
+        }
+        let (le, we) = match edges {
+            Edges::None => (0, 0),
+            _ if band == 0 => (0, 0),
+            Edges::All => (2, 2),
+            Edges::Front if grain == Some(w) => (0, 1),
+            Edges::Front => (1, 0),
+        };
+        let key = (tenths[t], tenths[l], tenths[w], material, le, we);
+        rows.entry(key).or_default().push(name);
     }
 
     let mm = |tenths: i64| tenths as f64 / 10.0;
@@ -304,28 +397,44 @@ pub fn cutlist(
     };
     let quoted = |s: &str| format!("\"{}\"", s.replace('"', "\"\""));
     let units = if imperial { "in" } else { "mm" };
+    let sized = if cut { "Cut" } else { "Finished" };
     let mut parts = Vec::new();
-    let mut csv =
-        format!("Qty,Length ({units}),Width ({units}),Thickness ({units}),Material,Parts\n");
+    let mut csv = format!(
+        "Qty,{sized} length ({units}),{sized} width ({units}),Thickness ({units}),Material,Grain,Banding,Parts\n"
+    );
     let mut area_m2 = 0.0;
     let mut stock: BTreeMap<(String, i64), f64> = BTreeMap::new(); // area per material and thickness
-    for ((t, l, w, material), names) in &rows {
+    let mut tape: BTreeMap<(String, i64), f64> = BTreeMap::new(); // banding in mm, the same
+    for ((t, l, w, material, le, we), names) in &rows {
         let qty = names.len();
         let row_m2 = mm(*l) * mm(*w) * qty as f64 / 1e6;
         area_m2 += row_m2;
         *stock.entry((material.clone(), *t)).or_insert(0.0) += row_m2;
-        let (l, w, t) = (shown(*l), shown(*w), shown(*t));
+        let banded = (*le as f64 * mm(*l) + *we as f64 * mm(*w)) * qty as f64;
+        if banded > 0.0 {
+            *tape.entry((material.clone(), *t)).or_insert(0.0) += banded;
+        }
+        // Banding on the edges along the length takes from the width, and the other way round.
+        let (cl, cw) = match cut {
+            true => (l - *we as i64 * band, w - *le as i64 * band),
+            false => (*l, *w),
+        };
+        let grain = crate::material::GRAINED.contains(&material.as_str());
+        let (l, w, t) = (shown(cl), shown(cw), shown(*t));
         csv += &format!(
-            "{qty},{},{},{},{},{}\n",
+            "{qty},{},{},{},{},{},{},{}\n",
             text(&l),
             text(&w),
             text(&t),
             quoted(material),
+            if grain { "yes" } else { "" },
+            mark(*le, *we),
             quoted(&names.join(", "))
         );
         parts.push(json!({
             "qty": qty, "length": l, "width": w, "thickness": t,
-            "material": material, "parts": names,
+            "material": material, "grain": grain,
+            "banding": {"length": le, "width": we}, "parts": names,
         }));
     }
     let round = |v: f64| (v * 1000.0).round() / 1000.0;
@@ -339,9 +448,44 @@ pub fn cutlist(
             })
         })
         .collect();
+    let feet = |m: f64| round(m / 0.3048);
+    let banding: Vec<Value> = (tape.iter())
+        .map(|((material, t), mm)| {
+            let m = round(mm / 1000.0 * (1.0 + BANDING_WASTE));
+            let mut total = json!({"material": material, "thickness": shown(*t), "metres": m});
+            if imperial {
+                total["feet"] = json!(feet(m));
+            }
+            total
+        })
+        .collect();
+    if !banding.is_empty() {
+        let length = if imperial { "Feet" } else { "Metres" };
+        csv += &format!(
+            "\nEdge banding {} mm,Thickness ({units}),{length} with 10 % waste\n",
+            mm(band)
+        );
+        for total in &banding {
+            let figure = if imperial {
+                &total["feet"]
+            } else {
+                &total["metres"]
+            };
+            let material = total["material"].as_str().unwrap_or("");
+            csv += &format!(
+                "{},{},{}\n",
+                quoted(material),
+                text(&total["thickness"]),
+                text(figure)
+            );
+        }
+    }
     let mut list = json!({
         "units": units,
+        "size": if cut { "cut" } else { "finished" },
+        "banding_mm": mm(band),
         "sheets": sheets,
+        "banding": banding,
         "parts": parts,
         "boards": bodies.len(),
         "area_m2": round(area_m2),

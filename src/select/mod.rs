@@ -110,7 +110,7 @@ fn names(measure: &Value) -> impl Iterator<Item = &str> {
 
 /// The cabinet a body belongs to. Every cabinet has a body called "<name> Side L"; of the
 /// names that fit, the longest wins, so "Base 2 Door" is in "Base 2", not in "Base".
-fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
+pub fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
     names(measure)
         .filter_map(|name| name.strip_suffix(" Side L"))
         .filter(|cabinet| body.starts_with(&format!("{cabinet} ")))

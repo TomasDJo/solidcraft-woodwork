@@ -82,3 +82,31 @@ fn long_names_wrap_at_spaces() {
     assert_eq!(wrap("Countertop x", 9.0, 10.0), ["Countertop", "x"]);
     assert!((width("0123456789", 10.0) - 55.6).abs() < 1e-9);
 }
+
+#[test]
+fn banding_and_grain_marks() {
+    let mut banded = list(1);
+    banded["parts"][0]["grain"] = json!(true);
+    banded["parts"][0]["banding"] = json!({"length": 2, "width": 1});
+    banded["size"] = json!("cut");
+    banded["banding_mm"] = json!(1.0);
+    banded["banding"] = json!([{"material": "Birch plywood", "thickness": 18.0, "metres": 3.63}]);
+    let pdf = render(&banded, "Kitchen");
+    well_formed(&pdf);
+    let has = |bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
+    let words: [&[u8]; 6] = [
+        b"(L2 W1)",
+        b"(yes)",
+        b"cut sizes: finished less the 1 mm banding",
+        b"(Edge banding to buy)",
+        b"(\\(1 mm, plus 10 % waste\\))",
+        b"(3.7)", // 3.63 rounded up
+    ];
+    for word in words {
+        assert!(has(word), "{}", String::from_utf8_lossy(word));
+    }
+    // without banding: no section, finished sizes
+    let pdf = render(&list(1), "Kitchen");
+    let has = |bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
+    assert!(!has(b"Edge banding") && has(b"finished sizes"));
+}

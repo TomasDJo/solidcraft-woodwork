@@ -499,7 +499,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 let mesh = run("model.mesh", json!({"body": body, "tolerance": 1.0}))?;
                 local.insert(body, cutlist::extents(&mesh));
             }
-            let mut list = cutlist::cutlist(&measure, &local, imperial)?;
+            let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
             Ok(list)
         }
