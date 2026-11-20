@@ -10,6 +10,13 @@ fn measure() -> Value {
 }
 
 #[test]
+fn an_empty_design_is_refused_not_listed_as_nothing() {
+    let empty = json!({"bodies": []});
+    let refused = cutlist(&empty, &BTreeMap::new(), false, &json!({}));
+    assert_eq!(refused, Err("the design has no boards to list".into()));
+}
+
+#[test]
 fn groups_equal_boards() {
     let list = cutlist(&measure(), &BTreeMap::new(), false, &json!({})).unwrap();
     assert_eq!(list["boards"], 3);
