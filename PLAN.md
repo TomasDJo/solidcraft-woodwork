@@ -114,7 +114,8 @@ Cabinets:
       (today: turn the component afterwards)
 - [ ] Worktop over a straight run of the selected cabinets: postponed until it handles corners and joints (#62)
 - [ ] Plinth run over the selected cabinets
-- [ ] End panels and fillers on a cabinet's end, kept by Edit cabinet (postponed until conditional dialog fields, SolidCraft 0.46, #57)
+- [x] End panels and fillers on a cabinet's end, kept by Edit cabinet (#57 part 2)
+- [ ] Plinth return: for cabinets on legs, later
 - [ ] Sink base with drawers (#55)
 - [ ] Inset fronts on corner cabinets (#58)
 - [ ] Drawer slides in the model (#59)

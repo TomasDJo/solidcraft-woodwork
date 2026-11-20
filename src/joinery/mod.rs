@@ -15,14 +15,13 @@ const MAX_SPACING: f64 = 250.0;
 // ponytail: the `Rail` between drawers and doors is not drilled (its height depends on the
 // drawer fields, which Joinery does not read); it is screwed by hand like a fixed shelf, until
 // joinery for dividers and fixed shelves (PLAN.md).
-/// The commands run with the cabinet's component active. Also returns where the cabinet's
-/// origin (the middle of its footprint, on its floor) is in the world, in mm.
+/// The commands run with the cabinet's component active.
 pub fn build(
     found: &select::Cabinet,
     design: &Value,
     kind: &str,
     cabinet: &str,
-) -> Result<(Commands, [f64; 3]), String> {
+) -> Result<Commands, String> {
     let name = &found.name;
     let prefix = kit::prefix(name);
     let value = |key: &str| {
@@ -161,12 +160,7 @@ pub fn build(
     let features: Vec<&Value> = commands.iter().map(|c| &c.1["name"]).collect();
     let group = json!({ "name": format!("{name} joinery"), "features": features });
     commands.push(("timeline.group", group));
-    let origin = [
-        (found.min[0] + found.max[0]) / 2.0,
-        found.min[1] + depth / 2.0,
-        found.min[2],
-    ];
-    Ok((commands, origin))
+    Ok(commands)
 }
 
 #[cfg(test)]

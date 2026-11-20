@@ -16,8 +16,7 @@ fn four_joints_of_two_holes_and_a_row() {
         {"name": "Base_1_depth", "value": 560.0}, {"name": "Base_1_thickness", "value": 18.0},
         {"name": "Base_1_plinth", "value": 100.0},
     ]});
-    let (commands, origin) = build(&found(), &design, "confirmat", "standard").unwrap();
-    assert_eq!(origin, [300.0, 280.0, 0.0]);
+    let commands = build(&found(), &design, "confirmat", "standard").unwrap();
     // sides 554 deep in a 560 cabinet: 3 screws per joint, and an overlaid back
     assert_eq!(commands.len(), 4 * 2 * 3 + 1);
     // each is a cylinder cut out of the one board it is for, not a hole kept by a picked face
@@ -36,7 +35,7 @@ fn four_joints_of_two_holes_and_a_row() {
     );
     assert_eq!(commands[3].1["targets"][0], "Base 1 Bottom");
 
-    let (dowels, _) = build(&found(), &design, "dowel", "standard").unwrap();
+    let dowels = build(&found(), &design, "dowel", "standard").unwrap();
     assert_eq!(dowels[0].1["base"][0], "Base_1_thickness - Base_1_width/2");
 }
 
@@ -77,7 +76,7 @@ fn a_sink_base_is_screwed_to_its_rails() {
     let design = json!({"timeline": [], "params": [
         {"name": "Base_1_depth", "value": 560.0}, {"name": "Base_1_thickness", "value": 18.0},
     ]});
-    let (commands, _) = build(&found(), &design, "confirmat", "sink").unwrap();
+    let commands = build(&found(), &design, "confirmat", "sink").unwrap();
     // the bottom as usual, 3 a joint; the rails get the first and the last only
     assert_eq!(commands.len(), 2 * 2 * 3 + 2 * 2 * 2 + 1);
     let targets: Vec<&Value> = commands.iter().map(|c| &c.1["targets"][0]).collect();

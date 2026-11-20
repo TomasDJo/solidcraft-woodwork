@@ -258,7 +258,12 @@ pub fn sheet(
         }
     };
     let neg = |d: [f64; 2]| d.map(|v| -v);
-    let all = [Some(l), Some(r), back];
+    let parts = select::parts(measure, name);
+    // The views take in its end panels and fillers too.
+    let panels = (parts.iter())
+        .filter(|p| p.get(name.len() + 1..).is_some_and(crate::panel::is_panel))
+        .map(|p| bbox(measure, p));
+    let all: Vec<Option<Box3>> = [Some(l), Some(r), back].into_iter().chain(panels).collect();
     let span = |d: [f64; 2]| {
         let boxes = all.iter().flatten();
         let most = |d: [f64; 2]| boxes.clone().map(|b| reach(b, d)).fold(f64::MIN, f64::max);
@@ -267,7 +272,6 @@ pub fn sheet(
     let (z0, z1) = (l[0][2], l[1][2]);
     // ponytail: 20 mm in front of the carcass for the doors and drawer fronts, closed.
     let (w, h, d) = (span(u), z1 - z0, span(f) + 20.0);
-    let parts = select::parts(measure, name);
     let bodies = measure["bodies"].as_array().into_iter().flatten();
     let own: Vec<&Value> = bodies
         .filter(|b| parts.iter().any(|p| b["name"] == p.as_str()))
@@ -322,6 +326,26 @@ pub fn sheet(
     if turn.is_some() {
         // Corners in the world, from the cabinet's own width and front: on Side L, Side R and
         // the back, so that each is a corner of one body.
+        // A side with an end panel or a filler: with inset fronts its corners are the panel's
+        // too, so the dimensions go to the panel's outer corners, the width over all. A filler
+        // and its return together: each outer corner is one of the two boards'.
+        let outer = |s: &str, side: Box3| {
+            let (end, filler) = (
+                format!("{name} End panel {s}"),
+                format!("{name} Filler {s}"),
+            );
+            (parts.iter())
+                .filter(|p| **p == end || **p == filler || p.starts_with(&format!("{filler} ")))
+                .filter_map(|p| bbox(measure, p))
+                .reduce(|a, b| {
+                    [
+                        [0, 1, 2].map(|i| a[0][i].min(b[0][i])),
+                        [0, 1, 2].map(|i| a[1][i].max(b[1][i])),
+                    ]
+                })
+                .unwrap_or(side)
+        };
+        let (l, r) = (outer("L", l), outer("R", r));
         let p = |along: f64, out: f64, z: f64| {
             [along * u[0] + out * f[0], along * u[1] + out * f[1], z]
         };

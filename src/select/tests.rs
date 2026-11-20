@@ -36,6 +36,9 @@ fn finds_the_cabinet_of_a_selected_part() {
     let side_of = |body: &str| side(&[body.to_string()], &measure);
     assert_eq!(side_of("Base Side R"), "right");
     assert_eq!(side_of("Base 2 Side L"), "left");
+    // a panel counts as the side it stands on
+    assert_eq!(side_of("Base Filler R return"), "right");
+    assert_eq!(side_of("Base 2 End panel L"), "left");
     assert_eq!(side(&[], &measure), "origin");
     assert_eq!(side_of("Base 2 Door"), "origin");
     assert_eq!(side_of("Worktop"), "origin");

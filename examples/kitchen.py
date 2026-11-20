@@ -19,6 +19,7 @@ It uses every function of the plugin:
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
+- Panel: an end panel on the tall unit's free side and one at the open end of the return run
 - Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
 - Cut list: written out as CSV (boards with grain and banded edges, and the banding to buy); the sheets from the cutting layouts and the hardware are printed
 
@@ -91,6 +92,8 @@ for i, (name, params) in enumerate(FLOOR):
     if i:
         steps.append(select(f"{FLOOR[i - 1][0]} Side R"))
     steps.append(build.plugin(approval, "cabinet", {**params, "name": name}))
+    if name == "Tall":  # the run's visible end
+        steps += [select("Tall Side L"), build.plugin(approval, "panel", {"kind": "end"})]
 for name, left, params in HANGING:
     # Made on the origin, then moved up onto the wall. The plugin grounds a cabinet so that
     # its doors can open, so it is ungrounded for the move.
@@ -112,11 +115,13 @@ for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner")
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
     steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name, "place": "origin"}),
               select(f"{name} Top"), build.plugin(approval, "joinery", {"type": kind}),
+              *([select("Base 4 Side R"), build.plugin(approval, "panel", {"kind": "end"})] if name == "Base 4" else []),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
 results = build.cli(steps, "--save", str(OUT))
-made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})]
+made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})
+        and "cabinet" not in r["result"]]  # the cabinets, not the panels
 
 # 2. Oak fronts, joinery, and a few doors and a drawer left open.
 steps = [kitchen]

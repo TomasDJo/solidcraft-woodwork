@@ -37,6 +37,35 @@ fn reach(b: Plan, dir: Dir) -> f64 {
 }
 
 impl Cabinet {
+    /// Takes the end panel or filler on the `place` side (right or left) into that side's
+    /// plan, so that a cabinet placed there stands beyond it. Whether there was one.
+    // ponytail: the panel stays a thin board seen from above; a filler wider than the
+    // cabinet is deep would read as facing the other way.
+    pub fn with_panel(&mut self, measure: &Value, place: &str) -> bool {
+        let (n, letter) = if place == "left" { (0, "L") } else { (1, "R") };
+        let (end, filler) = (
+            format!("{} End panel {letter}", self.name),
+            format!("{} Filler {letter}", self.name),
+        );
+        let bodies = measure["bodies"].as_array().into_iter().flatten();
+        let mut found = false;
+        for body in bodies {
+            let name = body["name"].as_str().unwrap_or_default();
+            if name == end || name == filler || name == format!("{filler} return") {
+                let at = |end: &str, i: usize| body["bbox"][end][i].as_f64().unwrap_or(0.0);
+                let s = &mut self.sides[n];
+                *s = [
+                    s[0].min(at("min", 0)),
+                    s[1].min(at("min", 1)),
+                    s[2].max(at("max", 0)),
+                    s[3].max(at("max", 1)),
+                ];
+                found = true;
+            }
+        }
+        found
+    }
+
     /// The way from this cabinet to one placed against it (`place`: right, left or above), in
     /// the world, and which of this cabinet's sizes lies that way: half of it is how far its
     /// middle is from that side. A corner cabinet's return ends in one of its two sides, the
@@ -146,6 +175,12 @@ pub fn side(picked: &[String], measure: &Value) -> &'static str {
     let board = picked
         .first()
         .and_then(|body| Some(&body[owner(measure, body)?.len() + 1..]));
+    // An end panel or a filler (or its return) counts as the side it stands on.
+    let board = board.map(|b| match crate::panel::is_panel(b) {
+        true if b.ends_with(" L") || b.ends_with(" L return") => "Side L",
+        true => "Side R",
+        false => b,
+    });
     match board {
         Some("Side L") => "left",
         Some("Side R") => "right",

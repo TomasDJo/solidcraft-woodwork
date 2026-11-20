@@ -143,3 +143,29 @@ def test_drawing_of_a_right_corner_looks_into_its_open_corner(approval):
     assert named == ["front", "iso_front_left", "right"], named
     scales = {v["direction"]["named"]: v["settings"]["scale"]["value"] for v in replies}
     assert scales == {"front": "1:15", "right": "1:15", "iso_front_left": "1:8"}, scales  # 1:20 before
+
+
+def test_drawing_of_an_inset_cabinet_with_an_end_panel(approval):
+    # Inset fronts: the end panel is flush with the carcass, so Side L's corners are the panel's
+    # too. The dimensions go to the panel's outer corners: 600 + 18 wide over all.
+    saved = ROOT / "dist" / "drawing-panel.sc"
+    cli([plugin(approval, "cabinet", {"doors": 1, "fronts": "inset"}),
+         select("Cabinet Side L"), plugin(approval, "panel", {"kind": "end"}),
+         plugin(approval, "drawing", {"scope": "all"})], "--save", str(saved))
+    drawing, _ = read(saved)
+    dims = [d for v in drawing["sheets"][0]["views"] for d in v["dimensions"]]
+    _, replies = read(saved, lambda _: [step("drawing.dimension.inspect", dimension=d) for d in dims])
+    assert sorted(round(d["value"]) for d in replies) == [560, 618, 720], replies
+
+
+def test_drawing_of_an_inset_cabinet_with_a_filler(approval):
+    # Inset fronts: the filler's front board is flush with the carcass and starts at Side R's
+    # front corner. The dimensions go to the filler's outer corners: 600 + 50 wide over all.
+    saved = ROOT / "dist" / "drawing-filler.sc"
+    cli([plugin(approval, "cabinet", {"doors": 1, "fronts": "inset"}),
+         select("Cabinet Side R"), plugin(approval, "panel", {"kind": "filler", "width": 50}),
+         plugin(approval, "drawing", {"scope": "all"})], "--save", str(saved))
+    drawing, _ = read(saved)
+    dims = [d for v in drawing["sheets"][0]["views"] for d in v["dimensions"]]
+    _, replies = read(saved, lambda _: [step("drawing.dimension.inspect", dimension=d) for d in dims])
+    assert sorted(round(d["value"]) for d in replies) == [560, 650, 720], replies
