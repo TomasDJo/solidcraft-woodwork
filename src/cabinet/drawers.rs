@@ -15,7 +15,8 @@ const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front'
 
 /// A stack of drawers: a front, overlay or inset, and behind it a box that runs on slides. They
 /// are alike, or the top one is `drawer_height` and the rest share what is left, or beside
-/// doors all are `drawer_height`.
+/// doors all are `drawer_height`. Under a sink the top front is a false front, fixed and with no
+/// box, and the boxes below are half the inside depth deep, clear of the trap.
 pub fn build(cabinet: &Cabinet) {
     let Cabinet {
         kit,
@@ -43,8 +44,10 @@ pub fn build(cabinet: &Cabinet) {
         reveal,
         mixed,
         drawer_z,
+        kind,
         ..
     } = cabinet.input;
+    let sink = kind == "sink";
     let panel =
         |part: &str, corner: [&str; 3], size: [&str; 3]| kit.panel(part, corner, size, None);
     let count = drawers as usize;
@@ -70,7 +73,15 @@ pub fn build(cabinet: &Cabinet) {
         }
     };
     let box_w = format!("({eiw} - {})", mm(2.0 * SLIDE));
-    let box_d = format!("({eshelf_d} - {})", mm(BOX_BEHIND));
+    // ponytail: a sink base's boxes stop at half depth, before the trap; a U-cut round it
+    // for deeper boxes is left to the user.
+    let (box_d, box_mm) = match sink {
+        true => (format!("({eshelf_d}/2)"), shelf_d / 2.0),
+        false => (
+            format!("({eshelf_d} - {})", mm(BOX_BEHIND)),
+            shelf_d - BOX_BEHIND,
+        ),
+    };
     // An overlay front laps the carcass by a panel; an inset one is already inside it, but
     // beside doors it clears the rail as an overlay one does.
     let lift = match inset && !mixed {
@@ -86,18 +97,23 @@ pub fn build(cabinet: &Cabinet) {
         let box_h = format!("({front_h} - 2*{lift})");
         let front_w = format!("{ew} - 2*{ein} - 2*{gap_mm}");
         let x0 = format!("{ein} + {gap_mm}");
-        kit.open(&drawer);
-        panel(
-            &format!("{drawer} Front"),
-            [&x0, efront, &z],
-            [&front_w, et, front_h],
-        );
         // Lying across, in the middle of the front unless the top or the bottom is asked for.
         let handle_z = match cabinet.input.handle_at {
             "top" => format!("{z} + {front_h} - {}", mm(HANDLE_EDGE)),
             "bottom" => format!("{z} + {}", mm(HANDLE_EDGE)),
             _ => format!("{z} + {front_h}/2"),
         };
+        if sink && i + 1 == count {
+            panel("False front", [&x0, efront, &z], [&front_w, et, front_h]);
+            cabinet.handle("False front", &format!("{ew}/2"), &handle_z, 0);
+            break;
+        }
+        kit.open(&drawer);
+        panel(
+            &format!("{drawer} Front"),
+            [&x0, efront, &z],
+            [&front_w, et, front_h],
+        );
         cabinet.handle(&format!("{drawer} Front"), &format!("{ew}/2"), &handle_z, 0);
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
@@ -143,7 +159,7 @@ pub fn build(cabinet: &Cabinet) {
             -d / 2.0 + back_mm,
             drawer_z + (front_mm + reveal) * i as f64,
         ];
-        let travel = ((shelf_d - BOX_BEHIND) * 0.8).round();
+        let travel = (box_mm * 0.8).round();
         kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
     }
 }

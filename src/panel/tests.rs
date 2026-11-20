@@ -65,13 +65,12 @@ fn end_panel_on_either_side_reaches_the_fronts() {
     assert_eq!(left[0].0, "A End panel L");
     assert_eq!(left[0].1[0], "19 mm");
     assert_eq!(left[0].1[3][0], "-A_width/2 - (0 mm) - (19 mm)");
-    // inset fronts, or none (a sink base keeps drawers it does not make): flush with the
-    // carcass
-    for params in [
-        json!({"doors": 1, "fronts": "inset"}),
-        json!({}),
-        json!({"kind": "sink", "drawers": 2}),
-    ] {
+    // a sink base's drawers are overlay fronts too
+    let sink = made(json!({"kind": "sink", "drawers": 3}));
+    let sink = boxes(json!({"kind": "end", "side": "right"}), sink, false).unwrap();
+    assert_eq!(sink[0].1[1], "A_depth - (-A_reveal - A_thickness)");
+    // inset fronts, or none: flush with the carcass
+    for params in [json!({"doors": 1, "fronts": "inset"}), json!({})] {
         let flush = boxes(json!({"kind": "end", "side": "right"}), made(params), false);
         let flush = flush.unwrap();
         assert_eq!(flush[0].1[1], "A_depth - 0 mm");

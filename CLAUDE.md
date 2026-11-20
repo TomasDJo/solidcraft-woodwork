@@ -371,8 +371,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (`RAIL_D` 100 mm deep, top face at `_height`, the back one ending where the shelves' depth
   ends), so `select::side` sends Place's Auto on a sink base's rail to the origin, and a script
   selects it by a side or a rail. A depth that leaves less than two rails' depth for them is
-  refused. Its dialog hides shelves, pins, drawers and dividers; `cabinet::input` drops them
-  for a sink base without an error (Edit to a sink base keeps the remembered ones, unused). The back groove is not
+  refused. Its dialog hides shelves, pins and dividers; `cabinet::input` drops them
+  for a sink base without an error (Edit to a sink base keeps the remembered ones, unused).
+  It takes doors or drawers, not both (refused; the cabinet dialog hides Drawers when there
+  are doors), and 2 drawers or more: the top front is `<Name> False front`, a fixed body in
+  the cabinet's component with its handle hole and no box or slide, and the boxes below are
+  `eshelf_d/2` deep, clear of the trap (no U-cut). An Edit to standard gives full drawers
+  again; the panel counts its drawers as overlay fronts. The back groove is not
   cut into a top it does not have. Joinery reads the kind from the remembered values
   (`ours["params"]["kind"]` in `drill`) and drills the top corners into the rails: only the
   first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.

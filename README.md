@@ -16,7 +16,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
 - **Cabinet**: a box carcass with shelves, dividers, back and plinth; doors, drawers, or
   drawers above or below doors, that open on their joints, overlay or inset; shelf pin and handle holes. Also as a sink base
-  (rails instead of a top).
+  (rails instead of a top), with doors or drawers.
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door.
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
   a run stays together when a cabinet changes size.

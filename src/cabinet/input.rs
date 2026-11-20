@@ -69,15 +69,18 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         .get("shelf_pins")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    // A sink base has none of these: the sink and its pipes take the room. Its dialog hides
+    // A sink base has no dividers: the sink and its pipes take the room. Its dialog hides
     // them; an Edit to a sink base drops the ones the cabinet remembers.
-    let (dividers, drawers) = match sink {
-        true => (0.0, 0.0),
-        false => (num(p, "dividers", 0.0)?, num(p, "drawers", 0.0)?),
-    };
+    let dividers = if sink { 0.0 } else { num(p, "dividers", 0.0)? };
+    let drawers = num(p, "drawers", 0.0)?;
     check(
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
         "drawers must be 0 to 8",
+    )?;
+    // Its top front is a false front before the sink, so drawers come two or more, and alone.
+    check(
+        !sink || drawers == 0.0 || (drawers >= 2.0 && doors == 0.0),
+        "a sink base has doors or drawers, not both, and 2 drawers or more (the top front is a false front)",
     )?;
     let dh = size("drawer_height", 0.0)?;
     check(dh >= 0.0, "drawer front height cannot be negative")?;

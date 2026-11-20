@@ -277,7 +277,10 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
         "Rail back" => (Edges::None, Some(width)), // hidden under the worktop
         _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
         _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),
-        _ if part.starts_with("Door") || drawer && part.ends_with(" Front") => {
+        _ if part.starts_with("Door")
+            || drawer && part.ends_with(" Front")
+            || part == "False front" =>
+        {
             (Edges::All, Some(2))
         }
         _ if drawer && part.ends_with(" Bottom") => (Edges::None, Some(width)),
