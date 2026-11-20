@@ -44,6 +44,13 @@ struct Cabinet<'a> {
     efront: String,
     eback: String,
     ecell: String, // one compartment's width
+    // The doors' lower and upper edges and height; the lowest drawer front's lower edge; the
+    // top drawer's front height when it is a parameter; and with doors and drawers, the
+    // fixed rail's lower face, behind the reveal between them.
+    edoor: [String; 3],
+    edraw: String,
+    edh: Option<String>,
+    erail: Option<String>,
 }
 
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
@@ -96,6 +103,39 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         true => format!("({eshelf_d} - {et})"),
         false => eshelf_d,
     };
+    // A parameter only while it is used; one an edit stopped using goes to 0, so that the
+    // next edit does not take it up again.
+    let edh = (input.drawer_h > 0.0 || kit.has("drawer_height"))
+        .then(|| parameter("drawer_height", input.drawer_h, "drawer front height"))
+        .filter(|_| input.drawer_h > 0.0);
+    // The fronts from the plinth (or the bottom panel) up to the top (or under the top
+    // panel). With doors the drawers take `stack` of that at the top or the bottom.
+    let (low, high) = (
+        format!("{epl} + {ein} + {er}"),
+        format!("{eh} - {ein} - {er}"),
+    );
+    let door_h = format!("{high} - {epl} - {ein} - {er}");
+    let stack = (edh.as_ref())
+        .filter(|_| input.mixed)
+        .map(|edh| format!("{}*({edh} + {er})", drawers as u32));
+    let (edoor, edraw, erail) = match stack {
+        None => ([low.clone(), high, door_h], low, None),
+        Some(stack) if input.drawers_top => {
+            let z1 = format!("{high} - {stack}");
+            let rail = format!("{z1} + {er}/2 - {et}/2");
+            let door_h = format!("{z1} - {epl} - {ein} - {er}");
+            (
+                [low, z1.clone(), door_h],
+                format!("{z1} + {er}"),
+                Some(rail),
+            )
+        }
+        Some(stack) => {
+            let z0 = format!("{low} + {stack}");
+            let rail = format!("{z0} - {er}/2 - {et}/2");
+            ([z0, high, format!("{door_h} - {stack}")], low, Some(rail))
+        }
+    };
     // The cabinet stands on Z = 0, centred on the origin, so the view orbits around it.
     kit.centre(&ew, &ed);
     // Where a neighbour stands: the two back corners.
@@ -121,6 +161,10 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         ein,
         efront,
         eback,
+        edoor,
+        edraw,
+        edh,
+        erail,
     };
     let drill = cabinet.carcass(); // holes, run after the panels exist
     doors::build(&cabinet);
@@ -155,14 +199,28 @@ impl Cabinet<'_> {
             eshelf_d,
             ein,
             ecell,
+            erail,
             ..
         } = self;
         let name = kit.name.as_str();
         // Derived sizes, as expressions.
         let n = input.dividers as u32;
         let s = input.shelves as u32;
-        let egap = format!("(({ech} - {s}*{et}) / {})", s + 1); // between shelves
-        let elast = fittings::top_pin_row(ech);
+        // The bottom panel's top face. Where the shelves' part starts, and its clear height:
+        // with doors and drawers, the doors' part on the other side of the rail.
+        let bottom_top = format!("{epl} + {et}");
+        let (ebase, ezone) = match erail {
+            Some(rail) if input.drawers_top => {
+                (bottom_top.clone(), format!("({rail} - {epl} - {et})"))
+            }
+            Some(rail) => (
+                format!("{rail} + {et}"),
+                format!("({eh} - 2*{et} - ({rail}))"),
+            ),
+            None => (bottom_top.clone(), ech.clone()),
+        };
+        let egap = format!("(({ezone} - {s}*{et}) / {})", s + 1); // between shelves
+        let elast = fittings::top_pin_row(&ezone);
 
         // A sink base has two rails at the top instead of a top: room for the sink and its pipes.
         let sink = input.kind == "sink";
@@ -177,7 +235,6 @@ impl Cabinet<'_> {
         };
 
         let zero = mm(0.0);
-        let bottom_top = format!("{epl} + {et}"); // top face of the bottom panel
         panel("Side L", [&zero, &zero, &zero], [et, eside_d, eh], false);
         panel(
             "Side R",
@@ -221,9 +278,12 @@ impl Cabinet<'_> {
                     _ => format!("Shelf {}.{}", cell + 1, i + 1), // compartment.shelf
                 };
                 let x = self.cell_x(cell);
-                let z = format!("{bottom_top} + {over}");
+                let z = format!("{ebase} + {over}");
                 panel(&part, [&x, ein, &z], [ecell, eshelf_d, et], false);
             }
+        }
+        if let Some(rail) = erail {
+            panel("Rail", [et, ein, rail], [eiw, eshelf_d, et], false);
         }
         if input.plinth > 0.0 {
             panel(
@@ -265,21 +325,16 @@ impl Cabinet<'_> {
             _ => {}
         }
         match input.pins {
-            true => self.pins(&divider_x, &elast),
+            true => self.pins(&divider_x, &elast, &ebase),
             false => Vec::new(),
         }
     }
 
     /// One hole per panel, repeated up the panel and across to the rear row. Blind in the
     /// sides; through a divider, which carries shelves on both faces.
-    fn pins(&self, divider_x: &[String], top_row: &str) -> Commands {
+    fn pins(&self, divider_x: &[String], top_row: &str, base: &str) -> Commands {
         let Cabinet {
-            kit,
-            ew,
-            et,
-            epl,
-            ein,
-            ..
+            kit, ew, et, ein, ..
         } = self;
         let blind = fittings::blind_pin(et);
         let mut rows = vec![
@@ -289,7 +344,7 @@ impl Cabinet<'_> {
         for (k, x) in divider_x.iter().enumerate() {
             rows.push((format!("Divider {}", k + 1), x.clone(), et.clone(), 1));
         }
-        let z = format!("{epl} + {et} + {}", mm(2.0 * PITCH));
+        let z = format!("{base} + {}", mm(2.0 * PITCH));
         let mut drill = Vec::new();
         for (part, x, depth, direction) in rows {
             let rows = PinRows {

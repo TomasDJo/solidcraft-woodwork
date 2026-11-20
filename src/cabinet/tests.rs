@@ -141,7 +141,7 @@ fn drawers_replace_shelves() {
     );
     assert_eq!(height("auto"), height("top")); // 560 deep: a floor unit
     assert!(build(&json!({"doors": 1, "handles": "knob", "handle_position": "side"})).is_err());
-    assert!(build(&json!({"drawers": 2, "doors": 1})).is_err());
+    assert!(build(&json!({"drawers": 2, "doors": 2, "dividers": 1})).is_err());
     assert!(build(&json!({"drawers": 8, "height": 400})).is_err());
 }
 
@@ -479,4 +479,172 @@ fn a_sink_base_too_shallow_for_its_rails_is_refused() {
     assert!(build(&json!({"kind": "sink", "depth": 230})).is_ok());
     let e = build(&json!({"kind": "sink", "depth": 199})).unwrap_err();
     assert!(e.contains("rails would overlap"), "{e}");
+}
+
+#[test]
+fn drawers_over_doors() {
+    // a 150 mm drawer front at the top, the doors below: fronts and 3 reveals fill 870 - 150
+    let p = json!({"drawers": 1, "doors": 2, "height": 870, "plinth": 150, "shelf_pins": true});
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert_eq!(
+        (input.front_h, input.drawer_h, input.door_h, input.drawer_z),
+        (150.0, 150.0, 564.0, 718.0)
+    );
+    // the shelf stays, below the rail centred behind the reveal at 716 to 718: 708 - 168
+    assert_eq!(input.clear_h, 540.0);
+    let (commands, summary) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_height")["expression"],
+        "150 mm"
+    );
+    let z1 = "Cabinet_height - 0 mm - Cabinet_reveal - 1*(Cabinet_drawer_height + Cabinet_reveal)";
+    let rail = format!("{z1} + Cabinet_reveal/2 - Cabinet_thickness/2");
+    assert_eq!(named(&commands, "Cabinet Rail")["corner"][2], rail);
+    let door = named(&commands, "Cabinet Door L");
+    assert_eq!(door["corner"][2], "Cabinet_plinth + 0 mm + Cabinet_reveal");
+    assert_eq!(
+        door["height"],
+        format!("{z1} - Cabinet_plinth - 0 mm - Cabinet_reveal")
+    );
+    let front = named(&commands, "Cabinet Drawer 1 Front");
+    assert_eq!(front["height"], "Cabinet_drawer_height");
+    assert_eq!(
+        front["corner"][2],
+        format!("{z1} + Cabinet_reveal + (Cabinet_drawer_height + Cabinet_reveal) * 0")
+    );
+    // the upper hinge cup 100 mm under the doors' top edge, the shelf and pins below the rail
+    assert_eq!(
+        named(&commands, "Cabinet Door L hinge cup 2")["base"][2],
+        format!("{z1} - 100 mm")
+    );
+    let pins = named(&commands, "Cabinet Side L pin rows");
+    assert!(pins["count1"].as_str().unwrap().contains(&rail));
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 1 slide")["at"]["point"][2],
+        718.0
+    );
+    assert_eq!(summary["joints"].as_array().unwrap().len(), 3);
+    // one door works too; a door left too low, or a front too low for a box, does not
+    assert!(build(&json!({"drawers": 2, "doors": 1})).is_ok());
+    assert!(build(&json!({"drawers": 1, "doors": 1, "height": 400})).is_err());
+    assert!(build(&json!({"drawers": 1, "doors": 1, "drawer_height": 50})).is_err());
+    assert!(build(&json!({"drawers": 1, "doors": 1, "drawers_at": "middle"})).is_err());
+}
+
+#[test]
+fn doors_over_drawers() {
+    // two 140 mm fronts from the plinth up, the door over them: 720 - 280 - 4 reveals
+    let p = json!({"drawers": 2, "doors": 1, "drawers_at": "bottom", "height": 870,
+                   "plinth": 150, "drawer_height": 140, "shelf_pins": true});
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert_eq!((input.door_h, input.drawer_z), (432.0, 152.0));
+    // between the rail (426 to 444, behind the reveal at 434 to 436) and the top panel
+    assert_eq!(input.clear_h, 852.0 - 444.0);
+    let (commands, _) = build(&p).unwrap();
+    let low = "Cabinet_plinth + 0 mm + Cabinet_reveal";
+    let z0 = format!("{low} + 2*(Cabinet_drawer_height + Cabinet_reveal)");
+    let rail = format!("{z0} - Cabinet_reveal/2 - Cabinet_thickness/2");
+    assert_eq!(named(&commands, "Cabinet Rail")["corner"][2], rail);
+    let door = named(&commands, "Cabinet Door");
+    assert_eq!(door["corner"][2], z0);
+    assert_eq!(
+        door["height"],
+        "Cabinet_height - 0 mm - Cabinet_reveal - Cabinet_plinth - 0 mm - Cabinet_reveal - 2*(Cabinet_drawer_height + Cabinet_reveal)"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 2 Front")["corner"][2],
+        format!("{low} + (Cabinet_drawer_height + Cabinet_reveal) * 1")
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 2 slide")["at"]["point"][2],
+        294.0
+    );
+    // the shelf and the pins start on the rail
+    let shelf = named(&commands, "Cabinet Shelf 1");
+    assert!(shelf["corner"][2]
+        .as_str()
+        .unwrap()
+        .starts_with(&format!("{rail} + Cabinet_thickness + ")));
+    assert_eq!(
+        named(&commands, "Cabinet Side L pins")["base"][2],
+        format!("{rail} + Cabinet_thickness + 64 mm")
+    );
+}
+
+#[test]
+fn inset_drawers_over_a_door() {
+    // inside the opening: the door from 20 up to 548, the 150 front from 550 to 700
+    let p = json!({"fronts": "inset", "drawers": 1, "doors": 1});
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert_eq!((input.door_h, input.drawer_z), (528.0, 550.0));
+    assert_eq!(input.clear_h, 540.0 - 18.0); // the rail from 540 up
+    let (commands, _) = build(&p).unwrap();
+    // the rail stands back behind the fronts, as the shelves do
+    let rail = named(&commands, "Cabinet Rail");
+    assert_eq!(rail["corner"][1], "Cabinet_thickness - Cabinet_depth/2");
+    // the box clears the rail by a panel and 8 mm, as an overlay one does
+    let z = "Cabinet_height - Cabinet_thickness - Cabinet_reveal - 1*(Cabinet_drawer_height + Cabinet_reveal) + Cabinet_reveal + (Cabinet_drawer_height + Cabinet_reveal) * 0";
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 1 Left")["corner"][2],
+        format!("{z} + (Cabinet_thickness + 8 mm)")
+    );
+    // in an inch design the height is in inches
+    let p = json!({"units": "in", "width": 24, "height": 34.5, "depth": 22, "thickness": 0.75,
+                   "drawers": 1, "doors": 2, "drawer_height": 6});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_height")["expression"],
+        "6 in"
+    );
+}
+
+#[test]
+fn a_graduated_drawer_stack() {
+    // the top front is given, the other two share what is left of 720 after 4 reveals
+    let p = json!({"drawers": 3, "drawer_height": 140});
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert_eq!((input.front_h, input.drawer_h), (286.0, 140.0));
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_height")["expression"],
+        "140 mm"
+    );
+    let rest = "((Cabinet_height - 0 mm - 2*0 mm - 4*Cabinet_reveal - Cabinet_drawer_height) / 2)";
+    assert_eq!(named(&commands, "Cabinet Drawer 1 Front")["height"], rest);
+    let top = named(&commands, "Cabinet Drawer 3 Front");
+    assert_eq!(top["height"], "Cabinet_drawer_height");
+    assert_eq!(
+        top["corner"][2],
+        format!("0 mm + 0 mm + Cabinet_reveal + ({rest} + Cabinet_reveal) * 2")
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 3 Left")["height"],
+        "(Cabinet_drawer_height - 2*(Cabinet_thickness + 8 mm))"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 3 slide")["at"]["point"][2],
+        2.0 + 2.0 * 288.0
+    );
+    assert!(!has(&commands, "Cabinet Rail"));
+    // inset: the opening less two panels, (684 - 8 - 140) / 2
+    let p = json!({"fronts": "inset", "drawers": 3, "drawer_height": 140});
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert_eq!(input.front_h, 268.0);
+    // 0 is all alike, without a parameter, as one drawer is
+    for p in [
+        json!({"drawers": 3}),
+        json!({"drawers": 1, "drawer_height": 140}),
+    ] {
+        assert!(!has(&build(&p).unwrap().0, "Cabinet_drawer_height"));
+    }
+    // edited back to all alike: the parameter goes to 0, so the next edit does not take it up
+    let p = json!({"drawers": 3, "drawer_height": 0, "_existing": {"drawer_height": 140.0}});
+    let (commands, _) = build(&p).unwrap();
+    let change = commands.iter().find(|c| c.0 == "parameters.change");
+    assert_eq!(
+        change.unwrap().1,
+        json!({"name": "Cabinet_drawer_height", "expression": "0 mm"})
+    );
+    assert!(build(&json!({"drawers": 3, "drawer_height": 600})).is_err());
+    assert!(build(&json!({"drawers": 3, "drawer_height": -10})).is_err());
 }

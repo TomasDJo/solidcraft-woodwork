@@ -8,7 +8,8 @@ a corner cabinet at the right end of both rows, and one more base and wall unit 
 It uses every function of the plugin:
 
 - Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth; an
-  inset door on the tall unit, and Base 3 is a sink base (rails instead of a top)
+  inset door on the tall unit, a graduated drawer unit (a lower top drawer), a drawer over
+  a door on the return, and Base 3 is a sink base (rails instead of a top)
 - Corner cabinet, at the right end of the base units and of the wall units
 - Place: each floor unit goes to the right of the one before it, by selecting that one, and is
   held to it: widen `Base_1_width` and the units after it move along
@@ -46,7 +47,7 @@ FLOOR = [
     ("Tall", {**WHITE, "width": 600, "height": 2100, "depth": 560, "plinth": 150, "shelves": 4, "doors": 1,
               "handles": "pull", "labels": True, "fronts": "inset"}),
     ("Base 1", {**BASE, "width": 800, "dividers": 1, "doors": 2}),
-    ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3}),
+    ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3, "drawer_height": 140}),
     ("Base 3", {**BASE, **MATCH, "kind": "sink", "width": 900, "doors": 2}),  # under the sink
 ]
 # Wall units hang over the base units: name, left edge, parameters.
@@ -61,7 +62,7 @@ BACK = 280  # the wall: the tall unit is 560 deep and centred on the origin
 CORNER = {**FLOOR_UNIT, **MATCH, "width": 1000, "return": 1000, "doors": "hinged left",
           "handles": "pull", "place": "right"}
 RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"]  # the right wall
-RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "doors": 1, "handles": "pull"}
+RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "drawers": 1, "doors": 1, "handles": "pull"}
 WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "depth": 320,
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
@@ -69,7 +70,8 @@ WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 3 Door L hinge": 70, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
-        "Corner Door hinge": 60, "Corner Door return fold": 60, "Base 4 Door hinge": 50, "Wall corner Door hinge": 60}
+        "Corner Door hinge": 60, "Corner Door return fold": 60, "Base 4 Door hinge": 50, "Base 4 Drawer 1 slide": 250,
+        "Wall corner Door hinge": 60}
 
 
 def step(command, **params):

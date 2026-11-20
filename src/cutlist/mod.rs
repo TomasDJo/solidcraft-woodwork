@@ -272,7 +272,7 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
     let drawer = part.starts_with("Drawer ");
     match part {
         "Side L" | "Side R" => (Edges::Front, Some(2)),
-        "Top" | "Bottom" | "Rail front" => (Edges::Front, Some(width)),
+        "Top" | "Bottom" | "Rail front" | "Rail" => (Edges::Front, Some(width)),
         "Rail back" => (Edges::None, Some(width)), // hidden under the worktop
         _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
         _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),

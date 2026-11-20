@@ -47,6 +47,38 @@ fn an_edit_keeps_what_is_not_changed() {
 }
 
 #[test]
+fn the_drawer_front_height_and_side_are_kept_or_changed() {
+    // made with 140, changed in the design since: the design's value is built again
+    let made = remember("cabinet", &json!({"drawers": 3, "drawer_height": 140}), "A");
+    let design = json!({"params": [{"name": "A_drawer_height", "value": 160.0}]});
+    let (_, params) = merge(&made[KEY], &json!({"doors": 1}), &design).unwrap();
+    assert_eq!(
+        (&params["drawer_height"], &params["doors"]),
+        (&json!(160.0), &json!(1))
+    );
+    let changes = json!({"drawer_height": 120, "drawers_at": "bottom"});
+    let (_, params) = merge(&made[KEY], &changes, &design).unwrap();
+    assert_eq!(params["drawer_height"], 120);
+    assert_eq!(params["drawers_at"], "bottom");
+    assert_eq!(params["_existing"]["drawer_height"], 160.0);
+    let (_, params) = merge(&made[KEY], &json!({"drawers_at": "keep"}), &design).unwrap();
+    assert_eq!(params.get("drawers_at"), None);
+    let corner = remember("corner", &json!({}), "A");
+    assert!(merge(&corner[KEY], &json!({"drawer_height": 120}), &design).is_err());
+    assert!(merge(&corner[KEY], &json!({"drawers_at": "top"}), &design).is_err());
+    // beside doors the empty height was kept as 150: taking the doors away makes them alike
+    let mixed = remember("cabinet", &json!({"drawers": 3, "doors": 1}), "A");
+    let design = json!({"params": [{"name": "A_drawer_height", "value": 150.0}]});
+    let (_, params) = merge(&mixed[KEY], &json!({"doors": 0}), &design).unwrap();
+    assert_eq!(params["drawer_height"], 0);
+    let changes = json!({"doors": 0, "drawer_height": 140});
+    let (_, params) = merge(&mixed[KEY], &changes, &design).unwrap();
+    assert_eq!(params["drawer_height"], 140);
+    let (_, params) = merge(&mixed[KEY], &json!({"shelves": 2}), &design).unwrap();
+    assert_eq!(params["drawer_height"], 150.0);
+}
+
+#[test]
 fn sizes_come_back_in_the_unit_they_were_given_in() {
     let made = remember("cabinet", &json!({"units": "in", "width": 24}), "A");
     let design = json!({"params": [{"name": "A_width", "value": 609.6}]});

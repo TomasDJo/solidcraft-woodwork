@@ -96,3 +96,27 @@ def test_fronts_and_the_reveal_through_edit(approval):
     assert door(results[5]) == [-279.5, -280, 20.5, 279.5, -262, 699.5], door(results[5])
     assert door(results[8]) == door(results[5]) and "Cabinet Shelf 2" in boxes(results[8]), door(results[8])
     assert door(results[11]) == [-297.5, -300.5, 2.5, 297.5, -282.5, 717.5], door(results[11])
+
+
+def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
+    # A cabinet with one door gets a drawer over it; the drawer front height is then a
+    # parameter that Edit takes from the design, and Edit can set it, and put the drawer under
+    # the door.
+    results = cli([plugin(approval, "cabinet", {"doors": 1, "plinth": 100}), select("Cabinet Top"),
+                   plugin(approval, "edit", {"drawers": 1}), MEASURE,
+                   change("Cabinet_drawer_height", "200 mm"), select("Cabinet Top"),
+                   plugin(approval, "edit", {"shelves": 2}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawer_height": 120}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawers_at": "bottom"}), MEASURE,
+                   drive("Cabinet Drawer 1 slide", 200), drive("Cabinet Door hinge", 90), MEASURE])
+    front = lambda measure: boxes(measure)["Cabinet Drawer 1 Front"][2:6:3]
+    door = lambda measure: boxes(measure)["Cabinet Door"][2:6:3]
+    assert front(results[3]) == [568, 718] and door(results[3]) == [102, 566], (front(results[3]), door(results[3]))
+    assert "Cabinet Rail" in boxes(results[3]), sorted(boxes(results[3]))
+    # the 200 set in the design survives an edit of something else
+    assert front(results[7]) == [518, 718] and "Cabinet Shelf 2" in boxes(results[7]), front(results[7])
+    assert front(results[10]) == [598, 718] and door(results[10]) == [102, 596], (front(results[10]), door(results[10]))
+    # under the door: the 120 front from the plinth up, the door over it
+    assert front(results[13]) == [102, 222] and door(results[13]) == [224, 718], (front(results[13]), door(results[13]))
+    assert boxes(results[16])["Cabinet Drawer 1 Front"][1] == -300 - 200, boxes(results[16])["Cabinet Drawer 1 Front"]
+    assert boxes(results[16])["Cabinet Door"][1] < -500, boxes(results[16])["Cabinet Door"]

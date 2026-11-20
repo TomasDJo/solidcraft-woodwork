@@ -35,8 +35,16 @@ pub struct Input<'a> {
     pub clear_h: f64,
     /// Depth of the shelves, which stop at the back, and behind inset fronts.
     pub shelf_d: f64,
-    /// Height of one drawer front.
+    /// Height of a drawer front: of each below the top one, and of the top one, which is
+    /// `drawer_height` (0 when the drawers are all alike: no parameter then).
     pub front_h: f64,
+    pub drawer_h: f64,
+    /// With doors too (`mixed`), the drawers at the top or at the bottom, over a fixed rail.
+    pub mixed: bool,
+    pub drawers_top: bool,
+    /// The doors' height, and the lowest drawer front's lower edge.
+    pub door_h: f64,
+    pub drawer_z: f64,
 }
 
 pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
@@ -71,8 +79,17 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
         "drawers must be 0 to 8",
     )?;
+    let dh = size("drawer_height", 0.0)?;
+    check(dh >= 0.0, "drawer front height cannot be negative")?;
+    // Drawers and doors: the drawers at the top or the bottom, 150 mm high unless asked.
+    let mixed = drawers > 0.0 && doors > 0.0;
+    let drawers_top = match p.get("drawers_at").and_then(Value::as_str).unwrap_or("top") {
+        "top" => true,
+        "bottom" => false,
+        _ => return Err("drawers_at must be top or bottom".into()),
+    };
     // A drawer cabinet is all drawers: no shelves behind them. Nor under a sink.
-    let (shelves, pins) = if drawers > 0.0 || sink {
+    let (shelves, pins) = if (drawers > 0.0 && !mixed) || sink {
         (0.0, false)
     } else {
         (shelves, pins)
@@ -110,7 +127,33 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     // How far inside the carcass's outside the fronts' opening is: inset fronts sit between
     // the panels.
     let o = if inset { t } else { 0.0 };
-    let clear_h = h - plinth - 2.0 * t; // between bottom and top panels
+    // The fronts fill the opening: reveals round and between the doors and the drawer fronts.
+    let (room, n) = (h - plinth - 2.0 * o, drawers);
+    let drawer_h = match (mixed, drawers > 1.0) {
+        (true, _) if dh == 0.0 => 150.0,
+        (true, _) | (_, true) => dh, // the top drawer; the rest share what is left
+        _ => 0.0,
+    };
+    let (front_h, door_h) = if mixed {
+        (drawer_h, room - n * drawer_h - (n + 2.0) * g)
+    } else if drawer_h > 0.0 {
+        (
+            (room - (n + 1.0) * g - drawer_h) / (n - 1.0),
+            room - 2.0 * g,
+        )
+    } else {
+        ((room - (n + 1.0) * g) / n.max(1.0), room - 2.0 * g)
+    };
+    let drawer_z = match mixed && drawers_top {
+        true => h - o - n * (drawer_h + g),
+        false => plinth + o + g,
+    };
+    // Between the bottom and top panels, or between the rail (centred behind the reveal
+    // between the doors and the drawers) and the panel at the doors' other end.
+    let clear_h = match mixed {
+        true => door_h + o + 1.5 * g - 1.5 * t,
+        false => h - plinth - 2.0 * t,
+    };
     let gap = (clear_h - shelves * t) / (shelves + 1.0);
     check(
         (0.0..=10.0).contains(&dividers) && dividers.fract() == 0.0,
@@ -138,14 +181,22 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "doors must be 0, 1, 2 or one per compartment (dividers + 1)",
     )?;
     check(
-        drawers == 0.0 || (doors == 0.0 && dividers == 0.0),
-        "drawers cannot be combined with doors or dividers",
+        drawers == 0.0 || dividers == 0.0,
+        "drawers cannot be combined with dividers",
     )?;
-    // Height of one drawer front, and width of the box between the slides.
-    let front_h = (h - plinth - 2.0 * o - (drawers + 1.0) * g) / drawers.max(1.0);
+    // Room for a box behind each front (an inset one beside doors stays clear of the rail
+    // as an overlay one does), and the width of the box between the slides.
+    let lowest = match inset && !mixed {
+        true => 2.0 * BOX_CLEAR + 50.0,
+        false => 2.0 * (t + BOX_CLEAR) + 50.0,
+    };
     check(
-        drawers == 0.0 || front_h >= 2.0 * (t - o + BOX_CLEAR) + 50.0,
+        drawers == 0.0 || front_h >= lowest,
         "too low for that many drawers",
+    )?;
+    check(
+        drawer_h == 0.0 || drawer_h >= lowest,
+        "the drawer front height is too low for a drawer box",
     )?;
     check(
         drawers == 0.0 || inner_w - 2.0 * SLIDE >= 100.0,
@@ -175,7 +226,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "doors are too narrow for handles",
     )?;
     check(
-        doors == 0.0 || h - plinth - 2.0 * o >= 300.0,
+        doors == 0.0 || door_h + 2.0 * g >= 300.0,
         "too low for a door with two hinges",
     )?;
     check(
@@ -220,5 +271,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         clear_h,
         shelf_d,
         front_h,
+        drawer_h,
+        mixed,
+        drawers_top,
+        door_h,
+        drawer_z,
     })
 }

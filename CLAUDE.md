@@ -313,7 +313,18 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   front face at y = 0 (the hinge line too, so the door's back edge swings away from the side).
   Shelves, dividers, pin rows and drawer boxes start at y = t, a panel shallower; sides, top
   and bottom stay full depth. With one door per compartment each door fills its own
-  compartment. A drawer box's clearance is `BOX_CLEAR` alone when inset.
+  compartment. A drawer box's clearance is `BOX_CLEAR` alone when inset (beside doors it is
+  a panel more, as overlay, to clear the rail).
+- A box cabinet with drawers and doors (one or two: drawers take no dividers) puts the
+  drawers at the top or the bottom (`drawers_at`, cabinet and Edit) and a fixed `<Name> Rail`
+  between the sides, centred behind the reveal between drawers and doors (at y = t when
+  inset, as the shelves); the shelves and pin rows are on the doors' side of it. The rail is
+  not drilled by Joinery. `drawer_height` (beside doors each front, 150 mm when 0; drawers
+  only, the top one with the rest equal) is the parameter `<Prefix>_drawer_height` only while
+  it is used; an edit that stops using it sets it to 0 (`Kit::has`), so the next Edit does not
+  take the old value up again, and an Edit that takes the doors away sets it to 0 unless it
+  gives one (`edit::merge`). Set to 0 in Parameters the fronts have no height and the rebuild
+  fails.
 - A diagonal corner cabinet's front is always at 45 degrees: its door and plinth are components
   turned by a fixed angle (`Kit::turn`), since an occurrence's turn cannot follow a parameter.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are
