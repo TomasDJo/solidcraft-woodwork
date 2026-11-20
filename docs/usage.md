@@ -93,8 +93,8 @@ Two shapes:
 
 Select any part of a cabinet, then open **Cabinet** or **Corner cabinet**. The selection
 shows in the dialog as **Selected cabinet**. Click that field and pick another board in the
-model while the dialog is open, and the preview follows. Edit cabinet, Joinery and Material
-have the same field.
+model while the dialog is open, and the preview follows. Edit cabinet, Joinery, Material and
+Drawing have the same field.
 
 **Place** puts the new cabinet against the selected one, backs flush. That cabinet must
 stand square to the axes.
@@ -131,8 +131,8 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 Changes a cabinet after it is made. Select any part of it, fill in only what should change
 and leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is
-hinged on, drawers, fronts (overlay or inset), reveal, back, shelf pin holes, handles, plinth, the
-kind (standard or sink base), a corner cabinet's shape. The reveal is taken from Parameters unless
+hinged on, drawers, fronts (overlay or inset), reveal, back, shelf pin holes, handles and their
+position, labels, plinth, the kind (standard or sink base), a corner cabinet's doors and shape. The reveal is taken from Parameters unless
 the edit gives one.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
@@ -296,8 +296,9 @@ quarter turn) is drawn from its own front.
 - **After a cabinet is added or edited the view shows the whole model** (SolidCraft 0.45), and
   nothing is selected: pick the board to place the next cabinet against.
 - **An AI agent can use every function as a tool** (SolidCraft 0.45): `woodwork.cabinet`,
-  `woodwork.corner` and so on, with the dialog's fields as its arguments. Every field is
-  required there, so the agent sends them all, the defaults with what it wants changed.
+  `woodwork.corner` and so on, with the dialog's fields as its arguments. Every field
+  with a default is required there, so the agent sends them all, the defaults with what it wants
+  changed.
 - **A cabinet made by 0.1.7 or earlier** in a run is held along the run only: its neighbours
   do not follow its depth.
 - **A design made with the plugin is ordinary bodies, joints and parameters.** It opens in

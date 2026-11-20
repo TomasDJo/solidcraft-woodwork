@@ -73,8 +73,9 @@ The kitchen in the picture is in the repo:
 - [`examples/kitchen.py`](examples/kitchen.py): the script that built both, using every function of
   the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other and
   linked in size (change `Base_1_height` and the whole floor run follows), an L-shaped and a
-  diagonal corner cabinet, a sink base, handle holes,
-  melamine carcasses with oak fronts, screws and dowels, doors and a drawer left open on their joints.
+  diagonal corner cabinet, a sink base, an inset door, handle holes,
+  melamine carcasses with oak fronts, screws and dowels, a shelf added with Edit cabinet, a shop
+  drawing of every cabinet, doors and a drawer left open on their joints.
 
 To rebuild it, run `python build.py` and then `python examples/kitchen.py`.
 
@@ -87,8 +88,9 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 
 - `plugin.json`: manifest. Entries, their input forms, and the app commands used.
 - `src/lib.rs`: entry dispatch and the wasm guest.
-- `src/cabinet/`, `src/corner/`, `src/joinery/`, `src/cutlist/`, `src/material.rs`: one module
-  per function, plain Rust. A folder holds the code in `mod.rs` (the box cabinet also has
+- `src/cabinet/`, `src/corner/`, `src/edit/`, `src/joinery/`, `src/material.rs`, `src/cutlist/`,
+  `src/drawing/`: one module per function, plain Rust. The cut list's files are written by
+  `src/pdf/` and `src/dxf/`, its cutting layouts by `src/nesting/`. A folder holds the code in `mod.rs` (the box cabinet also has
   `input.rs`, `doors.rs` and `drawers.rs`, the corner cabinet `input.rs`, `doors.rs` and `diagonal.rs`) and its unit tests
   in `tests.rs`.
 - `src/kit/` and `src/fittings.rs`: what the two cabinet builders share, the panels and

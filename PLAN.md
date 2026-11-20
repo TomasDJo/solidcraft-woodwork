@@ -11,8 +11,13 @@ A SolidCraft plugin for designing cabinets and furniture in sheet goods and timb
   dialog under the Plugins menu; 0.42 adds a ribbon button per entry), the exact commands
   used, and limits.
 - One run is one undo step. The result is ordinary features, so a design opens without
-  the plugin. No custom UI, no network, no file access without a grant (no grant UI yet).
-- Limits that shape the design: 256 app commands per run, 30 s, 1 MiB result.
+  the plugin. No custom UI, no network. Files only in a folder the user approves at install
+  (0.43).
+- 0.44: the dialog previews an edit entry before Run, and the selection is a field in it.
+- 0.45: each entry is also a tool for agents (`woodwork.<entry>`), a `read` entry may not
+  write files, and `storage@0.1` can keep plugin data in a design (we do not use it yet).
+- Limits that shape the design: 256 app commands per run, 30 s, 1 MiB result, a manifest of
+  at most 64 KiB.
 - Install: zip of `plugin.json` + wasm, via Preferences > Plugins or `plugin.install`.
 
 ## Architecture (same as the gear and SolidInserts plugins)
@@ -38,6 +43,9 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 8. Panel joinery (dado, rabbet, back groove)
 9. Doors, drawers, shelves with hardware drilling (hinge cups, 32 mm shelf pins, slides)
 10. Shop output (DXF per part, labels)
+
+0.2.0 covers 1, 2, 4, 6 and 7, and partly 3 (four materials), 5 (no minifix), 8 (back groove
+only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
 
 ## Done
 
@@ -83,6 +91,21 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Place: Auto, the default, by the selected board (left of a left side, right of a right side, above a top)
 - [x] SolidCraft 0.45: the view is framed after a cabinet is added, each function is a tool for agents, the package is checked when built; tests run against 0.45.0
 - [x] Inset doors and drawer fronts on the box cabinet, and a reveal (the gap round the fronts) as a parameter on both cabinets
+- [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
+- [x] Sink base: a cabinet kind with two rails instead of a top, no shelves
+- [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
+- [x] Cut list saved as a printable PDF, with tick boxes for boards and hardware
+- [x] Edge banding and grain direction in the cut list
+- [x] Sheet cutting diagrams (nesting, kerf, grain)
+- [x] Part labels, a sticker per board (A4, 3 x 8)
+- [x] DXF per sheet: parts, names and holes on a layer per diameter and depth
+- [x] Shop drawings: a sheet per cabinet with front, right and iso views, sizes and the board list
+- [x] A tooltip on every dialog field and choice, in plain words
+- [x] Version 0.2.0, for SolidCraft 0.45
+
+## Next
+
+- [ ] Conditional dialog fields with SolidCraft 0.46 (in progress)
 
 ## Open
 
@@ -91,24 +114,22 @@ Cabinets:
 - [ ] Joinery for dividers and fixed shelves
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
-- [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [ ] Worktop over a straight run of the selected cabinets: postponed until it handles corners and joints (#62)
-- [ ] Drawers over doors and a graduated drawer stack (the top drawer's height given, the rest equal) (postponed until conditional dialog fields, SolidCraft 0.46)
+- [ ] Drawers over doors and a graduated drawer stack (the top drawer's height given, the rest equal) (postponed until conditional dialog fields, SolidCraft 0.46, #57)
 - [ ] Plinth run over the selected cabinets
-- [ ] End panels and fillers on a cabinet's end, kept by Edit cabinet (postponed until conditional dialog fields, SolidCraft 0.46)
-- [x] Sink base: a cabinet kind with two rails instead of a top, no shelves
+- [ ] End panels and fillers on a cabinet's end, kept by Edit cabinet (postponed until conditional dialog fields, SolidCraft 0.46, #57)
+- [ ] Sink base with drawers (#55)
+- [ ] Inset fronts on corner cabinets (#58)
+- [ ] Drawer slides in the model (#59)
+- [ ] Hinges in the model, with hinge types (#60)
+- [ ] Settings page: hardware and defaults the other functions use (#61, needs upstream #19979)
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
+- Sink and hob cutouts in a worktop dropped
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
 
 Cut list and shop output:
-- [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
-- [x] Cut list saved as a printable PDF, with tick boxes for boards and hardware
-- [x] Edge banding and grain direction in the cut list
-- [x] Sheet cutting diagrams (nesting, kerf, grain)
-- [x] Part labels, a sticker per board (A4, 3 x 8)
-- [ ] Cost estimate: prices kept in the design, the cost of sheets, banding, worktops and hardware in the cut list (postponed until conditional dialog fields, SolidCraft 0.46)
-- [x] DXF per sheet: parts, names and holes on a layer per diameter and depth
-- [x] Shop drawings: a sheet per cabinet with front, right and iso views, sizes and the board list
+- [ ] Cost estimate: prices per material and thickness, the cost of sheets, banding and hardware in the cut list (postponed until conditional dialog fields, SolidCraft 0.46, #56)
+- [ ] Corner cabinet boards in the cutting layouts: L-shapes and parts larger than a sheet, split or notched (#63)
 - [ ] DXF per part (one file per board)
 
 ## Waiting for the app
@@ -117,7 +138,7 @@ The dialog is drawn by the app from a fixed schema. These need the `ui` capabili
 upstream (`storage`, from 0.45, keeps data in a design, not in the dialog):
 
 - A dialog that stays open to add several cabinets, and remembers the last values
-- Fields that depend on each other (defaults in inches, options that hide)
+- Defaults that follow the Units choice (inches)
 
 Possible since 0.44, not done:
 
