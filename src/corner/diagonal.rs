@@ -6,7 +6,7 @@
 //! in a right one, and its -Y faces the room.
 
 use super::{Corner, KICK_RECESS};
-use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, DOOR_GAP, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, HANDLE_D, HANDLE_EDGE};
 use crate::kit::mm;
 use serde_json::{json, Value};
 
@@ -47,12 +47,12 @@ pub fn door(corner: &Corner, on_return: bool) {
         ..
     } = corner;
     let Corner { d, h, plinth, .. } = *corner;
-    let (g, gap) = (DOOR_GAP, mm(DOOR_GAP));
+    let (g, gap) = (corner.g, &corner.er);
     let (z0, z1) = (format!("{epl} + {gap}"), format!("{eh} - {gap}"));
-    let door_h = format!("{eh} - {epl} - {}", mm(2.0 * g));
+    let door_h = format!("{eh} - {epl} - 2*{gap}");
     // Each end stops short by the door's own thickness, so its outer corner stays inside the
     // cabinet's footprint and clear of a neighbour's door.
-    let inset = format!("({et} + {})", mm(2.0 * g));
+    let inset = format!("({et} + 2*{gap})");
     let len = format!("{} - 2*{inset}", corner.front_length());
     // The front runs towards the back leg's end in a left corner, away from it in a right one.
     let at_end = on_return == corner.right;

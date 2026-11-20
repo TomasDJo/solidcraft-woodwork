@@ -148,14 +148,25 @@ impl Kit {
         format!("{value} {}", self.unit)
     }
 
+    /// Whether an edited cabinet already has the parameter `<Prefix>_<key>`.
+    pub fn has(&self, key: &str) -> bool {
+        self.existing.get(key).is_some()
+    }
+
     /// Makes a design parameter `<Prefix>_<key>` and returns its name.
     pub fn parameter(&self, key: &str, mm_value: f64, comment: &str) -> String {
+        self.parameter_as(key, mm_value, comment, self.length(mm_value))
+    }
+
+    /// `parameter` with its expression given: a length that stays in mm whatever the dialog's
+    /// unit, such as the reveal.
+    pub fn parameter_as(&self, key: &str, mm_value: f64, comment: &str, length: String) -> String {
         let id = format!("{}_{key}", self.prefix);
         // A cabinet that is built again keeps its parameters, and whatever they are linked
         // to: one is only touched when the edit gave it another value.
         if let Some(now) = self.existing.get(key).and_then(Value::as_f64) {
             if (now - mm_value).abs() > 1e-6 {
-                let expression = self.length(mm_value);
+                let expression = length;
                 self.push((
                     "parameters.change",
                     json!({"name": id, "expression": expression}),
@@ -166,7 +177,7 @@ impl Kit {
         // A matched size is the selected cabinet's parameter: change it there, both follow.
         let expression = match self.link["values"].get(key) {
             Some(_) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
-            None => self.length(mm_value),
+            None => length,
         };
         self.push((
             "parameters.add",

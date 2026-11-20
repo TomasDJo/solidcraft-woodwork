@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 pub const PITCH: f64 = 32.0; // 32 mm system: shelf pin holes
 pub const PIN_SETBACK: f64 = 37.0; // pin rows, from the front and from the back of the shelf
 pub const PIN_D: f64 = 5.0;
-pub const DOOR_GAP: f64 = 2.0; // around overlay doors, and between door and carcass
+pub const DOOR_GAP: f64 = 2.0; // the default reveal: around and between the fronts
 pub const CUP_D: f64 = 35.0; // hinge cup
 pub const CUP_DEPTH: f64 = 13.0;
 pub const CUP_CENTRE: f64 = 22.5; // from the door edge: 5 mm of wood outside the cup

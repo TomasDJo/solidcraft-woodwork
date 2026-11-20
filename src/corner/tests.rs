@@ -36,11 +36,11 @@ fn an_l_of_boards_with_the_corner_cut_out() {
     let (x, y, turn) = hinge(&commands, "Cabinet Door return fold");
     assert_eq!(
         x,
-        "Cabinet_depth + 2 mm + Cabinet_thickness - Cabinet_width/2"
+        "Cabinet_depth + Cabinet_reveal + Cabinet_thickness - Cabinet_width/2"
     );
     assert_eq!(
         y,
-        "Cabinet_return - Cabinet_depth - 2 mm - Cabinet_thickness - Cabinet_return/2"
+        "Cabinet_return - Cabinet_depth - Cabinet_reveal - Cabinet_thickness - Cabinet_return/2"
     );
     assert_eq!(turn, 1);
     let fold = named(&commands, "Cabinet Door return fold");
@@ -77,12 +77,12 @@ fn the_handle_is_on_the_door_that_folds() {
             let hole = named(&commands, &format!("Cabinet {part} handle 1"));
             hole["base"][2].as_str().unwrap().to_string()
         };
-        assert_eq!(height("top"), "Cabinet_height - 2 mm - 100 mm");
+        assert_eq!(height("top"), "Cabinet_height - Cabinet_reveal - 100 mm");
         assert_eq!(
             height("middle"),
-            "(0 mm + 2 mm + Cabinet_height - 2 mm) / 2"
+            "(0 mm + Cabinet_reveal + Cabinet_height - Cabinet_reveal) / 2"
         );
-        assert_eq!(height("bottom"), "0 mm + 2 mm + 100 mm");
+        assert_eq!(height("bottom"), "0 mm + Cabinet_reveal + 100 mm");
     }
     assert!(build(&json!({"doors": "hinged left", "handle_position": "side"})).is_err());
 }
@@ -102,7 +102,7 @@ fn a_right_corner_is_the_mirror_image() {
     let (x, _, turn) = hinge(&commands, "Cabinet Door hinge");
     assert_eq!(
         x,
-        "Cabinet_width - (Cabinet_width - 2 mm) - (0 mm) - Cabinet_width/2"
+        "Cabinet_width - (Cabinet_width - Cabinet_reveal) - (0 mm) - Cabinet_width/2"
     );
     assert_eq!(turn, -1);
     // and each joint turns the other way
@@ -139,11 +139,11 @@ fn a_diagonal_front_is_one_turned_door() {
     // hinged at the back leg's end: the far end of the door, on its front edge
     // (x = 498.586, y = -139.700 at this size), given along the door too, which stands at 45
     let (x, y, turn) = hinge(&commands, "Cabinet Door hinge");
-    let along = "(Cabinet_thickness + 4 mm) + (sqrt(2) * (Cabinet_return - Cabinet_depth)) - 2*(Cabinet_thickness + 4 mm)";
+    let along = "(Cabinet_thickness + 2*Cabinet_reveal) + (sqrt(2) * (Cabinet_return - Cabinet_depth)) - 2*(Cabinet_thickness + 2*Cabinet_reveal)";
     // the last digit of a sine differs between platforms, so it is worked out here as there
     let (sin, cos) = 45f64.to_radians().sin_cos();
     let (sin, cos) = (format!("({sin})"), format!("({cos})"));
-    let across = "(-2 mm - Cabinet_thickness)";
+    let across = "(-Cabinet_reveal - Cabinet_thickness)";
     let start = "(Cabinet_width - Cabinet_return + Cabinet_depth) - Cabinet_width/2";
     assert_eq!(x, format!("{start} + ({along}) * {cos} - {across} * {sin}"));
     assert_eq!(
@@ -160,7 +160,10 @@ fn a_diagonal_front_is_one_turned_door() {
     assert_eq!(named(&other, "Cabinet Door hinge")["angle"], "-45 deg");
     // its own line is along the door, and made before the door is turned
     let own = named(&commands, "Cabinet Door hinge axis");
-    assert_eq!(own["b"]["plane"]["origin"][1], "-2 mm - Cabinet_thickness");
+    assert_eq!(
+        own["b"]["plane"]["origin"][1],
+        "-Cabinet_reveal - Cabinet_thickness"
+    );
     let order: Vec<_> = commands.iter().map(|c| (c.0, &c.1["name"])).collect();
     let made = order.iter().position(|c| *c.1 == "Cabinet Door hinge axis");
     let turned = order.iter().rposition(|c| c.0 == "occurrence.move");
@@ -202,4 +205,27 @@ fn the_corner_follows_where_the_cabinet_is_placed() {
         named(&commands, "Cabinet Side R")["length"],
         "Cabinet_depth"
     );
+}
+
+#[test]
+fn the_doors_take_the_reveal_but_are_never_inset() {
+    let (commands, _) = build(&json!({"doors": "hinged right", "reveal": 3})).unwrap();
+    assert_eq!(named(&commands, "Cabinet_reveal")["expression"], "3 mm");
+    let door = commands
+        .iter()
+        .find(|c| c.0 == "solid.box" && c.1["name"] == "Cabinet Door");
+    assert_eq!(
+        door.unwrap().1["height"],
+        "Cabinet_height - 0 mm - 2*Cabinet_reveal"
+    );
+    // no doors, no parameter
+    let (commands, _) = build(&json!({})).unwrap();
+    assert!(commands.iter().all(|c| c.1["name"] != "Cabinet_reveal"));
+    let refused = build(&json!({"doors": "hinged right", "fronts": "inset"}));
+    assert_eq!(
+        refused.err().unwrap(),
+        "inset fronts are only made on box cabinets"
+    );
+    assert!(build(&json!({"fronts": "overlay"})).is_ok());
+    assert!(build(&json!({"doors": "hinged right", "reveal": 9})).is_err());
 }

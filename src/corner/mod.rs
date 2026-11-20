@@ -38,6 +38,8 @@ struct Corner<'a> {
     t: f64,
     plinth: f64,
     dr: f64, // depth at the return's end: `d` on the L
+    g: f64,  // the reveal around the doors, and its parameter
+    er: String,
     ea: String,
     eb: String,
     ed: String,
@@ -64,6 +66,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handle_at,
         right,
         diagonal,
+        reveal,
     } = input::read(&kit, p)?;
 
     let ea = kit.parameter("width", a, "along the back wall");
@@ -74,6 +77,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let epl = match plinth > 0.0 {
         true => kit.parameter("plinth", plinth, "plinth height"),
         false => mm(0.0),
+    };
+    // Only with doors, or when an edit took them off (as on the box cabinet).
+    let er = match on_return.is_some() || kit.has("reveal") {
+        true => kit.parameter_as("reveal", reveal, "gap around the doors", mm(reveal)),
+        false => mm(reveal),
     };
     kit.centre(&ea, &eb);
     let edr = match diagonal {
@@ -93,6 +101,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         t,
         plinth,
         dr,
+        g: reveal,
+        er,
         ea,
         eb,
         ed,

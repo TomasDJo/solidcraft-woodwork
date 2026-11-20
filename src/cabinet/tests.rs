@@ -50,6 +50,27 @@ fn inches_stay_inches() {
     assert_eq!(commands[0].1["name"], "Base_1_width");
     assert_eq!(commands[0].1["expression"], "24 in");
     assert_eq!(summary["inner"]["width"], 24.0 * 25.4 - 2.0 * 19.05);
+    // the reveal is mm whatever the units: the default 2 builds, as 2 mm
+    let p = json!({"units": "in", "width": 24, "height": 30, "depth": 22,
+                   "thickness": 0.75, "doors": 2, "reveal": 2});
+    let (commands, _) = build(&p).unwrap();
+    let reveal = commands.iter().find(|c| c.1["name"] == "Cabinet_reveal");
+    assert_eq!(reveal.unwrap().1["expression"], "2 mm");
+}
+
+#[test]
+fn the_auto_handle_goes_by_the_door_height() {
+    // inset in 1240: the door is 1240 - 2 x (18 + 2) = 1200, not over 1200, so a floor
+    // unit's knob goes near the top, not in the middle
+    let p = json!({"fronts": "inset", "doors": 1, "height": 1240, "handles": "knob"});
+    let (commands, _) = build(&p).unwrap();
+    let hole = commands
+        .iter()
+        .find(|c| c.1["name"] == "Cabinet Door handle 1");
+    assert_eq!(
+        hole.unwrap().1["base"][2],
+        "Cabinet_height - Cabinet_thickness - Cabinet_reveal - 100 mm + 0 mm"
+    );
 }
 
 #[test]
@@ -92,7 +113,10 @@ fn drawers_replace_shelves() {
     let hole = commands
         .iter()
         .find(|c| c.1["name"] == "Cabinet Door handle 1");
-    assert_eq!(hole.unwrap().1["base"][2], "0 mm + 2 mm + 100 mm + 0 mm");
+    assert_eq!(
+        hole.unwrap().1["base"][2],
+        "0 mm + 0 mm + Cabinet_reveal + 100 mm + 0 mm"
+    );
     assert!(build(&json!({"width": 300, "doors": 2, "handles": "knob"})).is_err());
     // the position can be chosen instead: the middle of a pull, 100 mm + half of 128 from the end
     let height = |at: &str| {
@@ -103,12 +127,18 @@ fn drawers_replace_shelves() {
             .find(|c| c.1["name"] == "Cabinet Door handle 1");
         hole.unwrap().1["base"][2].as_str().unwrap().to_string()
     };
-    assert_eq!(height("top"), "Cabinet_height - 2 mm - 164 mm + -64 mm");
+    assert_eq!(
+        height("top"),
+        "Cabinet_height - 0 mm - Cabinet_reveal - 164 mm + -64 mm"
+    );
     assert_eq!(
         height("middle"),
-        "(0 mm + 2 mm + Cabinet_height - 2 mm) / 2 + -64 mm"
+        "(0 mm + 0 mm + Cabinet_reveal + Cabinet_height - 0 mm - Cabinet_reveal) / 2 + -64 mm"
     );
-    assert_eq!(height("bottom"), "0 mm + 2 mm + 164 mm + -64 mm");
+    assert_eq!(
+        height("bottom"),
+        "0 mm + 0 mm + Cabinet_reveal + 164 mm + -64 mm"
+    );
     assert_eq!(height("auto"), height("top")); // 560 deep: a floor unit
     assert!(build(&json!({"doors": 1, "handles": "knob", "handle_position": "side"})).is_err());
     assert!(build(&json!({"drawers": 2, "doors": 1})).is_err());
@@ -169,8 +199,9 @@ fn a_door_hinges_on_its_outer_front_edge() {
     // The planes are given outright, so nothing but the axis is added to the design.
     for side in ["", "seat "] {
         let axis = named(&format!("Cabinet Door L hinge {side}axis"));
-        let x = "2 mm + (((Cabinet_width - 4 mm - 1*2 mm) / 2) + 2 mm) * 0 - Cabinet_width/2";
-        let y = "-2 mm - Cabinet_thickness - Cabinet_depth/2";
+        let w = "((Cabinet_width - 2*0 mm - 2*Cabinet_reveal - 1*Cabinet_reveal) / 2)";
+        let x = format!("0 mm + Cabinet_reveal + ({w} + Cabinet_reveal) * 0 - Cabinet_width/2");
+        let y = "-Cabinet_reveal - Cabinet_thickness - Cabinet_depth/2";
         // the order of the planes is the way it opens: this one about -Z
         assert_eq!(
             axis["a"],
@@ -190,7 +221,7 @@ fn a_door_hinges_on_its_outer_front_edge() {
     assert_eq!(axis["a"]["plane"]["normal"], json!([1, 0, 0]));
     assert_eq!(
         axis["a"]["plane"]["origin"][0],
-        "2 mm + (((Cabinet_width - 4 mm - 0*2 mm) / 1) + 2 mm) * 0 + ((Cabinet_width - 4 mm - 0*2 mm) / 1) - Cabinet_width/2"
+        "0 mm + Cabinet_reveal + (((Cabinet_width - 2*0 mm - 2*Cabinet_reveal - 0*Cabinet_reveal) / 1) + Cabinet_reveal) * 0 + ((Cabinet_width - 2*0 mm - 2*Cabinet_reveal - 0*Cabinet_reveal) / 1) - Cabinet_width/2"
     );
     assert!(of("Cabinet Door hinge cup 1")["base"][0]
         .as_str()
@@ -239,4 +270,132 @@ fn a_door_hinges_on_its_outer_front_edge() {
         .as_array()
         .unwrap()
         .contains(&json!("Cabinet Door L hinge seat axis")));
+}
+
+fn named<'a>(commands: &'a [(&str, Value)], n: &str) -> &'a Value {
+    let found = (commands.iter()).find(|c| c.1["name"] == n && c.0 != "component.create");
+    &found.unwrap_or_else(|| panic!("no {n}")).1
+}
+
+#[test]
+fn inset_doors_fill_the_opening_less_the_reveal() {
+    let p = json!({"fronts": "inset", "doors": 2, "reveal": 3, "handles": "knob"});
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    // the shelves behind the doors
+    assert_eq!(input.shelf_d, 560.0 - 12.0 - 6.0 - 18.0);
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(named(&commands, "Cabinet_reveal")["expression"], "3 mm");
+    // between the sides less a reveal at each end and one between: 2 x 279 of 564
+    let w = "((Cabinet_width - 2*Cabinet_thickness - 2*Cabinet_reveal - 1*Cabinet_reveal) / 2)";
+    let door = named(&commands, "Cabinet Door R");
+    assert_eq!(door["length"], w);
+    assert_eq!(
+        door["corner"],
+        json!([
+            format!(
+                "Cabinet_thickness + Cabinet_reveal + ({w} + Cabinet_reveal) * 1 - Cabinet_width/2"
+            ),
+            "0 mm - Cabinet_depth/2", // the front face flush with the carcass
+            "0 mm + Cabinet_thickness + Cabinet_reveal"
+        ])
+    );
+    // from on the bottom panel to under the top, a reveal off each
+    assert_eq!(
+        door["height"],
+        "Cabinet_height - Cabinet_thickness - Cabinet_reveal - 0 mm - Cabinet_thickness - Cabinet_reveal"
+    );
+    // cups and handle from the door's back face, at y = thickness; the hinge on its front edge
+    for hole in ["Cabinet Door R hinge cup 1", "Cabinet Door R handle 1"] {
+        assert_eq!(
+            named(&commands, hole)["base"][1],
+            "Cabinet_thickness - Cabinet_depth/2"
+        );
+    }
+    let axis = named(&commands, "Cabinet Door L hinge seat axis");
+    assert_eq!(axis["a"]["plane"]["origin"][1], "0 mm - Cabinet_depth/2");
+    // the shelf starts behind the doors; the sides stay full depth
+    let shelf = named(&commands, "Cabinet Shelf 1");
+    assert_eq!(shelf["corner"][1], "Cabinet_thickness - Cabinet_depth/2");
+    assert_eq!(
+        shelf["width"],
+        "((Cabinet_depth - 12 mm - Cabinet_back_thickness) - Cabinet_thickness)"
+    );
+    assert_eq!(named(&commands, "Cabinet Side L")["width"], "Cabinet_depth");
+    assert!(build(&json!({"fronts": "flush"})).is_err());
+    assert!(build(&json!({"doors": 1, "reveal": 0.2})).is_err());
+    assert!(build(&json!({"doors": 1, "reveal": 7})).is_err());
+}
+
+#[test]
+fn inset_doors_one_per_compartment() {
+    // each door fills its own compartment between the dividers, a reveal off each side
+    let p = json!({"fronts": "inset", "width": 900, "dividers": 2, "doors": 3});
+    let (commands, _) = build(&p).unwrap();
+    let cell = "(((Cabinet_width - 2*Cabinet_thickness) - 2*Cabinet_thickness) / 3)";
+    let door = named(&commands, "Cabinet Door 2");
+    assert_eq!(door["length"], format!("({cell} - 2*Cabinet_reveal)"));
+    assert_eq!(
+        door["corner"][0],
+        format!("Cabinet_thickness + ({cell} + Cabinet_thickness) * 1 + Cabinet_reveal - Cabinet_width/2")
+    );
+    // the dividers stand behind the doors
+    assert_eq!(
+        named(&commands, "Cabinet Divider 1")["corner"][1],
+        "Cabinet_thickness - Cabinet_depth/2"
+    );
+}
+
+#[test]
+fn overlay_fronts_take_the_reveal() {
+    let (commands, _) = build(&json!({"doors": 2, "reveal": 3})).unwrap();
+    assert_eq!(named(&commands, "Cabinet_reveal")["expression"], "3 mm");
+    let door = named(&commands, "Cabinet Door L");
+    assert_eq!(
+        door["length"],
+        "((Cabinet_width - 2*0 mm - 2*Cabinet_reveal - 1*Cabinet_reveal) / 2)"
+    );
+    assert_eq!(
+        door["corner"][1],
+        "-Cabinet_reveal - Cabinet_thickness - Cabinet_depth/2"
+    );
+    let (commands, _) = build(&json!({"drawers": 1, "reveal": 3})).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 1 Front")["length"],
+        "Cabinet_width - 2*0 mm - 2*Cabinet_reveal"
+    );
+    // the default, 2 mm, is a parameter too on a cabinet with fronts, and none without
+    let (commands, _) = build(&json!({"drawers": 2})).unwrap();
+    assert_eq!(named(&commands, "Cabinet_reveal")["expression"], "2 mm");
+    let (commands, _) = build(&json!({})).unwrap();
+    assert!(commands.iter().all(|c| c.1["name"] != "Cabinet_reveal"));
+}
+
+#[test]
+fn inset_drawers() {
+    // from the bottom panel to the top one, four reveals between three fronts
+    let p = json!({"fronts": "inset", "drawers": 3});
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert_eq!(input.front_h, (720.0 - 36.0 - 8.0) / 3.0);
+    let (commands, _) = build(&p).unwrap();
+    let front = named(&commands, "Cabinet Drawer 1 Front");
+    assert_eq!(
+        front["corner"][2],
+        "0 mm + Cabinet_thickness + Cabinet_reveal + (((Cabinet_height - 0 mm - 2*Cabinet_thickness - 4*Cabinet_reveal) / 3) + Cabinet_reveal) * 0"
+    );
+    assert_eq!(
+        front["length"],
+        "Cabinet_width - 2*Cabinet_thickness - 2*Cabinet_reveal"
+    );
+    // the box behind the front, clear of the bottom and the top by 8 mm
+    let left = named(&commands, "Cabinet Drawer 1 Left");
+    assert_eq!(left["corner"][1], "Cabinet_thickness - Cabinet_depth/2");
+    assert_eq!(
+        left["height"],
+        "(((Cabinet_height - 0 mm - 2*Cabinet_thickness - 4*Cabinet_reveal) / 3) - 2*8 mm)"
+    );
+    // the slide's point on the front's back face, at its lower edge: 18 + 2 up
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 1 slide")["at"]["point"],
+        json!([0.0, -280.0 + 18.0, 20.0])
+    );
 }

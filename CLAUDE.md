@@ -288,6 +288,17 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   off a quarter turn is right only for its turned boards. An L-shaped or diagonal corner
   shelf gets one front edge marked, not its two (or slanted) front edges. A material that is
   not ours has no grain (`material::GRAINED`).
+- The gap round the fronts is the field `reveal`, 0.5 to 6 mm, always in mm whatever `units`
+  says (read with `num`, made with `Kit::parameter_as` as `2 mm`; `edit::merge` does not
+  scale it). It is the parameter `<Prefix>_reveal` on a cabinet with doors or drawers (kept
+  once made, so an edit that puts fronts back takes it up: `Kit::has`). `fittings::DOOR_GAP` is
+  only its default.
+- `fronts: inset` (box cabinet only; the corner refuses it in `corner::input`, and its dialog
+  has no such field): the fronts fill the opening between the panels, a reveal all round, the
+  front face at y = 0 (the hinge line too, so the door's back edge swings away from the side).
+  Shelves, dividers, pin rows and drawer boxes start at y = t, a panel shallower; sides, top
+  and bottom stay full depth. With one door per compartment each door fills its own
+  compartment. A drawer box's clearance is `BOX_CLEAR` alone when inset.
 - A diagonal corner cabinet's front is always at 45 degrees: its door and plinth are components
   turned by a fixed angle (`Kit::turn`), since an occurrence's turn cannot follow a parameter.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are
