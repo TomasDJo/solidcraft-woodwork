@@ -193,10 +193,11 @@ fn fronts_and_the_reveal_survive_an_edit() {
         (&params["fronts"], &params["reveal"]),
         (&json!("overlay"), &json!(1.5))
     );
-    // a corner takes a reveal, but has no choice of fronts
+    // a corner takes a reveal and its fronts too
     let corner = remember("corner", &json!({}), "A");
     assert!(merge(&corner[KEY], &json!({"reveal": 3}), &design).is_ok());
-    assert!(merge(&corner[KEY], &json!({"fronts": "inset"}), &design).is_err());
+    let (_, params) = merge(&corner[KEY], &json!({"fronts": "inset"}), &design).unwrap();
+    assert_eq!(params["fronts"], "inset");
 }
 
 #[test]

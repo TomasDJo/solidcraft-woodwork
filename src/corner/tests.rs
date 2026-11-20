@@ -6,6 +6,14 @@ fn named<'a>(commands: &'a Commands, name: &str) -> &'a Value {
     &found.unwrap_or_else(|| panic!("no {name}")).1
 }
 
+/// A board's box, not the component of the same name.
+fn board<'a>(commands: &'a Commands, name: &str) -> &'a Value {
+    let found = commands
+        .iter()
+        .find(|c| c.0 == "solid.box" && c.1["name"] == name);
+    &found.unwrap_or_else(|| panic!("no {name}")).1
+}
+
 /// Where a hinge's line is in what the door hangs on, x and y, and the way it opens about Z:
 /// the two planes its axis is made from, and their order.
 fn hinge(commands: &Commands, joint: &str) -> (String, String, i32) {
@@ -208,7 +216,7 @@ fn the_corner_follows_where_the_cabinet_is_placed() {
 }
 
 #[test]
-fn the_doors_take_the_reveal_but_are_never_inset() {
+fn the_doors_take_the_reveal() {
     let (commands, _) = build(&json!({"doors": "hinged right", "reveal": 3})).unwrap();
     assert_eq!(named(&commands, "Cabinet_reveal")["expression"], "3 mm");
     let door = commands
@@ -221,11 +229,141 @@ fn the_doors_take_the_reveal_but_are_never_inset() {
     // no doors, no parameter
     let (commands, _) = build(&json!({})).unwrap();
     assert!(commands.iter().all(|c| c.1["name"] != "Cabinet_reveal"));
-    let refused = build(&json!({"doors": "hinged right", "fronts": "inset"}));
-    assert_eq!(
-        refused.err().unwrap(),
-        "inset fronts are only made on box cabinets"
-    );
     assert!(build(&json!({"fronts": "overlay"})).is_ok());
+    assert!(build(&json!({"doors": "hinged right", "fronts": "flush"})).is_err());
     assert!(build(&json!({"doors": "hinged right", "reveal": 9})).is_err());
+}
+
+#[test]
+fn inset_bifold_doors_fill_the_opening() {
+    // hinged right in a left corner: the pair hangs on the back leg's end
+    let p = json!({"doors": "hinged right", "fronts": "inset", "handles": "knob", "shelves": 1,
+        "shelf_pins": true});
+    let (commands, _) = build(&p).unwrap();
+    let door = board(&commands, "Cabinet Door");
+    // a panel inside the carcass's front, the reveal in from the end panel, bottom and top
+    assert_eq!(
+        door["corner"][1],
+        "Cabinet_return - Cabinet_depth + Cabinet_thickness - Cabinet_thickness - Cabinet_return/2"
+    );
+    assert_eq!(
+        door["height"],
+        "Cabinet_height - 0 mm - 2*(Cabinet_thickness + Cabinet_reveal)"
+    );
+    // it runs into the inner corner, behind the return's door
+    assert_eq!(
+        door["corner"][0],
+        "Cabinet_depth - Cabinet_thickness - Cabinet_width/2"
+    );
+    // hinged on its front edge, at the carcass's front, the reveal in from the end panel
+    let (x, y, turn) = hinge(&commands, "Cabinet Door hinge");
+    assert_eq!(
+        x,
+        "Cabinet_width - (Cabinet_thickness + Cabinet_reveal) - Cabinet_width/2"
+    );
+    assert_eq!(y, "Cabinet_return - Cabinet_depth - Cabinet_return/2");
+    assert_eq!(turn, 1);
+    // the second folds about the carcass's inner front corner, and stops the reveal short of
+    // the first door's face
+    let (x, y, _) = hinge(&commands, "Cabinet Door return fold");
+    assert_eq!(x, "Cabinet_depth - Cabinet_width/2");
+    assert_eq!(y, "Cabinet_return - Cabinet_depth - Cabinet_return/2");
+    let second = board(&commands, "Cabinet Door return");
+    assert_eq!(
+        second["corner"],
+        json!([
+            "Cabinet_depth - Cabinet_thickness - Cabinet_width/2",
+            "(Cabinet_thickness + Cabinet_reveal) - Cabinet_return/2",
+            "0 mm + (Cabinet_thickness + Cabinet_reveal)"
+        ])
+    );
+    assert_eq!(
+        second["width"],
+        "Cabinet_return - Cabinet_depth + Cabinet_thickness - Cabinet_thickness - Cabinet_reveal - (Cabinet_thickness + Cabinet_reveal)"
+    );
+    // the handle on the second door, the edge distance in from its free end
+    let handle = named(&commands, "Cabinet Door return handle 1");
+    assert_eq!(
+        handle["base"][1],
+        "(Cabinet_thickness + Cabinet_reveal) + 50 mm - Cabinet_return/2"
+    );
+    // the shelf's notch and pin rows start a panel back, clear of the doors; bottom and top
+    // stay full
+    let notch = named(&commands, "Cabinet Shelf 1 notch");
+    assert_eq!(
+        notch["corner"][0],
+        "Cabinet_depth - Cabinet_thickness - Cabinet_width/2"
+    );
+    assert_eq!(notch["width"], "Cabinet_return - Cabinet_depth");
+    let bottom = named(&commands, "Cabinet Bottom notch");
+    assert_eq!(bottom["corner"][0], "Cabinet_depth - Cabinet_width/2");
+    let rows = named(&commands, "Cabinet Back pin rows");
+    assert_eq!(
+        rows["spacing2"],
+        "Cabinet_depth - Cabinet_thickness - Cabinet_thickness - 74 mm"
+    );
+    // hinged left, on the return: the return's door is the long one, a panel inside the front
+    // up to the back leg's door's back face, hinged at the carcass's front by the reveal in
+    // from the end; the back leg's door starts the reveal past the return door's face
+    let p = json!({"doors": "hinged left", "fronts": "inset"});
+    let (commands, _) = build(&p).unwrap();
+    let long = board(&commands, "Cabinet Door return");
+    assert_eq!(
+        long["corner"][0],
+        "Cabinet_depth - Cabinet_thickness - Cabinet_width/2"
+    );
+    assert_eq!(
+        long["width"],
+        "Cabinet_return - Cabinet_depth + Cabinet_thickness - (Cabinet_thickness + Cabinet_reveal)"
+    );
+    assert_eq!(
+        board(&commands, "Cabinet Door")["corner"][0],
+        "Cabinet_depth - Cabinet_thickness + Cabinet_thickness + Cabinet_reveal - Cabinet_width/2"
+    );
+    let (x, y, turn) = hinge(&commands, "Cabinet Door return hinge");
+    assert_eq!(x, "Cabinet_depth - Cabinet_width/2");
+    assert_eq!(y, "(Cabinet_thickness + Cabinet_reveal) - Cabinet_return/2");
+    assert_eq!(turn, -1);
+    let (x, y, _) = hinge(&commands, "Cabinet Door fold");
+    assert_eq!(x, "Cabinet_depth - Cabinet_width/2");
+    assert_eq!(y, "Cabinet_return - Cabinet_depth - Cabinet_return/2");
+    // without doors there is nothing to inset: the shelves stay as they are
+    let p = json!({"fronts": "inset"});
+    let (commands, _) = build(&p).unwrap();
+    let notch = named(&commands, "Cabinet Shelf 1 notch");
+    assert_eq!(notch["corner"][0], "Cabinet_depth - Cabinet_width/2");
+}
+
+#[test]
+fn an_inset_diagonal_door_fits_between_the_ends() {
+    let p = json!({"shape": "diagonal", "doors": "hinged right", "fronts": "inset"});
+    let (commands, _) = build(&p).unwrap();
+    let door = board(&commands, "Cabinet Door");
+    // its front face on the front's line, the reveal from the ends' inner corners
+    assert_eq!(
+        door["corner"],
+        json!([
+            "(Cabinet_thickness/sqrt(2) + Cabinet_reveal)",
+            "0 mm",
+            "0 mm + (Cabinet_thickness + Cabinet_reveal)"
+        ])
+    );
+    assert_eq!(
+        door["length"],
+        "(sqrt(2) * (Cabinet_return - Cabinet_depth)) - 2*(Cabinet_thickness/sqrt(2) + Cabinet_reveal)"
+    );
+    // hinged on that front face
+    let own = named(&commands, "Cabinet Door hinge axis");
+    assert_eq!(own["b"]["plane"]["origin"][1], "0 mm");
+    // the shelf's slanted edge a panel further back; the bottom's on the front
+    let cut = named(&commands, "Cabinet Shelf 1 corner");
+    assert_eq!(
+        cut["distance"],
+        "Cabinet_return - Cabinet_depth - 2*Cabinet_thickness + sqrt(2)*Cabinet_thickness"
+    );
+    let cut = named(&commands, "Cabinet Bottom corner");
+    assert_eq!(
+        cut["distance"],
+        "Cabinet_return - Cabinet_depth - 2*Cabinet_thickness"
+    );
 }

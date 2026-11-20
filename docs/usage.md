@@ -86,8 +86,16 @@ There is no oven housing: size a tall cabinet for your oven yourself.
 Builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
 It is parametric, takes a material, and can be placed, named and matched like the box cabinet.
-Its doors are overlay, with a **Reveal** (`Name_reveal`) as on the box cabinet; inset fronts are
-only made on box cabinets.
+Its doors have a **Reveal** (`Name_reveal`) as on the box cabinet, and **Fronts** (shown when
+there are doors): Overlay, in front of the cabinet, or Inset, inside the opening with their faces
+flush with the carcass front and the reveal from the end panels, bottom and top. Inset, the
+shelves (not the bottom and top) stand a panel back behind the doors, and so do the shelf pin
+rows. The L's pair is then the same bi-fold a panel back: the first door hinges on its front
+edge just inside the end panel and runs into the inner corner behind the second, which folds
+about the carcass's inner front corner. The diagonal door fills the opening between the two
+ends; as the ends stand at 45 degrees to it, its edges stay the reveal clear of their inner
+corners, which leaves a slanted strip of each end showing beside it. An inset front changes
+nothing about where neighbouring cabinets stand.
 
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the

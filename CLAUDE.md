@@ -309,13 +309,21 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   scale it). It is the parameter `<Prefix>_reveal` on a cabinet with doors or drawers (kept
   once made, so an edit that puts fronts back takes it up: `Kit::has`). `fittings::DOOR_GAP` is
   only its default.
-- `fronts: inset` (box cabinet only; the corner refuses it in `corner::input`, and its dialog
-  has no such field): the fronts fill the opening between the panels, a reveal all round, the
-  front face at y = 0 (the hinge line too, so the door's back edge swings away from the side).
+- `fronts: inset` (box and corner cabinets; the corner's dialog shows it with doors, and
+  `corner::input` takes it only with doors): the fronts fill the opening between the panels, a
+  reveal all round, the front face at y = 0 (the hinge line too, so the door's back edge swings
+  away from the side).
   Shelves, dividers, pin rows and drawer boxes start at y = t, a panel shallower; sides, top
   and bottom stay full depth. With one door per compartment each door fills its own
   compartment. A drawer box's clearance is `BOX_CLEAR` alone when inset (beside doors it is
   a panel more, as overlay, to clear the rail).
+  Corner (`corner::doors`, `corner::diagonal`): the L's pair is the overlay pair a panel back
+  (back faces at `depth - t` and `return - depth + t`, the fold at the carcass's inner front
+  corner), the reveal in from the end panels; the diagonal door's front face is on the front's
+  line and its ends stop `t/sqrt(2) + reveal` along it from the ends' outer corners, as far as
+  the 45-degree end panels reach (their inner corner). Shelves only (not bottom and top) and
+  the pin rows start a panel back: the L's notch from `depth - t`, the diagonal's chamfer
+  `sqrt(2)*t` longer. Seats and links do not change.
 - A box cabinet with drawers and doors (one or two: drawers take no dividers) puts the
   drawers at the top or the bottom (`drawers_at`, cabinet and Edit) and a fixed `<Name> Rail`
   between the sides, centred behind the reveal between drawers and doors (at y = t when

@@ -74,3 +74,37 @@ def test_hinged_on_the_return(approval):
     hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
     assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
     assert not [f["name"] for f in results[6]["timeline"] if f["warning"]]
+
+
+def test_inset_doors(approval):
+    # Inset in an inch design: the bi-fold pair a panel back inside the opening, the reveal in
+    # from the end panel, bottom and top. Folded and swung a quarter, the pair stays inside the
+    # cabinet's width, so it clears the neighbour, which stands where it would by an overlay corner.
+    inset = {**CORNER, "fronts": "inset", "shelf_pins": True}
+    results = cli([{"command": "document.units", "params": {"units": "in"}},
+                   plugin(approval, "corner", inset), MEASURE,
+                   select("C Top"), plugin(approval, "cabinet", {"name": "N", "place": "right"}),
+                   drive("C Door return fold", 90), MEASURE,
+                   drive("C Door hinge", 90), MEASURE,
+                   plugin(approval, "cutlist"),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
+                  "--save", str(ROOT / "dist" / "corner-inset.sc"))
+    box = boxes(results[2])
+    assert box["C Door"] == [42, -110, 120, 480, -92, 700], box["C Door"]
+    assert box["C Door return"] == [42, -430, 120, 60, -112, 700], box["C Door return"]
+    # the shelf's notch a panel back behind the doors; the bottom's at the carcass front
+    assert volume(results[2], "C Shelf 1") == (964 * 864 - 440 * 340) * 18, volume(results[2], "C Shelf 1")
+    assert volume(results[2], "C Bottom") == (964 * 864 - 422 * 322) * 18, volume(results[2], "C Bottom")
+    box = boxes(results[6])
+    assert box["N Side L"][0] == 500 and box["N Side L"][4] == 450, box["N Side L"]
+    assert box["C Door return"] == [62, -128, 120, 380, -110, 700], box["C Door return"]  # on the first's face
+    box = boxes(results[8])
+    assert box["C Door"] == [462, -548, 120, 480, -110, 700], box["C Door"]  # clear of the end panel
+    assert box["C Door return"] == [480, -528, 120, 498, -210, 700], box["C Door return"]
+    hardware = {h["item"]: h["qty"] for h in results[9]["result"]["hardware"]}
+    assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8}, hardware
+    assert not [f["name"] for f in results[10]["timeline"] if f["warning"]]
+    # Edit makes an overlay corner's doors inset
+    results = cli([plugin(approval, "corner", CORNER), select("C Top"),
+                   plugin(approval, "edit", {"fronts": "inset"}), MEASURE])
+    assert boxes(results[3])["C Door"] == [42, -110, 120, 480, -92, 700], boxes(results[3])["C Door"]

@@ -84,12 +84,12 @@ pub fn merge(
             false => Err(format!("`{key}` is only for a {kind}")),
         };
         let (to, value) = match key.as_str() {
-            "shelves" | "handles" | "handle_position" | "plinth" | "reveal" => {
+            "shelves" | "handles" | "handle_position" | "plinth" | "reveal" | "fronts" => {
                 (key.as_str(), value.clone())
             }
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
             "doors" | "dividers" | "drawers" | "drawer_height" | "drawers_at" | "back"
-            | "door_hinge" | "fronts" | "kind" => {
+            | "door_hinge" | "kind" => {
                 only(false, "box cabinet")?;
                 (key.as_str(), value.clone())
             }

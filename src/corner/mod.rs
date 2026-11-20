@@ -37,8 +37,9 @@ struct Corner<'a> {
     h: f64,
     t: f64,
     plinth: f64,
-    dr: f64, // depth at the return's end: `d` on the L
-    g: f64,  // the reveal around the doors, and its parameter
+    dr: f64,     // depth at the return's end: `d` on the L
+    g: f64,      // the reveal around the doors, and its parameter
+    inset: bool, // the doors inside the opening, the shelves a panel back behind them
     er: String,
     ea: String,
     eb: String,
@@ -67,6 +68,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         right,
         diagonal,
         reveal,
+        inset,
     } = input::read(&kit, p)?;
 
     let ea = kit.parameter("width", a, "along the back wall");
@@ -102,6 +104,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         plinth,
         dr,
         g: reveal,
+        inset,
         er,
         ea,
         eb,
@@ -227,6 +230,8 @@ impl Corner<'_> {
             ));
         }
         for (part, z, z_mm) in &boards {
+            // Behind inset doors a shelf's front edges are a panel further back.
+            let back = self.inset && part.starts_with("Shelf");
             panel(
                 part,
                 [et, et, z],
@@ -243,20 +248,31 @@ impl Corner<'_> {
                 self.kit.push((
                     "solid.chamfer",
                     json!({
-                        "edges": [edge], "distance": format!("{eb} - {ed} - 2*{et}"),
+                        "edges": [edge], "distance": match back {
+                            true => format!("{eb} - {ed} - 2*{et} + sqrt(2)*{et}"),
+                            false => format!("{eb} - {ed} - 2*{et}"),
+                        },
                         "body": format!("{name} {part}"), "name": format!("{name} {part} corner"),
                     }),
                 ));
                 continue;
             }
+            let notch = match back {
+                true => [
+                    format!("{ed} - {et}"),
+                    format!("{ea} - {ed}"),
+                    format!("{eb} - {ed}"),
+                ],
+                false => [
+                    ed.to_string(),
+                    format!("{ea} - {et} - {ed}"),
+                    format!("{eb} - {ed} - {et}"),
+                ],
+            };
             panel(
                 &format!("{part} notch"),
-                [ed, et, z],
-                [
-                    &format!("{ea} - {et} - {ed}"),
-                    &format!("{eb} - {ed} - {et}"),
-                    et,
-                ],
+                [&notch[0], et, z],
+                [&notch[1], &notch[2], et],
                 Some(&[format!("{name} {part}")]),
             );
         }
@@ -300,9 +316,14 @@ impl Corner<'_> {
         let flip = self.flip();
         let (back_end, return_end) = self.ends();
         let blind = fittings::blind_pin(et);
+        // Behind inset doors the shelves, so the rows, end a panel further back.
+        let (front, o) = match self.inset {
+            true => (format!("{eb} - {ed} + {et}"), format!(" - {et}")),
+            false => (format!("{eb} - {ed}"), String::new()),
+        };
         let (near, far) = (
             format!("{et} + {}", mm(PIN_SETBACK)),
-            format!("{eb} - {ed} + {}", mm(PIN_SETBACK)),
+            format!("{front} + {}", mm(PIN_SETBACK)),
         );
         let (wall_x, wall_y) = (format!("{ea} - {et}"), format!("{eb} - {et}"));
         // (panel, the first hole on its inner face, the way in, the way to the second row)
@@ -313,7 +334,7 @@ impl Corner<'_> {
             ("Back return", [et, &far], [-flip, 0, 0], [0, 1, 0]),
         ];
         let z = format!("{epl} + {et} + {}", mm(2.0 * PITCH));
-        let (run, return_run) = (format!("{ed} - {et}"), format!("{} - {et}", self.edr));
+        let (run, return_run) = (format!("{ed} - {et}{o}"), format!("{} - {et}{o}", self.edr));
         let mut drill = Vec::new();
         for (part, [x, y], into, across) in rows {
             let rows = PinRows {
