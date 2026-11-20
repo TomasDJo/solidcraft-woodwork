@@ -91,6 +91,7 @@ materials, joinery and cut lists.
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
+| `src/worktop/` | Worktop over a straight run of the selected cabinets: finds the run from the cabinets' sides and backs, and builds one board whose parameters are expressions over the cabinets'. `lib.rs` makes its component, moves it to the run's fixed point (a grounded cabinet's middle, or the side held to a cabinet outside the run) and grounds it |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
@@ -109,7 +110,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material` and `cutlist`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `worktop` and `cutlist`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -277,8 +278,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   pieces are never joined again, so a cutting optimiser may save a sheet on a big job (the
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
   sheet is only reported (`oversize`), not split.
-- A board is a worktop, bought to length and not laid out on sheets, when its name contains
-  `Worktop` (`cutlist::cutlist`), by name like the banding roles.
+- A board is a worktop, bought to length and not laid out on sheets, when the Worktop function
+  made it, whatever its name (`lib.rs` finds it by its length parameter's comment,
+  `worktop::ALONG`, and passes `_worktops`), or when its name contains `Worktop` (hand-made
+  boards in older designs) (`cutlist::cutlist`).
 - Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no
   per-part override (that would need `storage@0.1`). A cabinet's width axis is across its
   `Side L` in the world, or X for a board measured in its own component, so a cabinet turned
@@ -325,3 +328,17 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - Place's Auto, the dialog's default, goes by the name of the selected board
   (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. A script
   that leaves `place` out gets the origin, as before.
+- A worktop (`worktop`) is a grounded component with no joint to its cabinets (Edit deletes a
+  cabinet's joints): its parameters are expressions over theirs (`<P>_width` the sum of the
+  run's `_width`, or a corner cabinet's `_return` when that leg lies along the run, plus the
+  end overhangs; `<P>_depth` the deepest cabinet's `_depth` plus the front overhang; its top on
+  the anchor cabinet's `_height`), so it follows a resize and survives Edit cabinet. Its
+  component stands on the run's fixed point (`worktop::build`, from `_held`, which `lib.rs`
+  fills from `component.list` and the cabinets' `link` notes): a grounded cabinet's middle, or
+  the side by which the run is held to a cabinet outside it; the board's corner is an
+  expression from there. Grounding, ungrounding or linking a cabinet afterwards is not
+  followed, nor a link of the older rigid kind (on top, pre-0.1.8), which holds a middle one
+  way only. The deepest cabinet is chosen by its value when the worktop is made. Its body is named `<Name>` alone, and a name that a
+  cabinet would claim as a part (`<Cabinet> ...`) is refused; a cabinet made later with such
+  a name would still claim it. Quarter turns only, like Place. The run is read from the world
+  boxes of each cabinet's sides and backs.
