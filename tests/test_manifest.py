@@ -22,6 +22,8 @@ def test_choices_have_titles(approval):
             at = (entry["name"], name)
             # A keyword the dialog cannot draw leaves the entry with Run turned off.
             assert set(field) <= DRAWN, (at, set(field) - DRAWN)
+            # Its description is the field's hover tooltip: every field explains itself.
+            assert field.get("description", "").strip(), at
             # The one list the dialog draws: `selection`, picked in the viewport (0.44). The app
             # reserves that name for bodies, faces and edges, which costs the manifest nothing;
             # faces matter, as a click on a board selects one. Another array, or more keywords
