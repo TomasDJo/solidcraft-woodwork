@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Worktop</title>
-  <path d="M7 33L26 33L26 58L7 58Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M26 33L45 33L45 58L26 58Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M4 27L17 12L60 12L47 27Z" fill="#236ead" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M4 27L47 27L47 33L4 33Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M47 27L60 12L60 18L47 33Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M23 23L29 16L43 16L37 23Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-</svg>
