@@ -24,6 +24,8 @@ materials, joinery and cut lists.
   refuses one over 64 KiB. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
   bare values, and 0.42 cannot draw `oneOf`). `tests/test_manifest.py` checks all of this.
   The dialog is **static**: no dependent fields, no stored values.
+  A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
+  plain sentences for a hobbyist who does not know the trade words.
 - **Tools for agents (0.45).** Every entry is also the tool `woodwork.<entry>` (`plugin.tools`,
   MCP `tools/list`), with its schema as the arguments. Over MCP the arguments are checked
   strictly first: a field `required` names must be there even when it has a default, and
