@@ -226,3 +226,55 @@ fn labels_escape_and_shorten_names() {
     assert!(size == 7.0 && cut.ends_with("...") && width(&cut, 7.0) * 1.06 <= 174.0);
     assert_eq!(labels::fit("Side L", 11.0, 174.0), (11.0, "Side L".into()));
 }
+
+#[test]
+fn the_cost_table_is_not_split_over_two_pages() {
+    // Lists of every length push the cost table down the page: wherever it starts, its total
+    // is on the page of its heading.
+    let items: Vec<Value> = (0..12)
+        .map(|i| json!({"item": format!("Item {i}"), "qty": 1}))
+        .collect();
+    let prices: serde_json::Map<String, Value> =
+        (0..12).map(|i| (format!("Item {i}"), json!(1))).collect();
+    let prices = json!({"sheet": {"Birch plywood": 72}, "hardware": prices});
+    for rows in 1..40 {
+        let mut priced = list(rows);
+        priced["hardware"] = json!(items);
+        crate::prices::estimate(&mut priced, &prices);
+        let pdf = render(&priced, "Kitchen", false);
+        let text = String::from_utf8_lossy(&pdf);
+        let page = text
+            .split("stream\n")
+            .find(|p| p.contains("(Cost estimate)"));
+        assert!(page.unwrap().contains("(Total)"), "{rows} rows");
+    }
+}
+
+#[test]
+fn the_cost_follows_the_hardware() {
+    let mut priced = list(1);
+    let prices = json!({"currency": "€", "sheet": {"Birch plywood": 72}});
+    crate::prices::estimate(&mut priced, &prices);
+    let pdf = render(&priced, "Kitchen", false);
+    well_formed(&pdf);
+    let has = |bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
+    let at = |bytes: &[u8]| pdf.windows(bytes.len()).position(|w| w == bytes);
+    let words: [&[u8]; 6] = [
+        b"(Cost estimate)",
+        b"(\\(in \x80\\))",
+        b"(Sheet, Birch plywood 18 mm)",
+        b"(144.00)",   // 2 sheets at 72
+        b"(no price)", // the hinges
+        b"(1 line has no price and is left out of the total",
+    ];
+    for word in words {
+        assert!(has(word), "{}", String::from_utf8_lossy(word));
+    }
+    assert!(at(b"(Hardware)").unwrap() < at(b"(Cost estimate)").unwrap());
+    // without prices: no section
+    let mut plain = list(1);
+    crate::prices::estimate(&mut plain, &Value::Null);
+    assert!(!render(&plain, "Kitchen", false)
+        .windows(4)
+        .any(|w| w == b"Cost"));
+}

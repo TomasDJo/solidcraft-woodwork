@@ -53,3 +53,21 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
 "Oak",18,51.188
 "White melamine",18,57.836
+
+Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
+"Sheet, Oak 18 mm",3,sheet,120,360
+"Sheet, White melamine 6 mm",3,sheet,15,45
+"Sheet, White melamine 12 mm",1,sheet,30,30
+"Sheet, White melamine 18 mm",13,sheet,45,585
+"Edge banding 1 mm, Oak 18 mm",51.188,m,0.6,30.71
+"Edge banding 1 mm, White melamine 18 mm",57.836,m,0.6,34.7
+"Worktop, Worktop return",1,m,180,180
+"Worktop, Worktop",3.3,m,180,594
+"Hinge, 35 mm cup",35,piece,2.5,87.5
+"Drawer slide, pair",3,pair,12,36
+"Shelf pin, 5 mm",68,piece,0.1,6.8
+"Confirmat screw, 7 x 50 mm",60,piece,0.15,9
+"Dowel, 8 x 35 mm",32,piece,0.05,1.6
+"Knob",8,piece,3.5,28
+"Pull, 128 mm",11,piece,6,66
+Total,,,,2094.31

@@ -11,6 +11,7 @@ dialog; the cabinet you are about to make is previewed in the model before you p
 - [Joinery](#joinery)
 - [Material](#material)
 - [Cut list](#cut-list)
+- [Prices](#prices)
 - [Good to know](#good-to-know)
 
 ## Cabinet
@@ -141,6 +142,8 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
   along the width, `L1` one edge along the length. Doors and drawer fronts are banded all round; sides, top,
   bottom, shelves and dividers at the front; backs, plinths and drawer boxes not. It adds up
   the metres of banding per material and thickness, plus 10 % waste;
+- adds up what it costs, when the design has prices (see [Prices](#prices) and
+  [Cost estimate](#cost-estimate));
 - lists a board of a material with a grain (Birch plywood, Oak) with its length along the
   grain, marked `grain`: up on sides, doors, backs, dividers and drawer fronts, along the
   cabinet's width on top, bottom, shelves and drawer bottoms, and along the drawer box's
@@ -206,7 +209,44 @@ For scripts the reply has, beside the rows: `sheets` per material and thickness 
 `part`, `row` (its row in `parts`, from 0), `x`, `y`, `w`, `h` and `rotated`; x along the
 sheet's length from its corner), `oversize` (`part`, `material`, `thickness`, `length`, `width`
 in mm and `reason`) and `worktops` (`part`, `material`, `thickness`, `length`, `width` as the
-list shows them). Layouts are always in mm (`layout_units`), also in a design in inches.
+list shows them). Layouts are always in mm (`layout_units`), also in a design in inches. In a
+design in inches each of `sheets` also has `thickness_mm` and each of `worktops` `length_mm`,
+the mm the cost estimate goes by.
+
+### Cost estimate
+
+When the design has prices (set with [Prices](#prices)), the cut list adds a cost estimate: a
+line for each sheet stock (sheets to buy x the sheet's price), the edge banding (metres with
+waste x the price per metre of the tape chosen in **Edge banding**), each worktop (its length x
+the price per metre) and each piece of hardware (quantity x price), and the total. A line
+without a price, such as a material that is not one of the plugin's four or a price never
+entered, is listed as "no price" and left out of the total, and the list says how many there
+are. It is in the reply (`cost`: `currency`, `lines` with `item`, `qty`, `unit`, `price` and
+`amount`, null when unpriced, `total`, `unpriced` and a `note`), in the PDF as a section after
+the hardware, and at the end of the CSV. Without any prices there is no cost section, and the
+reply has a `hint` that Prices sets them.
+
+## Prices
+
+Sets the prices the cut list's cost estimate uses. They are kept in the design (it remembers
+them when saved and opened again, also on another computer) and are not shared between designs.
+
+| Field | What it is |
+|---|---|
+| **Birch plywood, MDF, White melamine, Oak sheet** | The price of one 18 mm sheet of the size the cut list lays out on. Other thicknesses are priced by thickness: a 6 mm sheet costs a third. |
+| **Banding 0.4, 1, 2 mm** | Per metre of tape; the cut list's **Edge banding** field picks which. |
+| **Worktop** | Per metre of length. |
+| **Confirmat screw, Dowel, Hinge, Knob, Pull, Shelf pin, Drawer slides** | Each; drawer slides per pair. |
+| **Currency** | Shown with the prices, such as EUR. Up to 8 characters. |
+
+Fill in only what should change: an empty field keeps the price stored before, and 0 is a price
+of 0. Run shows the prices now stored. The dialog cannot show the stored prices in its fields,
+and a price cannot be removed again, only changed. The fields come in alphabetical order
+(the dialog orders fields it does not require by name).
+
+There is one price per material, for one sheet size: if you change **Sheet size** in the cut
+list, change the sheet prices too. Banding and worktops are priced per metre also in a design in
+inches.
 
 ## Good to know
 

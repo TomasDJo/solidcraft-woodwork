@@ -125,6 +125,17 @@ impl Doc {
         });
     }
 
+    /// A note in small grey type across the page, under a table.
+    fn note(&mut self, text: &str) {
+        let lines = wrap(text, 7.5, W - 2.0 * M);
+        self.room(6.0 + 10.0 * lines.len() as f64);
+        self.y -= 6.0;
+        for line in lines {
+            self.y -= 10.0;
+            self.text(M, self.y, 7.5, false, GREY, &line);
+        }
+    }
+
     fn heading(&mut self, text: &str, note: &str) {
         self.room(90.0); // the heading, its table's titles and a first row
         self.y -= 26.0;
@@ -360,13 +371,7 @@ pub fn render(list: &Value, title: &str, diagrams: bool) -> Vec<u8> {
             .collect();
         note += &format!(" Not laid out and not counted: {}.", big.join("; "));
     }
-    let lines = wrap(&note, 7.5, W - 2.0 * M);
-    doc.room(6.0 + 10.0 * lines.len() as f64);
-    doc.y -= 6.0;
-    for line in lines {
-        doc.y -= 10.0;
-        doc.text(M, doc.y, 7.5, false, GREY, &line);
-    }
+    doc.note(&note);
 
     let worktops = list["worktops"].as_array().unwrap_or(&none);
     if !worktops.is_empty() {
@@ -434,6 +439,50 @@ pub fn render(list: &Value, title: &str, diagrams: bool) -> Vec<u8> {
             ("ITEM", M + 66.0, false, false),
         ];
         doc.table(&hw_cols, &rows, true);
+    }
+
+    // The cost at the prices kept in the design (`prices::estimate`), when it has any.
+    if let Some(lines) = list["cost"]["lines"].as_array() {
+        let currency = list["cost"]["currency"].as_str().unwrap_or("");
+        let note = match currency {
+            "" => String::new(),
+            c => format!("(in {c})"),
+        };
+        let money = |v: &Value| v.as_f64().map(|n| format!("{n:.2}"));
+        let mut rows: Vec<Vec<String>> = (lines.iter())
+            .map(|l| {
+                let qty = match l["unit"].as_str() {
+                    Some("m") => format!("{:.2} m", l["qty"].as_f64().unwrap_or(0.0)),
+                    _ => shown(&l["qty"]),
+                };
+                vec![
+                    shown(&l["item"]),
+                    qty,
+                    money(&l["price"]).unwrap_or_else(|| "—".into()),
+                    money(&l["amount"]).unwrap_or_else(|| "no price".into()),
+                ]
+            })
+            .collect();
+        let total = money(&list["cost"]["total"]).unwrap_or_default();
+        rows.push(vec!["Total".into(), String::new(), String::new(), total]);
+        // On one page when it fits on one: a total is read with its lines.
+        let tall = 80.0 + 18.0 * rows.len() as f64;
+        if tall < H - 2.0 * M {
+            doc.room(tall);
+        }
+        doc.heading("Cost estimate", &note);
+        let cols = [
+            ("ITEM", M + 4.0, false, false),
+            ("QTY", M + 320.0, true, false),
+            ("UNIT PRICE", M + 410.0, true, false),
+            ("AMOUNT", W - M - 4.0, true, true),
+        ];
+        doc.table(&cols, &rows, false);
+        let mut note = "A sheet is priced by its thickness from the price of an 18 mm sheet; banding and worktops by the metre.".to_string();
+        if let Some(unpriced) = list["cost"]["note"].as_str() {
+            note = format!("{unpriced} {note}");
+        }
+        doc.note(&note);
     }
 
     if diagrams {

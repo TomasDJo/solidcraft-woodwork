@@ -45,8 +45,8 @@ materials, joinery and cut lists.
   does not remember it.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
   features, so a design opens without the plugin.
-- Limits per run: 256 app commands, 30 s, 1 MiB result. No network access; we keep no plugin
-  data in the design (`storage@0.1`, below).
+- Limits per run: 256 app commands, 30 s, 1 MiB result. No network access. The only plugin
+  data we keep in the design is the prices (`storage@0.1`, below).
   Files: only `files.write-file` into a folder the manifest asks for under
   `runtime.permissions.files` and the user approves when installing (0.43: the install
   screen asks for a path). The plugin names the grant and a relative path and never learns
@@ -74,9 +74,18 @@ materials, joinery and cut lists.
   against. `plugin.run` through the CLI reports it as `view: {kind: fit}`.
 - `build.py` runs `solidcraft-cli plugin check` on the package: an error fails the build.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
-  `tangency-labs/solidcraft`. A `ui` capability is planned there. `storage@0.1`, plugin data
-  kept in a design, exists from 0.45 ("Plugin data in a design" in `docs/plugins.md`); we do
-  not use it.
+  `tangency-labs/solidcraft`. A `ui` capability is planned there.
+- **Plugin data in a design (`storage@0.1`, 0.45; "Plugin data in a design" in
+  `docs/plugins.md`).** We keep one small JSON document, the prices, written by `prices` with
+  `storage.patch` (an RFC 7396 merge patch of only the filled fields) and read by `prices` and
+  `cutlist` with `storage.get` (`document` is null in a design without our data):
+  `{"currency", "sheet": {<material>: price}, "banding": {"0.4"|"1"|"2": price},
+  "worktop": price, "hardware": {<item as cutlist::hardware names it>: price}}`. The manifest
+  has the capability, the two commands and `runtime.data_format: 1`; a change to the document's
+  shape that older data cannot be read as raises it, and `storage.get`'s `format` lower than
+  `plugin_format` is then data to convert. The data is saved in the `.sc` and survives without
+  the plugin. Writing works only inside a run (a script reads it with `storage.get {plugin:
+  "woodwork"}`); installing with `approve: {command_groups: [], folders: []}` still works.
 
 ## Layout
 
@@ -96,6 +105,7 @@ materials, joinery and cut lists.
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
 | `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font), with a cutting diagram per sheet |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
+| `src/prices/` | Prices: the merge patch from the Prices dialog, and the cut list's cost estimate from the stored prices (reply, CSV; the PDF draws it) |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
 | `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
@@ -108,7 +118,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material` and `cutlist`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `cutlist` and `prices`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -310,6 +320,14 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   from its one size that is a thickness parameter, so the drawer boxes' 12 mm boards get
   none. The label sits in the middle of the board's bounding box, which on a corner
   cabinet's L-shaped board can be over the cut-out; a side's label is on its left face.
+- Prices (`prices::estimate`): one price per material, for an 18 mm sheet of whatever sheet
+  size the cut list lays out on (no price per sheet size), and other thicknesses scaled linearly
+  (t/18). Banding and worktops are per metre, also in an inch design. The dialog cannot show
+  the stored prices, a stored price cannot be removed (only set, 0 included), and its fields,
+  none required, come in key order (`banding_*`, `currency`, `hardware_*`, `sheet_*`,
+  `worktop`). A material that is not ours, or a price never set, is an unpriced line, out of
+  the total. In an inch design the cut list adds `thickness_mm` to `sheets` and `length_mm`
+  to `worktops` for this.
 - Place's Auto, the dialog's default, goes by the name of the selected board
   (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. A script
   that leaves `place` out gets the origin, as before.

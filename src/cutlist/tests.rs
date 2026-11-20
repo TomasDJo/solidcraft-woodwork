@@ -152,6 +152,25 @@ fn inches_as_fractions() {
 }
 
 #[test]
+fn an_inch_list_keeps_the_mm_for_the_cost() {
+    let mut measured = measure();
+    let worktop =
+        json!({"name": "Worktop", "bbox": {"min": [0, 0, 0], "max": [2000.0, 600.0, 38.0]}});
+    measured["bodies"].as_array_mut().unwrap().push(worktop);
+    let list = cutlist(&measured, &BTreeMap::new(), true, &json!({})).unwrap();
+    let side = (list["sheets"].as_array().unwrap().iter())
+        .find(|s| s["thickness"] == "3/4")
+        .unwrap();
+    assert_eq!(side["thickness_mm"], 19.1);
+    assert_eq!(list["worktops"][0]["length"], "78 3/4");
+    assert_eq!(list["worktops"][0]["length_mm"], 2000.0);
+    // in mm the sizes are numbers already
+    let list = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
+    assert!(list["sheets"][0].get("thickness_mm").is_none());
+    assert!(list["worktops"][0].get("length_mm").is_none());
+}
+
+#[test]
 fn the_file_to_save_as() {
     let name = |entry: &str, file: &str| file_name(entry, &json!({"file": file}));
     assert_eq!(name("cutlist", ""), Ok(None));

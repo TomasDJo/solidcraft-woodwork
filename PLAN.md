@@ -100,6 +100,7 @@ Cut list and shop output:
 - [x] Edge banding and grain direction in the cut list
 - [x] Sheet cutting diagrams (nesting, kerf, grain)
 - [x] Part labels, a sticker per board (A4, 3 x 8)
+- [x] Cost estimate: prices kept in the design (`storage@0.1`), the cost of sheets, banding, worktops and hardware in the cut list
 - [ ] DXF per part
 
 ## Waiting for the app

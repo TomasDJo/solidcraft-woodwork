@@ -17,7 +17,9 @@ It uses every function of the plugin:
 - Joinery: confirmat screws in the floor units, dowels in the wall units
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
-- Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy
+- Prices: what sheets, banding, the worktop and the hardware cost, kept in the design
+- Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy,
+  and what it all costs
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
 and drawer a component inside its cabinet, on a joint. A few are left open.
@@ -63,6 +65,11 @@ WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
                "place": "right"}
+# Sample prices in euros, kept in the design: a sheet's price is for 18 mm, banding and worktop per metre.
+PRICES = {"currency": "EUR", "sheet_birch": 85, "sheet_mdf": 40, "sheet_melamine": 45, "sheet_oak": 120,
+          "banding_0_4": 0.3, "banding_1": 0.6, "banding_2": 1.1, "worktop": 180, "hardware_hinge": 2.5,
+          "hardware_slide": 12, "hardware_shelf_pin": 0.1, "hardware_confirmat": 0.15, "hardware_dowel": 0.05,
+          "hardware_knob": 3.5, "hardware_pull": 6}
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
@@ -132,7 +139,7 @@ for cabinet in made:
 steps += [select("Wall 2 Top"), build.plugin(approval, "edit", {"shelves": 3})]
 steps += [step("joint.drive", joint=joint, value=value) for joint, value in OPEN.items()]
 steps += [step("select.clear"), step("component.activate", component="root"),
-          build.plugin(approval, "cutlist")]
+          build.plugin(approval, "prices", PRICES), build.plugin(approval, "cutlist")]
 cutlist = build.cli(steps, "--in", str(OUT), "--save", str(OUT))[-1]["result"]
 
 OUT.with_name(OUT.stem + "-cutlist.csv").write_text(cutlist["csv"], encoding="utf-8", newline="\n")
@@ -144,4 +151,5 @@ for part in cutlist["oversize"]:
     print(f"not laid out: {part['part']} ({part['length']:g} x {part['width']:g} mm), {part['reason']}")
 for item in cutlist["hardware"]:
     print(item["qty"], "x", item["item"])
+print(f"cost {cutlist['cost']['total']:.2f} {cutlist['cost']['currency']}")
 print(cutlist["boards"], "boards ->", OUT)

@@ -11,6 +11,7 @@ mod kit;
 mod material;
 mod nesting;
 mod pdf;
+mod prices;
 mod select;
 
 use kit::check;
@@ -503,7 +504,22 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             }
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
+            let stored = run("storage.get", json!({}))?;
+            prices::estimate(&mut list, &stored["document"]);
             Ok(list)
+        }
+        "prices" => {
+            // Only the filled fields are written, so an empty one keeps its stored price.
+            let patch = prices::patch(params)?;
+            if patch.as_object().is_some_and(|p| !p.is_empty()) {
+                run("storage.patch", json!({"patch": patch}))?;
+            }
+            let stored = run("storage.get", json!({}))?;
+            let prices = match &stored["document"] {
+                Value::Null => json!({}),
+                document => document.clone(),
+            };
+            Ok(json!({"prices": prices}))
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }

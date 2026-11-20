@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Prices</title>
+  <path d="M6 34L30 10L54 10L54 34L30 58Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M40 22A4 4 0 1 1 48 22A4 4 0 1 1 40 22Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M20 34L34 20" fill="none" stroke="#236ead" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M26 40L40 26" fill="none" stroke="#236ead" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

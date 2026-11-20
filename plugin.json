@@ -3,9 +3,10 @@
   "name": "Woodwork",
   "version": "0.1.8",
   "description": "Cabinets and furniture in sheet goods: carcass generator and cut list.",
-  "capabilities": ["commands@0.1"],
+  "capabilities": ["commands@0.1", "storage@0.1"],
   "runtime": {
     "module": "woodwork.wasm",
+    "data_format": 1,
     "entries": [
       {
         "name": "cabinet",
@@ -141,9 +142,35 @@
             "file": { "type": "string", "title": "Save as", "description": "Saved in the folder approved at install.", "default": "", "maxLength": 80 }
           }
         }
+      },
+      {
+        "name": "prices",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Prices" }, { "kind": "ribbon", "name": "Prices" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/prices.svg",
+          "properties": {
+            "banding_0_4": { "type": "number", "title": "Banding 0.4 mm", "description": "Per metre. Empty: as stored.", "minimum": 0 },
+            "banding_1": { "type": "number", "title": "Banding 1 mm", "description": "Per metre. Empty: as stored.", "minimum": 0 },
+            "banding_2": { "type": "number", "title": "Banding 2 mm", "description": "Per metre. Empty: as stored.", "minimum": 0 },
+            "currency": { "type": "string", "title": "Currency", "description": "Shown with the prices, such as EUR. Empty: as stored.", "default": "", "maxLength": 8 },
+            "hardware_confirmat": { "type": "number", "title": "Confirmat screw", "description": "Each. Empty: as stored.", "minimum": 0 },
+            "hardware_dowel": { "type": "number", "title": "Dowel", "description": "Each. Empty: as stored.", "minimum": 0 },
+            "hardware_hinge": { "type": "number", "title": "Hinge", "description": "Each. Empty: as stored.", "minimum": 0 },
+            "hardware_knob": { "type": "number", "title": "Knob", "description": "Each. Empty: as stored.", "minimum": 0 },
+            "hardware_pull": { "type": "number", "title": "Pull", "description": "Each. Empty: as stored.", "minimum": 0 },
+            "hardware_shelf_pin": { "type": "number", "title": "Shelf pin", "description": "Each. Empty: as stored.", "minimum": 0 },
+            "hardware_slide": { "type": "number", "title": "Drawer slides", "description": "A pair. Empty: as stored.", "minimum": 0 },
+            "sheet_birch": { "type": "number", "title": "Birch plywood sheet", "description": "An 18 mm sheet of the cut list's sheet size; other thicknesses pro rata. Empty: as stored.", "minimum": 0 },
+            "sheet_mdf": { "type": "number", "title": "MDF sheet", "description": "An 18 mm sheet, as for birch. Empty: as stored.", "minimum": 0 },
+            "sheet_melamine": { "type": "number", "title": "White melamine sheet", "description": "An 18 mm sheet, as for birch. Empty: as stored.", "minimum": 0 },
+            "sheet_oak": { "type": "number", "title": "Oak sheet", "description": "An 18 mm sheet, as for birch. Empty: as stored.", "minimum": 0 },
+            "worktop": { "type": "number", "title": "Worktop", "description": "Per metre of length. Empty: as stored.", "minimum": 0 }
+          }
+        }
       }
     ],
-    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "joint.as_built", "joint.create", "joint.edit", "joint.list", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect", "select.clear", "view.fit"],
+    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "joint.as_built", "joint.create", "joint.edit", "joint.list", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect", "select.clear", "view.fit", "storage.get", "storage.patch"],
     "permissions": { "files": [{ "name": "cutlists", "read": false, "write": true }] },
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
   }

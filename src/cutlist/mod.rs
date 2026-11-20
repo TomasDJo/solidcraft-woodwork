@@ -450,10 +450,12 @@ pub fn cutlist(
         for name in names {
             // ponytail: a worktop is told by its name, like the banding roles
             if name.contains("Worktop") {
-                worktops.push(
-                    json!({"part": name, "material": material, "thickness": shown(*t),
-                                     "length": shown(cl), "width": shown(cw)}),
-                );
+                let mut worktop = json!({"part": name, "material": material, "thickness": shown(*t),
+                                         "length": shown(cl), "width": shown(cw)});
+                if imperial {
+                    worktop["length_mm"] = json!(mm(cl)); // for the cost, priced per metre
+                }
+                worktops.push(worktop);
                 continue;
             }
             *stock.entry((material.clone(), *t)).or_insert(0.0) += one_m2;
@@ -495,10 +497,14 @@ pub fn cutlist(
         let area =
             |placed: &[crate::nesting::Placed]| placed.iter().map(|p| p.w * p.h).sum::<f64>();
         let used: f64 = laid.iter().map(|placed| area(placed)).sum();
-        sheets.push(json!({
+        let mut bought = json!({
             "material": material, "thickness": shown(*t), "area_m2": round(*m2),
             "sheets": laid.len(), "yield_pct": if laid.is_empty() { 0.0 } else { percent(used, laid.len()) },
-        }));
+        });
+        if imperial {
+            bought["thickness_mm"] = json!(mm(*t)); // for the cost: a sheet's price goes by it
+        }
+        sheets.push(bought);
         for placed in &laid {
             let parts: Vec<Value> = (placed.iter())
                 .map(|p| {
