@@ -358,7 +358,11 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (a note's `at` is the middle of its text, so a column's left edge comes from our Helvetica
   widths), not a native parts list, which lists components only. A dimension's corner must be a
   corner of one body (sides and back, with the cabinet's occurrence `path`), or the whole run
-  fails. Corner cabinets get no dimensions; quarter turns only; A3 and mm only. 12 commands a
+  fails. Layout: front and right views left of `RIGHT`, centred; the iso view at its own scale
+  (`fit`, from `SCALES`, 1:4, 1:8, 1:15 and 1:25 included) under the board list's longest column
+  and over the title block, so a list reaching the title block leaves it 1:50. A corner cabinet
+  (`corner_views`) is drawn from the side of its open corner, the iso along that corner's
+  diagonal. Corner cabinets get no dimensions; quarter turns only; A3 and mm only. 12 commands a
   sheet, so about 20 cabinets a run (`drawing::budget`). Doors are closed by a `pose` of the
   cabinet's ` hinge`, ` fold` and ` slide` joints at 0. The drawing is set to mm (create and
   `drawing.set`), also in an inch design. A sheet points at the cabinet's component and bodies:

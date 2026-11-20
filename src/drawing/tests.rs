@@ -105,10 +105,38 @@ fn tells_which_way_a_cabinet_faces() {
 
 #[test]
 fn draws_at_the_largest_scale_that_fits() {
-    assert_eq!(scale(600.0, 720.0, 580.0), ("1:10", 0.1));
-    assert_eq!(scale(600.0, 2100.0, 580.0), ("1:20", 0.05));
-    assert_eq!(scale(200.0, 150.0, 100.0), ("1:2", 0.5));
-    assert_eq!(scale(5000.0, 3000.0, 3000.0), ("1:50", 0.02));
+    let room = [165.0, 242.0];
+    assert_eq!(fit([1180.0, 720.0], room), 8); // a base cabinet, 1:10 before
+    assert_eq!(fit([1180.0, 2100.0], room), 10); // a tall one, 1:20 before
+    assert_eq!(fit([1820.0, 720.0], room), 15); // a 900 x 900 corner, 1:20 before
+    assert_eq!(fit([300.0, 150.0], room), 2);
+    assert_eq!(fit([600.0, 300.0], room), 4);
+    assert_eq!(fit([9000.0, 3000.0], room), 50);
+    let [w, h] = iso_size(900.0, 720.0, 920.0);
+    assert!(
+        (w - 1286.9).abs() < 0.1 && (h - 1330.8).abs() < 0.1,
+        "{w} {h}"
+    );
+}
+
+#[test]
+fn looks_into_a_corner_cabinets_open_corner() {
+    // a left corner, as built: Side L ends the return at the front, Side R the back leg
+    let l = [[-450.0, -450.0, 0.0], [110.0, -432.0, 720.0]];
+    let r = [[432.0, -110.0, 0.0], [450.0, 450.0, 720.0]];
+    assert_eq!(corner_views(&l, &r), ([0.0, -1.0], "iso"));
+    // a right corner, mirrored: open at the front left, not drawn from the front right
+    let mirror = |b: Box3| [[-b[1][0], b[0][1], 0.0], [-b[0][0], b[1][1], 720.0]];
+    assert_eq!(
+        corner_views(&mirror(r), &mirror(l)),
+        ([0.0, -1.0], "iso_front_left")
+    );
+    // turned half round: open at the back
+    let back = |b: Box3| [[-b[1][0], -b[1][1], 0.0], [-b[0][0], -b[0][1], 720.0]];
+    assert_eq!(
+        corner_views(&back(l), &back(r)),
+        ([0.0, 1.0], "iso_back_left")
+    );
 }
 
 #[test]
@@ -187,18 +215,24 @@ fn draws_a_sheet_per_cabinet() {
         steps[0].1,
         json!({"name": "Base", "documents": {"source": "$source", "component": 3}})
     );
-    // 600 x 720 x 580 at 1:10: the front view 60 x 72 with its lower left corner at 40, 40
+    // 600 x 720 x 580 at 1:8: the front view 75 x 90, with the right view in the middle of
+    // the room left of the board list
     let front = &steps[1].1;
     assert_eq!(front["view"], "front");
-    assert_eq!(front["scale"], "1:10");
-    assert_eq!(front["position_mm"], json!([70.0, 76.0]));
+    assert_eq!(front["scale"], "1:8");
+    assert_eq!(front["position_mm"], json!([86.25, 161.0]));
     assert_eq!(front["source"], json!({"occurrences": [[2, 4]]}));
     assert_eq!(
         front["pose"],
         json!([{"joint": "Base Door hinge", "values": [0]}])
     );
     assert_eq!(steps[2].1, json!({"parent": "$front", "side": "right"}));
+    // the iso view under the board list, right of the others, at its own scale
     assert_eq!(steps[3].1["view"], "iso");
+    assert_eq!(steps[3].1["scale"], "1:8");
+    let at = &steps[3].1["position_mm"];
+    assert_eq!(at[0], json!(320.0));
+    assert!((at[1].as_f64().unwrap() - 159.9).abs() < 0.01, "{at}");
     // width and height on Side L and Side R, under and left of the front view; the depth from
     // Side R's front to its rear, the grooved back standing inside it
     let dim = |i: usize| &steps[i].1;
@@ -239,8 +273,8 @@ fn draws_a_sheet_per_cabinet() {
         (dim(4)["view"].clone(), dim(6)["view"].clone()),
         (json!("$front"), json!("$right"))
     );
-    assert_eq!(dim(4)["line_through_mm"], json!([70.0, 30.0]));
-    assert_eq!(dim(5)["line_through_mm"], json!([30.0, 76.0]));
+    assert_eq!(dim(4)["line_through_mm"], json!([86.25, 106.0]));
+    assert_eq!(dim(5)["line_through_mm"], json!([38.75, 161.0]));
     assert_eq!(dim(4)["decimals"], 0);
     let note = &steps[7].1;
     assert_eq!(note["anchor"], json!({"sheet": "$sheet"}));

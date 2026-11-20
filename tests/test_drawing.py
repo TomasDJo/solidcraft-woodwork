@@ -48,7 +48,12 @@ def test_drawing_of_one_cabinet(approval):
     assert kinds == [("base", ""), ("base", ""), ("projected", "right")], kinds
     inspected = replies[:3]
     assert len({str(v["direction"]) for v in inspected}) == 3, [v["direction"] for v in inspected]
-    assert all(v["settings"]["scale"]["value"] == "1:10" for v in inspected), [v["settings"]["scale"] for v in inspected]
+    # Front and right at 1:8 (1:10 before 1:8 was offered), the iso view at its own scale right
+    # of them, between the board list and the title block, so it uses that space.
+    assert [v["settings"]["scale"]["value"] for v in inspected] == ["1:8", "1:8", "1:8"], [v["settings"]["scale"] for v in inspected]
+    iso = next(v for v in inspected if v["direction"]["named"].startswith("iso"))
+    assert iso["boundary_mm"]["min"][0] > 230 and iso["boundary_mm"]["min"][1] > 60, iso["boundary_mm"]
+    assert all(v["boundary_mm"]["max"][0] < 225 for v in inspected if v is not iso), [v["boundary_mm"] for v in inspected]
     assert all(v["settings"]["pose"] != "designed" for v in inspected), [v["settings"]["pose"] for v in inspected]
     # Width, height and depth, the overlaid back included.
     values = sorted(round(d["value"], 3) for d in replies[3:6])
@@ -121,3 +126,20 @@ def test_drawing_of_appliance_cabinets(approval):
     assert all(d["status"] == "ok" for d in replies[:3])
     parts = " ".join(n["text"] for n in replies[3:])
     assert all(b in parts for b in ("Rail front", "Rail back", "Shelf 1")), parts
+
+
+def test_drawing_of_a_right_corner_looks_into_its_open_corner(approval):
+    # An L for a right corner is open at the front left: its iso view looks from there (it was
+    # drawn from the front right, the L's back, and looked like a box with a notch).
+    saved = ROOT / "dist" / "drawing-corner.sc"
+    corner = plugin(approval, "corner", {"width": 900, "return": 900, "corner": "right", "shelves": 1})
+    cli([corner, plugin(approval, "drawing", {"scope": "all"})], "--save", str(saved))
+
+    def views(drawing):
+        return [step("drawing.view.inspect", view=v["id"]) for v in drawing["sheets"][0]["views"]]
+
+    _, replies = read(saved, views)
+    named = sorted(v["direction"]["named"] for v in replies)
+    assert named == ["front", "iso_front_left", "right"], named
+    scales = {v["direction"]["named"]: v["settings"]["scale"]["value"] for v in replies}
+    assert scales == {"front": "1:15", "right": "1:15", "iso_front_left": "1:8"}, scales  # 1:20 before
