@@ -10,7 +10,7 @@ mod doors;
 mod drawers;
 mod input;
 
-use crate::fittings::{self, PinRows, DOOR_GAP, HANDLE_D, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, HANDLE_D, PIN_SETBACK, PITCH};
 use crate::kit::{mm, Kit};
 use crate::Commands;
 use input::Input;
@@ -31,9 +31,18 @@ struct Cabinet<'a> {
     epl: String,
     eiw: String, // inner width
     ech: String, // clear height
-    // Depth of the sides, top and bottom, and of the shelves (which stop at the back).
+    // Depth of the sides, top and bottom, and of the shelves (which stop at the back, and
+    // behind inset fronts).
     eside_d: String,
     eshelf_d: String,
+    // The reveal around the fronts; how far the fronts' opening is inside the carcass's
+    // outside (a panel when inset, which is also where the shelves start); and the y of the
+    // fronts' front and back faces.
+    er: String,
+    ein: String,
+    efront: String,
+    eback: String,
+    ecell: String, // one compartment's width
     // The doors' top edge, and the top drawer's front height when it is a parameter.
     ez1: String,
     edh: Option<String>,
@@ -76,21 +85,46 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let edh = (drawer_h > 0.0 || kit.has("drawer_height"))
         .then(|| parameter("drawer_height", drawer_h, "drawer front height"))
         .filter(|_| drawer_h > 0.0);
-    let gap = mm(DOOR_GAP);
+    // Only with fronts, or when an edit took them off: the next edit that puts them back
+    // takes the value up again. In mm whatever the dialog's unit.
+    let er = match doors > 0.0 || drawers > 0.0 || kit.has("reveal") {
+        true => kit.parameter_as(
+            "reveal",
+            input.reveal,
+            "gap around the doors and drawer fronts",
+            mm(input.reveal),
+        ),
+        false => mm(input.reveal),
+    };
+    let (ein, efront, eback) = match input.inset {
+        true => (et.clone(), mm(0.0), et.clone()),
+        false => (mm(0.0), format!("-{er} - {et}"), format!("-{er}")),
+    };
+    let eshelf_d = match input.inset {
+        true => format!("({eshelf_d} - {et})"),
+        false => eshelf_d,
+    };
     let ez1 = match (drawers > 0.0, doors > 0.0, &edh) {
-        (false, ..) => format!("{eh} - {gap}"),
-        (true, true, Some(edh)) => format!("({eh} - {gap} - {drawers}*({edh} + {gap}))"),
-        _ => epl.clone(), // all drawers
+        (false, ..) => format!("{eh} - {ein} - {er}"),
+        // inset: the rail and a gap under it too
+        (true, true, Some(edh)) if input.inset => {
+            format!("({eh} - {et} - {er} - {drawers}*({edh} + {er}) - {et} - {er})")
+        }
+        (true, true, Some(edh)) => format!("({eh} - {er} - {drawers}*({edh} + {er}))"),
+        _ => format!("{epl} + {ein}"), // all drawers
     };
     // The cabinet stands on Z = 0, centred on the origin, so the view orbits around it.
     kit.centre(&ew, &ed);
     // Where a neighbour stands: the two back corners.
     kit.seat("L", false, &mm(0.0), &ed);
     kit.seat("R", false, &ew, &ed);
+    let eiw = format!("({ew} - 2*{et})");
+    let n = input.dividers as u32;
     let cabinet = Cabinet {
         kit: &kit,
         input,
-        eiw: format!("({ew} - 2*{et})"),
+        ecell: format!("(({eiw} - {n}*{et}) / {})", n + 1),
+        eiw,
         ech: format!("({eh} - {epl} - 2*{et})"),
         ew,
         eh,
@@ -100,6 +134,10 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         epl,
         eside_d,
         eshelf_d,
+        er,
+        ein,
+        efront,
+        eback,
         ez1,
         edh,
     };
@@ -129,6 +167,9 @@ impl Cabinet<'_> {
             ech,
             eside_d,
             eshelf_d,
+            er,
+            ein,
+            ecell,
             ez1,
             ..
         } = self;
@@ -136,12 +177,15 @@ impl Cabinet<'_> {
         // Derived sizes, as expressions.
         let n = input.dividers as u32;
         let s = input.shelves as u32;
-        let ecell = format!("(({eiw} - {n}*{et}) / {})", n + 1); // one compartment
 
         // Drawers over doors: a rail between the sides, behind the gap under the lowest drawer
-        // front. The shelves are in the doors' part below it.
+        // front, or with inset fronts flush with the front between the drawers and the doors.
+        // The shelves are in the doors' part below it.
         let rail = input.drawers > 0.0 && input.doors > 0.0;
-        let rail_z = format!("{ez1} + {} - {et}/2", mm(DOOR_GAP / 2.0));
+        let rail_z = match input.inset {
+            true => format!("{ez1} + {er}"),
+            false => format!("{ez1} + {er}/2 - {et}/2"),
+        };
         let ezone = match rail {
             true => format!("({rail_z} - {epl} - {et})"),
             false => ech.clone(),
@@ -175,7 +219,7 @@ impl Cabinet<'_> {
         let divider_x: Vec<String> = (1..=n).map(|k| format!("({ecell} + {et}) * {k}")).collect();
         for (k, x) in divider_x.iter().enumerate() {
             let part = format!("Divider {}", k + 1);
-            panel(&part, [x, &zero, &bottom_top], [et, eshelf_d, ech], false);
+            panel(&part, [x, ein, &bottom_top], [et, eshelf_d, ech], false);
         }
         // The same shelves in every compartment.
         for cell in 0..=n {
@@ -189,13 +233,14 @@ impl Cabinet<'_> {
                     0 => format!("Shelf {}", i + 1),
                     _ => format!("Shelf {}.{}", cell + 1, i + 1), // compartment.shelf
                 };
-                let x = format!("{et} + ({ecell} + {et}) * {cell}");
+                let x = self.cell_x(cell);
                 let z = format!("{bottom_top} + {over}");
-                panel(&part, [&x, &zero, &z], [&ecell, eshelf_d, et], false);
+                panel(&part, [&x, ein, &z], [ecell, eshelf_d, et], false);
             }
         }
         if rail {
-            panel("Rail", [et, &zero, &rail_z], [eiw, eshelf_d, et], false);
+            let depth = format!("{eshelf_d} + {ein}");
+            panel("Rail", [et, &zero, &rail_z], [eiw, &depth, et], false);
         }
         if input.plinth > 0.0 {
             panel(
@@ -246,7 +291,12 @@ impl Cabinet<'_> {
     /// sides; through a divider, which carries shelves on both faces.
     fn pins(&self, divider_x: &[String], top_row: &str) -> Commands {
         let Cabinet {
-            kit, ew, et, epl, ..
+            kit,
+            ew,
+            et,
+            epl,
+            ein,
+            ..
         } = self;
         let blind = fittings::blind_pin(et);
         let mut rows = vec![
@@ -261,7 +311,7 @@ impl Cabinet<'_> {
         for (part, x, depth, direction) in rows {
             let rows = PinRows {
                 part: &part,
-                position: kit.at(&x, &mm(PIN_SETBACK), &z),
+                position: kit.at(&x, &format!("{ein} + {}", mm(PIN_SETBACK)), &z),
                 into: [direction, 0, 0],
                 depth: &depth,
                 across: [0, 1, 0],
@@ -272,12 +322,18 @@ impl Cabinet<'_> {
         drill
     }
 
+    /// The left face of compartment `cell`.
+    fn cell_x(&self, cell: u32) -> String {
+        let Cabinet { et, ecell, .. } = self;
+        format!("{et} + ({ecell} + {et}) * {cell}")
+    }
+
     /// Screw holes for a knob (one) or a pull (two), through a front from its back face.
     /// `along` is the axis the pull lies on: 0 across, 2 upright.
     fn handle(&self, body: &str, x: &str, z: &str, along: usize) {
         let offsets = fittings::screw_offsets(self.input.handles);
         for (j, offset) in offsets.iter().enumerate() {
-            let mut at = [x.to_string(), format!("-{}", mm(DOOR_GAP)), z.to_string()];
+            let mut at = [x.to_string(), self.eback.clone(), z.to_string()];
             at[along] = format!("{} + {}", at[along], mm(*offset));
             let position = self.kit.at(&at[0], &at[1], &at[2]);
             let what = format!("handle {}", j + 1);

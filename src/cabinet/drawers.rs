@@ -2,7 +2,6 @@
 
 use super::input::Input;
 use super::Cabinet;
-use crate::fittings::DOOR_GAP;
 use crate::kit::mm;
 
 pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
@@ -26,23 +25,38 @@ pub fn build(cabinet: &Cabinet) {
         epl,
         eiw,
         eshelf_d,
+        er,
+        ein,
+        efront,
+        eback,
         ez1,
         edh,
         ..
     } = cabinet;
     let Input {
         d,
+        t,
         drawers,
         doors,
         shelf_d,
         front_h: front_mm,
         door_top,
+        inset,
+        reveal,
         ..
     } = cabinet.input;
     let panel =
         |part: &str, corner: [&str; 3], size: [&str; 3]| kit.panel(part, corner, size, None);
     let count = drawers as usize;
-    let gap_mm = mm(DOOR_GAP);
+    let gap_mm = er;
+    // The fronts' room: the height above the plinth, less the panels round inset fronts.
+    let room = format!("{eh} - {epl} - 2*{ein}");
+    // The lowest front's lower edge is a gap over the doors' top edge, and over the rail
+    // between inset fronts.
+    let (lap, lap_mm) = match inset && doors > 0.0 {
+        true => (format!("{et} + {er} + "), t + reveal),
+        false => (String::new(), 0.0),
+    };
     // The fronts below the top one, and the top one.
     // ponytail: `_drawer_height` set to 0 in Parameters gives fronts of 0 and the rebuild
     // fails; all alike, or 150 over doors, is chosen through Edit cabinet.
@@ -50,36 +64,37 @@ pub fn build(cabinet: &Cabinet) {
         Some(edh) if doors > 0.0 => (edh.clone(), edh.clone()),
         Some(edh) => (
             format!(
-                "(({eh} - {epl} - {}*{gap_mm} - {edh}) / {})",
+                "(({room} - {}*{gap_mm} - {edh}) / {})",
                 count + 1,
                 count.max(2) - 1
             ),
             edh.clone(),
         ),
         None => {
-            let equal = format!(
-                "(({eh} - {epl} - {}*{gap_mm}) / {})",
-                count + 1,
-                count.max(1)
-            );
+            let equal = format!("(({room} - {}*{gap_mm}) / {})", count + 1, count.max(1));
             (equal.clone(), equal)
         }
     };
     let box_w = format!("({eiw} - {})", mm(2.0 * SLIDE));
     let box_d = format!("({eshelf_d} - {})", mm(BOX_BEHIND));
-    let lift = format!("({et} + {})", mm(BOX_CLEAR));
-    let (bt, back_y) = (mm(BOX_T), format!("-{gap_mm} + {box_d} - {}", mm(BOX_T)));
+    // An overlay front laps the carcass by a panel; an inset one is already inside it.
+    let lift = match inset {
+        true => mm(BOX_CLEAR),
+        false => format!("({et} + {})", mm(BOX_CLEAR)),
+    };
+    let (bt, back_y) = (mm(BOX_T), format!("{eback} + {box_d} - {}", mm(BOX_T)));
     for i in 0..count {
         let drawer = format!("Drawer {}", i + 1);
-        let z = format!("{ez1} + {gap_mm} + ({front_h} + {gap_mm}) * {i}"); // front's lower edge
+        // the front's lower edge
+        let z = format!("{ez1} + {lap}{gap_mm} + ({front_h} + {gap_mm}) * {i}");
         let front_h = if i + 1 == count { &top_h } else { &front_h };
         let box_h = format!("({front_h} - 2*{lift})");
-        let front_w = format!("{ew} - {}", mm(2.0 * DOOR_GAP));
-        let y = format!("-{gap_mm} - {et}");
+        let front_w = format!("{ew} - 2*{ein} - 2*{gap_mm}");
+        let x0 = format!("{ein} + {gap_mm}");
         kit.open(&drawer);
         panel(
             &format!("{drawer} Front"),
-            [&gap_mm, &y, &z],
+            [&x0, efront, &z],
             [&front_w, et, front_h],
         );
         // Lying across, in the middle of the front unless the top or the bottom is asked for.
@@ -93,7 +108,7 @@ pub fn build(cabinet: &Cabinet) {
         // and bottom sit between them.
         let (x, y, z) = (
             format!("{et} + {}", mm(SLIDE)),
-            format!("-{gap_mm}"),
+            eback.clone(),
             format!("{z} + {lift}"),
         );
         let right = format!("{x} + {box_w} - {bt}");
@@ -127,10 +142,11 @@ pub fn build(cabinet: &Cabinet) {
             [&inner_w, &inner_d, &mm(BOX_BOTTOM)],
         );
         // The slide: straight out of the front, as far as four fifths of the box.
+        let back_mm = if inset { t } else { -reveal };
         let at = [
             0.0,
-            -d / 2.0 - DOOR_GAP,
-            door_top + DOOR_GAP + (front_mm + DOOR_GAP) * i as f64,
+            -d / 2.0 + back_mm,
+            door_top + lap_mm + reveal + (front_mm + reveal) * i as f64,
         ];
         let travel = ((shelf_d - BOX_BEHIND) * 0.8).round();
         kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);

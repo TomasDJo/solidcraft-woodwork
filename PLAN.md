@@ -82,11 +82,11 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 - [x] Cabinets in a run are held by their corners at the wall: backs stay flush and a corner cabinet's return takes its cabinets along, whichever size changes
 - [x] Place: Auto, the default, by the selected board (left of a left side, right of a right side, above a top)
 - [x] SolidCraft 0.45: the view is framed after a cabinet is added, each function is a tool for agents, the package is checked when built; tests run against 0.45.0
+- [x] Inset doors and drawer fronts on the box cabinet, and a reveal (the gap round the fronts) as a parameter on both cabinets
 
 ## Open
 
 Cabinets:
-- [ ] Inset doors
 - [ ] Corner cabinet: joinery, a thin back
 - [ ] Joinery for dividers and fixed shelves
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return

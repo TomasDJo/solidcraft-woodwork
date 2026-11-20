@@ -7,7 +7,8 @@ An L-shaped kitchen: a tall unit, three base units and three wall units along th
 a corner cabinet at the right end of both rows, and one more base and wall unit on the return.
 It uses every function of the plugin:
 
-- Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth; a
+- Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth; an
+  inset door on the tall unit; a
   graduated drawer unit (a lower top drawer) and a drawer over a door on the return
 - Corner cabinet, at the right end of the base units and of the wall units
 - Place: each floor unit goes to the right of the one before it, by selecting that one, and is
@@ -46,7 +47,7 @@ WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
 # placed against the one before it.
 FLOOR = [
     ("Tall", {**WHITE, "width": 600, "height": 2100, "depth": 560, "plinth": 150, "shelves": 4, "doors": 1,
-              "handles": "pull", "labels": True}),
+              "handles": "pull", "labels": True, "fronts": "inset"}),
     ("Base 1", {**BASE, "width": 800, "dividers": 1, "doors": 2}),
     ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3, "drawer_height": 140}),
     ("Base 3", {**BASE, **MATCH, "width": 900, "dividers": 2, "doors": 3}),

@@ -10,7 +10,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
-const SIZES: [&str; 8] = [
+const SIZES: [&str; 9] = [
     "width",
     "height",
     "depth",
@@ -19,6 +19,7 @@ const SIZES: [&str; 8] = [
     "plinth",
     "return",
     "drawer_height",
+    "reveal",
 ];
 
 /// What a cabinet's component remembers, as `component.metadata.set` takes it: the entry that
@@ -62,6 +63,8 @@ pub fn merge(
         let all = design["params"].as_array().into_iter().flatten();
         let found = all.into_iter().find(|p| p["name"] == id.as_str());
         if let Some(mm) = found.and_then(|p| p["value"].as_f64()) {
+            // the reveal is a mm field whatever the cabinet's unit
+            let scale = if key == "reveal" { 1.0 } else { scale };
             params.insert(key.into(), json!((mm / scale * 1e6).round() / 1e6));
             existing.insert(key.into(), json!(mm));
         }
@@ -81,9 +84,12 @@ pub fn merge(
             false => Err(format!("`{key}` is only for a {kind}")),
         };
         let (to, value) = match key.as_str() {
-            "shelves" | "handles" | "handle_position" | "plinth" => (key.as_str(), value.clone()),
+            "shelves" | "handles" | "handle_position" | "plinth" | "reveal" => {
+                (key.as_str(), value.clone())
+            }
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
-            "doors" | "dividers" | "drawers" | "drawer_height" | "back" | "door_hinge" => {
+            "doors" | "dividers" | "drawers" | "drawer_height" | "back" | "door_hinge"
+            | "fronts" => {
                 only(false, "box cabinet")?;
                 (key.as_str(), value.clone())
             }

@@ -1,7 +1,7 @@
 //! The corner cabinet's doors: a bi-fold pair, the second hung on the first.
 
 use super::Corner;
-use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, DOOR_GAP, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, HANDLE_D, HANDLE_EDGE};
 use crate::kit::mm;
 
 /// A bi-fold pair of overlay doors, one on each front. The first hinges on the end of its leg
@@ -22,20 +22,17 @@ pub fn build(corner: &Corner, on_return: bool) {
     } = corner;
     let Corner { d, h, plinth, .. } = *corner;
     let flip = corner.flip();
-    let gap = mm(DOOR_GAP);
+    let gap = &corner.er;
     // Each door's end at the inner corner: the first's, and the second's a panel and a
     // gap short of it.
-    let (long_x, short_x) = (
-        format!("{ed} + {gap}"),
-        format!("{ed} + {et} + {}", mm(2.0 * DOOR_GAP)),
-    );
+    let (long_x, short_x) = (format!("{ed} + {gap}"), format!("{ed} + {et} + 2*{gap}"));
     let (long_y, short_y) = (
         format!("{eb} - {ed} - {gap}"),
-        format!("{eb} - {ed} - {et} - {}", mm(2.0 * DOOR_GAP)),
+        format!("{eb} - {ed} - {et} - 2*{gap}"),
     );
     let (z0, z1) = (format!("{epl} + {gap}"), format!("{eh} - {gap}"));
-    let door_h = format!("{eh} - {epl} - {}", mm(2.0 * DOOR_GAP));
-    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * DOOR_GAP);
+    let door_h = format!("{eh} - {epl} - 2*{gap}");
+    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * corner.g);
     // The second door, the one that folds, carries the handle: upright at its free end, away
     // from the fold, at the height the box cabinet would put it.
     let handle_z = fittings::handle_height(
@@ -99,7 +96,7 @@ pub fn build(corner: &Corner, on_return: bool) {
         kit.open("Door return");
         corner.panel(
             "Door return",
-            [face_x, &gap, &z0],
+            [face_x, gap, &z0],
             [et, &format!("{return_y} - {gap}"), &door_h],
             None,
         );
@@ -131,7 +128,7 @@ pub fn build(corner: &Corner, on_return: bool) {
     let fold = [meet_x.as_str(), front_y.as_str()];
     if on_return {
         door_return();
-        close("Door return", None, "hinge", [&meet_x, &gap], -flip);
+        close("Door return", None, "hinge", [&meet_x, gap], -flip);
         door();
         close("Door", Some("Door return"), "fold", fold, -flip);
     } else {

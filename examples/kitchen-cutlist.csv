@@ -24,7 +24,8 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 3,564,150,18,"White melamine",,,"Tall Plinth, Base 2 Plinth, Base 4 Plinth"
 5,564,302,18,"White melamine",,L1,"Wall 4 Shelf 1, Wall 4 Shelf 2, Wall 2 Shelf 1, Wall 2 Shelf 2, Wall 2 Shelf 3"
 4,564,320,18,"White melamine",,L1,"Wall 4 Bottom, Wall 4 Top, Wall 2 Bottom, Wall 2 Top"
-6,564,542,18,"White melamine",,L1,"Tall Shelf 1, Tall Shelf 2, Tall Shelf 3, Tall Shelf 4, Base 4 Shelf 1, Base 4 Rail"
+4,564,524,18,"White melamine",,L1,"Tall Shelf 1, Tall Shelf 2, Tall Shelf 3, Tall Shelf 4"
+2,564,542,18,"White melamine",,L1,"Base 4 Shelf 1, Base 4 Rail"
 6,564,560,18,"White melamine",,L1,"Tall Bottom, Tall Top, Base 2 Bottom, Base 2 Top, Base 4 Bottom, Base 4 Top"
 1,564,596,18,"Oak",yes,L2 W2,"Base 4 Door"
 2,664,302,18,"White melamine",,L1,"Wall 3 Divider 1, Wall 3 Divider 2"
@@ -51,13 +52,13 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 7,964,964,18,"White melamine",,W1,"Corner Bottom, Corner Top, Corner Shelf 1, Wall corner Bottom, Wall corner Top, Wall corner Shelf 1, Wall corner Shelf 2"
 1,982,700,18,"White melamine",,,"Wall corner Back return"
 1,982,870,18,"White melamine",,,"Corner Back return"
-1,1946,596,18,"Oak",yes,L2 W2,"Tall Door"
+1,1910,560,18,"Oak",yes,L2 W2,"Tall Door"
 2,2100,560,18,"White melamine",,L1,"Tall Side L, Tall Side R"
 1,1020,600,38,"Oak",yes,,"Worktop return"
 1,3300,600,38,"Oak",yes,,"Worktop"
 
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
-"Oak",18,52.495
+"Oak",18,52.337
 "White melamine",18,58.456
 
 Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
@@ -65,7 +66,7 @@ Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
 "Sheet, White melamine 6 mm",3,sheet,15,45
 "Sheet, White melamine 12 mm",1,sheet,30,30
 "Sheet, White melamine 18 mm",13,sheet,45,585
-"Edge banding 1 mm, Oak 18 mm",52.495,m,0.6,31.5
+"Edge banding 1 mm, Oak 18 mm",52.337,m,0.6,31.4
 "Edge banding 1 mm, White melamine 18 mm",58.456,m,0.6,35.07
 "Worktop, Worktop return",1.02,m,180,183.6
 "Worktop, Worktop",3.3,m,180,594
@@ -76,4 +77,4 @@ Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
 "Dowel, 8 x 35 mm",32,piece,0.05,1.6
 "Knob",8,piece,3.5,28
 "Pull, 128 mm",12,piece,6,72
-Total,,,,2117.07
+Total,,,,2116.97

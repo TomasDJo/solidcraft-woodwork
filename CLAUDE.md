@@ -303,6 +303,18 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   `drawer_height` (over doors each front, else the top one with the rest equal) is the
   parameter `<Prefix>_drawer_height` only while it is used; an edit that stops using it sets
   it to 0 (`Kit::has`), so the next Edit does not take the old value up again.
+- The gap round the fronts is the field `reveal`, 0.5 to 6 mm, always in mm whatever `units`
+  says (read with `num`, made with `Kit::parameter_as` as `2 mm`; `edit::merge` does not
+  scale it). It is the parameter `<Prefix>_reveal` on a cabinet with doors or drawers (kept
+  once made, so an edit that puts fronts back takes it up). `fittings::DOOR_GAP` is only its
+  default.
+- `fronts: inset` (box cabinet only; the corner refuses it in `corner::input`, and its dialog
+  has no such field): the fronts fill the opening between the panels, a reveal all round, the
+  front face at y = 0 (the hinge line too, so the door's back edge swings away from the side).
+  Shelves, dividers, pin rows and drawer boxes start at y = t, a panel shallower; sides, top,
+  bottom and the Rail stay full depth, the Rail flush at the front between the drawers and the
+  doors. With one door per compartment each door fills its own compartment. A drawer box's
+  clearance is `BOX_CLEAR` alone when inset.
 - A diagonal corner cabinet's front is always at 45 degrees: its door and plinth are components
   turned by a fixed angle (`Kit::turn`), since an occurrence's turn cannot follow a parameter.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are

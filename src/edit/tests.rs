@@ -82,6 +82,10 @@ fn sizes_come_back_in_the_unit_they_were_given_in() {
     let (_, params) = merge(&made[KEY], &json!({}), &design).unwrap();
     assert_eq!(params["width"], 24.0);
     assert_eq!(params["_existing"]["width"], 609.6);
+    // the reveal stays in mm (the design gives every value in mm)
+    let design = json!({"params": [{"name": "A_reveal", "value": 2.0}]});
+    let (_, params) = merge(&made[KEY], &json!({}), &design).unwrap();
+    assert_eq!(params["reveal"], 2.0);
 }
 
 #[test]
@@ -162,4 +166,32 @@ fn a_cabinet_knows_its_links() {
     assert_eq!(hanging(&tree, &joints, "A"), ["B"]);
     assert!(links(&tree, &joints, "C").iter().all(|link| link.1));
     assert!(hanging(&tree, &joints, "Gone").is_empty());
+}
+
+#[test]
+fn fronts_and_the_reveal_survive_an_edit() {
+    let made = remember(
+        "cabinet",
+        &json!({"doors": 2, "fronts": "inset", "reveal": 3}),
+        "A",
+    );
+    // the reveal changed in the design since: the design's value wins, the fronts are kept
+    let design = json!({"params": [{"name": "A_reveal", "value": 2.5}]});
+    let keep = json!({"fronts": "keep", "reveal": null, "shelves": 2});
+    let (_, params) = merge(&made[KEY], &keep, &design).unwrap();
+    assert_eq!(
+        (&params["fronts"], &params["reveal"]),
+        (&json!("inset"), &json!(2.5))
+    );
+    assert_eq!(params["_existing"]["reveal"], 2.5);
+    let change = json!({"fronts": "overlay", "reveal": 1.5});
+    let (_, params) = merge(&made[KEY], &change, &design).unwrap();
+    assert_eq!(
+        (&params["fronts"], &params["reveal"]),
+        (&json!("overlay"), &json!(1.5))
+    );
+    // a corner takes a reveal, but has no choice of fronts
+    let corner = remember("corner", &json!({}), "A");
+    assert!(merge(&corner[KEY], &json!({"reveal": 3}), &design).is_ok());
+    assert!(merge(&corner[KEY], &json!({"fronts": "inset"}), &design).is_err());
 }

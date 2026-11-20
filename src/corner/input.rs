@@ -22,6 +22,8 @@ pub struct Input<'a> {
     pub handle_at: &'a str,
     pub right: bool,
     pub diagonal: bool,
+    /// The gap around the doors.
+    pub reveal: f64,
 }
 
 pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
@@ -59,6 +61,19 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "handles must be none, knob or pull",
     )?;
     let handle_at = crate::fittings::handle_position(p)?;
+    // Not in the dialog; a script may still ask.
+    // ponytail: inset doors only on the box cabinet; a corner's bi-fold pair and diagonal
+    // door would each need their own inset geometry.
+    match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
+        "overlay" => {}
+        "inset" => return Err("inset fronts are only made on box cabinets".into()),
+        _ => return Err("fronts must be overlay or inset".into()),
+    }
+    let reveal = num(p, "reveal", crate::fittings::DOOR_GAP)?; // mm, whatever the units
+    check(
+        (0.5..=6.0).contains(&reveal),
+        "the reveal must be 0.5 to 6 mm",
+    )?;
 
     check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
     check(
@@ -118,6 +133,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handle_at,
         right,
         diagonal,
+        reveal,
     })
 }
 
