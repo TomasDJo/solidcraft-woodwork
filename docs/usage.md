@@ -2,6 +2,9 @@
 
 The functions are under **Plugins > Woodwork** and as buttons on the ribbon. Each opens a
 dialog; the cabinet you are about to make is previewed in the model before you press Run.
+A dialog shows only the fields that apply to your choices (SolidCraft 0.46): the door fields
+appear when there are doors, the reveal and handles when there are doors or drawers, the back's
+thickness when there is a back, and a sink base has no shelf, divider or drawer fields.
 
 - [Cabinet](#cabinet)
 - [Corner cabinet](#corner-cabinet)
@@ -24,7 +27,7 @@ component can hold its cabinets.
 | Field | What it does |
 |---|---|
 | **Kind** | Standard or a sink base: see [Sink base](#sink-base). |
-| **Units** | The sizes in the dialog in mm or inches. |
+| **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
@@ -58,8 +61,8 @@ it. A cabinet placed against another is held to that one instead.
 **Sink base** (Kind: Sink base): no top, but two flat rails between the sides at the top,
 each 100 mm deep and a panel thick: `Name Rail front`, flush with the front, and `Name Rail
 back`, at the back of the sides in front of the back panel. The sink and its pipes go between
-them. It has no shelves and no shelf pin holes (the dialog's shelf is left out without a
-message), and no drawers or dividers: it is refused with them. Doors as usual (none, one or two),
+them. It has no shelves, shelf pin holes, drawers or dividers, and the dialog hides those
+fields; an Edit that makes a cabinet a sink base leaves them out. Doors as usual (none, one or two),
 overlay or inset; an inset door stops under the front rail as under a top. The back is your
 choice: Back None leaves it open for the pipes. Place works as on any cabinet;
 pick a rail or a side to select it, as it has no top. Joinery screws the sides to the rails: the
@@ -133,7 +136,9 @@ Changes a cabinet after it is made. Select any part of it, fill in only what sho
 and leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is
 hinged on, drawers, fronts (overlay or inset), reveal, back, shelf pin holes, handles and their
 position, labels, plinth, the kind (standard or sink base), a corner cabinet's doors and shape. The reveal is taken from Parameters unless
-the edit gives one.
+the edit gives one. Kind Sink base hides shelves, dividers, drawers and shelf pins; Kind Standard
+or Sink base hides the corner cabinet's fields; Doors 0 hides the hinge side, Handle holes None
+the handle position.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
@@ -173,11 +178,12 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
   White melamine) have the longest side as the length, and so do plinths and the drawer
   box's sides, front and back.
 
-**Edge banding** is the tape's thickness: none, 0.4, 1 (the default) or 2 mm. **Sizes**:
-finished, as in the model, or cut, the size to saw: the finished size less the tape on each
-banded edge. The list says which it shows.
+**Edge banding** is the tape's thickness: none, 0.4, 1 (the default) or 2 mm. **Sizes**
+(shown when there is banding): finished, as in the model, or cut, the size to saw: the finished
+size less the tape on each banded edge. The list says which it shows.
 
-Fill in **Save as** with a name to also get the list as a file, in the **Format** chosen:
+Fill in **Save as** with a name to also get the list as a file, in the **Format** chosen
+(it shows once there is a name, and **Cutting diagrams** with PDF):
 PDF, a printable A4 list with a tick box per board and per piece of hardware, one table per
 material and thickness, the sheets to buy and the cutting diagrams; CSV, for a spreadsheet; or
 Labels (PDF), a sticker per board to stick on after cutting (see [Part labels](#part-labels)); or
@@ -297,8 +303,10 @@ quarter turn) is drawn from its own front.
   nothing is selected: pick the board to place the next cabinet against.
 - **An AI agent can use every function as a tool** (SolidCraft 0.45): `woodwork.cabinet`,
   `woodwork.corner` and so on, with the dialog's fields as its arguments. Every field
-  with a default is required there, so the agent sends them all, the defaults with what it wants
-  changed.
+  with a default is required there, so the agent sends them all, the defaults with what it wants changed; a
+  field the dialog would hide is left out. From SolidCraft 0.46 the same check applies to a
+  script's `plugin.run` and `woodwork.<entry>` (except Joinery, Material and Drawing): pass
+  every field the dialog would show.
 - **A cabinet made by 0.1.7 or earlier** in a run is held along the run only: its neighbours
   do not follow its depth.
 - **A design made with the plugin is ordinary bodies, joints and parameters.** It opens in

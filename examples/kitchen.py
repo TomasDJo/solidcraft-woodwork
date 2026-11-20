@@ -35,7 +35,8 @@ OUT = Path(sys.argv[1] if len(sys.argv) > 1 else HERE / "kitchen.sc").resolve()
 WHITE = {"material": "White melamine"}
 FLOOR_UNIT = {**WHITE, "height": 870, "depth": 560, "plinth": 150}
 BASE = {**FLOOR_UNIT, "handles": "pull", "place": "auto"}  # auto: by the selected board, a Side R
-WALL = {**WHITE, "height": 700, "depth": 320, "shelves": 2, "shelf_pins": True, "handles": "knob"}
+WALL = {**WHITE, "height": 700, "depth": 320, "shelves": 2, "shelf_pins": True, "handles": "knob",
+        "place": "origin"}  # made on the origin and moved, though a Top is selected to match
 MATCH = {"match": "selected"}  # sizes from the selected cabinet, and linked to it
 WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
 
@@ -107,7 +108,7 @@ end = BACK - CORNER["return"]
 for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner"),
                                     ("Wall 4", WALL_RETURN, "dowel", WALL_Z, "Wall corner")):
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
-    steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name}),
+    steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name, "place": "origin"}),
               select(f"{name} Top"), build.plugin(approval, "joinery", {"type": kind}),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),

@@ -47,8 +47,9 @@ def test_agent_tools(approval):
         cabinet = json.loads(measured["result"]["content"][0]["text"])
         assert outline(cabinet) == [-400, -200, 0, 400, 200, 900], outline(cabinet)
         assert "Agent Side L" in boxes(cabinet)
-        # The command an engine call or a script uses passes a few fields through unchecked.
-        command = {"command": "woodwork.cabinet", "params": {"approval": installed["approval"], "params": TYPICAL}}
+        # The command an engine call or a script uses: from 0.46 checked as strictly, as the
+        # cabinet's schema has conditional fields (`few` would be refused there too).
+        command = {"command": "woodwork.cabinet", "params": {"approval": installed["approval"], "params": everything}}
         results = cli([install, {"command": "plugin.tools", "params": {}}, command, MEASURE])
         tools = {t["name"]: t["input_schema"] for t in results[1]["tools"]}
         assert tools["woodwork.cabinet"]["required"] == schema["required"], tools.keys()

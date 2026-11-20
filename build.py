@@ -37,8 +37,24 @@ def cli(script, *extra):
 
 
 def plugin(approval, entry, params=None):
+    """A plugin.run step. The fields left out get their defaults, as in the dialog: from 0.46 an
+    entry with conditional fields is checked strictly, every visible required field present."""
+    manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
+    schema = next(e["input_schema"] for e in manifest["runtime"]["entries"] if e["name"] == entry)
+    defaults = {key: field.get("default", []) for key, field in schema["properties"].items()
+                if "default" in field or field["type"] == "array"}
+    # Each field's conditional default when its rule holds, as the dialog does (sizes in inches).
+    given = defaults | (params or {})
+    for key, field in schema["properties"].items():
+        for rule in field.get("x-solidcraft-defaults", []):
+            if given.get(rule["when"]["field"]) == rule["when"]["eq"]:
+                defaults[key] = rule["value"]
+                break
+    # The tests name their parts after the plugin's own fallback name, not the dialog's.
+    if "name" in defaults:
+        defaults["name"] = "Cabinet"
     return {"command": "plugin.run", "params": {
-        "path": str(PKG), "approval": approval, "entry": entry, "params": params or {}}}
+        "path": str(PKG), "approval": approval, "entry": entry, "params": defaults | (params or {})}}
 
 
 def build():

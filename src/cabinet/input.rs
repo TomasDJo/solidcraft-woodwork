@@ -57,18 +57,21 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let plinth = size("plinth", 0.0)?;
     let shelves = num(p, "shelves", 1.0)?;
     let doors = num(p, "doors", 0.0)?;
-    let dividers = num(p, "dividers", 0.0)?;
     let pins = p
         .get("shelf_pins")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    let drawers = num(p, "drawers", 0.0)?;
+    // A sink base has none of these: the sink and its pipes take the room. Its dialog hides
+    // them; an Edit to a sink base drops the ones the cabinet remembers.
+    let (dividers, drawers) = match sink {
+        true => (0.0, 0.0),
+        false => (num(p, "dividers", 0.0)?, num(p, "drawers", 0.0)?),
+    };
     check(
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
         "drawers must be 0 to 8",
     )?;
-    // A drawer cabinet is all drawers: no shelves behind them. Nor under a sink, whatever the
-    // dialog's default says: the sink and its pipes are there.
+    // A drawer cabinet is all drawers: no shelves behind them. Nor under a sink.
     let (shelves, pins) = if drawers > 0.0 || sink {
         (0.0, false)
     } else {
@@ -84,8 +87,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check((0.5..=6.0).contains(&g), "the reveal must be 0.5 to 6 mm")?;
 
     check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
+    // Without a back its thickness is hidden in the dialog and not used.
     check(
-        (2.0..=t).contains(&bt),
+        back == "none" || (2.0..=t).contains(&bt),
         "back thickness must be 2 mm up to the panel thickness",
     )?;
     check(
@@ -136,10 +140,6 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         drawers == 0.0 || (doors == 0.0 && dividers == 0.0),
         "drawers cannot be combined with doors or dividers",
-    )?;
-    check(
-        !sink || (drawers == 0.0 && dividers == 0.0),
-        "a sink base has no drawers or dividers: the sink and its pipes take the room",
     )?;
     // Height of one drawer front, and width of the box between the slides.
     let front_h = (h - plinth - 2.0 * o - (drawers + 1.0) * g) / drawers.max(1.0);

@@ -442,11 +442,27 @@ fn a_sink_base_has_rails_instead_of_a_top() {
         door["height"],
         "Cabinet_height - Cabinet_thickness - Cabinet_reveal - 0 mm - Cabinet_thickness - Cabinet_reveal"
     );
-    // no drawers, no dividers, and only these kinds
-    assert!(build(&json!({"kind": "sink", "drawers": 2})).is_err());
-    assert!(build(&json!({"kind": "sink", "dividers": 1})).is_err());
+    // drawers and dividers (hidden in its dialog, or remembered when Edit makes it a sink
+    // base) are dropped, also beside its doors; and only these kinds
+    let plain = build(&json!({"kind": "sink", "doors": 2})).unwrap().0;
+    let p = json!({"kind": "sink", "doors": 2, "drawers": 2, "dividers": 1, "shelves": 3});
+    assert_eq!(build(&p).unwrap().0, plain);
     assert!(build(&json!({"kind": "fridge"})).is_err());
     assert!(build(&json!({"kind": "oven"})).is_err());
+}
+
+#[test]
+fn hidden_fields_left_out_take_their_defaults() {
+    // The dialog leaves out a field it hides: no back thickness without a back, even where
+    // the 6 mm default would be thicker than the panels; no door or front fields without
+    // doors or drawers.
+    let thin = json!({"back": "none", "thickness": 5});
+    assert!(build(&thin).is_ok());
+    let p = json!({"back": "groove", "thickness": 5});
+    assert!(build(&p).is_err());
+    let full = json!({"doors": 0, "door_hinge": "left", "fronts": "overlay", "reveal": 2,
+                      "handles": "none", "handle_position": "auto", "back_thickness": 6});
+    assert_eq!(build(&json!({})).unwrap().0, build(&full).unwrap().0);
 }
 
 #[test]
