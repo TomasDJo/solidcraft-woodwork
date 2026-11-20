@@ -38,7 +38,7 @@ def test_agent_tools(approval):
         measure = ("measure", {})
         tools, (few, built, measured) = mcp(("woodwork.cabinet", TYPICAL), ("woodwork.cabinet", everything), measure)
         listed = {t["name"]: t for t in tools if t["name"].startswith("woodwork.")}
-        names = ("cabinet", "corner", "edit", "joinery", "material", "worktop", "cutlist")
+        names = ("cabinet", "corner", "edit", "joinery", "material", "worktop", "cutlist", "drawing")
         assert sorted(listed) == sorted(f"woodwork.{n}" for n in names), sorted(listed)
         assert listed["woodwork.cabinet"]["inputSchema"]["required"] == schema["required"]
         assert listed["woodwork.cabinet"]["inputSchema"]["properties"]["width"] == schema["properties"]["width"]

@@ -4,6 +4,7 @@
 mod cabinet;
 mod corner;
 mod cutlist;
+mod drawing;
 mod dxf;
 mod edit;
 mod fittings;
@@ -624,6 +625,76 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 }
             }
             Ok(list)
+        }
+        "drawing" => {
+            // A sheet per cabinet in the drawing Woodwork; a cabinet drawn again gets a new one.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let measure = run("inspect.measure", json!({}))?;
+            let names = match params["scope"].as_str().unwrap_or("selected") {
+                "selected" => {
+                    vec![select::cabinet(&select::picked(params, &design), &measure)?.name]
+                }
+                "all" => drawing::cabinets(&measure),
+                _ => return Err("scope must be selected or all".into()),
+            };
+            check(!names.is_empty(), "the design has no cabinets")?;
+            // An open door's board is measured in its own component, as the cut list does.
+            let turned: Vec<String> = (cutlist::turned(&measure).into_iter())
+                .filter(|b| {
+                    select::owner(&measure, b).is_some_and(|c| names.iter().any(|n| n == c))
+                })
+                .collect();
+            drawing::budget(names.len(), turned.len())?;
+            let tree = run("component.list", json!({"compact": true}))?;
+            let joints = run("joint.list", json!({}))?;
+            let mut local = std::collections::BTreeMap::new();
+            for body in turned {
+                let mesh = run("model.mesh", json!({"body": body, "tolerance": 1.0}))?;
+                local.insert(body, cutlist::extents(&mesh));
+            }
+            // Worked out before the drawing is opened, which holds the model's commands back.
+            let sheets: Vec<drawing::Steps> = (names.iter())
+                .map(|name| drawing::sheet(&measure, &local, &tree, &joints, name))
+                .collect::<Result<_, _>>()?;
+            let list = run("drawing.list", json!({}))?;
+            let found = (list["drawings"].as_array().into_iter().flatten())
+                .find(|d| d["name"] == drawing::DRAWING);
+            // In mm, as the board list, also in a design in inches (a drawing follows its
+            // template's units, and the user may have changed them).
+            let opened = match found {
+                Some(found) => {
+                    let opened = run("drawing.open", json!({"drawing": found["id"]}))?;
+                    run("drawing.set", json!({"units": "mm"}))?;
+                    opened
+                }
+                None => run(
+                    "drawing.create",
+                    json!({"name": drawing::DRAWING, "template": "iso-a3-assembly", "units": "mm"}),
+                )?,
+            };
+            let stale = drawing::stale(&opened, &names, found.is_none());
+            for steps in sheets {
+                let mut ids = std::collections::BTreeMap::new();
+                ids.insert("source".to_string(), opened["sources"][0]["id"].clone());
+                for (command, args, keep) in steps {
+                    let reply = run(command, drawing::fill(&args, &ids))?;
+                    if !keep.is_empty() {
+                        let id = reply.get("view").unwrap_or(&reply["sheet"]);
+                        ids.insert(keep.to_string(), id.clone());
+                    }
+                }
+            }
+            for sheet in stale {
+                run(
+                    "drawing.sheet.delete",
+                    json!({"sheet": sheet, "contents": "delete"}),
+                )?;
+            }
+            run("drawing.close", json!({}))?;
+            Ok(json!({"drawing": drawing::DRAWING, "sheets": names}))
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }

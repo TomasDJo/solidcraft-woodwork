@@ -24,6 +24,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Joinery**: confirmat screw or dowel holes at the carcass corners.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
 - **Worktop**: one board over a straight run of the selected cabinets, following their sizes.
+- **Drawing**: a shop drawing sheet per cabinet, A3, with front, right and iso views, its width, height and depth, and its boards.
 - **Cut list**: every board with its size and quantity, hardware, edge banding per edge and grain direction, and the sheets to buy from cutting layouts (kerf, trim, grain), as CSV or a printable PDF with a cutting diagram per sheet, part labels to print on A4 sticker sheets, and a DXF per sheet with the parts and their holes for a CNC.
 
 Every size is a design parameter: change one and the cabinet follows.

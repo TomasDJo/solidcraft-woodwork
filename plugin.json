@@ -167,9 +167,22 @@
             "file": { "type": "string", "title": "Save as", "description": "Saved in the folder approved at install.", "default": "", "maxLength": 80 }
           }
         }
+      },
+      {
+        "name": "drawing",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Drawing" }, { "kind": "ribbon", "name": "Drawing" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/drawing.svg",
+          "required": ["selection", "scope"],
+          "properties": {
+            "selection": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "scope": { "type": "string", "title": "Draw", "description": "A sheet per cabinet in the drawing Woodwork: front, right and iso views, sizes and its boards.", "default": "selected", "oneOf": [{"const": "selected", "title": "Selected cabinet"}, {"const": "all", "title": "Every cabinet"}] }
+          }
+        }
       }
     ],
-    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "model.faces", "joint.as_built", "joint.create", "joint.edit", "joint.list", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect", "select.clear", "view.fit"],
+    "commands": ["solid.box", "solid.cylinder", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "model.faces", "joint.as_built", "joint.create", "joint.edit", "joint.list", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "inspect.measure", "document.inspect", "select.clear", "view.fit", "drawing.list", "drawing.create", "drawing.open", "drawing.close", "drawing.set", "drawing.sheet.add", "drawing.sheet.delete", "drawing.view.base", "drawing.view.projected", "drawing.dimension.add", "drawing.note.add"],
     "permissions": { "files": [{ "name": "cutlists", "read": false, "write": true }] },
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }
   }

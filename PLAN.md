@@ -108,6 +108,7 @@ Cut list and shop output:
 - [x] Part labels, a sticker per board (A4, 3 x 8)
 - [ ] Cost estimate: prices kept in the design, the cost of sheets, banding, worktops and hardware in the cut list (postponed until conditional dialog fields, SolidCraft 0.46)
 - [x] DXF per sheet: parts, names and holes on a layer per diameter and depth
+- [x] Shop drawings: a sheet per cabinet with front, right and iso views, sizes and the board list
 - [ ] DXF per part (one file per board)
 
 ## Waiting for the app

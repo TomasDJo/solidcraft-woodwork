@@ -41,7 +41,7 @@ fn byte(c: char) -> u8 {
     }
 }
 
-fn width(text: &str, size: f64) -> f64 {
+pub(crate) fn width(text: &str, size: f64) -> f64 {
     let em = |c: char| match c {
         ' '..='~' => WIDTHS[c as usize - 32] as f64,
         '—' => 1000.0,
@@ -52,7 +52,7 @@ fn width(text: &str, size: f64) -> f64 {
 }
 
 /// `text` in lines no wider than `room`, broken at spaces.
-fn wrap(text: &str, size: f64, room: f64) -> Vec<String> {
+pub(crate) fn wrap(text: &str, size: f64, room: f64) -> Vec<String> {
     let mut lines = vec![String::new()];
     for word in text.split(' ') {
         let line = lines.last_mut().unwrap();
@@ -179,7 +179,7 @@ impl Doc {
 }
 
 /// A number as the cut list shows it: `702`, `18.5`, or inches as text such as `23 1/4`.
-fn shown(v: &Value) -> String {
+pub(crate) fn shown(v: &Value) -> String {
     v.as_f64()
         .map_or_else(|| v.as_str().unwrap_or("").into(), |n| n.to_string())
 }
