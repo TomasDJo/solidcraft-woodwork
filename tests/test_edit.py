@@ -80,3 +80,19 @@ def test_a_corner_that_followed_its_place_stays_that_corner(approval):
     # every board but the shelves, which are spaced anew, is where it was
     fixed = lambda box: {name: b for name, b in box.items() if "Shelf" not in name}
     assert "K Shelf 2" in after and fixed(after) == fixed(before), (fixed(after), fixed(before))
+
+
+def test_fronts_and_the_reveal_through_edit(approval):
+    # An overlay door made inset with a 3 mm reveal: 564 - 6 wide in the opening. The reveal is
+    # then a parameter: changed in the design the door follows, an edit of something else keeps
+    # it, and back to overlay the door laps the carcass by that reveal.
+    door = lambda measure: boxes(measure)["Cabinet Door"]
+    results = cli([plugin(approval, "cabinet", {"doors": 1}), select("Cabinet Top"),
+                   plugin(approval, "edit", {"fronts": "inset", "reveal": 3}), MEASURE,
+                   change("Cabinet_reveal", "2.5 mm"), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"fronts": "overlay"}), MEASURE])
+    assert door(results[3]) == [-279, -280, 21, 279, -262, 699], door(results[3])
+    assert door(results[5]) == [-279.5, -280, 20.5, 279.5, -262, 699.5], door(results[5])
+    assert door(results[8]) == door(results[5]) and "Cabinet Shelf 2" in boxes(results[8]), door(results[8])
+    assert door(results[11]) == [-297.5, -300.5, 2.5, 297.5, -282.5, 717.5], door(results[11])

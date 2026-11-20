@@ -28,11 +28,13 @@ component can hold its cabinets.
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
-| **Drawers** | Makes it a drawer unit: a stack of equal drawers with overlay fronts and boxes sized for 12.7 mm ball-bearing slides. |
+| **Drawers** | Makes it a drawer unit: a stack of equal drawers with fronts and boxes sized for 12.7 mm ball-bearing slides. |
 | **Plinth height** | 0 for none. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
-| **Doors** | Overlay doors with 35 mm hinge cup holes: one, two, or one per compartment. |
+| **Doors** | Doors with 35 mm hinge cup holes: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
+| **Fronts** | Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment. |
+| **Reveal** | The gap around and between the fronts, 0.5 to 6 mm (2 by default), always in mm, also on an inch cabinet. Overlay: also how far the fronts stop short of the carcass's outside edges. Inset: the gap all round inside the opening. On a cabinet with doors or drawers it is the design parameter `Name_reveal`: change it in Parameters and the fronts follow. |
 | **Handle holes** | Drills the doors and drawer fronts for a knob (one 5 mm hole) or a pull (two, 128 mm apart). |
 | **Handle position** | Near the top, in the middle or near the bottom of a door. On Auto: near the top on a floor unit, near the bottom on a wall unit. On a drawer front the handle lies across: in the middle on Auto, or 40 mm from the front's top or bottom edge. |
 | **Labels** | Writes each board's name on it, the name the cut list has, as text in a sketch on the board's face. It stays in the middle of the board when the cabinet changes size. |
@@ -44,7 +46,8 @@ component can hold its cabinets.
 
 Every door and every drawer is a component of its own inside the cabinet, held by a joint:
 doors hinge open to 110 degrees, drawers slide out. Drive the joints to open them. A door
-turns about its front edge, as on a cup hinge, so it clears the door of the next cabinet.
+turns about its front edge, as on a cup hinge, so it clears the door of the next cabinet; an
+inset door swings out of the opening clear of the side.
 
 The cabinet is grounded so they have something fixed to open against; unground it to move
 it. A cabinet placed against another is held to that one instead.
@@ -54,6 +57,8 @@ it. A cabinet placed against another is held to that one instead.
 Builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
 It is parametric, takes a material, and can be placed, named and matched like the box cabinet.
+Its doors are overlay, with a **Reveal** (`Name_reveal`) as on the box cabinet; inset fronts are
+only made on box cabinets.
 
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the
@@ -111,7 +116,8 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 Changes a cabinet after it is made. Select any part of it, fill in only what should change
 and leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is
-hinged on, drawers, back, shelf pin holes, handles, plinth, a corner cabinet's shape.
+hinged on, drawers, fronts (overlay or inset), reveal, back, shelf pin holes, handles, plinth, a
+corner cabinet's shape. The reveal is taken from Parameters unless the edit gives one.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is drilled again, and cabinets

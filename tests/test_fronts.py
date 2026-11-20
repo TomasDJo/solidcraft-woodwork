@@ -181,3 +181,54 @@ def test_labels(approval):
         assert results[4]["result"]["boards"] == len(bodies)  # the cut list counts boards, not labels
     results = cli([plugin(approval, "cabinet", {"doors": 2}), inspect])
     assert results[1]["sketches"] == [], results[1]["sketches"]
+
+
+def overlap(a, b):
+    """Whether two boxes share any volume."""
+    return all(a[i] < b[i + 3] - 1e-6 and b[i] < a[i + 3] - 1e-6 for i in range(3))
+
+
+def test_inset_doors_sit_in_the_opening_and_open_clear_of_the_sides(approval):
+    # Two inset doors with a 3 mm reveal in 600 x 720: the opening is 564 x 684 between the
+    # panels, so each door is (564 - 3 x 3) / 2 = 277.5 wide and 684 - 6 = 678 high, its front
+    # face on the carcass front (y = -280). Open at 90 degrees, each stands in front of the
+    # carcass, clear of its side. The cut list measures the doors at that size.
+    made = plugin(approval, "cabinet", {"fronts": "inset", "reveal": 3, "doors": 2, "handles": "knob"})
+    results = cli([made, MEASURE, drive("Cabinet Door L hinge", 90), drive("Cabinet Door R hinge", 90), MEASURE,
+                   plugin(approval, "cutlist")], "--save", str(ROOT / "dist" / "inset-doors.sc"))
+    box = boxes(results[1])
+    assert box["Cabinet Door L"] == [-279, -280, 21, -1.5, -262, 699], box["Cabinet Door L"]
+    assert box["Cabinet Door R"] == [1.5, -280, 21, 279, -262, 699], box["Cabinet Door R"]
+    assert box["Cabinet Shelf 1"][1] == -262 and box["Cabinet Side L"][1] == -280, box["Cabinet Shelf 1"]
+    assert cylinders(results[1], "Cabinet Door L") == 3, cylinders(results[1], "Cabinet Door L")  # 2 cups, a knob
+    opened = boxes(results[4])
+    assert opened["Cabinet Door L"] == [-279, -557.5, 21, -261, -280, 699], opened["Cabinet Door L"]
+    assert opened["Cabinet Door R"] == [261, -557.5, 21, 279, -280, 699], opened["Cabinet Door R"]
+    for door, side in (("Cabinet Door L", "Cabinet Side L"), ("Cabinet Door R", "Cabinet Side R")):
+        assert not overlap(opened[door], opened[side]), (opened[door], opened[side])
+    assert '2,678,277.5,18,"Birch plywood",yes,L2 W2,"Cabinet Door L, Cabinet Door R"' in results[5]["result"]["csv"], results[5]["result"]["csv"]
+
+
+def test_inset_drawers_and_doors_per_compartment(approval):
+    # Two drawers in 870 on a 150 plinth: the opening is 684 high between the bottom (top face
+    # at 168) and the top panel, so each front is (684 - 3 x 2) / 2 = 339, from 170 to 509 and
+    # from 511 to 850. The box sits behind the front and slides out with it.
+    made = plugin(approval, "cabinet", {"fronts": "inset", "drawers": 2, "height": 870, "plinth": 150,
+                                        "handles": "knob"})
+    results = cli([made, MEASURE, drive("Cabinet Drawer 1 slide", 300), MEASURE],
+                  "--save", str(ROOT / "dist" / "inset-drawer.sc"))
+    box = boxes(results[1])
+    assert box["Cabinet Drawer 1 Front"] == [-280, -280, 170, 280, -262, 509], box["Cabinet Drawer 1 Front"]
+    assert box["Cabinet Drawer 2 Front"][2:6:3] == [511, 850], box["Cabinet Drawer 2 Front"]
+    assert box["Cabinet Drawer 1 Left"][1] == -262 and box["Cabinet Drawer 1 Left"][2] == 178, box["Cabinet Drawer 1 Left"]
+    assert boxes(results[3])["Cabinet Drawer 1 Front"][1] == -580, boxes(results[3])["Cabinet Drawer 1 Front"]
+    # Three compartments in 900: each door fills its own, 276 - 4 wide, the dividers behind them.
+    box = boxes(cli([plugin(approval, "cabinet", {"fronts": "inset", "width": 900, "dividers": 2, "doors": 3}), MEASURE])[1])
+    assert [box[f"Cabinet Door {n}"][0:4:3] for n in (1, 2, 3)] == [[-430, -158], [-136, 136], [158, 430]], box
+    assert box["Cabinet Divider 1"][0:2] == [-156, -262], box["Cabinet Divider 1"]
+
+
+def test_overlay_fronts_with_a_reveal(approval):
+    # Overlay doors with a 3 mm reveal: 3 mm in from the outside and between them, 3 mm proud.
+    box = boxes(cli([plugin(approval, "cabinet", {"reveal": 3, "doors": 2}), MEASURE])[1])
+    assert box["Cabinet Door L"] == [-297, -301, 3, -1.5, -283, 717], box["Cabinet Door L"]

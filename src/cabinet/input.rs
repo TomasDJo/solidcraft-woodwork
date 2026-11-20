@@ -24,10 +24,14 @@ pub struct Input<'a> {
     pub handles: &'a str,
     pub handle_at: &'a str,
     pub hinge_right: bool, // the first door is hinged on its right
+    /// Inset fronts sit inside the carcass opening; overlay ones cover its edges.
+    pub inset: bool,
+    /// The gap around and between the fronts.
+    pub reveal: f64,
     /// One compartment's width, and the height between the bottom and top panels.
     pub cell_w: f64,
     pub clear_h: f64,
-    /// Depth of the shelves, which stop at the back.
+    /// Depth of the shelves, which stop at the back, and behind inset fronts.
     pub shelf_d: f64,
     /// Height of one drawer front.
     pub front_h: f64,
@@ -62,6 +66,13 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (shelves, pins)
     };
     let back = p.get("back").and_then(Value::as_str).unwrap_or("groove");
+    let inset = match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
+        "overlay" => false,
+        "inset" => true,
+        _ => return Err("fronts must be overlay or inset".into()),
+    };
+    let g = num(p, "reveal", DOOR_GAP)?; // mm, whatever the units
+    check((0.5..=6.0).contains(&g), "the reveal must be 0.5 to 6 mm")?;
 
     check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
     check(
@@ -83,6 +94,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
 
     let inner_w = w - 2.0 * t;
+    // How far inside the carcass's outside the fronts' opening is: inset fronts sit between
+    // the panels.
+    let o = if inset { t } else { 0.0 };
     let clear_h = h - plinth - 2.0 * t; // between bottom and top panels
     let gap = (clear_h - shelves * t) / (shelves + 1.0);
     check(
@@ -115,9 +129,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "drawers cannot be combined with doors or dividers",
     )?;
     // Height of one drawer front, and width of the box between the slides.
-    let front_h = (h - plinth - (drawers + 1.0) * DOOR_GAP) / drawers.max(1.0);
+    let front_h = (h - plinth - 2.0 * o - (drawers + 1.0) * g) / drawers.max(1.0);
     check(
-        drawers == 0.0 || front_h >= 2.0 * (t + BOX_CLEAR) + 50.0,
+        drawers == 0.0 || front_h >= 2.0 * (t - o + BOX_CLEAR) + 50.0,
         "too low for that many drawers",
     )?;
     check(
@@ -144,11 +158,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         _ => return Err("door_hinge must be left or right".into()),
     };
     check(
-        handles == "none" || doors == 0.0 || (w - (doors + 1.0) * DOOR_GAP) / doors >= 150.0,
+        handles == "none" || doors == 0.0 || (w - 2.0 * o - (doors + 1.0) * g) / doors >= 150.0,
         "doors are too narrow for handles",
     )?;
     check(
-        doors == 0.0 || h - plinth >= 300.0,
+        doors == 0.0 || h - plinth - 2.0 * o >= 300.0,
         "too low for a door with two hinges",
     )?;
     check(
@@ -164,7 +178,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "overlay" => d - bt,
         "groove" => d - GROOVE_INSET - bt,
         _ => d,
-    };
+    } - o;
     Ok(Input {
         w,
         h,
@@ -181,6 +195,8 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handles,
         handle_at,
         hinge_right,
+        inset,
+        reveal: g,
         cell_w,
         clear_h,
         shelf_d,
