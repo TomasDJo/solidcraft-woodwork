@@ -1,4 +1,4 @@
-"""The dialogs in plugin.json: only what SolidCraft 0.44 can draw, and every choice with a title."""
+"""The dialogs in plugin.json: only what SolidCraft 0.45 can draw, and every choice with a title."""
 import json
 
 from helpers import *
@@ -37,10 +37,9 @@ def test_choices_have_titles(approval):
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
     assert choices == 29, choices
-    # SolidCraft 0.44 refuses a manifest over 16 KiB (0.45: 64 KiB); the package carries it
-    # without white space.
+    # SolidCraft 0.45 refuses a manifest over 64 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
-    assert json.loads(packed) == manifest and len(packed) < 16 * 1024 - 100, len(packed)
+    assert json.loads(packed) == manifest and len(packed) < 64 * 1024, len(packed)
     # Each function names its icon, and the package has it.
     for entry in manifest["runtime"]["entries"]:
         icon = entry["input_schema"]["x-solidcraft-icon"]

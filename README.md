@@ -1,7 +1,7 @@
 # solidcraft-woodwork
 
 Woodworking plugin for SolidCraft: parametric cabinets, materials, joinery and a cut list.
-Works with SolidCraft 0.44 and 0.45; older plugin versions work with 0.41 to 0.43. See [PLAN.md](PLAN.md) for the roadmap.
+Works with SolidCraft 0.45; older plugin versions work with 0.41 to 0.44. See [PLAN.md](PLAN.md) for the roadmap.
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
 
@@ -42,7 +42,8 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.44 and 0.45 | 0.1.8 and later | Tested on every change, on 0.44.1. A cabinet is previewed in the model before it is added, the selection is a field in the dialog, and each function has its own icon. One quirk of the preview is in [Good to know](docs/usage.md#good-to-know). |
+| 0.45 | after 0.1.8 | Tested on every change, on 0.45.0. The view is framed after a cabinet is added, a placed cabinet is previewed where it goes, and agents get each function as a tool. |
+| 0.44 | 0.1.8 | A cabinet is previewed in the model before it is added, the selection is a field in the dialog, and each function has its own icon. The preview of a placed cabinet can show on the origin. |
 | 0.43 | 0.1.6 and 0.1.7 | The dropdowns show a title and an explanation for each choice, and installing asks you to approve the plugin. |
 | 0.42 | 0.1.4 and 0.1.5 | Adds a button per function on the ribbon. From 0.1.6 the functions no longer show in its menu. |
 | 0.41 | 0.1.0 to 0.1.5 | The first version with plugins. 0.1.0 to 0.1.3 were tested on it; 0.1.4 and 0.1.5 should work but were not tested there. |

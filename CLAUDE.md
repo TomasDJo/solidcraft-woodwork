@@ -1,6 +1,6 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.44+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.45+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
 `README.md` is the short user-facing description, `docs/usage.md` how to use each function,
 `PLAN.md` the roadmap with what is done and open.
@@ -21,9 +21,16 @@ materials, joinery and cut lists.
   oneOf, bounds and lengths. The dialog shows the fields that `required` names first, in that
   order, and the rest by key: so every schema lists all its fields in `required`, which also
   puts a ` *` after each label. `build.py` packs the manifest without white space: the app
-  refuses one over 16 KiB in 0.44 (0.45: 64 KiB), and ours is about 100 bytes under: a new field or a longer text means shortening another. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
+  refuses one over 64 KiB. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
   bare values, and 0.42 cannot draw `oneOf`). `tests/test_manifest.py` checks all of this.
   The dialog is **static**: no dependent fields, no stored values.
+- **Tools for agents (0.45).** Every entry is also the tool `woodwork.<entry>` (`plugin.tools`,
+  MCP `tools/list`), with its schema as the arguments. Over MCP the arguments are checked
+  strictly first: a field `required` names must be there even when it has a default, and
+  undeclared fields are refused. As every field is required (for the dialog's order), an agent
+  passes them all; the error names a missing one. The `woodwork.<entry>` command in a script
+  (`approval` and `params`) and `plugin.run` pass the fields through unchecked.
+  `tests/test_tools.py` drives `solidcraft-cli mcp --headless` for this.
 - **Preview (0.44).** While the dialog is open the app runs an edit entry as a dry run on a
   copy of the design each time a field changes, and draws the result. So plugin code runs
   before OK, without folder grants; nothing a run does may depend on being the only run.
@@ -38,7 +45,8 @@ materials, joinery and cut lists.
   does not remember it.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
   features, so a design opens without the plugin.
-- Limits per run: 256 app commands, 30 s, 1 MiB result. No network access, no storage.
+- Limits per run: 256 app commands, 30 s, 1 MiB result. No network access; we keep no plugin
+  data in the design (`storage@0.1`, below).
   Files: only `files.write-file` into a folder the manifest asks for under
   `runtime.permissions.files` and the user approves when installing (0.43: the install
   screen asks for a path). The plugin names the grant and a relative path and never learns
@@ -59,10 +67,16 @@ materials, joinery and cut lists.
 - A pattern of a hole can lose copies ("cut copies remove no material") when the component has
   been moved and another body stands where its local numbers point in the world. Joinery makes
   every hole a feature of its own for that reason; the shelf pin patterns have not shown it.
-- The plugin runs on a background copy of the design. Display commands such as `view.fit` are
-  accepted but do nothing in the window.
+- The plugin runs on a background copy of the design. From 0.45 the window applies the last
+  view command of an accepted run (`view.fit`, `view.home`); the preview's dry runs leave the
+  camera alone. `execute` ends a cabinet, corner or edit run with `select.clear` and
+  `view.fit`: Fit frames the selection when there is one, such as the board a cabinet was placed
+  against. `plugin.run` through the CLI reports it as `view: {kind: fit}`.
+- `build.py` runs `solidcraft-cli plugin check` on the package: an error fails the build.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
-  `tangency-labs/solidcraft`. A `ui` and a `storage` capability are planned there.
+  `tangency-labs/solidcraft`. A `ui` capability is planned there. `storage@0.1`, plugin data
+  kept in a design, exists from 0.45 ("Plugin data in a design" in `docs/plugins.md`); we do
+  not use it.
 
 ## Layout
 
@@ -230,7 +244,6 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 ## Known limits
 
 - The dialog cannot remember values or adapt to the Units choice: defaults are always mm.
-- The camera is not framed after a run; the user presses Fit.
 - `select` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
   a cabinet that is rotated off the axes.
 - The cut list measures a board by its world bounding box when the board fills that box, and
@@ -286,10 +299,3 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - Place's Auto, the dialog's default, goes by the name of the selected board
   (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. A script
   that leaves `place` out gets the origin, as before.
-- The preview of a placed cabinet is drawn on the origin, not where Place puts it, as long as
-  no component in the design stands away from where it was made: so for the second cabinet
-  of a run, and right for the third. The run itself places it right. The app previews a
-  plugin run on the placed model only when the design already has a moved component before
-  the run (`world_preview` in its `dialogs_assembly.rs` asks `frames::placed` of the session
-  as it is, not as the run leaves it); else on the unplaced model, where every component is
-  on its own origin. Seen in the app and read in its source at 0.45.0-rc.1; not ours to fix.

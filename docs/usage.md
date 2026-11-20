@@ -146,10 +146,11 @@ the field empty.
 
 ## Good to know
 
-- **The preview of the second cabinet of a run shows on the origin** in SolidCraft 0.44, not
-  beside the first: the preview of a cabinet placed against another is only right once a
-  cabinet in the design has been moved. Run places it right every time. That is the app's,
-  reported as [tangency-labs/solidcraft#19059](https://github.com/tangency-labs/solidcraft/issues/19059).
+- **After a cabinet is added or edited the view shows the whole model** (SolidCraft 0.45), and
+  nothing is selected: pick the board to place the next cabinet against.
+- **An AI agent can use every function as a tool** (SolidCraft 0.45): `woodwork.cabinet`,
+  `woodwork.corner` and so on, with the dialog's fields as its arguments. Every field is
+  required there, so the agent sends them all, the defaults with what it wants changed.
 - **A cabinet made by 0.1.7 or earlier** in a run is held along the run only: its neighbours
   do not follow its depth.
 - **A design made with the plugin is ordinary bodies, joints and parameters.** It opens in

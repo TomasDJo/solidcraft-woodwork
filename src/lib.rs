@@ -265,6 +265,18 @@ pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Re
 }
 
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
+    let summary = entries(entry, params, run)?;
+    // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
+    // preview's dry runs leave the camera alone). Fit frames the selection when there is one,
+    // such as the board a cabinet was placed against, so that is cleared first.
+    if matches!(entry, "cabinet" | "corner" | "edit") {
+        run("select.clear", json!({}))?;
+        run("view.fit", json!({}))?;
+    }
+    Ok(summary)
+}
+
+fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     match entry {
         "cabinet" | "corner" => {
             // Where it goes: on the origin, or against the cabinet that is selected.
@@ -494,6 +506,9 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
         _ => Err(format!("unknown entry `{entry}`")),
     }
 }
+
+#[cfg(test)]
+mod tests;
 
 #[cfg(target_arch = "wasm32")]
 mod guest {

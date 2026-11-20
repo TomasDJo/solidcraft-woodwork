@@ -47,6 +47,7 @@ def test_auto_goes_by_the_selected_board(approval):
     results = cli([plugin(approval, "cabinet", {"name": "A", "width": 600}),
                    select("A Side R"),
                    plugin(approval, "cabinet", {**auto, "name": "L", "selection": [{"type": "face", "body": "A Side L", "index": 0}]}),
+                   select("A Side R"),  # a run lets the selection go
                    plugin(approval, "cabinet", {**auto, "name": "R"}),  # the selection: A Side R
                    plugin(approval, "corner", {"place": "auto", "name": "T", "selection": [{"type": "body", "name": "A Top"}]}),
                    pick(),
@@ -55,12 +56,12 @@ def test_auto_goes_by_the_selected_board(approval):
                    plugin(approval, "material", {"material": "Oak", "scope": "parts", "selection": ["R Top", "R Bottom"]}),
                    plugin(approval, "edit", {"shelves": 3, "selection": ["R Side L"]}),
                    MEASURE])
-    box = boxes(results[10])
+    box = boxes(results[11])
     assert box["L Side R"][3] == -300 and box["R Side L"][0] == 300, (box["L Side R"], box["R Side L"])
     assert box["T Side L"][0] == -300 and box["T Side L"][2] == 720, box["T Side L"]  # above, left sides flush
     assert box["O Side L"][0] == -200, box["O Side L"]  # nothing selected: at the origin
-    assert cylinders(results[10], "L Side L") > 0 and cylinders(results[10], "R Side L") == 0
-    material = {b["name"]: b["material"] for b in results[10]["bodies"]}
+    assert cylinders(results[11], "L Side L") > 0 and cylinders(results[11], "R Side L") == 0
+    material = {b["name"]: b["material"] for b in results[11]["bodies"]}
     assert material["R Bottom"] == "Oak" and material["R Side L"] != "Oak", material
     assert "R Shelf 3" in box and "L Shelf 3" not in box, sorted(box)
     # any other board does not say which side: at the origin, as with nothing selected
@@ -68,3 +69,14 @@ def test_auto_goes_by_the_selected_board(approval):
                    plugin(approval, "cabinet", {**auto, "name": "B", "selection": ["A Shelf 1"]}),
                    MEASURE])
     assert boxes(results[2])["B Side L"][0] == -200, boxes(results[2])["B Side L"]
+
+
+def test_framed_on_the_whole_model(approval):
+    # A run that adds or rebuilds a cabinet ends with Fit (0.45), which the window applies. Fit
+    # frames the selection when there is one, so the board placed against is let go first.
+    results = cli([plugin(approval, "cabinet", {"name": "A"}), select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "place": "right"}),
+                   {"command": "selection.get", "params": {}}, select("B Top"),
+                   plugin(approval, "edit", {"shelves": 2}), select("B Top"), plugin(approval, "material")])
+    assert [results[i].get("view") for i in (0, 2, 5, 7)] == [{"kind": "fit"}] * 3 + [None], results
+    assert results[3]["items"] == [], results[3]
