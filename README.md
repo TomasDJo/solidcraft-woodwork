@@ -23,6 +23,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Joinery**: confirmat screw or dowel holes at the carcass corners.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
 - **Worktop**: one board over a straight run of the selected cabinets, following their sizes.
+- **Panel**: an end panel or a filler on one end of a cabinet, following its sizes.
 - **Prices**: what a sheet, a metre of banding or worktop and each piece of hardware costs, kept in the design.
 - **Cut list**: every board with its size and quantity, hardware, edge banding per edge and grain direction, and the sheets to buy from cutting layouts (kerf, trim, grain), as CSV or a printable PDF with a cutting diagram per sheet, part labels to print on A4 sticker sheets, a DXF per sheet with the parts and their holes for a CNC, and a cost estimate at the prices you set.
 
@@ -69,12 +70,12 @@ Preferences > Plugins > Install plugin
 The kitchen in the picture is in the repo:
 
 - [`examples/kitchen.sc`](examples/kitchen.sc): the design. Open it in SolidCraft; it needs no plugin.
-- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 132 boards.
+- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 142 boards.
 - [`examples/kitchen.py`](examples/kitchen.py): the script that built both, using every function of
   the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other and
   linked in size (change `Base_1_height` and the whole floor run follows), an L-shaped and a
   diagonal corner cabinet, handle holes,
-  melamine carcasses with oak fronts, oak worktops, screws and dowels, doors and a drawer left open on their joints.
+  melamine carcasses with oak fronts, oak worktops, an end panel and a filler, screws and dowels, doors and a drawer left open on their joints.
 
 To rebuild it, run `python build.py` and then `python examples/kitchen.py`.
 
@@ -87,7 +88,7 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 
 - `plugin.json`: manifest. Entries, their input forms, and the app commands used.
 - `src/lib.rs`: entry dispatch and the wasm guest.
-- `src/cabinet/`, `src/corner/`, `src/joinery/`, `src/worktop/`, `src/cutlist/`, `src/material.rs`: one module
+- `src/cabinet/`, `src/corner/`, `src/joinery/`, `src/worktop/`, `src/panel/`, `src/cutlist/`, `src/material.rs`: one module
   per function, plain Rust. A folder holds the code in `mod.rs` (the box cabinet also has
   `input.rs`, `doors.rs` and `drawers.rs`, the corner cabinet `input.rs`, `doors.rs` and `diagonal.rs`) and its unit tests
   in `tests.rs`.

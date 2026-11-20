@@ -528,3 +528,52 @@ fn a_rail_is_banded_at_the_front_like_a_shelf() {
         assert_eq!(r["grain"], json!(true));
     }
 }
+
+#[test]
+fn panels_beside_a_cabinet() {
+    for turned in [false, true] {
+        let mut measured = cabinet(turned);
+        // an end panel 720 high and 600 deep, a 50 wide filler 600 high and its return
+        let sizes = [
+            ("A End panel L", [18.0, 600.0, 720.0]),
+            ("A Filler R", [50.0, 18.0, 600.0]),
+            ("A Filler R return", [18.0, 560.0, 600.0]),
+        ];
+        for (name, max) in sizes {
+            let max = if turned {
+                [max[1], max[0], max[2]]
+            } else {
+                max
+            };
+            let body =
+                json!({"name": name, "material": "Oak", "bbox": {"min": [0, 0, 0], "max": max}});
+            measured["bodies"].as_array_mut().unwrap().push(body);
+        }
+        let list = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
+        let size = |part: &str| {
+            let r = row(&list, part);
+            let marks = (
+                r["length"].clone(),
+                r["width"].clone(),
+                r["banding"].clone(),
+            );
+            (marks, r["grain"].clone())
+        };
+        let band = |l: u64, w: u64| json!({"length": l, "width": w});
+        // all with their grain up: the end panel banded at the front and on top
+        let up = json!(true);
+        assert_eq!(
+            size("A End panel L"),
+            ((json!(720.0), json!(600.0), band(1, 1)), up.clone()),
+            "turned {turned}"
+        );
+        assert_eq!(
+            size("A Filler R"),
+            ((json!(600.0), json!(50.0), band(1, 0)), up.clone())
+        );
+        assert_eq!(
+            size("A Filler R return"),
+            ((json!(600.0), json!(560.0), band(0, 0)), up)
+        );
+    }
+}

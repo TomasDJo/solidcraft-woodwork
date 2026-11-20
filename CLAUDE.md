@@ -101,6 +101,7 @@ materials, joinery and cut lists.
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/worktop/` | Worktop over a straight run of the selected cabinets: finds the run from the cabinets' sides and backs, and builds one board whose parameters are expressions over the cabinets'. `lib.rs` makes its component, moves it to the run's fixed point (a grounded cabinet's middle, or the side held to a cabinet outside the run) and grounds it |
+| `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin, as Joinery), remembers them for Edit, and refuses Place against a side that has one |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
@@ -120,7 +121,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `worktop`, `cutlist` and `prices`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `worktop`, `panel`, `cutlist` and `prices`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -377,3 +378,20 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   cabinet would claim as a part (`<Cabinet> ...`) is refused; a cabinet made later with such
   a name would still claim it. Quarter turns only, like Place. The run is read from the world
   boxes of each cabinet's sides and backs.
+- A panel (`panel`: `<Cabinet> End panel L`, or `Filler R` and `Filler R return`) is a body inside its box cabinet's component, every size an expression over the
+  cabinet's parameters, anchored on its side by `±<Prefix>_width/2`. Like a hole, a box made in
+  a moved component lands shifted in a plugin run, so `lib.rs` makes it with the cabinet on the
+  origin (`inside`, shared with Joinery). The cabinet remembers its panels (`panels` beside the
+  remembered values, each `{kind, side, units, width, thickness}`), and Edit makes again those
+  whose first board was still there: the user deletes the panel's history folder with its
+  features (deleting only the body made the next Edit fail on an unknown body). Its material
+  is the Side L's. Whether the fronts are overlay (the panel comes forward to their faces) and
+  the plinth come from the remembered values (a matched cabinet's plinth from its parameter),
+  read when it is made: an Edit that changes them makes the panel again to fit. One panel a
+  side; a side with a cabinet against it (the cabinet's own `link` note, or the note of a
+  cabinet hanging on it) is refused, but a cabinet that stands there without a link is not
+  seen. `select::named` and
+  the worktop read the sides and the back only, so a panel is ignored by them: Place refuses a
+  side with a panel instead (`panel::blocks`), and a worktop does not cover it. Corner cabinets
+  are refused. No plinth return: the sides reach the floor, so the plinth's ends are closed;
+  it waits for cabinets on legs. No label on a panel. The filler width and a given thickness are plain lengths, not parameters.

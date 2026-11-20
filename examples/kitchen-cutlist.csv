@@ -35,10 +35,12 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 2,696,596,18,"Oak",yes,L2 W2,"Wall 2 Door, Wall 4 Door"
 1,696,917.7,18,"Oak",yes,L2 W2,"Wall corner Door"
 10,700,320,18,"White melamine",,L1,"Wall 1 Side L, Wall 1 Side R, Wall 3 Side L, Wall 3 Side R, Wall corner Side L, Wall corner Side R, Wall 4 Side L, Wall 4 Side R, Wall 2 Side L, Wall 2 Side R"
+1,716,50,18,"White melamine",,L1,"Base 4 Filler R"
 3,716,297.3,18,"Oak",yes,L2 W2,"Base 3 Door 1, Base 3 Door 2, Base 3 Door 3"
 2,716,397,18,"Oak",yes,L2 W2,"Base 1 Door L, Base 1 Door R"
 1,716,416,18,"Oak",yes,L2 W2,"Corner Door return"
 1,716,436,18,"Oak",yes,L2 W2,"Corner Door"
+1,716,562,18,"White melamine",,,"Base 4 Filler R return"
 1,764,150,18,"White melamine",,,"Base 1 Plinth"
 2,764,302,18,"White melamine",,L1,"Wall 1 Shelf 1, Wall 1 Shelf 2"
 2,764,320,18,"White melamine",,L1,"Wall 1 Bottom, Wall 1 Top"
@@ -54,21 +56,22 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 1,982,870,18,"White melamine",,,"Corner Back return"
 1,1910,560,18,"Oak",yes,L2 W2,"Tall Door"
 2,2100,560,18,"White melamine",,L1,"Tall Side L, Tall Side R"
-1,1020,600,38,"Oak",yes,,"Worktop return"
+1,2100,560,18,"White melamine",,L1 W1,"Tall End panel L"
+1,1050,600,38,"Oak",yes,,"Worktop return"
 1,3300,600,38,"Oak",yes,,"Worktop"
 
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
 "Oak",18,52.337
-"White melamine",18,58.456
+"White melamine",18,62.17
 
 Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
 "Sheet, Oak 18 mm",3,sheet,120,360
 "Sheet, White melamine 6 mm",3,sheet,15,45
 "Sheet, White melamine 12 mm",1,sheet,30,30
-"Sheet, White melamine 18 mm",13,sheet,45,585
+"Sheet, White melamine 18 mm",14,sheet,45,630
 "Edge banding 1 mm, Oak 18 mm",52.337,m,0.6,31.4
-"Edge banding 1 mm, White melamine 18 mm",58.456,m,0.6,35.07
-"Worktop, Worktop return",1.02,m,180,183.6
+"Edge banding 1 mm, White melamine 18 mm",62.17,m,0.6,37.3
+"Worktop, Worktop return",1.05,m,180,189
 "Worktop, Worktop",3.3,m,180,594
 "Hinge, 35 mm cup",35,piece,2.5,87.5
 "Drawer slide, pair",4,pair,12,48
@@ -77,4 +80,4 @@ Cost estimate,Qty,Unit,Unit price (EUR),Amount (EUR)
 "Dowel, 8 x 35 mm",32,piece,0.05,1.6
 "Knob",8,piece,3.5,28
 "Pull, 128 mm",12,piece,6,72
-Total,,,,2116.97
+Total,,,,2169.6

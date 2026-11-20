@@ -151,6 +151,23 @@
         }
       },
       {
+        "name": "panel",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Panel" }, { "kind": "ribbon", "name": "Panel" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/panel.svg",
+          "required": ["selection", "kind", "side", "units", "width", "thickness"],
+          "properties": {
+            "selection": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "kind": { "type": "string", "title": "Kind", "description": "A finishing board on one end of the selected box cabinet, part of it: it follows its sizes and Edit cabinet keeps it.", "default": "end", "oneOf": [{"const": "end", "title": "End panel", "description": "Floor to top, from the back to the faces of the fronts."}, {"const": "filler", "title": "Filler", "description": "A strip beside the fronts, with a return behind it back to the wall."}] },
+            "side": { "type": "string", "title": "Side", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "By the board picked: Side L or Side R."}, {"const": "left", "title": "Left"}, {"const": "right", "title": "Right"}] },
+            "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
+            "width": { "type": "number", "title": "Filler width", "default": 50, "minimum": 0.4, "maximum": 1000 },
+            "thickness": { "type": "number", "title": "Thickness", "description": "0: the cabinet's panel thickness.", "default": 0, "minimum": 0, "maximum": 50 }
+          }
+        }
+      },
+      {
         "name": "cutlist",
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],

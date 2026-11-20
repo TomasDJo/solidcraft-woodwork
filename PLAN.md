@@ -95,6 +95,8 @@ Cabinets:
 - [x] Worktop over a straight run of the selected cabinets (sink and hob cutouts dropped by decision: simple to cut afterwards)
 - [x] Drawers over doors and a graduated drawer stack (the top drawer's height given, the rest equal)
 - [ ] Plinth run over the selected cabinets
+- [x] End panels and fillers on a cabinet's end, kept by Edit cabinet
+- [ ] Plinth return: for cabinets on legs, later
 
 Cut list and shop output:
 - [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)

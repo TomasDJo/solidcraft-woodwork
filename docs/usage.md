@@ -11,6 +11,7 @@ dialog; the cabinet you are about to make is previewed in the model before you p
 - [Joinery](#joinery)
 - [Material](#material)
 - [Worktop](#worktop)
+- [Panel](#panel)
 - [Cut list](#cut-list)
 - [Prices](#prices)
 - [Good to know](#good-to-know)
@@ -176,6 +177,30 @@ worktop's front overhang. For a 1000 mm return, 560 deep, under a worktop with 4
 overhang: 1000 - 560 - 40 = 400 mm. Which end that is goes by the front of the run: for a run
 along the return of a right-hand corner, the corner is at its left end.
 
+## Panel
+
+Adds an end panel or a filler to one end of the selected box cabinet. It is part of the cabinet: it
+follows its sizes, comes along when the cabinet moves, gets the material of its sides, and Edit
+cabinet makes it again.
+
+| Field | What it does |
+|---|---|
+| **Kind** | **End panel**: a full-height board outside the side, from the floor (covering the plinth) to the top, and from the back to the faces of the doors and drawer fronts (flush with the carcass when the fronts are inset or there are none). **Filler**: a strip of the filler width beside the cabinet, in the plane of the fronts and as high as they are, with a return behind its outer edge back to the wall. |
+| **Side** | On Auto by the board you picked: its Side L or Side R. Left or right as seen from the front. |
+| **Units** | The sizes in the dialog in mm or inches. |
+| **Filler width** | Only for a filler: how far it reaches out from the cabinet, its thickness included. |
+| **Thickness** | 0 for the cabinet's panel thickness (`Name_thickness`, so it follows it), or a thickness of its own. |
+
+The boards are named `Name End panel L`, `Name Filler R` and `Name Filler R return`, each panel
+in a folder of the history under its first board's name. One panel per side, and not on a side
+where another cabinet stands against it. Not on corner cabinets. Edit cabinet fits the panels
+to the cabinet as edited.
+
+To take a panel off, delete its folder in the history (with its features), not only the board:
+Edit cabinet then leaves it out. A cabinet cannot be placed against a side that carries a panel:
+place it on the other side, or delete the panel's folder first. A worktop over the cabinet
+covers the carcass only, not the panel: give it an end overhang for that.
+
 ## Cut list
 
 Returns every board as length x width x thickness with quantities, and as CSV. In a design
@@ -185,17 +210,18 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
   those layouts (see [Cutting layouts](#cutting-layouts));
 - counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
 - marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
-  along the width, `L1` one edge along the length. Doors and drawer fronts are banded all round; sides, top,
-  bottom, shelves, rails and dividers at the front; backs, plinths and drawer boxes not. It adds up
-  the metres of banding per material and thickness, plus 10 % waste;
+  along the width, `L1` one edge along the length. Doors and drawer fronts are banded all
+  round; sides, top, bottom, shelves, rails, dividers and fillers at the front; end panels at
+  the front and on top (`L1 W1`); backs, plinths, filler returns and drawer boxes not. It adds
+  up the metres of banding per material and thickness, plus 10 % waste;
 - adds up what it costs, when the design has prices (see [Prices](#prices) and
   [Cost estimate](#cost-estimate));
 - lists a board of a material with a grain (Birch plywood, Oak) with its length along the
-  grain, marked `grain`: up on sides, doors, backs, dividers and drawer fronts, along the
-  cabinet's width on top, bottom, shelves, rails and drawer bottoms, and along the drawer box's
-  sides, front and back. Such a part must not be turned on the sheet. Other materials (MDF,
-  White melamine) have the longest side as the length, and so do plinths and the drawer
-  box's sides, front and back.
+  grain, marked `grain`: up on sides, doors, backs, dividers, drawer fronts, end panels,
+  fillers and their returns, along the cabinet's width on top, bottom, shelves, rails and
+  drawer bottoms, and along the drawer box's sides, front and back. Such a part must not be
+  turned on the sheet. Other materials (MDF, White melamine) have the longest side as the
+  length, and so do plinths and the drawer box's sides, front and back.
 
 **Edge banding** is the tape's thickness: none, 0.4, 1 (the default) or 2 mm. **Sizes**:
 finished, as in the model, or cut, the size to saw: the finished size less the tape on each

@@ -21,6 +21,8 @@ It uses every function of the plugin:
 - Labels: the tall unit has each board's name written on it
 - Worktop: one over the floor run from Base 1 to the corner cabinet, and one over the return,
   butting against the first
+- Panel: an end panel on the tall unit's free side, and a filler with its return at the open
+  end of the return run
 - Prices: what sheets, banding, the worktop and the hardware cost, kept in the design
 - Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy,
   and what it all costs
@@ -97,6 +99,8 @@ for i, (name, params) in enumerate(FLOOR):
     if i:
         steps.append(select(f"{FLOOR[i - 1][0]} Side R"))
     steps.append(build.plugin(approval, "cabinet", {**params, "name": name}))
+    if name == "Tall":  # the run's visible end
+        steps += [select("Tall Side L"), build.plugin(approval, "panel", {"kind": "end"})]
 for name, left, params in HANGING:
     # Made on the origin, then moved up onto the wall. The plugin grounds a cabinet so that
     # its doors can open, so it is ungrounded for the move.
@@ -118,6 +122,7 @@ for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner")
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
     steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name}),
               select(f"{name} Top"), build.plugin(approval, "joinery", {"type": kind}),
+              *([select("Base 4 Side R"), build.plugin(approval, "panel", {"kind": "filler"})] if name == "Base 4" else []),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
@@ -129,10 +134,10 @@ CORNER_END = CORNER["return"] - CORNER["depth"] - 40  # to the first worktop's f
 steps += [select("Base 1 Top", "Base 2 Top", "Base 3 Top", "Corner Top"),
           build.plugin(approval, "worktop"),
           select("Base 4 Top"),
-          build.plugin(approval, "worktop", {"name": "Worktop return", "left_overhang": CORNER_END, "right_overhang": 20})]
+          build.plugin(approval, "worktop", {"name": "Worktop return", "left_overhang": CORNER_END, "right_overhang": 50})]  # over the filler
 results = build.cli(steps, "--save", str(OUT))
 made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})
-        and "cabinets" not in r["result"]]  # the cabinets, not the worktops
+        and not {"cabinets", "cabinet"} & set(r["result"])]  # the cabinets, not the worktops or panels
 
 # 2. Oak fronts, joinery, and a few doors and a drawer left open.
 steps = [kitchen]

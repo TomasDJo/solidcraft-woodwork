@@ -262,9 +262,10 @@ pub fn file_name(entry: &str, params: &Value) -> Result<Option<String>, String> 
 
 /// Which edges of a part are banded, and the axis its grain runs along, by its name in its
 /// cabinet (`Side L`, `Shelf 2.1`): `width` is the cabinet's width axis. The banded edges are
-/// none, all four, or the front edge, which runs along the grain axis. The grain axis is up for
-/// an upright board, the cabinet's width for one lying flat, and none (the longest side) for a
-/// plinth, a drawer box's side, front or back, or a part we do not know.
+/// none, all four, the front edge, which runs along the grain axis, or an end panel's front
+/// and top edges. The grain axis is up for an upright board, the cabinet's width for one lying
+/// flat, and none (the longest side) for a plinth, a drawer box's side, front or back, or a
+/// part we do not know.
 fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
     // ponytail: by name only, no per-part override (that needs storage@0.1 or a body property).
     let drawer = part.starts_with("Drawer ");
@@ -278,6 +279,11 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
         }
         _ if drawer && part.ends_with(" Bottom") => (Edges::None, Some(width)),
         "Back" | "Back return" => (Edges::None, Some(2)),
+        // panels: an end panel shows its front and top edges, a filler its front, its return
+        // is hidden behind it
+        _ if part.starts_with("End panel ") => (Edges::FrontTop, Some(2)),
+        _ if part.starts_with("Filler ") && part.ends_with(" return") => (Edges::None, Some(2)),
+        _ if part.starts_with("Filler ") => (Edges::Front, Some(2)),
         // plinths, a drawer box's sides, front and back (grain along the box), and what we
         // do not know
         _ => (Edges::None, None),
@@ -287,6 +293,7 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
 enum Edges {
     None,
     Front,
+    FrontTop, // an upright board's front (along the length) and top edges
     All,
 }
 
@@ -400,6 +407,7 @@ pub fn cutlist(
             Edges::None => (0, 0),
             _ if band == 0 => (0, 0),
             Edges::All => (2, 2),
+            Edges::FrontTop => (1, 1),
             Edges::Front if grain == Some(w) => (0, 1),
             Edges::Front => (1, 0),
         };
