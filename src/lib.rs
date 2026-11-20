@@ -9,6 +9,7 @@ mod fittings;
 mod joinery;
 mod kit;
 mod material;
+mod nesting;
 mod pdf;
 mod select;
 
@@ -247,7 +248,7 @@ pub type Write<'a> = &'a mut dyn FnMut(&str, &str, &[u8]) -> Result<(), String>;
 pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Result<(), String> {
     if let Some(name) = cutlist::file_name(entry, params)? {
         let data = match name.to_lowercase().strip_suffix(".pdf") {
-            Some(_) => pdf::render(result, &name[..name.len() - 4]),
+            Some(_) => pdf::render(result, &name[..name.len() - 4], params["diagrams"] != "no"),
             None => result["csv"]
                 .as_str()
                 .unwrap_or_default()

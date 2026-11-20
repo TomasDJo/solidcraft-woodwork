@@ -92,8 +92,9 @@ materials, joinery and cut lists.
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/material.rs` | Board materials: create on first use, assign |
-| `src/cutlist/` | Cut list, sheet estimate, edge banding and grain from `inspect.measure` |
-| `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font) |
+| `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
+| `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
+| `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font), with a cutting diagram per sheet |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
@@ -269,7 +270,14 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   its return's end there, not a back corner: it gets the older link.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
   `joint`, `Drawer n Front`), so renaming those breaks it.
-- The sheet estimate is area plus 15 % waste on 2440 x 1220, not a cutting layout.
+- The cutting layouts (`nesting::nest`) are greedy guillotine packing into the free pieces of
+  all open sheets: eight tries (four orders, best area or best short side fit, each piece split
+  along its shorter leftover), the fewest sheets wins, then the emptiest last sheet. Free
+  pieces are never joined again, so a cutting optimiser may save a sheet on a big job (the
+  sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
+  sheet is only reported (`oversize`), not split.
+- A board is a worktop, bought to length and not laid out on sheets, when its name contains
+  `Worktop` (`cutlist::cutlist`), by name like the banding roles.
 - Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no
   per-part override (that would need `storage@0.1`). A cabinet's width axis is across its
   `Side L` in the world, or X for a board measured in its own component, so a cabinet turned

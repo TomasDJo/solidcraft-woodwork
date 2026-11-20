@@ -9,7 +9,8 @@ fn list(rows: usize) -> Value {
     json!({
         "units": "mm", "boards": rows * 2, "area_m2": 2.94,
         "parts": (0..rows).map(part).collect::<Vec<_>>(),
-        "sheets": [{"material": "Birch plywood", "thickness": 18.0, "area_m2": 2.53, "sheets_2440x1220": 2.0}],
+        "sheets": [{"material": "Birch plywood", "thickness": 18.0, "area_m2": 2.53, "sheets": 2, "yield_pct": 41.5}],
+        "sheet_mm": [2440.0, 1220.0], "kerf_mm": 4.0, "trim_mm": 10.0, "layouts": [], "oversize": [],
         "hardware": [{"item": "Hinge, 35 mm cup", "qty": 4}],
     })
 }
@@ -45,7 +46,7 @@ fn well_formed(pdf: &[u8]) {
 
 #[test]
 fn a_cut_list_as_pdf() {
-    let pdf = render(&list(3), "Kitchen (draft)");
+    let pdf = render(&list(3), "Kitchen (draft)", true);
     well_formed(&pdf);
     let has = |bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
     assert!(has(b"/Count 1 "), "one page");
@@ -66,7 +67,7 @@ fn a_cut_list_as_pdf() {
 
 #[test]
 fn a_long_list_runs_onto_more_pages() {
-    let pdf = render(&list(60), "Kitchen");
+    let pdf = render(&list(60), "Kitchen", true);
     well_formed(&pdf);
     let text = String::from_utf8_lossy(&pdf);
     let pages = text.matches("/Type /Page ").count();
@@ -81,6 +82,7 @@ fn long_names_wrap_at_spaces() {
     // a word longer than the room stays whole on its own line
     assert_eq!(wrap("Countertop x", 9.0, 10.0), ["Countertop", "x"]);
     assert!((width("0123456789", 10.0) - 55.6).abs() < 1e-9);
+    assert!((width("— ×", 10.0) - 18.62).abs() < 1e-9); // a dash an em wide
 }
 
 #[test]
@@ -91,7 +93,7 @@ fn banding_and_grain_marks() {
     banded["size"] = json!("cut");
     banded["banding_mm"] = json!(1.0);
     banded["banding"] = json!([{"material": "Birch plywood", "thickness": 18.0, "metres": 3.63}]);
-    let pdf = render(&banded, "Kitchen");
+    let pdf = render(&banded, "Kitchen", true);
     well_formed(&pdf);
     let has = |bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
     let words: [&[u8]; 6] = [
@@ -106,7 +108,69 @@ fn banding_and_grain_marks() {
         assert!(has(word), "{}", String::from_utf8_lossy(word));
     }
     // without banding: no section, finished sizes
-    let pdf = render(&list(1), "Kitchen");
+    let pdf = render(&list(1), "Kitchen", true);
     let has = |bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
     assert!(!has(b"Edge banding") && has(b"finished sizes"));
+}
+
+#[test]
+fn cutting_diagrams_follow_the_field() {
+    let mut listed = list(2);
+    let part = |name: &str, row: usize, x: f64, w: f64, h: f64| json!({"part": name, "row": row, "x": x, "y": 10.0, "w": w, "h": h, "rotated": false});
+    let sheet = |parts: Vec<Value>| {
+        json!({"material": "Birch plywood", "thickness": 18.0, "size": [2440.0, 1220.0],
+               "yield_pct": 30.2, "parts": parts})
+    };
+    listed["layouts"] = json!([
+        sheet(vec![
+            // both rows have a Bjørk: the label goes by the row, not the name
+            part("Bjørk", 0, 10.0, 720.0, 560.0),
+            part("Cabinet Side (1)", 1, 734.0, 720.0, 50.0)
+        ]),
+        sheet(vec![
+            part("Bjørk", 1, 10.0, 720.0, 559.0),
+            part("Cabinet Side (0)", 0, 734.0, 20.0, 20.0)
+        ]),
+    ]);
+    listed["oversize"] = json!([{"part": "Long", "length": 3000.0, "width": 600.0,
+                                 "reason": "bigger than the sheet less its trim"}]);
+    listed["worktops"] = json!([{"part": "Kitchen Worktop", "material": "Oak", "thickness": 38.0,
+                                 "length": 3300.0, "width": 600.0}]);
+    // the worktop's row: a table of its own though no sheet is bought for it
+    listed["parts"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"qty": 1, "length": 3300.0,
+        "width": 600.0, "thickness": 38.0, "material": "Oak", "parts": ["Kitchen Worktop"]}));
+    let without = render(&listed, "Kitchen", false);
+    let with = render(&listed, "Kitchen", true);
+    well_formed(&with);
+    let has = |pdf: &[u8], bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
+    let pages = |pdf: &[u8]| String::from_utf8_lossy(pdf).matches("/Type /Page ").count();
+    assert_eq!((pages(&without), pages(&with)), (1, 2));
+    assert!(!has(&without, b"Cutting diagrams") && has(&with, b"(Cutting diagrams)"));
+    let words: [&[u8]; 8] = [
+        b"sheet 1 of 2",
+        b"sheet 2 of 2",
+        b"(2440 \xd7 1220 mm, yield 30.2 %)",
+        b"(1)",            // the first row's number, in the legend and on its part
+        b"(720 \xd7 560)", // its size on the part
+        b"/F2 7.5 Tf",     // a narrow part gets number and size on one line
+        b"0.78 g",         // offcuts
+        b"[2 2] 0 d",      // the trim
+    ];
+    for word in words {
+        assert!(has(&with, word), "{}", String::from_utf8_lossy(word));
+    }
+    // the sheets note on both, with the part too big for a sheet and why; the worktops
+    for pdf in [&with, &without] {
+        assert!(has(pdf, b"4 mm saw kerf"));
+        assert!(has(
+            pdf,
+            b"Long \\(3000 \xd7 600 mm\\): bigger than the sheet less its trim"
+        ));
+        assert!(has(pdf, b"(Worktops, bought to length)") && has(pdf, b"(Kitchen Worktop)"));
+        assert!(has(pdf, b"(Oak \x97 38 mm)"));
+        assert!(has(pdf, b"(2)") && has(pdf, b"(SHEETS 2440 \xd7 1220)"));
+    }
 }

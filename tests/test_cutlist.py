@@ -20,15 +20,30 @@ def test_saved_as_a_file(approval):
         grant = {"name": "cutlists", "path": str(folder), "read": False, "write": True}
         install["params"]["approve"]["folders"].append(grant)
         cabinet = plugin(approval, "cabinet", {})
-        results = cli([install, cabinet, plugin(approval, "cutlist", {"file": "My kitchen", "format": "csv"}), plugin(approval, "cutlist"),
-                       plugin(approval, "cutlist", {"file": "My kitchen"})])
-        saved, shown = results[2]["result"], results[3]["result"]
+        # a worktop, bought to length: not laid out on sheets
+        worktop = {"command": "solid.box", "params": {"length": "2000 mm", "width": "600 mm", "height": "38 mm",
+                   "corner": [1000, 0, 0], "name": "Worktop", "body_name": "Worktop"}}
+        results = cli([install, cabinet, worktop, plugin(approval, "cutlist", {"file": "My kitchen", "format": "csv"}), plugin(approval, "cutlist"),
+                       plugin(approval, "cutlist", {"file": "My kitchen"}), plugin(approval, "cutlist", {"file": "Plain", "diagrams": "no"})])
+        saved, shown = results[3]["result"], results[4]["result"]
         assert saved["saved"] == "My kitchen.csv" and "saved" not in shown, (saved.get("saved"), shown.get("saved"))
-        assert results[4]["result"]["saved"] == "My kitchen.pdf"
-        assert sorted(p.name for p in folder.iterdir()) == ["My kitchen.csv", "My kitchen.pdf"]
+        assert results[5]["result"]["saved"] == "My kitchen.pdf"
+        assert sorted(p.name for p in folder.iterdir()) == ["My kitchen.csv", "My kitchen.pdf", "Plain.pdf"]
         pdf = (folder / "My kitchen.pdf").read_bytes()
         assert pdf.startswith(b"%PDF-") and pdf.endswith(b"%%EOF\n") and b"Cabinet Side L" in pdf
         assert (folder / "My kitchen.csv").read_text(encoding="utf-8") == saved["csv"] == shown["csv"]
+        # The sheets to buy are the cutting layouts', and the PDF draws them on a page of their own.
+        assert sum(s["sheets"] for s in shown["sheets"]) == len(shown["layouts"]) >= 2, shown["sheets"]
+        assert shown["layout_units"] == "mm" and shown["oversize"] == [] and shown["sheet_mm"] == [2440, 1220]
+        assert [(w["part"], w["length"], w["width"], w["thickness"]) for w in shown["worktops"]] == [("Worktop", 2000, 600, 38)], shown["worktops"]
+        assert all(p["part"] != "Worktop" for layout in shown["layouts"] for p in layout["parts"])
+        assert all(s["thickness"] != 38 for s in shown["sheets"]), shown["sheets"]
+        side = next(p for layout in shown["layouts"] for p in layout["parts"] if p["part"] == "Cabinet Side L")
+        assert {side["w"], side["h"]} == {720, 560} and side["x"] >= 10 and side["y"] >= 10, side
+        plain = (folder / "Plain.pdf").read_bytes()
+        pages = lambda pdf: pdf.count(b"/Type /Page ")
+        assert b"(Worktops, bought to length)" in pdf and b"(Cutting diagrams)" in pdf and b"sheet 1 of 1" in pdf and b"Cutting diagrams" not in plain
+        assert pages(pdf) > pages(plain), (pages(pdf), pages(plain))
 
 
 def test_banding_and_grain(approval):

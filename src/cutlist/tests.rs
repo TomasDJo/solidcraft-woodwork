@@ -15,7 +15,7 @@ fn groups_equal_boards() {
     assert_eq!(list["boards"], 3);
     // 6 mm: 0.41 m2, 18 mm: 0.85 m2, one sheet each
     assert_eq!(list["sheets"][0]["thickness"], 6.0);
-    assert_eq!(list["sheets"][1]["sheets_2440x1220"], 1.0);
+    assert_eq!(list["sheets"][1]["sheets"], 1);
     assert_eq!(list["parts"][0]["thickness"], 6.0); // thinnest first
     assert_eq!(list["parts"][1]["qty"], 2);
     assert_eq!(list["parts"][1]["length"], 762.0);
@@ -350,4 +350,103 @@ fn banding_marks() {
     assert_eq!(mark(1, 0), "L1");
     assert_eq!(mark(0, 1), "W1");
     assert_eq!(mark(0, 0), "");
+}
+
+#[test]
+fn sheets_from_cutting_layouts() {
+    let options =
+        json!({"banding": "2", "size": "cut", "kerf": 3, "trim": 5, "sheet": "2500x1250"});
+    let list = cutlist(&cabinet(false), &BTreeMap::new(), true, &options).unwrap();
+    let layouts = list["layouts"].as_array().unwrap();
+    // one sheet per material and thickness: MDF 18, Oak 6, 12 and 18
+    let counts: Vec<&Value> = list["sheets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| &s["sheets"])
+        .collect();
+    assert_eq!(counts, [1, 1, 1, 1]);
+    assert_eq!(layouts.len(), 4);
+    assert_eq!(
+        (&list["kerf_mm"], &list["trim_mm"]),
+        (&json!(3.0), &json!(5.0))
+    );
+    assert_eq!(
+        (&list["sheet_mm"], &list["layout_units"]),
+        (&json!([2500.0, 1250.0]), &json!("mm"))
+    );
+    // in mm in an inch design, at the cut size, the grain along the sheet
+    let oak = layouts
+        .iter()
+        .find(|l| l["material"] == "Oak" && l["thickness"] == 18.0)
+        .unwrap();
+    assert_eq!(oak["size"], json!([2500.0, 1250.0]));
+    let door = oak["parts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["part"] == "A Door")
+        .unwrap();
+    assert_eq!(
+        (&door["w"], &door["h"], &door["rotated"]),
+        (&json!(396.0), &json!(596.0), &json!(false))
+    );
+    // Oak 18: 2 x 400 x 558 + 500 x 540 + 396 x 596 + 564 x 100 (no banding on the plinth)
+    let used: f64 = 2.0 * 400.0 * 558.0 + 500.0 * 540.0 + 396.0 * 596.0 + 564.0 * 100.0;
+    let expected = (used / (2500.0 * 1250.0) * 1000.0).round() / 10.0;
+    assert_eq!(oak["yield_pct"], expected);
+    let sheet = list["sheets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["material"] == "Oak" && s["thickness"] == "23/32")
+        .unwrap();
+    assert_eq!(sheet["yield_pct"], expected);
+    assert_eq!(list["oversize"], json!([]));
+
+    // a board too big for the sheet is reported with why, and buys no sheet; a worktop is
+    // bought to length, not laid out
+    let body = |name: &str, material: &str, max: [f64; 3]| json!({"name": name, "material": material, "bbox": {"min": [0, 0, 0], "max": max}});
+    let big = json!({"bodies": [
+        body("Long", "MDF", [3000.0, 600.0, 18.0]),
+        body("Kitchen Worktop", "Oak", [3300.0, 600.0, 38.0]),
+    ]});
+    let list = cutlist(&big, &BTreeMap::new(), false, &json!({})).unwrap();
+    assert_eq!(
+        list["oversize"],
+        json!([
+            {"part": "Long", "material": "MDF", "thickness": 18.0, "length": 3000.0, "width": 600.0,
+             "reason": "bigger than the sheet less its trim"},
+        ])
+    );
+    assert_eq!(
+        list["worktops"],
+        json!([{"part": "Kitchen Worktop", "material": "Oak", "thickness": 38.0, "length": 3300.0, "width": 600.0}])
+    );
+    let sheets = list["sheets"].as_array().unwrap();
+    assert_eq!(sheets.len(), 1, "no sheets for the worktop's 38 mm oak");
+    assert!(sheets.iter().all(|s| s["sheets"] == 0) && list["layouts"] == json!([]));
+    // an oak door 400 high and 1300 wide fits the sheet only with its grain across it
+    let door = json!({"bodies": [
+        body("A Side L", "Oak", [18.0, 560.0, 400.0]),
+        body("A Door", "Oak", [1300.0, 18.0, 400.0]),
+    ]});
+    let list = cutlist(&door, &BTreeMap::new(), false, &json!({})).unwrap();
+    assert_eq!(
+        list["oversize"][0]["reason"],
+        "does not fit with its grain along the sheet"
+    );
+
+    for bad in [
+        json!({"sheet": "2440"}),
+        json!({"kerf": -1}),
+        json!({"kerf": 11}),
+        json!({"kerf": "4"}),
+        json!({"trim": 51}),
+        json!({"diagrams": "maybe"}),
+    ] {
+        let error = cutlist(&cabinet(false), &BTreeMap::new(), false, &bad).unwrap_err();
+        let key = bad.as_object().unwrap().keys().next().unwrap().clone();
+        assert!(error.starts_with(&key), "{error}");
+    }
 }
