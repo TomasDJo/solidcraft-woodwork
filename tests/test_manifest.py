@@ -29,6 +29,10 @@ def test_choices_have_titles(approval):
             # faces matter, as a click on a board selects one. Another array, or more keywords
             # on this one, leaves Run turned off.
             assert (field["type"] == "array") == (name == "selection"), at
+            # The dialog keeps a number within its bounds; a value the plugin refuses past them
+            # only stops the preview, with no message. The reveal is 0.5 to 6 mm in every unit.
+            if name == "reveal":
+                assert (field["minimum"], field["maximum"]) == (0.5, 6), at
             if "oneOf" not in field:
                 continue
             choices += 1
