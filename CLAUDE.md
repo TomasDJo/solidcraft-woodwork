@@ -95,6 +95,7 @@ materials, joinery and cut lists.
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
 | `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font), with a cutting diagram per sheet |
+| `src/dxf/` | The cutting layouts as DXF R12, a file per sheet, written by hand: sheet, part outlines and names, and holes (read with `model.faces`, mapped onto the part as it lies on the sheet) on a layer per diameter and depth |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
@@ -310,6 +311,17 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   from its one size that is a thickness parameter, so the drawer boxes' 12 mm boards get
   none. The label sits in the middle of the board's bounding box, which on a corner
   cabinet's L-shaped board can be over the cut-out; a side's label is on its left face.
+- DXF (`dxf::holes`): `model.faces` answers in world coordinates, also for a moved cabinet, a
+  door in its sub-component and an open door, so a board's own axes are taken from its flat
+  faces (the biggest is the thickness), not from the bounding box. Face areas are of the
+  tessellation (a 5 mm hole's is 10 % short), so a hole's depth comes from its round face's
+  centroid, half way down. Only holes along the thickness are drawn; holes into an edge are
+  counted (`dxf_edge_holes`), grooves are not drawn. One `model.faces` per board with a round
+  face (`face_types.cylinder` in `inspect.measure`), so past the command limit the rest get
+  outlines only (`dxf_holes_skipped`). Holes are placed from the part's middle, so at Cut
+  sizes they are up to half the banding off, and the part's length is told from its width by
+  size, so a nearly square part's holes can be turned a quarter. Layer names write a decimal
+  point as `P` (R12 takes no `.`).
 - Place's Auto, the dialog's default, goes by the name of the selected board
   (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. A script
   that leaves `place` out gets the origin, as before.
