@@ -19,7 +19,7 @@ It uses every function of the plugin:
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
 - Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
-- Cut list: written out as CSV, with grain, banded edges, the sheets (from cutting layouts), banding and hardware to buy
+- Cut list: written out as CSV (boards with grain and banded edges, and the banding to buy); the sheets from the cutting layouts and the hardware are printed
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
 and drawer a component inside its cabinet, on a joint. A few are left open.

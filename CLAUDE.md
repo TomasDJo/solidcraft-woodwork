@@ -20,7 +20,8 @@ materials, joinery and cut lists.
   entry in the menu with Run turned off; ours use only type, title, description, default,
   oneOf, bounds and lengths. The dialog shows the fields that `required` names first, in that
   order, and the rest by key: so every schema lists all its fields in `required`, which also
-  puts a ` *` after each label. `build.py` packs the manifest without white space: the app
+  puts a ` *` after each label, except a field that may be left empty (Edit's numbers, the cut
+  list's Save as), as a required field cannot be. `build.py` packs the manifest without white space: the app
   refuses one over 64 KiB. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
   bare values, and 0.42 cannot draw `oneOf`). `tests/test_manifest.py` checks all of this.
   The dialog is **static**: no dependent fields, no stored values.
@@ -29,7 +30,7 @@ materials, joinery and cut lists.
 - **Tools for agents (0.45).** Every entry is also the tool `woodwork.<entry>` (`plugin.tools`,
   MCP `tools/list`), with its schema as the arguments. Over MCP the arguments are checked
   strictly first: a field `required` names must be there even when it has a default, and
-  undeclared fields are refused. As every field is required (for the dialog's order), an agent
+  undeclared fields are refused. As nearly every field is required (for the dialog's order), an agent
   passes them all; the error names a missing one. The `woodwork.<entry>` command in a script
   (`approval` and `params`) and `plugin.run` pass the fields through unchecked.
   `tests/test_tools.py` drives `solidcraft-cli mcp --headless` for this.
