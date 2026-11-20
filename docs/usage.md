@@ -23,6 +23,7 @@ component can hold its cabinets.
 
 | Field | What it does |
 |---|---|
+| **Kind** | Standard or a sink base: see [Sink base](#sink-base). |
 | **Units** | The sizes in the dialog in mm or inches. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
@@ -51,6 +52,20 @@ inset door swings out of the opening clear of the side.
 
 The cabinet is grounded so they have something fixed to open against; unground it to move
 it. A cabinet placed against another is held to that one instead.
+
+### Sink base
+
+**Sink base** (Kind: Sink base): no top, but two flat rails between the sides at the top,
+each 100 mm deep and a panel thick: `Name Rail front`, flush with the front, and `Name Rail
+back`, at the back of the sides in front of the back panel. The sink and its pipes go between
+them. It has no shelves and no shelf pin holes (the dialog's shelf is left out without a
+message), and no drawers or dividers: it is refused with them. Doors as usual (none, one or two),
+overlay or inset; an inset door stops under the front rail as under a top. The back is your
+choice: Back None leaves it open for the pipes. Place and Worktop work as on any cabinet;
+pick a rail or a side to select it, as it has no top. Joinery screws the sides to the rails: the
+first hole of a row goes into the front rail, the last into the back one.
+
+There is no oven housing: size a tall cabinet for your oven yourself.
 
 ## Corner cabinet
 
@@ -116,8 +131,9 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 Changes a cabinet after it is made. Select any part of it, fill in only what should change
 and leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is
-hinged on, drawers, fronts (overlay or inset), reveal, back, shelf pin holes, handles, plinth, a
-corner cabinet's shape. The reveal is taken from Parameters unless the edit gives one.
+hinged on, drawers, fronts (overlay or inset), reveal, back, shelf pin holes, handles, plinth, the
+kind (standard or sink base), a corner cabinet's shape. The reveal is taken from Parameters unless
+the edit gives one.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
@@ -128,7 +144,8 @@ Works on cabinets made by 0.1.7 or later.
 ## Joinery
 
 Drills the selected cabinet where its sides meet the bottom and top: holes for 7 x 50
-confirmat screws, or for 8 x 35 dowels. The holes follow the cabinet's parameters; their
+confirmat screws, or for 8 x 35 dowels. A sink base's sides are drilled into its two rails
+instead of a top, one hole each. The holes follow the cabinet's parameters; their
 number is set when they are drilled.
 
 ## Material
@@ -182,9 +199,10 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
   those layouts (see [Cutting layouts](#cutting-layouts));
 - counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
 - marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
-  along the width, `L1` one edge along the length. Doors and drawer fronts are banded all round; sides, top,
-  bottom, shelves and dividers at the front; backs, plinths and drawer boxes not. It adds up
-  the metres of banding per material and thickness, plus 10 % waste;
+  along the width, `L1` one edge along the length. Doors and drawer fronts are banded all
+  round; sides, top, bottom, shelves, a sink base's front rail and dividers at the front; backs,
+  plinths, a sink base's back rail and drawer boxes not. It adds up the metres of banding per
+  material and thickness, plus 10 % waste;
 - lists a board of a material with a grain (Birch plywood, Oak) with its length along the
   grain, marked `grain`: up on sides, doors, backs, dividers and drawer fronts, along the
   cabinet's width on top, bottom, shelves and drawer bottoms, and along the drawer box's

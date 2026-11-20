@@ -399,3 +399,68 @@ fn inset_drawers() {
         json!([0.0, -280.0 + 18.0, 20.0])
     );
 }
+
+fn has(commands: &[(&str, Value)], n: &str) -> bool {
+    commands.iter().any(|c| c.1["name"] == n)
+}
+
+#[test]
+fn a_sink_base_has_rails_instead_of_a_top() {
+    // the dialog's default of one shelf, and pins, are dropped without an error
+    let p = json!({"kind": "sink", "doors": 2, "shelf_pins": true, "back": "overlay"});
+    let (commands, summary) = build(&p).unwrap();
+    assert!(!has(&commands, "Cabinet Top") && !has(&commands, "Cabinet Shelf 1"));
+    assert_eq!(count(&commands, "solid.pattern.rectangular"), 0);
+    let front = named(&commands, "Cabinet Rail front");
+    let back = named(&commands, "Cabinet Rail back");
+    for rail in [front, back] {
+        assert_eq!(rail["width"], "100 mm");
+        assert_eq!(rail["height"], "Cabinet_thickness");
+        // the top face at the cabinet's height
+        assert_eq!(rail["corner"][2], "Cabinet_height - Cabinet_thickness");
+    }
+    assert_eq!(front["corner"][1], "0 mm - Cabinet_depth/2");
+    // in front of the overlaid back
+    assert_eq!(
+        back["corner"][1],
+        "0 mm + (Cabinet_depth - Cabinet_back_thickness) - 100 mm - Cabinet_depth/2"
+    );
+    // sides, bottom, two rails, back and two doors
+    assert_eq!(summary["bodies"].as_array().unwrap().len(), 8);
+    // a grooved back's groove is not cut into a top that is not there
+    let (commands, _) = build(&json!({"kind": "sink"})).unwrap();
+    let groove = named(&commands, "Cabinet Back groove");
+    assert!(!groove["targets"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("Cabinet Top")));
+    // inset doors stop under the front rail, as under a top
+    let p = json!({"kind": "sink", "doors": 1, "fronts": "inset"});
+    let (commands, _) = build(&p).unwrap();
+    let door = named(&commands, "Cabinet Door");
+    assert_eq!(
+        door["height"],
+        "Cabinet_height - Cabinet_thickness - Cabinet_reveal - 0 mm - Cabinet_thickness - Cabinet_reveal"
+    );
+    // no drawers, no dividers, and only these kinds
+    assert!(build(&json!({"kind": "sink", "drawers": 2})).is_err());
+    assert!(build(&json!({"kind": "sink", "dividers": 1})).is_err());
+    assert!(build(&json!({"kind": "fridge"})).is_err());
+    assert!(build(&json!({"kind": "oven"})).is_err());
+}
+
+#[test]
+fn too_many_commands_for_one_run_are_refused() {
+    let p = json!({"width": 2400, "height": 2400, "dividers": 10, "doors": 11, "shelves": 4,
+                   "shelf_pins": true, "labels": true, "handles": "pull"});
+    let e = build(&p).unwrap_err();
+    assert!(e.contains("too many parts"), "{e}");
+}
+
+#[test]
+fn a_sink_base_too_shallow_for_its_rails_is_refused() {
+    // a 6 mm back grooved 12 mm in: 230 - 18 = 212 for the rails, 199 - 18 = 181 is too little
+    assert!(build(&json!({"kind": "sink", "depth": 230})).is_ok());
+    let e = build(&json!({"kind": "sink", "depth": 199})).unwrap_err();
+    assert!(e.contains("rails would overlap"), "{e}");
+}

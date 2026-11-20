@@ -194,7 +194,10 @@ fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
         "document.inspect",
         json!({"bodies": false, "timeline": "summary"}),
     )?;
-    let (commands, origin) = joinery::build(found, &design, kind)?;
+    let about = run("component.metadata", json!({"component": found.name}))?;
+    let mut ours = about["metadata"][edit::KEY].clone();
+    let cabinet = ours["params"]["kind"].as_str().unwrap_or("standard");
+    let (commands, origin) = joinery::build(found, &design, kind, cabinet)?;
     let tree = run("component.list", json!({"compact": true}))?;
     let before = tree["active"].clone();
     // In a plugin run the app shifts a hole's position by where the component stands,
@@ -244,8 +247,6 @@ fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
         shift(origin, run)?;
         free(false, run)?;
     }
-    let about = run("component.metadata", json!({"component": found.name}))?;
-    let mut ours = about["metadata"][edit::KEY].clone();
     if ours.is_object() {
         ours["joinery"] = json!(kind);
         run(

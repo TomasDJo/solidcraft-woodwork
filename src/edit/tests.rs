@@ -166,3 +166,14 @@ fn fronts_and_the_reveal_survive_an_edit() {
     assert!(merge(&corner[KEY], &json!({"reveal": 3}), &design).is_ok());
     assert!(merge(&corner[KEY], &json!({"fronts": "inset"}), &design).is_err());
 }
+
+#[test]
+fn the_kind_survives_an_edit() {
+    let made = remember("cabinet", &json!({"kind": "sink", "doors": 2}), "A");
+    let (_, params) = merge(&made[KEY], &json!({"kind": "keep"}), &design()).unwrap();
+    assert_eq!(params["kind"], "sink");
+    let (_, params) = merge(&made[KEY], &json!({"kind": "standard"}), &design()).unwrap();
+    assert_eq!(params["kind"], "standard");
+    let corner = remember("corner", &json!({}), "A");
+    assert!(merge(&corner[KEY], &json!({"kind": "sink"}), &design()).is_err());
+}

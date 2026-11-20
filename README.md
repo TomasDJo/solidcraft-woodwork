@@ -15,7 +15,8 @@ The picture opens a one minute introduction on YouTube. Three how-tos follow it 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
 - **Cabinet**: a box carcass with shelves, dividers, back and plinth; doors or drawers that
-  open on their joints, overlay or inset; shelf pin and handle holes.
+  open on their joints, overlay or inset; shelf pin and handle holes. Also as a sink base
+  (rails instead of a top).
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door.
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
   a run stays together when a cabinet changes size.
@@ -68,11 +69,11 @@ Preferences > Plugins > Install plugin
 The kitchen in the picture is in the repo:
 
 - [`examples/kitchen.sc`](examples/kitchen.sc): the design. Open it in SolidCraft; it needs no plugin.
-- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 132 boards.
+- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 127 boards.
 - [`examples/kitchen.py`](examples/kitchen.py): the script that built both, using every function of
   the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other and
   linked in size (change `Base_1_height` and the whole floor run follows), an L-shaped and a
-  diagonal corner cabinet, handle holes,
+  diagonal corner cabinet, a sink base, handle holes,
   melamine carcasses with oak fronts, oak worktops, screws and dowels, doors and a drawer left open on their joints.
 
 To rebuild it, run `python build.py` and then `python examples/kitchen.py`.
