@@ -235,7 +235,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   a cabinet that is rotated off the axes.
 - The cut list measures a board by its world bounding box when the board fills that box, and
   otherwise (an open door, a turned cabinet) by `model.mesh` in the body's own component: one
-  extra command per such board, so about 250 of them at most.
+  extra command per such board, so about 250 of them at most. A board turned inside its own
+  component (a sketch drawn at an angle) is measured by its smallest enclosing box, its
+  thickness across its largest flat faces (`cutlist::extents`).
 - A cabinet with doors or drawers cannot be made inside a component that has been moved:
   the hinge cup holes fail with "not on a face of a body" (the shift described above).
 - A drawer's slide is `joint.as_built` at a fixed point from creation time. That is harmless

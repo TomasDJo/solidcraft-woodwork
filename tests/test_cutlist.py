@@ -6,6 +6,17 @@ import shutil
 from helpers import *
 
 
+def test_a_board_turned_in_its_sketch(approval):
+    # issue 39: a 150 x 800 rectangle drawn at 15 degrees and extruded 18 mm, listed as its bounding box
+    board = [{"command": "sketch.create", "params": {"plane": "XY"}},
+             {"command": "sketch.rectangle.three_point",
+              "params": {"p0": [0, 0], "p1": [772.741, 207.055], "p2": [733.918, 351.944]}},
+             {"command": "sketch.finish", "params": {}},
+             {"command": "solid.extrude", "params": {"distance": "18 mm"}}]
+    parts = cli(board + [plugin(approval, "cutlist")])[-1]["result"]["parts"]
+    assert [(p["length"], p["width"], p["thickness"]) for p in parts] == [(800.0, 150.0, 18.0)], parts
+
+
 def test_saved_as_a_file(approval):
     # A profile of its own, so installing with an approved folder leaves the user's SolidCraft alone.
     profile, folder = ROOT / "dist" / "profile", ROOT / "dist" / "cutlists"

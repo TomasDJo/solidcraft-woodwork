@@ -43,20 +43,126 @@ pub fn turned(measure: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The size of a body in its own component's axes, from `model.mesh`'s reply.
+/// The size of a body from `model.mesh`'s reply: along its own component's axes, in X, Y, Z
+/// order, unless its smallest enclosing box is clearly smaller (a board turned inside its own
+/// component); then that box as length, width, thickness. The box's thickness is across the
+/// flat faces with the most area, and its other two sides are the smallest rectangle around
+/// the body seen along that, which always has a side on the outline's convex hull.
 pub fn extents(mesh: &Value) -> [f64; 3] {
-    let mut size = [0.0; 3];
-    for (i, s) in size.iter_mut().enumerate() {
-        let along = || {
-            mesh["positions"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(move |p| p[i].as_f64())
-        };
-        *s = along().fold(f64::MIN, f64::max) - along().fold(f64::MAX, f64::min);
+    let points: Vec<[f64; 3]> = (mesh["positions"].as_array().into_iter().flatten())
+        .filter_map(|p| Some([p[0].as_f64()?, p[1].as_f64()?, p[2].as_f64()?]))
+        .collect();
+    let axes = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]].map(|d| span(&points, d));
+    let volume = |s: [f64; 3]| s[0] * s[1] * s[2];
+    match oriented(mesh, &points) {
+        Some(own) if volume(own) < 0.99 * volume(axes) => own,
+        _ => axes,
     }
-    size
+}
+
+fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+fn unit(a: [f64; 3]) -> [f64; 3] {
+    let n = dot(a, a).sqrt();
+    a.map(|c| c / n)
+}
+
+/// How far the points reach along direction `d`.
+fn span(points: &[[f64; 3]], d: [f64; 3]) -> f64 {
+    let along = points.iter().map(|&p| dot(p, d));
+    along.clone().fold(f64::MIN, f64::max) - along.fold(f64::MAX, f64::min)
+}
+
+/// The smallest box around the mesh with its thickness across the faces with the most area:
+/// length, width, thickness. None without triangles.
+fn oriented(mesh: &Value, points: &[[f64; 3]]) -> Option<[f64; 3]> {
+    // Area per face direction, n and -n as one (keyed in thousandths), summed as vectors.
+    let mut area: BTreeMap<[i64; 3], [f64; 3]> = BTreeMap::new();
+    for t in mesh["triangles"].as_array()? {
+        let corner = |k: usize| points.get(t[k].as_u64()? as usize).copied();
+        let (a, b, c) = (corner(0)?, corner(1)?, corner(2)?);
+        let mut n = cross(
+            [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
+            [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
+        );
+        let len = dot(n, n).sqrt();
+        if len == 0.0 {
+            continue;
+        }
+        let mut key = n.map(|c| (c / len * 1000.0).round() as i64);
+        if key.iter().find(|&&k| k != 0).is_some_and(|&k| k < 0) {
+            key = key.map(|k| -k);
+            n = n.map(|c| -c);
+        }
+        let sum = area.entry(key).or_default();
+        *sum = [sum[0] + n[0], sum[1] + n[1], sum[2] + n[2]];
+    }
+    let most = area
+        .into_values()
+        .max_by(|a, b| dot(*a, *a).total_cmp(&dot(*b, *b)));
+    let n = unit(most?);
+    // Two directions in the plane across n, and the points seen along n.
+    let other = if n[0].abs() < 0.9 {
+        [1.0, 0.0, 0.0]
+    } else {
+        [0.0, 1.0, 0.0]
+    };
+    let u = unit(cross(n, other));
+    let v = cross(n, u);
+    let flat: Vec<[f64; 2]> = points.iter().map(|&p| [dot(p, u), dot(p, v)]).collect();
+    let hull = hull(flat);
+    let mut best: Option<[f64; 3]> = None;
+    for (i, a) in hull.iter().enumerate() {
+        let b = hull[(i + 1) % hull.len()];
+        let e = [b[0] - a[0], b[1] - a[1]];
+        let len = e[0].hypot(e[1]);
+        let e = [e[0] / len, e[1] / len];
+        let reach = |d: [f64; 2]| {
+            let along = hull.iter().map(|p| p[0] * d[0] + p[1] * d[1]);
+            along.clone().fold(f64::MIN, f64::max) - along.fold(f64::MAX, f64::min)
+        };
+        let (l, w) = (reach(e), reach([-e[1], e[0]]));
+        if best.is_none_or(|s| l * w < s[0] * s[1]) {
+            best = Some([l.max(w), l.min(w), 0.0]);
+        }
+    }
+    best.map(|[l, w, _]| [l, w, span(points, n)])
+}
+
+/// The convex hull of points in a plane, by Andrew's monotone chain, without repeats.
+fn hull(mut points: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    points.sort_by(|a, b| a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1])));
+    points.dedup();
+    if points.len() < 3 {
+        return points;
+    }
+    let turn = |o: [f64; 2], a: [f64; 2], b: [f64; 2]| {
+        (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    };
+    let mut hull: Vec<[f64; 2]> = Vec::new();
+    for pass in [points.clone(), points.into_iter().rev().collect()] {
+        let start = hull.len();
+        for p in pass {
+            while hull.len() >= start + 2
+                && turn(hull[hull.len() - 2], hull[hull.len() - 1], p) <= 0.0
+            {
+                hull.pop();
+            }
+            hull.push(p);
+        }
+        hull.pop(); // the last point starts the other chain
+    }
+    hull
 }
 
 /// The hardware to buy, counted from what the plugin made: feature names in `timeline`

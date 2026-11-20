@@ -46,6 +46,70 @@ fn an_open_door_is_measured_in_its_own_component() {
         .contains("1,716,397,18,\"Default\",\"Side L\""));
 }
 
+/// A box mesh of the given size turned `degrees` about Z: 8 corners, 12 triangles.
+fn box_mesh(size: [f64; 3], degrees: f64) -> Value {
+    let (s, c) = degrees.to_radians().sin_cos();
+    let corners: Vec<[f64; 3]> = (0..8)
+        .map(|i| {
+            let [x, y, z] = [0, 1, 2].map(|k| if i >> k & 1 == 1 { size[k] } else { 0.0 });
+            [x * c - y * s, x * s + y * c, z]
+        })
+        .collect();
+    let triangles = [
+        [0, 1, 3],
+        [0, 3, 2],
+        [4, 5, 7],
+        [4, 7, 6],
+        [0, 1, 5],
+        [0, 5, 4],
+        [2, 3, 7],
+        [2, 7, 6],
+        [0, 2, 6],
+        [0, 6, 4],
+        [1, 3, 7],
+        [1, 7, 5],
+    ];
+    json!({"positions": corners, "triangles": triangles})
+}
+
+#[test]
+fn a_board_turned_in_its_own_component_is_measured_by_its_smallest_box() {
+    // issue 39: a 150 x 800 sketch turned 15 degrees, extruded 18 mm, was 351.9 x 811.6
+    let mut size = extents(&box_mesh([150.0, 800.0, 18.0], 15.0));
+    size.sort_by(f64::total_cmp);
+    for (got, want) in size.iter().zip([18.0, 150.0, 800.0]) {
+        assert!((got - want).abs() < 0.1, "{size:?}");
+    }
+    // square to the axes: the axis sizes, in X, Y, Z order
+    assert_eq!(
+        extents(&box_mesh([397.0, 18.0, 716.0], 0.0)),
+        [397.0, 18.0, 716.0]
+    );
+    // square to the axes with a corner cut off at 45 degrees: fills under 99 % of its box,
+    // but no turned box is smaller, so still the axis sizes in X, Y, Z order
+    let outline = [
+        [0.0, 0.0],
+        [400.0, 0.0],
+        [400.0, 500.0],
+        [300.0, 600.0],
+        [0.0, 600.0],
+    ];
+    let positions: Vec<[f64; 3]> = [0.0, 18.0]
+        .iter()
+        .flat_map(|&z| outline.map(|[x, y]| [x, y, z]))
+        .collect();
+    let mut triangles = vec![];
+    for i in 0..5 {
+        let j = (i + 1) % 5;
+        triangles.extend([[i, j, j + 5], [i, j + 5, i + 5]]);
+    }
+    for k in 1..4 {
+        triangles.extend([[0, k, k + 1], [5, k + 5, k + 6]]);
+    }
+    let mesh = json!({"positions": positions, "triangles": triangles});
+    assert_eq!(extents(&mesh), [400.0, 600.0, 18.0]);
+}
+
 #[test]
 fn hardware_is_counted_from_names() {
     let named =
