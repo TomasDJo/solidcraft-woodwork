@@ -1,7 +1,7 @@
 //! Reads and checks the dialog's fields. The numbers here only check the input.
 
 use super::drawers::{BOX_CLEAR, SLIDE};
-use super::GROOVE_INSET;
+use super::{GROOVE_INSET, RAIL_D};
 use crate::fittings::{DOOR_GAP, PITCH};
 use crate::kit::{check, num, Kit};
 use serde_json::Value;
@@ -9,6 +9,8 @@ use serde_json::Value;
 /// The checked input. Lengths are in mm.
 #[derive(Clone, Copy)]
 pub struct Input<'a> {
+    /// standard or sink (a sink base: rails instead of a top, no shelves).
+    pub kind: &'a str,
     pub w: f64,
     pub h: f64,
     pub d: f64,
@@ -39,6 +41,12 @@ pub struct Input<'a> {
 
 pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let size = |key: &str, default_mm: f64| kit.size(p, key, default_mm);
+    let kind = p.get("kind").and_then(Value::as_str).unwrap_or("standard");
+    check(
+        matches!(kind, "standard" | "sink"),
+        "kind must be standard or sink",
+    )?;
+    let sink = kind == "sink";
     let (w, h, d) = (
         size("width", 600.0)?,
         size("height", 720.0)?,
@@ -59,8 +67,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
         "drawers must be 0 to 8",
     )?;
-    // A drawer cabinet is all drawers: no shelves behind them.
-    let (shelves, pins) = if drawers > 0.0 {
+    // A drawer cabinet is all drawers: no shelves behind them. Nor under a sink, whatever the
+    // dialog's default says: the sink and its pipes are there.
+    let (shelves, pins) = if drawers > 0.0 || sink {
         (0.0, false)
     } else {
         (shelves, pins)
@@ -128,6 +137,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawers == 0.0 || (doors == 0.0 && dividers == 0.0),
         "drawers cannot be combined with doors or dividers",
     )?;
+    check(
+        !sink || (drawers == 0.0 && dividers == 0.0),
+        "a sink base has no drawers or dividers: the sink and its pipes take the room",
+    )?;
     // Height of one drawer front, and width of the box between the slides.
     let front_h = (h - plinth - 2.0 * o - (drawers + 1.0) * g) / drawers.max(1.0);
     check(
@@ -179,7 +192,13 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "groove" => d - GROOVE_INSET - bt,
         _ => d,
     } - o;
+    // A sink base's two rails run from the front and from where the shelves' depth ends.
+    check(
+        !sink || shelf_d + o >= 2.0 * RAIL_D,
+        "too shallow for a sink base: its two 100 mm rails would overlap",
+    )?;
     Ok(Input {
+        kind,
         w,
         h,
         d,

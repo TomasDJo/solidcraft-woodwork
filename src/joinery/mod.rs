@@ -10,12 +10,15 @@ const FROM_EDGE: f64 = 50.0; // first and last hole, from the front and back edg
 const MAX_SPACING: f64 = 250.0;
 
 /// `design` is `document.inspect`'s reply with the timeline, `kind` is confirmat or dowel.
+/// `cabinet` is the box cabinet's kind. A `sink` base has no top: its two rails get the top
+/// holes, the first in the front one and the last in the back one.
 /// The commands run with the cabinet's component active. Also returns where the cabinet's
 /// origin (the middle of its footprint, on its floor) is in the world, in mm.
 pub fn build(
     found: &select::Cabinet,
     design: &Value,
     kind: &str,
+    cabinet: &str,
 ) -> Result<(Commands, [f64; 3]), String> {
     let name = &found.name;
     let prefix = kit::prefix(name);
@@ -107,11 +110,17 @@ pub fn build(
     ];
     // `inwards` is the X direction from the side into the cabinet.
     for (side, outer, inner, inwards) in &sides {
+        let top = if cabinet == "sink" { "Rail" } else { "Top" };
         let panels = [
             ("Bottom", format!("{epl} + {et}/2")),
-            ("Top", format!("{eh} - {et}/2")),
+            (top, format!("{eh} - {et}/2")),
         ];
         for (panel, z) in &panels {
+            // A rail is 100 mm deep: the holes 50 mm in from the front and the back hit them.
+            let ks: Vec<u32> = match *panel {
+                "Rail" => vec![0, count - 1],
+                _ => (0..count).collect(),
+            };
             // A screw goes in from the outer face, a dowel sits behind the inner face.
             let (from, into_side) = match kind {
                 "confirmat" => (outer, *inwards),
@@ -122,7 +131,12 @@ pub fn build(
                 (in_end.clone(), inner, panel, *inwards),
             ];
             for ((what, diameter, depth), x, target, direction) in holes {
-                for k in 0..count {
+                for &k in &ks {
+                    let target = match (*target, k) {
+                        ("Rail", 0) => "Rail front",
+                        ("Rail", _) => "Rail back",
+                        _ => target,
+                    };
                     // the first is named plainly: the cut list finds the joinery by it
                     let feature = match k {
                         0 => format!("{label} {side} {panel} {what}"),

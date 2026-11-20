@@ -481,3 +481,44 @@ fn a_worktop_made_by_worktop_is_known_whatever_its_name() {
     assert_eq!(row(&list, "Island top")["banding"], band);
     assert_eq!(list["banding"], json!([]));
 }
+
+#[test]
+fn a_sink_base() {
+    // the rails: banded at the front, grain along the width, but the back rail, hidden under
+    // the worktop
+    let body = |name: &str, max: [f64; 3]| json!({"name": name, "material": "Oak", "bbox": {"min": [0, 0, 0], "max": max}});
+    let mut measured = cabinet(false);
+    let all = measured["bodies"].as_array_mut().unwrap();
+    for name in ["A Rail front", "A Rail back"] {
+        all.push(body(name, [564.0, 100.0, 18.0]));
+    }
+    let list = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
+    let marks = |part: &str| {
+        let parts = list["parts"].as_array().unwrap();
+        let r = parts.iter().find(|p| p["parts"][0] == part).unwrap();
+        (
+            r["length"].clone(),
+            r["banding"].clone(),
+            r["grain"].clone(),
+        )
+    };
+    let band = |l: u64| json!({"length": l, "width": 0});
+    assert_eq!(marks("A Rail front"), (json!(564.0), band(1), json!(true)));
+    // the back rail is as big as the plinth and, like it, not banded: one row
+    assert_eq!(row(&list, "A Plinth")["parts"][1], "A Rail back");
+    assert_eq!(marks("A Plinth").1, band(0));
+
+    // their joinery holes are screws too
+    let design = json!({"timeline": [
+        {"name": "S joint Side L Bottom pilot"}, {"name": "O joint Side L Bottom dowel end"},
+    ]});
+    let drilled = |name: &str, holes: u64| json!({"name": name, "face_types": {"cylinder": holes}});
+    let bodies = json!({"bodies": [
+        drilled("S Bottom", 6), drilled("S Rail front", 2), drilled("S Rail back", 2),
+        drilled("O Bottom", 6), drilled("O Top", 6),
+    ]});
+    let expected = json!([
+        {"item": "Confirmat screw, 7 x 50 mm", "qty": 10}, {"item": "Dowel, 8 x 35 mm", "qty": 12},
+    ]);
+    assert_eq!(hardware(&bodies, &design), expected);
+}

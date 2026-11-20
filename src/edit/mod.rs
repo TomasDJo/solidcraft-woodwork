@@ -82,7 +82,7 @@ pub fn merge(
                 (key.as_str(), value.clone())
             }
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
-            "doors" | "dividers" | "drawers" | "back" | "door_hinge" | "fronts" => {
+            "doors" | "dividers" | "drawers" | "back" | "door_hinge" | "fronts" | "kind" => {
                 only(false, "box cabinet")?;
                 (key.as_str(), value.clone())
             }

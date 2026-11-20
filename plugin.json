@@ -13,8 +13,9 @@
         "slots": [{ "kind": "menu", "name": "Cabinet" }, { "kind": "ribbon", "name": "Cabinet" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/cabinet.svg",
-          "required": ["units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "door_hinge", "fronts", "reveal", "handles", "handle_position", "labels", "selection", "match", "material", "place", "name"],
+          "required": ["kind", "units", "width", "height", "depth", "thickness", "back", "back_thickness", "dividers", "shelves", "drawers", "plinth", "shelf_pins", "doors", "door_hinge", "fronts", "reveal", "handles", "handle_position", "labels", "selection", "match", "material", "place", "name"],
           "properties": {
+            "kind": { "type": "string", "title": "Kind", "default": "standard", "oneOf": [{"const": "standard", "title": "Standard", "description": "A box with a top, shelves, doors or drawers."}, {"const": "sink", "title": "Sink base", "description": "Two rails instead of a top, no shelves; doors only."}] },
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. The values shown at first are mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "width": { "type": "number", "title": "Width", "description": "Outside width.", "default": 600, "minimum": 4, "maximum": 5000 },
             "height": { "type": "number", "title": "Height", "description": "Outside height, plinth included.", "default": 720, "minimum": 4, "maximum": 5000 },
@@ -80,9 +81,10 @@
         "slots": [{ "kind": "menu", "name": "Edit cabinet" }, { "kind": "ribbon", "name": "Edit cabinet" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/edit.svg",
-          "required": ["selection", "door_hinge", "fronts", "corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position", "labels"],
+          "required": ["selection", "kind", "door_hinge", "fronts", "corner_doors", "shape", "back", "shelf_pins", "handles", "handle_position", "labels"],
           "properties": {
             "selection": { "type": "array", "title": "Selected cabinet", "maxItems": 1 },
+            "kind": { "type": "string", "title": "Kind", "description": "Box cabinet only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "standard", "title": "Standard"}, {"const": "sink", "title": "Sink base"}] },
             "shelves": { "type": "integer", "title": "Shelves", "description": "Empty: as it is.", "minimum": 0, "maximum": 20 },
             "dividers": { "type": "integer", "title": "Dividers", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 10 },
             "doors": { "type": "integer", "title": "Doors", "description": "Empty: as it is. Box cabinet only.", "minimum": 0, "maximum": 11 },

@@ -175,10 +175,12 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let ending = |end: &str| features.iter().filter(|f| f.ends_with(end)).count();
     // Cabinets with a feature of this name, such as `<Cabinet> Side L pins`.
     let cabinets = |end: &'static str| features.iter().filter_map(move |f| f.strip_suffix(end));
-    // ponytail: a screw or dowel is a round hole in the bottom or top panel, so a hole the
-    // user drills there by hand is counted too.
+    // ponytail: a screw or dowel is a round hole in a board Joinery drills into (the bottom,
+    // top, a sink base's rails), so a hole the user drills
+    // there by hand is counted too.
     let holes = |cabinet: &str| -> u64 {
-        let ends = [format!("{cabinet} Bottom"), format!("{cabinet} Top")];
+        let drilled = ["Bottom", "Top", "Rail front", "Rail back"];
+        let ends = drilled.map(|board| format!("{cabinet} {board}"));
         let all = measure["bodies"].as_array().into_iter().flatten();
         all.filter(|b| ends.iter().any(|end| b["name"] == end.as_str()))
             .filter_map(|b| b["face_types"]["cylinder"].as_u64())
@@ -270,7 +272,8 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
     let drawer = part.starts_with("Drawer ");
     match part {
         "Side L" | "Side R" => (Edges::Front, Some(2)),
-        "Top" | "Bottom" => (Edges::Front, Some(width)),
+        "Top" | "Bottom" | "Rail front" => (Edges::Front, Some(width)),
+        "Rail back" => (Edges::None, Some(width)), // hidden under the worktop
         _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
         _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),
         _ if part.starts_with("Door") || drawer && part.ends_with(" Front") => {

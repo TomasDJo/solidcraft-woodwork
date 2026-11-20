@@ -8,7 +8,7 @@ a corner cabinet at the right end of both rows, and one more base and wall unit 
 It uses every function of the plugin:
 
 - Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth; an
-  inset door on the tall unit
+  inset door on the tall unit, and Base 3 is a sink base (rails instead of a top)
 - Corner cabinet, at the right end of the base units and of the wall units
 - Place: each floor unit goes to the right of the one before it, by selecting that one, and is
   held to it: widen `Base_1_width` and the units after it move along
@@ -47,7 +47,7 @@ FLOOR = [
               "handles": "pull", "labels": True, "fronts": "inset"}),
     ("Base 1", {**BASE, "width": 800, "dividers": 1, "doors": 2}),
     ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3}),
-    ("Base 3", {**BASE, **MATCH, "width": 900, "dividers": 2, "doors": 3}),
+    ("Base 3", {**BASE, **MATCH, "kind": "sink", "width": 900, "doors": 2}),  # under the sink
 ]
 # Wall units hang over the base units: name, left edge, parameters.
 HANGING = [
@@ -67,7 +67,7 @@ WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "
                "handle_position": "middle",
                "place": "right"}
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
-OPEN = {"Tall Door hinge": 40, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
+OPEN = {"Tall Door hinge": 40, "Base 3 Door L hinge": 70, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
         "Corner Door hinge": 60, "Corner Door return fold": 60, "Base 4 Door hinge": 50, "Wall corner Door hinge": 60}
 
@@ -100,7 +100,7 @@ for name, left, params in HANGING:
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", translate=move),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
-steps += [select(f"{FLOOR[-1][0]} Top"), build.plugin(approval, "corner", {**CORNER, "name": "Corner"}),
+steps += [select(f"{FLOOR[-1][0]} Side R"), build.plugin(approval, "corner", {**CORNER, "name": "Corner"}),
           select(f"{HANGING[-1][0]} Top"), build.plugin(approval, "corner", {**WALL_CORNER, "name": "Wall corner"})]
 # The units on the return are made on the origin and drilled there (joinery wants a cabinet
 # square to the axes), then turned a quarter and put at the end of the corner cabinet's return.
@@ -118,7 +118,7 @@ for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner")
 # is the corner end, and overhangs by the return less the corner's depth and the first worktop's
 # front overhang (40, the default).
 CORNER_END = CORNER["return"] - CORNER["depth"] - 40  # to the first worktop's front edge
-steps += [select("Base 1 Top", "Base 2 Top", "Base 3 Top", "Corner Top"),
+steps += [select("Base 1 Top", "Base 2 Top", "Base 3 Rail front", "Corner Top"),
           build.plugin(approval, "worktop"),
           select("Base 4 Top"),
           build.plugin(approval, "worktop", {"name": "Worktop return", "left_overhang": CORNER_END, "right_overhang": 20})]
@@ -134,7 +134,7 @@ for cabinet in made:
     if "orner" in cabinet["name"] or cabinet["name"].endswith(" 4"):  # no joinery for a corner cabinet; the turned units have theirs
         continue
     kind = "dowel" if cabinet["name"].startswith("Wall") else "confirmat"
-    steps += [select(f"{cabinet['name']} Top"), build.plugin(approval, "joinery", {"type": kind})]
+    steps += [select(f"{cabinet['name']} Side L"), build.plugin(approval, "joinery", {"type": kind})]
 # One more shelf in a wall unit that is already hung, has an oak door and is drilled for dowels.
 steps += [select("Wall 2 Top"), build.plugin(approval, "edit", {"shelves": 3})]
 steps += [step("joint.drive", joint=joint, value=value) for joint, value in OPEN.items()]

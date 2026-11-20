@@ -271,7 +271,8 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
   its return's end there, not a back corner: it gets the older link.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
-  `joint`, `Drawer n Front`), so renaming those breaks it.
+  `joint`, `Drawer n Front`), so renaming those breaks it. Screws and dowels are the round
+  holes in the boards Joinery drills into: `Bottom`, `Top`, `Rail front`, `Rail back`.
 - The cutting layouts (`nesting::nest`) are greedy guillotine packing into the free pieces of
   all open sheets: eight tries (four orders, best area or best short side fit, each piece split
   along its shorter leftover), the fewest sheets wins, then the emptiest last sheet. Free
@@ -353,3 +354,15 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   cabinet would claim as a part (`<Cabinet> ...`) is refused; a cabinet made later with such
   a name would still claim it. Quarter turns only, like Place. The run is read from the world
   boxes of each cabinet's sides and backs.
+- A box cabinet's `kind` (cabinet and Edit, remembered like any field): `standard` or `sink`
+  (no oven housing, by decision). A **sink base** has no `Top` body but `<Name> Rail front` and `<Name> Rail back`
+  (`RAIL_D` 100 mm deep, top face at `_height`, the back one ending where the shelves' depth
+  ends), so `select::side` sends Place's Auto on a sink base's rail to the origin, and a script
+  selects it by a side or a rail. A depth that leaves less than two rails' depth for them is
+  refused. Shelves and pins are dropped for a sink base without an error
+  (the dialog's default is one shelf); drawers and dividers are refused. The back groove is not
+  cut into a top it does not have. Joinery reads the kind from the remembered values
+  (`ours["params"]["kind"]` in `drill`) and drills the top corners into the rails: only the
+  first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.
+- `cabinet::build` refuses a cabinet of more than 230 commands (the run itself takes the rest
+  of the app's 256): a wide tall cabinet with many doors, shelves, pins and labels can reach it.

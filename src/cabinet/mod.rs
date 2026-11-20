@@ -11,13 +11,14 @@ mod drawers;
 mod input;
 
 use crate::fittings::{self, PinRows, HANDLE_D, PIN_SETBACK, PITCH};
-use crate::kit::{mm, Kit};
+use crate::kit::{check, mm, Kit};
 use crate::Commands;
 use input::Input;
 use serde_json::{json, Value};
 
 const GROOVE_INSET: f64 = 12.0; // back groove, from the rear edge
 const KICK_RECESS: f64 = 50.0; // plinth board, back from the front
+const RAIL_D: f64 = 100.0; // a sink base's rails, front to back
 
 /// What the steps of a build share: the checked input, and the sizes as expressions.
 struct Cabinet<'a> {
@@ -125,6 +126,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     doors::build(&cabinet);
     drawers::build(&cabinet);
     let (commands, mut summary) = kit.finish(drill, [w, h, d]);
+    // The app runs at most 256 commands in one run, and the run itself takes some.
+    check(
+        commands.len() <= 230,
+        "too many parts for one run: fewer doors, drawers or shelves, or no labels",
+    )?;
     // one compartment
     summary["inner"] =
         json!({ "width": input.cell_w, "height": input.clear_h, "depth": input.shelf_d });
@@ -158,7 +164,13 @@ impl Cabinet<'_> {
         let egap = format!("(({ech} - {s}*{et}) / {})", s + 1); // between shelves
         let elast = fittings::top_pin_row(ech);
 
-        let carcass = ["Side L", "Side R", "Bottom", "Top"].map(|part| format!("{name} {part}"));
+        // A sink base has two rails at the top instead of a top: room for the sink and its pipes.
+        let sink = input.kind == "sink";
+        let carcass: Vec<String> = ["Side L", "Side R", "Bottom", "Top"]
+            .iter()
+            .filter(|part| !(sink && **part == "Top"))
+            .map(|part| format!("{name} {part}"))
+            .collect();
         // A panel, or with `cut` its volume taken out of the carcass panels.
         let panel = |part: &str, corner: [&str; 3], size: [&str; 3], cut: bool| {
             kit.panel(part, corner, size, cut.then_some(&carcass[..]))
@@ -174,12 +186,22 @@ impl Cabinet<'_> {
             false,
         );
         panel("Bottom", [et, &zero, epl], [eiw, eside_d, et], false);
-        panel(
-            "Top",
-            [et, &zero, &format!("{eh} - {et}")],
-            [eiw, eside_d, et],
-            false,
-        );
+        let top_z = format!("{eh} - {et}");
+        match sink {
+            // In front of the back: the shelves' depth ends there, also behind inset fronts.
+            true => {
+                let rail_d = mm(RAIL_D);
+                let back_y = format!("{ein} + {eshelf_d} - {rail_d}");
+                panel("Rail front", [et, &zero, &top_z], [eiw, &rail_d, et], false);
+                panel(
+                    "Rail back",
+                    [et, &back_y, &top_z],
+                    [eiw, &rail_d, et],
+                    false,
+                );
+            }
+            false => panel("Top", [et, &zero, &top_z], [eiw, eside_d, et], false),
+        }
         // Left face of each divider. They stand between bottom and top, as deep as the shelves.
         let divider_x: Vec<String> = (1..=n).map(|k| format!("({ecell} + {et}) * {k}")).collect();
         for (k, x) in divider_x.iter().enumerate() {

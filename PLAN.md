@@ -96,6 +96,9 @@ Cabinets:
 - [ ] Drawers over doors and a graduated drawer stack (the top drawer's height given, the rest equal) (postponed until conditional dialog fields, SolidCraft 0.46)
 - [ ] Plinth run over the selected cabinets
 - [ ] End panels and fillers on a cabinet's end, kept by Edit cabinet (postponed until conditional dialog fields, SolidCraft 0.46)
+- [x] Sink base: a cabinet kind with two rails instead of a top, no shelves
+- Oven housing dropped by decision: size a tall cabinet for the oven yourself
+- [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
 
 Cut list and shop output:
 - [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
