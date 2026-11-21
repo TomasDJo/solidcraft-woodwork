@@ -5,7 +5,8 @@ dialog; the cabinet you are about to make is previewed in the model before you p
 A dialog shows only the fields that apply to your choices (SolidCraft 0.46): the door fields
 appear when there are doors, the reveal and handles when there are doors or drawers, the drawer
 front height when there are two or more drawers or drawers with doors, and where they go when there are doors too, the back's
-thickness when there is a back, and a sink base has no shelf, divider or drawer fields.
+thickness when there is a back, and a sink base has no shelf or divider fields, and drawers only
+without doors.
 
 - [Cabinet](#cabinet)
 - [Corner cabinet](#corner-cabinet)
@@ -65,9 +66,15 @@ it. A cabinet placed against another is held to that one instead.
 **Sink base** (Kind: Sink base): no top, but two flat rails between the sides at the top,
 each 100 mm deep and a panel thick: `Name Rail front`, flush with the front, and `Name Rail
 back`, at the back of the sides in front of the back panel. The sink and its pipes go between
-them. It has no shelves, shelf pin holes, drawers or dividers, and the dialog hides those
-fields; an Edit that makes a cabinet a sink base leaves them out. Doors as usual (none, one or two),
-overlay or inset; an inset door stops under the front rail as under a top. The back is your
+them. It has no shelves, shelf pin holes or dividers, and the dialog hides those fields; an
+Edit that makes a cabinet a sink base leaves them out. Doors as usual (none, one or two),
+overlay or inset; an inset door stops under the front rail as under a top. Or drawers instead
+of doors, like a bathroom vanity (not both: the dialog hides Drawers when there are doors, and
+a sink base given both is refused): two or more fronts, laid out as on a drawer cabinet, but
+the top one is `Name False front`, fixed to the cabinet in front of the sink, with a handle hole
+and no box. Drawer front height sets its height. The boxes below are half the shelves' depth
+deep, so they stop short of the trap; for deeper ones, cut a U round the trap yourself. A
+sink base with drawers changed back to a standard cabinet with Edit gets full drawers again. The back is your
 choice: Back None leaves it open for the pipes. Place works as on any cabinet;
 pick a rail or a side to select it, as it has no top. Joinery screws the sides to the rails: the
 first hole of a row goes into the front rail, the last into the back one.
@@ -79,8 +86,16 @@ There is no oven housing: size a tall cabinet for your oven yourself.
 Builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
 It is parametric, takes a material, and can be placed, named and matched like the box cabinet.
-Its doors are overlay, with a **Reveal** (`Name_reveal`) as on the box cabinet; inset fronts are
-only made on box cabinets.
+Its doors have a **Reveal** (`Name_reveal`) as on the box cabinet, and **Fronts** (shown when
+there are doors): Overlay, in front of the cabinet, or Inset, inside the opening with their faces
+flush with the carcass front and the reveal from the end panels, bottom and top. Inset, the
+shelves (not the bottom and top) stand a panel back behind the doors, and so do the shelf pin
+rows. The L's pair is then the same bi-fold a panel back: the first door hinges on its front
+edge just inside the end panel and runs into the inner corner behind the second, which folds
+about the carcass's inner front corner. The diagonal door fills the opening between the two
+ends; as the ends stand at 45 degrees to it, its edges stay the reveal clear of their inner
+corners, which leaves a slanted strip of each end showing beside it. An inset front changes
+nothing about where neighbouring cabinets stand.
 
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the
@@ -144,7 +159,8 @@ the kind (standard or sink base), a corner cabinet's doors and shape. The reveal
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
 with doors go at the top unless Drawers at says Bottom; an edit that takes the doors away from
 a cabinet with drawers makes the drawers all alike again unless it gives a drawer front height.
-Kind Sink base hides shelves, dividers, drawers and shelf pins; Kind Standard or Sink base
+Kind Sink base hides shelves, dividers, shelf pins and where the drawers go (a sink base with
+doors needs Doors 0 for drawers); Kind Standard or Sink base
 hides the corner cabinet's fields; Doors 0 hides the hinge side, Handle holes None the handle
 position.
 
@@ -178,7 +194,7 @@ cabinet makes it again.
 |---|---|
 | **Kind** | **End panel**: a full-height board outside the side, from the floor (covering the plinth) to the top, and from the back to the faces of the doors and drawer fronts (flush with the carcass when the fronts are inset or there are none). **Filler**: a strip of the filler width beside the cabinet, in the plane of the fronts and as high as they are, with a return behind its outer edge back to the wall. |
 | **Side** | On Auto by the board you picked: its Side L or Side R. Left or right as seen from the front. |
-| **Units** | The sizes in the dialog in mm or inches. |
+| **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Filler width** | Shown for a filler only: how far it reaches out from the cabinet, its thickness included. |
 | **Thickness** | 0 for the cabinet's panel thickness (`Name_thickness`, so it follows it), or a thickness of its own. |
 
@@ -203,8 +219,8 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
   those layouts (see [Cutting layouts](#cutting-layouts));
 - counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
 - marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
-  along the width, `L1` one edge along the length. Doors and drawer fronts are banded all
-  round; sides, top, bottom, shelves, the rail between drawers and doors, a sink base's front
+  along the width, `L1` one edge along the length. Doors and drawer fronts (a sink base's false
+  front too) are banded all round; sides, top, bottom, shelves, the rail between drawers and doors, a sink base's front
   rail, dividers and fillers at the front; end panels at the front and on top (`L1 W1`); backs,
   plinths, a sink base's back rail, filler returns and drawer boxes not. It adds up the metres of banding per
   material and thickness, plus 10 % waste;

@@ -4,9 +4,11 @@ use super::Corner;
 use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, HANDLE_D, HANDLE_EDGE};
 use crate::kit::mm;
 
-/// A bi-fold pair of overlay doors, one on each front. The first hinges on the end of its leg
+/// A bi-fold pair of doors, one on each front. The first hinges on the end of its leg
 /// and runs into the inner corner, closing it; the second stops against the first's face,
 /// hangs on it there and folds out onto its face. `on_return`: the pair hangs on the return.
+/// Inset, the pair is the same a panel back, inside the opening: front faces flush with the
+/// carcass, the reveal from the end panels, the bottom and the top.
 pub fn build(corner: &Corner, on_return: bool) {
     let Corner {
         kit,
@@ -23,16 +25,33 @@ pub fn build(corner: &Corner, on_return: bool) {
     let Corner { d, h, plinth, .. } = *corner;
     let flip = corner.flip();
     let gap = &corner.er;
+    // The doors' back faces, the return's (x) and the back leg's (y): a reveal in front of
+    // the carcass, or a panel inside it; their front faces; and how far the doors' outer
+    // edges are inside the carcass's outside.
+    let ([back_x, back_y], [meet_x, front_y], o, o_mm) = match corner.inset {
+        false => (
+            [format!("{ed} + {gap}"), format!("{eb} - {ed} - {gap}")],
+            [
+                format!("{ed} + {gap} + {et}"),
+                format!("{eb} - {ed} - {gap} - {et}"),
+            ],
+            gap.to_string(),
+            corner.g,
+        ),
+        true => (
+            [format!("{ed} - {et}"), format!("{eb} - {ed} + {et}")],
+            [ed.to_string(), format!("{eb} - {ed}")],
+            format!("({et} + {gap})"),
+            corner.t + corner.g,
+        ),
+    };
     // Each door's end at the inner corner: the first's, and the second's a panel and a
     // gap short of it.
-    let (long_x, short_x) = (format!("{ed} + {gap}"), format!("{ed} + {et} + 2*{gap}"));
-    let (long_y, short_y) = (
-        format!("{eb} - {ed} - {gap}"),
-        format!("{eb} - {ed} - {et} - 2*{gap}"),
-    );
-    let (z0, z1) = (format!("{epl} + {gap}"), format!("{eh} - {gap}"));
-    let door_h = format!("{eh} - {epl} - 2*{gap}");
-    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * corner.g);
+    let (long_x, short_x) = (back_x.clone(), format!("{back_x} + {et} + {gap}"));
+    let (long_y, short_y) = (back_y.clone(), format!("{back_y} - {et} - {gap}"));
+    let (z0, z1) = (format!("{epl} + {o}"), format!("{eh} - {o}"));
+    let door_h = format!("{eh} - {epl} - 2*{o}");
+    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * o_mm);
     // The second door, the one that folds, carries the handle: upright at its free end, away
     // from the fold, at the height the box cabinet would put it.
     let handle_z = fittings::handle_height(
@@ -73,14 +92,14 @@ pub fn build(corner: &Corner, on_return: bool) {
         corner.panel(
             "Door",
             [door_x, &format!("{face_y} - {et}"), &z0],
-            [&format!("{ea} - {gap} - ({door_x})"), et, &door_h],
+            [&format!("{ea} - {o} - ({door_x})"), et, &door_h],
             None,
         );
         let cup_x = match on_return {
             true => format!("{short_x} + {cup_c}"),
-            false => format!("{ea} - {gap} - {cup_c}"),
+            false => format!("{ea} - {o} - {cup_c}"),
         };
-        let pull_x = format!("{ea} - {gap} - {edge}");
+        let pull_x = format!("{ea} - {o} - {edge}");
         holes(
             "Door",
             [&cup_x, face_y],
@@ -96,15 +115,15 @@ pub fn build(corner: &Corner, on_return: bool) {
         kit.open("Door return");
         corner.panel(
             "Door return",
-            [face_x, gap, &z0],
-            [et, &format!("{return_y} - {gap}"), &door_h],
+            [face_x, &o, &z0],
+            [et, &format!("{return_y} - {o}"), &door_h],
             None,
         );
         let cup_y = match on_return {
-            true => format!("{gap} + {cup_c}"),
+            true => format!("{o} + {cup_c}"),
             false => format!("{short_y} - {cup_c}"),
         };
-        let pull_y = format!("{gap} + {edge}");
+        let pull_y = format!("{o} + {edge}");
         holes(
             "Door return",
             [face_x, &cup_y],
@@ -117,8 +136,6 @@ pub fn build(corner: &Corner, on_return: bool) {
     // so the door clears the next cabinet. The fold is where the two front faces meet: 90
     // degrees lays the second door on the face of the first, out of the cabinet, so it
     // opens on its own too.
-    let front_y = format!("{eb} - {ed} - {gap} - {et}");
-    let meet_x = format!("{ed} + {gap} + {et}");
     let close = |part: &str, on: Option<&str>, joint: &str, [x, y]: [&str; 2], turn: i32| {
         let limit = if on.is_some() { 90.0 } else { 110.0 };
         let line = kit.at(&corner.point(x), y, &z0);
@@ -128,12 +145,12 @@ pub fn build(corner: &Corner, on_return: bool) {
     let fold = [meet_x.as_str(), front_y.as_str()];
     if on_return {
         door_return();
-        close("Door return", None, "hinge", [&meet_x, gap], -flip);
+        close("Door return", None, "hinge", [&meet_x, &o], -flip);
         door();
         close("Door", Some("Door return"), "fold", fold, -flip);
     } else {
         door();
-        let end = format!("{ea} - {gap}");
+        let end = format!("{ea} - {o}");
         close("Door", None, "hinge", [&end, &front_y], flip);
         door_return();
         close("Door return", Some("Door"), "fold", fold, flip);

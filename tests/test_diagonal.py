@@ -44,3 +44,25 @@ def test_diagonal_door_resize_and_mirror(approval):
         assert [round(v, 3) for v in mirror[part]] == [-x1, y0, z0, -x0, y1, z1], (part, mirror[part])
     door = [round(v, 1) for v in boxes(results[3])["C Door"]]
     assert door == [-511.3, -757.5, 102, -189.7, -435.9, 718], door  # hinged at the return's end
+
+
+def test_inset_diagonal_door(approval):
+    # Inset, in an inch design: the door's face on the front's line, between the two ends (which
+    # stand at 45 degrees to it, so its edges keep the reveal from their inner corners, 12.7 mm
+    # along it), from 120 to 700 between bottom and top. The shelf's cut edge a panel back.
+    diagonal = {**CORNER, "shape": "diagonal", "fronts": "inset", "handles": "knob"}
+    results = cli([{"command": "document.units", "params": {"units": "in"}},
+                   plugin(approval, "corner", diagonal), MEASURE,
+                   drive("C Door hinge", 90), MEASURE,
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
+                  "--save", str(ROOT / "dist" / "diagonal-inset.sc"))
+    door = [round(v, 1) for v in boxes(results[2])["C Door"]]
+    assert door == [157.7, -439.6, 120, 489.6, -107.7, 700], door
+    assert cylinders(results[2], "C Door") == 3, cylinders(results[2], "C Door")  # 2 cups, a knob
+    assert volume(results[2], "C Bottom") == (964 * 864 - 304 * 304 / 2) * 18, volume(results[2], "C Bottom")
+    cut = 340 - 36 + 18 * 2 ** 0.5
+    assert abs(volume(results[2], "C Shelf 1") - (964 * 864 - cut * cut / 2) * 18) < 2, volume(results[2], "C Shelf 1")
+    # swung square to the front about its front edge, the back edge clear of the end panel
+    door = [round(v, 1) for v in boxes(results[4])["C Door"]]
+    assert door == [476.9, -452.3, 120, 808.8, -120.4, 700], door
+    assert not [f["name"] for f in results[5]["timeline"] if f["warning"]]

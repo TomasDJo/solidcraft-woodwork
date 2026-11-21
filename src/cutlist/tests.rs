@@ -471,6 +471,7 @@ fn a_sink_base_and_a_rail_under_drawers() {
     for name in ["A Rail front", "A Rail back"] {
         all.push(body(name, [564.0, 100.0, 18.0]));
     }
+    all.push(body("A False front", [596.0, 18.0, 230.0]));
     let list = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
     let marks = |part: &str| {
         let parts = list["parts"].as_array().unwrap();
@@ -483,6 +484,9 @@ fn a_sink_base_and_a_rail_under_drawers() {
     };
     let band = |l: u64| json!({"length": l, "width": 0});
     assert_eq!(marks("A Rail front"), (json!(564.0), band(1), json!(true)));
+    // a sink base's false front is banded all round as a drawer front is
+    let all_round = json!({"length": 2, "width": 2});
+    assert_eq!(marks("A False front").1, all_round);
     // the rail between drawers and doors is banded at the front as a shelf is
     let mut measured = cabinet(false);
     let all = measured["bodies"].as_array_mut().unwrap();

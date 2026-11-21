@@ -442,13 +442,41 @@ fn a_sink_base_has_rails_instead_of_a_top() {
         door["height"],
         "Cabinet_height - Cabinet_thickness - Cabinet_reveal - 0 mm - Cabinet_thickness - Cabinet_reveal"
     );
-    // drawers and dividers (hidden in its dialog, or remembered when Edit makes it a sink
-    // base) are dropped, also beside its doors; and only these kinds
+    // dividers (hidden in its dialog, or remembered when Edit makes it a sink base) are
+    // dropped; and only these kinds
     let plain = build(&json!({"kind": "sink", "doors": 2})).unwrap().0;
-    let p = json!({"kind": "sink", "doors": 2, "drawers": 2, "dividers": 1, "shelves": 3});
+    let p = json!({"kind": "sink", "doors": 2, "dividers": 1, "shelves": 3});
     assert_eq!(build(&p).unwrap().0, plain);
     assert!(build(&json!({"kind": "fridge"})).is_err());
     assert!(build(&json!({"kind": "oven"})).is_err());
+}
+
+#[test]
+fn a_sink_base_with_drawers_under_a_false_front() {
+    let p = json!({"kind": "sink", "drawers": 3, "handles": "knob"});
+    let (commands, _) = build(&p).unwrap();
+    // the top front is fixed, with no box and no slide, and has its handle hole
+    let top = named(&commands, "Cabinet False front");
+    assert_eq!(
+        top["height"],
+        named(&commands, "Cabinet Drawer 2 Front")["height"]
+    );
+    assert!(!has(&commands, "Cabinet Drawer 3 Front") && !has(&commands, "Cabinet Drawer 3 Left"));
+    assert_eq!(count(&commands, "joint.as_built"), 2);
+    assert!((commands.iter()).any(|c| c.1["targets"] == json!(["Cabinet False front"])));
+    // the boxes below are half the shelves' depth deep, clear of the trap, and slide 4/5 of it
+    let side = named(&commands, "Cabinet Drawer 1 Left");
+    let half = "((Cabinet_depth - 12 mm - Cabinet_back_thickness)/2)";
+    assert_eq!(side["width"], half);
+    let slide = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
+    assert_eq!(slide.1["max"], (542.0_f64 / 2.0 * 0.8).round());
+    // doors or drawers, and two drawers or more
+    for p in [
+        json!({"kind": "sink", "drawers": 1}),
+        json!({"kind": "sink", "drawers": 2, "doors": 2}),
+    ] {
+        assert!(build(&p).unwrap_err().contains("doors or drawers"));
+    }
 }
 
 #[test]

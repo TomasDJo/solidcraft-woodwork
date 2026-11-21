@@ -93,6 +93,7 @@ only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
 - [x] Inset doors and drawer fronts on the box cabinet, and a reveal (the gap round the fronts) as a parameter on both cabinets
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [x] Sink base: a cabinet kind with two rails instead of a top, no shelves
+- [x] Sink base with drawers: a false front before the sink, half-depth boxes below (#55)
 - [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
 - [x] Cut list saved as a printable PDF, with tick boxes for boards and hardware
 - [x] Edge banding and grain direction in the cut list
@@ -104,6 +105,7 @@ only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
 - [x] Version 0.2.0, for SolidCraft 0.45
 - [x] SolidCraft 0.46: the dialogs hide the fields that do not apply (conditional fields)
 - [x] Drawers over or under doors, and a graduated drawer stack (the top drawer's height given, the rest equal) (#57 part 1)
+- [x] Inset doors on corner cabinets: the L's bi-fold pair and the diagonal door inside the opening (#58)
 
 ## Open
 
@@ -116,8 +118,6 @@ Cabinets:
 - [ ] Plinth run over the selected cabinets
 - [x] End panels and fillers on a cabinet's end, kept by Edit cabinet (#57 part 2)
 - [ ] Plinth return: for cabinets on legs, later
-- [ ] Sink base with drawers (#55)
-- [ ] Inset fronts on corner cabinets (#58)
 - [ ] Drawer slides in the model (#59)
 - [ ] Hinges in the model, with hinge types (#60)
 - [ ] Settings page: hardware and defaults the other functions use (#61, needs upstream #19979)

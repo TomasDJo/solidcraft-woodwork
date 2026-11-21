@@ -34,8 +34,9 @@ impl Corner<'_> {
     }
 }
 
-/// One overlay door across the front, hinged at the end of the back leg or (`on_return`) of
-/// the return, with the handle at the other end.
+/// One door across the front, hinged at the end of the back leg or (`on_return`) of the
+/// return, with the handle at the other end. Overlay in front of the ends; inset in the
+/// opening between them, its front face on the front's line.
 pub fn door(corner: &Corner, on_return: bool) {
     let Corner {
         kit,
@@ -48,11 +49,27 @@ pub fn door(corner: &Corner, on_return: bool) {
     } = corner;
     let Corner { d, h, plinth, .. } = *corner;
     let (g, gap) = (corner.g, &corner.er);
-    let (z0, z1) = (format!("{epl} + {gap}"), format!("{eh} - {gap}"));
-    let door_h = format!("{eh} - {epl} - 2*{gap}");
-    // Each end stops short by the door's own thickness, so its outer corner stays inside the
-    // cabinet's footprint and clear of a neighbour's door.
-    let inset = format!("({et} + 2*{gap})");
+    // Overlay, each end stops short by the door's own thickness, so its outer corner stays
+    // inside the cabinet's footprint and clear of a neighbour's door. Inset, the end panels
+    // stand at 45 degrees to the door and reach t/sqrt(2) along it at most (their inner
+    // corner, t/sqrt(2) back): the reveal from there. `back` and `front` are the door's
+    // faces.
+    let (o, inset, [back, front], o_mm) = match corner.inset {
+        false => (
+            gap.to_string(),
+            format!("({et} + 2*{gap})"),
+            [format!("-{gap}"), format!("-{gap} - {et}")],
+            g,
+        ),
+        true => (
+            format!("({et} + {gap})"),
+            format!("({et}/sqrt(2) + {gap})"),
+            [et.to_string(), mm(0.0)],
+            corner.t + g,
+        ),
+    };
+    let (z0, z1) = (format!("{epl} + {o}"), format!("{eh} - {o}"));
+    let door_h = format!("{eh} - {epl} - 2*{o}");
     let len = format!("{} - 2*{inset}", corner.front_length());
     // The front runs towards the back leg's end in a left corner, away from it in a right one.
     let at_end = on_return == corner.right;
@@ -67,14 +84,8 @@ pub fn door(corner: &Corner, on_return: bool) {
             format!("{x1} - {}", mm(HANDLE_EDGE)),
         ),
     };
-    let back = format!("-{gap}"); // the door's back face
     kit.open("Door");
-    kit.panel_at(
-        "Door",
-        json!([x0, format!("{back} - {et}"), z0]),
-        [&len, et, &door_h],
-        None,
-    );
+    kit.panel_at("Door", json!([x0, &front, z0]), [&len, et, &door_h], None);
     let hole = |x: &str, z: &str, d: f64, depth: &str, what: String| {
         fittings::hole(
             kit,
@@ -86,7 +97,7 @@ pub fn door(corner: &Corner, on_return: bool) {
             &what,
         );
     };
-    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * g);
+    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * o_mm);
     for (j, z) in cups.iter().enumerate() {
         let what = format!("hinge cup {}", j + 1);
         hole(&cup_x, z, CUP_D, &mm(CUP_DEPTH), what);
@@ -111,7 +122,7 @@ pub fn door(corner: &Corner, on_return: bool) {
         true => format!("{inset} + {len}"),
         false => inset.clone(),
     };
-    let y = format!("-{gap} - {et}");
+    let y = front;
     let (sin, cos) = (degrees as f64).to_radians().sin_cos();
     let from = |i: usize| start[i].as_str().unwrap_or_default().to_string();
     let seat = [

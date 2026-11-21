@@ -309,13 +309,21 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   scale it). It is the parameter `<Prefix>_reveal` on a cabinet with doors or drawers (kept
   once made, so an edit that puts fronts back takes it up: `Kit::has`). `fittings::DOOR_GAP` is
   only its default.
-- `fronts: inset` (box cabinet only; the corner refuses it in `corner::input`, and its dialog
-  has no such field): the fronts fill the opening between the panels, a reveal all round, the
-  front face at y = 0 (the hinge line too, so the door's back edge swings away from the side).
+- `fronts: inset` (box and corner cabinets; the corner's dialog shows it with doors, and
+  `corner::input` takes it only with doors): the fronts fill the opening between the panels, a
+  reveal all round, the front face at y = 0 (the hinge line too, so the door's back edge swings
+  away from the side).
   Shelves, dividers, pin rows and drawer boxes start at y = t, a panel shallower; sides, top
   and bottom stay full depth. With one door per compartment each door fills its own
   compartment. A drawer box's clearance is `BOX_CLEAR` alone when inset (beside doors it is
   a panel more, as overlay, to clear the rail).
+  Corner (`corner::doors`, `corner::diagonal`): the L's pair is the overlay pair a panel back
+  (back faces at `depth - t` and `return - depth + t`, the fold at the carcass's inner front
+  corner), the reveal in from the end panels; the diagonal door's front face is on the front's
+  line and its ends stop `t/sqrt(2) + reveal` along it from the ends' outer corners, as far as
+  the 45-degree end panels reach (their inner corner). Shelves only (not bottom and top) and
+  the pin rows start a panel back: the L's notch from `depth - t`, the diagonal's chamfer
+  `sqrt(2)*t` longer. Seats and links do not change.
 - A box cabinet with drawers and doors (one or two: drawers take no dividers) puts the
   drawers at the top or the bottom (`drawers_at`, cabinet and Edit) and a fixed `<Name> Rail`
   between the sides, centred behind the reveal between drawers and doors (at y = t when
@@ -371,8 +379,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (`RAIL_D` 100 mm deep, top face at `_height`, the back one ending where the shelves' depth
   ends), so `select::side` sends Place's Auto on a sink base's rail to the origin, and a script
   selects it by a side or a rail. A depth that leaves less than two rails' depth for them is
-  refused. Its dialog hides shelves, pins, drawers and dividers; `cabinet::input` drops them
-  for a sink base without an error (Edit to a sink base keeps the remembered ones, unused). The back groove is not
+  refused. Its dialog hides shelves, pins and dividers; `cabinet::input` drops them
+  for a sink base without an error (Edit to a sink base keeps the remembered ones, unused).
+  It takes doors or drawers, not both (refused; the cabinet dialog hides Drawers when there
+  are doors), and 2 drawers or more: the top front is `<Name> False front`, a fixed body in
+  the cabinet's component with its handle hole and no box or slide, and the boxes below are
+  `eshelf_d/2` deep, clear of the trap (no U-cut). An Edit to standard gives full drawers
+  again; the panel counts its drawers as overlay fronts. The back groove is not
   cut into a top it does not have. Joinery reads the kind from the remembered values
   (`ours["params"]["kind"]` in `drill`) and drills the top corners into the rails: only the
   first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.

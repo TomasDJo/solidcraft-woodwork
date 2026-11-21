@@ -125,11 +125,10 @@ pub fn build(
         false => mm(0.0),
     };
     // Overlay doors and drawer fronts stand a reveal and a panel in front of the carcass: the
-    // panel comes forward to their faces. Inset ones are flush with the carcass. A sink base
-    // keeps remembered drawers it does not make.
+    // panel comes forward to their faces. Inset ones are flush with the carcass.
     let count = |key: &str| made[key].as_f64().unwrap_or(0.0);
-    let drawers = count("drawers") > 0.0 && made["kind"] != "sink";
-    let overlay = (count("doors") > 0.0 || drawers) && made["fronts"] != "inset";
+    let fronts = count("doors") > 0.0 || count("drawers") > 0.0;
+    let overlay = fronts && made["fronts"] != "inset";
     let er = format!("{prefix}_reveal");
     let yf = match overlay {
         true => format!("(-{er} - {prefix}_thickness)"),
