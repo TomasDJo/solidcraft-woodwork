@@ -102,10 +102,7 @@ only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
 - [x] Shop drawings: a sheet per cabinet with front, right and iso views, sizes and the board list
 - [x] A tooltip on every dialog field and choice, in plain words
 - [x] Version 0.2.0, for SolidCraft 0.45
-
-## Next
-
-- [ ] Conditional dialog fields with SolidCraft 0.46 (in progress)
+- [x] SolidCraft 0.46: the dialogs hide the fields that do not apply (conditional fields)
 
 ## Open
 
@@ -138,7 +135,6 @@ The dialog is drawn by the app from a fixed schema. These need the `ui` capabili
 upstream (`storage`, from 0.45, keeps data in a design, not in the dialog):
 
 - A dialog that stays open to add several cabinets, and remembers the last values
-- Defaults that follow the Units choice (inches)
 
 Possible since 0.44, not done:
 

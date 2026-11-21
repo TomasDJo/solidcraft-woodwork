@@ -1,6 +1,6 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.45+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.46+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
 `README.md` is the short user-facing description, `docs/usage.md` how to use each function,
 `PLAN.md` the roadmap with what is done and open.
@@ -18,13 +18,23 @@ materials, joinery and cut lists.
   a `ribbon` slot named after a host tab such as Model would put it there instead).
   A schema keyword the dialog cannot draw or check (`pattern`, `readOnly`, ...) leaves the
   entry in the menu with Run turned off; ours use only type, title, description, default,
-  oneOf, bounds and lengths. The dialog shows the fields that `required` names first, in that
+  oneOf, bounds, lengths and `x-solidcraft-visible-when` (0.46; 0.45 cannot draw it). The dialog shows the fields that `required` names first, in that
   order, and the rest by key: so every schema lists all its fields in `required`, which also
   puts a ` *` after each label, except a field that may be left empty (Edit's numbers, the cut
   list's Save as), as a required field cannot be. `build.py` packs the manifest without white space: the app
   refuses one over 64 KiB. A choice is a `oneOf` list of `{const, title, description}` (0.43; `enum` shows the
   bare values, and 0.42 cannot draw `oneOf`). `tests/test_manifest.py` checks all of this.
-  The dialog is **static**: no dependent fields, no stored values.
+  **Conditional fields (0.46).** `x-solidcraft-visible-when` hides a field that does not apply
+  (`{field, eq}`, `{field, in}`, `all`, `any`, `not`; the controller is a sibling scalar field,
+  the values valid for it, else the plugin is refused at load). A hidden field is left out of
+  Run and the preview and is not required, so every reader takes its default when a key is
+  absent, and a hidden field still has a default (it is in `required`, for the order). A hidden
+  controller matches neither `eq` nor `in`, so `not` over a field that can hide is true: say
+  "drawers 1 to 8" as an `in` list. Mutual conditions are a cycle and refused (drawers and
+  doors cannot hide each other). No stored values. `x-solidcraft-defaults` gives each size an
+  inch default when Units is Inches (`{when: {field: units, eq: in}, value}`), shown until the
+  user changes the field; `build.plugin` applies it as the dialog does. `x-solidcraft-enabled-when`
+  and `x-solidcraft-when` exist but are not used.
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
 - **Tools for agents (0.45).** Every entry is also the tool `woodwork.<entry>` (`plugin.tools`,
@@ -32,7 +42,10 @@ materials, joinery and cut lists.
   strictly first: a field `required` names must be there even when it has a default, and
   undeclared fields are refused. As nearly every field is required (for the dialog's order), an agent
   passes them all; the error names a missing one. The `woodwork.<entry>` command in a script
-  (`approval` and `params`) and `plugin.run` pass the fields through unchecked.
+  (`approval` and `params`) and `plugin.run` pass the fields through unchecked, except for an
+  entry with conditions (0.46): then they are checked as strictly (visible required fields
+  present, nothing undeclared) and hidden keys are taken out. `build.plugin` therefore fills in
+  the schema's defaults for the fields a test leaves out, as the dialog does.
   `tests/test_tools.py` drives `solidcraft-cli mcp --headless` for this.
 - **Preview (0.44).** While the dialog is open the app runs an edit entry as a dry run on a
   copy of the design each time a field changes, and draws the result. So plugin code runs
@@ -249,7 +262,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 
 ## Known limits
 
-- The dialog cannot remember values or adapt to the Units choice: defaults are always mm.
+- The dialog cannot remember values. A size the user changed stays as typed when Units changes.
 - `select` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
   a cabinet that is rotated off the axes.
 - The cut list measures a board by its world bounding box when the board fills that box, and
@@ -339,15 +352,15 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   size, so a nearly square part's holes can be turned a quarter. Layer names write a decimal
   point as `P` (R12 takes no `.`).
 - Place's Auto, the dialog's default, goes by the name of the selected board
-  (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. A script
-  that leaves `place` out gets the origin, as before.
+  (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. From 0.46 a
+  script must pass `place` (the entry has conditions, see Tools for agents).
 - A box cabinet's `kind` (cabinet and Edit, remembered like any field): `standard` or `sink`
   (no oven housing, by decision). A **sink base** has no `Top` body but `<Name> Rail front` and `<Name> Rail back`
   (`RAIL_D` 100 mm deep, top face at `_height`, the back one ending where the shelves' depth
   ends), so `select::side` sends Place's Auto on a sink base's rail to the origin, and a script
   selects it by a side or a rail. A depth that leaves less than two rails' depth for them is
-  refused. Shelves and pins are dropped for a sink base without an error
-  (the dialog's default is one shelf); drawers and dividers are refused. The back groove is not
+  refused. Its dialog hides shelves, pins, drawers and dividers; `cabinet::input` drops them
+  for a sink base without an error (Edit to a sink base keeps the remembered ones, unused). The back groove is not
   cut into a top it does not have. Joinery reads the kind from the remembered values
   (`ours["params"]["kind"]` in `drill`) and drills the top corners into the rails: only the
   first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.

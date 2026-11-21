@@ -1,9 +1,35 @@
-"""The dialogs in plugin.json: only what SolidCraft 0.45 can draw, and every choice with a title."""
+"""The dialogs in plugin.json: only what SolidCraft 0.46 can draw, and every choice with a title."""
 import json
 
 from helpers import *
 
-DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems"}
+DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems", "x-solidcraft-visible-when",
+         "x-solidcraft-defaults"}
+WHEN = "x-solidcraft-visible-when"
+
+
+def conditions(condition):
+    """The `{field, eq}` and `{field, in}` leaves of a condition, each with whether a `not` is over it."""
+    if "field" in condition:
+        assert set(condition) in ({"field", "eq"}, {"field", "in"}), condition
+        return [(condition, False)]
+    (key, inner), = condition.items()
+    if key == "not":
+        return [(leaf, not negated) for leaf, negated in conditions(inner)]
+    assert key in ("all", "any") and isinstance(inner, list), condition
+    return [leaf for c in inner for leaf in conditions(c)]
+
+
+def fits(field, value):
+    """Whether a value is one the field can have, so a condition on it can come true."""
+    if "oneOf" in field:
+        return value in [o["const"] for o in field["oneOf"]]
+    kind = {"string": str, "boolean": bool, "integer": int, "number": (int, float)}[field["type"]]
+    if not isinstance(value, kind) or (field["type"] != "boolean" and isinstance(value, bool)):
+        return False
+    if field["type"] == "string":
+        return field.get("minLength", 0) <= len(value) <= field.get("maxLength", len(value))
+    return field["type"] == "boolean" or field.get("minimum", value) <= value <= field.get("maximum", value)
 
 
 def test_choices_have_titles(approval):
@@ -22,6 +48,23 @@ def test_choices_have_titles(approval):
             at = (entry["name"], name)
             # A keyword the dialog cannot draw leaves the entry with Run turned off.
             assert set(field) <= DRAWN, (at, set(field) - DRAWN)
+            # A field shown only when it applies (0.46). Hidden, it is left out of Run and not
+            # required; it still has a default for when it shows, as `required` orders it.
+            # Its controllers are sibling scalar fields, and each value one they can have. A
+            # hidden controller matches neither `eq` nor `in`, so `not` over a controller that
+            # can hide comes true when it hides: write such a test as an `in` list instead.
+            if WHEN in field:
+                assert name not in schema["required"] or "default" in field, at
+                for leaf, negated in conditions(field[WHEN]):
+                    controller = schema["properties"][leaf["field"]]
+                    assert leaf["field"] != name and controller["type"] in ("string", "boolean", "number", "integer"), at
+                    values = [leaf["eq"]] if "eq" in leaf else leaf["in"]
+                    assert values and all(fits(controller, v) for v in values), (at, leaf)
+                    assert not (negated and WHEN in controller), (at, leaf)
+            # A size's inch default (0.46): the dialog shows it when Units is Inches, until the
+            # field is changed. Each one a size the field can have.
+            for rule in field.get("x-solidcraft-defaults", []):
+                assert rule["when"] == {"field": "units", "eq": "in"} and fits(field, rule["value"]), (at, rule)
             # Its description is the field's hover tooltip: every field explains itself.
             assert field.get("description", "").strip(), at
             # The one list the dialog draws: `selection`, picked in the viewport (0.44). The app
