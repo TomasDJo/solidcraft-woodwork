@@ -438,8 +438,12 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   discarded, nothing is lost).
 - `plinth_type` (cabinet, corner and Edit; the dialogs show it when the plinth is not 0 or Match
   selected is on; `fittings::plinth_type`, `board` when absent, so older cabinets keep theirs):
-  `board` is `<Name> Plinth` (the corner's two, or the diagonal's turned one). `notch` cuts
-  `<Name> <Side> notch` (`KICK_RECESS` deep, plinth high) out of each side's (a corner's two
+  `board` is `<Name> Plinth` (the corner's two, or the diagonal's turned one), `plinth_setback`
+  back from the front: the field (shown for board or notch, 50 mm when absent: `KICK_RECESS`)
+  is the parameter `<Prefix>_plinth_setback` while a board or notch uses it, kept once made
+  (`Kit::has`, as the reveal), in Edit and matched (a selected cabinet without it leaves the
+  dialog's: `Kit::size`). `notch` cuts
+  `<Name> <Side> notch` (`plinth_setback` deep, plinth high) out of each side's (a corner's two
   ends') front bottom corner, no board; the cut list finds the notched sides by those feature
   names (`cutlist::notched`, passed in as `_notched`) and gives them a line of their own with
   `note`, at their bounding box (layouts and DXF too: the notch is not drawn); the drawing's

@@ -77,7 +77,7 @@ fn the_auto_handle_goes_by_the_door_height() {
 fn options_add_parts() {
     let p = json!({"back": "overlay", "shelves": 0, "plinth": 100});
     let (commands, _) = build(&p).unwrap();
-    assert_eq!(count(&commands, "parameters.add"), 6); // with the plinth
+    assert_eq!(count(&commands, "parameters.add"), 7); // with the plinth and its set-back
     assert_eq!(count(&commands, "solid.box"), 6); // 4 panels, plinth, back
 
     let p = json!({"shelf_pins": true, "doors": 2, "height": 1200});
@@ -104,9 +104,15 @@ fn plinth_types() {
     assert_eq!(notch["targets"], json!(["Cabinet Side R"]));
     assert_eq!(
         [&notch["length"], &notch["width"], &notch["height"]],
-        ["Cabinet_thickness", "50 mm", "Cabinet_plinth"]
+        [
+            "Cabinet_thickness",
+            "Cabinet_plinth_setback",
+            "Cabinet_plinth"
+        ]
     );
     assert_eq!(notch["corner"][2], "0 mm");
+    let setback = named(&commands, "Cabinet_plinth_setback");
+    assert_eq!(setback["expression"], "1.968504 in"); // 50 mm when the field is left out
     assert_eq!(
         named(&commands, "Cabinet Bottom")["corner"][2],
         "Cabinet_plinth"
@@ -136,6 +142,42 @@ fn plinth_types() {
     assert!(!named(&board, "Cabinet Plinth").is_null());
     assert_eq!(named(&board, "Cabinet Side L")["corner"][2], "0 mm");
     assert!(build(&json!({"plinth_type": "plank"})).is_err());
+}
+
+#[test]
+fn the_plinth_set_back_is_a_parameter() {
+    let named = |commands: &[(&str, Value)], name: &str| -> Value {
+        let found = commands.iter().find(|c| c.1["name"] == name);
+        found.map(|c| c.1.clone()).unwrap_or_default()
+    };
+    let p = json!({"units": "in", "plinth": 4, "plinth_setback": 3});
+    let commands = build(&p).unwrap().0;
+    assert_eq!(
+        named(&commands, "Cabinet_plinth_setback")["expression"],
+        "3 in"
+    );
+    let board = named(&commands, "Cabinet Plinth");
+    assert_eq!(
+        board["corner"][1],
+        "Cabinet_plinth_setback - Cabinet_depth/2"
+    );
+    // only while a board or notch uses it
+    for p in [
+        json!({"plinth": 100, "plinth_type": "legs"}),
+        json!({"plinth": 0}),
+    ] {
+        assert!(named(&build(&p).unwrap().0, "Cabinet_plinth_setback").is_null());
+    }
+    // an edited cabinet that has it keeps it, also on legs
+    let p = json!({"plinth": 100, "plinth_type": "legs", "plinth_setback": 80,
+                   "_existing": {"plinth_setback": 50.0}});
+    let change = named(&build(&p).unwrap().0, "Cabinet_plinth_setback");
+    assert_eq!(change["expression"], "80 mm");
+    // up to the depth less a panel, and only checked when used
+    let deep = json!({"plinth": 100, "plinth_setback": 560 - 18});
+    assert!(build(&deep).is_err());
+    assert!(build(&json!({"plinth": 100, "plinth_setback": -1})).is_err());
+    assert!(build(&json!({"plinth": 100, "plinth_type": "legs", "plinth_setback": 900})).is_ok());
 }
 
 #[test]

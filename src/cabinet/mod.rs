@@ -10,7 +10,7 @@ mod doors;
 mod drawers;
 mod input;
 
-use crate::fittings::{self, PinRows, HANDLE_D, KICK_RECESS, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
 use input::Input;
@@ -290,7 +290,11 @@ impl Cabinet<'_> {
         if let Some(rail) = erail {
             panel("Rail", [et, ein, rail], [eiw, eshelf_d, et], false);
         }
-        let kick = mm(KICK_RECESS);
+        // A parameter while it is used, or once made (as the reveal): an edit takes it up.
+        let kick = match matches!(plinth, "board" | "notch") || kit.has("plinth_setback") {
+            true => kit.parameter("plinth_setback", input.plinth_setback, "plinth set-back"),
+            false => mm(input.plinth_setback),
+        };
         match plinth {
             "board" => panel("Plinth", [et, &kick, &zero], [eiw, et, epl], false),
             // The toe kick cut out of each side's front bottom corner: a board across a whole

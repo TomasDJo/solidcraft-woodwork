@@ -148,7 +148,7 @@ pub fn handle_position(p: &Value) -> Result<&str, String> {
     }
 }
 
-pub const KICK_RECESS: f64 = 50.0; // the plinth board or the sides' notch, back from the front
+pub const KICK_RECESS: f64 = 50.0; // `plinth_setback`'s default: the board or notch, back from the front
 pub const LEG_D: f64 = 40.0; // an adjustable leg
 pub const LEG_INSET: f64 = 50.0; // a leg's middle, in from the carcass's outside edges
 

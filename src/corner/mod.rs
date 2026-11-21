@@ -15,7 +15,7 @@ mod diagonal;
 mod doors;
 mod input;
 
-use crate::fittings::{self, PinRows, KICK_RECESS, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, LEG_INSET, PIN_SETBACK, PITCH};
 use crate::kit::{mm, Kit};
 use crate::Commands;
 pub use input::hand;
@@ -47,6 +47,7 @@ struct Corner<'a> {
     eh: String,
     et: String,
     epl: String,
+    ekick: String, // the plinth board's or the notch's set-back
 }
 
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
@@ -59,6 +60,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         t,
         plinth,
         plinth_type,
+        plinth_setback,
         dr,
         shelves,
         pins,
@@ -79,6 +81,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let epl = match plinth > 0.0 {
         true => kit.parameter("plinth", plinth, "plinth height"),
         false => mm(0.0),
+    };
+    // As on the box cabinet.
+    let ekick = match plinth > 0.0 && plinth_type != "legs" || kit.has("plinth_setback") {
+        true => kit.parameter("plinth_setback", plinth_setback, "plinth set-back"),
+        false => mm(plinth_setback),
     };
     // Only with doors, or when an edit took them off (as on the box cabinet).
     let er = match on_return.is_some() || kit.has("reveal") {
@@ -114,6 +121,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         eh,
         et,
         epl,
+        ekick,
     };
     let drill = corner.carcass(shelves, pins); // holes, run after the panels exist
     match on_return {
@@ -279,7 +287,7 @@ impl Corner<'_> {
                 Some(&[format!("{name} {part}")]),
             );
         }
-        let kick = mm(KICK_RECESS);
+        let kick = self.ekick.clone();
         if self.plinth_type == "notch" {
             // The toe kick cut out of each end's front bottom corner, as on the box cabinet.
             let ends = [
@@ -325,8 +333,8 @@ impl Corner<'_> {
             diagonal::plinth(self);
         } else if self.plinth_type == "board" {
             // Two boards set back from the fronts, meeting in the inner corner.
-            let x = format!("{ed} - {} - {et}", mm(KICK_RECESS));
-            let y = format!("{eb} - {ed} + {}", mm(KICK_RECESS));
+            let x = format!("{ed} - {kick} - {et}");
+            let y = format!("{eb} - {ed} + {kick}");
             panel(
                 "Plinth",
                 [&x, &y, &zero],

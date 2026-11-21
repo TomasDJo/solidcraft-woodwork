@@ -10,13 +10,14 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
-const SIZES: [&str; 9] = [
+const SIZES: [&str; 10] = [
     "width",
     "height",
     "depth",
     "thickness",
     "back_thickness",
     "plinth",
+    "plinth_setback",
     "return",
     "reveal",
     "drawer_height",
@@ -84,8 +85,8 @@ pub fn merge(
             false => Err(format!("`{key}` is only for a {kind}")),
         };
         let (to, value) = match key.as_str() {
-            "shelves" | "handles" | "handle_position" | "plinth" | "plinth_type" | "reveal"
-            | "fronts" => (key.as_str(), value.clone()),
+            "shelves" | "handles" | "handle_position" | "plinth" | "plinth_type"
+            | "plinth_setback" | "reveal" | "fronts" => (key.as_str(), value.clone()),
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
             "doors" | "dividers" | "drawers" | "drawer_height" | "drawers_at" | "back"
             | "door_hinge" | "kind" => {

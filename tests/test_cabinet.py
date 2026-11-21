@@ -75,6 +75,34 @@ def test_the_copy_of_a_component_one_works_in_stays_active(approval):
     assert results[5]["active"] == results[3]["active"]
 
 
+def test_plinth_setback(approval):
+    # A on a board 80 back, B notched 80 deep beside it, C in inches notched 3 in deep and D on
+    # a board 3 in back; then an Edit that brings A's board to 30.
+    results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": 100, "plinth_setback": 80}),
+                   select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "plinth": 100, "plinth_type": "notch",
+                                                "plinth_setback": 80, "place": "right"}),
+                   select("B Side R"),
+                   plugin(approval, "cabinet", {"name": "C", "units": "in", "plinth": 4, "plinth_type": "notch",
+                                                "plinth_setback": 3, "place": "right"}),
+                   select("C Side R"),
+                   plugin(approval, "cabinet", {"name": "D", "units": "in", "plinth": 4, "plinth_setback": 3,
+                                                "place": "right"}),
+                   MEASURE,
+                   select("A Side L"),
+                   plugin(approval, "edit", {"plinth_setback": 30}),
+                   MEASURE])
+    box, measure = boxes(results[7]), results[7]
+    front = box["A Side L"][1]
+    assert box["A Plinth"][1] == front + 80, (box["A Plinth"], front)
+    assert volume(measure, "A Side L") - volume(measure, "B Side L") == 18 * 80 * 100
+    inch = 25.4
+    notch = volume(measure, "D Side L") - volume(measure, "C Side L")
+    assert abs(notch - 0.75 * 3 * 4 * inch ** 3) < 2, notch
+    assert abs(box["D Plinth"][1] - box["D Side L"][1] - 3 * inch) < 1e-3, box["D Plinth"]
+    box = boxes(results[10])
+    assert box["A Plinth"][1] == box["A Side L"][1] + 30, (box["A Plinth"], box["A Side L"])
+
 def test_plinth_types(approval):
     # A on a set-back board, B with notched sides beside it, C on legs (1000 wide: six) beside
     # that; the cut list, a drawing of B, and an Edit that puts A on legs.

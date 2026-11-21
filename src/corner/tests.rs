@@ -143,6 +143,10 @@ fn a_diagonal_front_is_one_turned_door() {
         .map(|c| &c.1)
         .collect();
     assert_eq!(turns.len(), 2); // plinth and door
+    let plinth = commands
+        .iter()
+        .find(|c| c.0 == "solid.box" && c.1["name"] == "Cabinet Plinth");
+    assert_eq!(plinth.unwrap().1["corner"][1], "Cabinet_plinth_setback");
     assert_eq!(turns[1]["angle"], "45 deg");
     // hinged at the back leg's end: the far end of the door, on its front edge
     // (x = 498.586, y = -139.700 at this size), given along the door too, which stands at 45
@@ -382,11 +386,15 @@ fn plinth_types() {
     assert_eq!(notch["targets"], json!(["Cabinet Side R"]));
     assert_eq!(
         [&notch["length"], &notch["width"], &notch["height"]],
-        ["50 mm", "Cabinet_thickness", "Cabinet_plinth"]
+        [
+            "Cabinet_plinth_setback",
+            "Cabinet_thickness",
+            "Cabinet_plinth"
+        ]
     );
     assert_eq!(
         notch["corner"][0],
-        "Cabinet_width - (Cabinet_depth - 50 mm) - (50 mm) - Cabinet_width/2"
+        "Cabinet_width - (Cabinet_depth - Cabinet_plinth_setback) - (Cabinet_plinth_setback) - Cabinet_width/2"
     );
     let notch = named(&commands, "Cabinet Side L notch");
     assert_eq!(notch["targets"], json!(["Cabinet Side L"]));
@@ -394,6 +402,20 @@ fn plinth_types() {
         notch["corner"][1],
         "Cabinet_return - Cabinet_depth - Cabinet_return/2"
     );
+    // the set-back is the field's: the L's two boards too
+    let p = json!({"units": "in", "width": 36, "return": 36, "depth": 22, "plinth": 4,
+                   "plinth_setback": 3});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_plinth_setback")["expression"],
+        "3 in"
+    );
+    let plinth = named(&commands, "Cabinet Plinth return");
+    assert_eq!(
+        plinth["corner"][0],
+        "Cabinet_depth - Cabinet_plinth_setback - Cabinet_thickness - Cabinet_width/2"
+    );
+    assert!(build(&json!({"plinth": 100, "plinth_setback": 560})).is_err());
     // the diagonal's too, without its turned plinth
     let p = json!({"shape": "diagonal", "width": 1000, "return": 900, "plinth": 100,
                    "plinth_type": "notch"});

@@ -14,6 +14,8 @@ pub struct Input<'a> {
     pub plinth: f64,
     /// board, notch or legs (`fittings::plinth_type`).
     pub plinth_type: &'a str,
+    /// How far the plinth board or the sides' notch is back from the front.
+    pub plinth_setback: f64,
     /// Depth at the return's end: `d` on the L.
     pub dr: f64,
     pub shelves: u32,
@@ -41,6 +43,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let t = size("thickness", 18.0)?;
     let plinth = size("plinth", 0.0)?;
     let plinth_type = crate::fittings::plinth_type(p)?;
+    let plinth_setback = size("plinth_setback", crate::fittings::KICK_RECESS)?;
     let shelves = num(p, "shelves", 1.0)?;
     let pins = p
         .get("shelf_pins")
@@ -83,6 +86,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "shelves must be 0 to 20",
     )?;
     check(plinth >= 0.0, "plinth cannot be negative")?;
+    check(
+        plinth == 0.0 || plinth_type == "legs" || (0.0..d - t).contains(&plinth_setback),
+        "the plinth set-back must be 0 up to the depth less a panel thickness",
+    )?;
     check(
         a <= 5000.0 && b <= 5000.0 && h <= 5000.0,
         "sizes are limited to 5000 mm",
@@ -128,6 +135,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         t,
         plinth,
         plinth_type,
+        plinth_setback,
         dr,
         shelves: shelves as u32,
         pins,
