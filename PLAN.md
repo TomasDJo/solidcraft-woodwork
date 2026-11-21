@@ -103,6 +103,7 @@ only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
 - [x] A tooltip on every dialog field and choice, in plain words
 - [x] Version 0.2.0, for SolidCraft 0.45
 - [x] SolidCraft 0.46: the dialogs hide the fields that do not apply (conditional fields)
+- [x] Drawers over or under doors, and a graduated drawer stack (the top drawer's height given, the rest equal) (#57 part 1)
 
 ## Open
 
@@ -112,7 +113,6 @@ Cabinets:
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
 - [ ] Worktop over a straight run of the selected cabinets: postponed until it handles corners and joints (#62)
-- [ ] Drawers over doors and a graduated drawer stack (the top drawer's height given, the rest equal) (postponed until conditional dialog fields, SolidCraft 0.46, #57)
 - [ ] Plinth run over the selected cabinets
 - [ ] End panels and fillers on a cabinet's end, kept by Edit cabinet (postponed until conditional dialog fields, SolidCraft 0.46, #57)
 - [ ] Sink base with drawers (#55)

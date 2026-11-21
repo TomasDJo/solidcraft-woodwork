@@ -3,7 +3,8 @@
 The functions are under **Plugins > Woodwork** and as buttons on the ribbon. Each opens a
 dialog; the cabinet you are about to make is previewed in the model before you press Run.
 A dialog shows only the fields that apply to your choices (SolidCraft 0.46): the door fields
-appear when there are doors, the reveal and handles when there are doors or drawers, the back's
+appear when there are doors, the reveal and handles when there are doors or drawers, the drawer
+front height when there are two or more drawers or drawers with doors, and where they go when there are doors too, the back's
 thickness when there is a back, and a sink base has no shelf, divider or drawer fields.
 
 - [Cabinet](#cabinet)
@@ -32,7 +33,9 @@ component can hold its cabinets.
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
-| **Drawers** | Makes it a drawer unit: a stack of equal drawers with fronts and boxes sized for 12.7 mm ball-bearing slides. |
+| **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides. Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
+| **Drawer front height** | With doors: the height of each drawer front, 0 for 150 mm. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below); 0 makes them all alike. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with Edit cabinet, not by setting the parameter to 0. |
+| **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
 | **Plinth height** | 0 for none. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
 | **Doors** | Doors with 35 mm hinge cup holes: one, two, or one per compartment. |
@@ -132,13 +135,17 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 ## Edit cabinet
 
-Changes a cabinet after it is made. Select any part of it, fill in only what should change
-and leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is
-hinged on, drawers, fronts (overlay or inset), reveal, back, shelf pin holes, handles and their
-position, labels, plinth, the kind (standard or sink base), a corner cabinet's doors and shape. The reveal is taken from Parameters unless
-the edit gives one. Kind Sink base hides shelves, dividers, drawers and shelf pins; Kind Standard
-or Sink base hides the corner cabinet's fields; Doors 0 hides the hinge side, Handle holes None
-the handle position.
+Changes a cabinet after it is made. Select any part of it, fill in only what should change and
+leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
+on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
+(overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
+the kind (standard or sink base), a corner cabinet's doors and shape. The reveal and the drawer
+front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
+with doors go at the top unless Drawers at says Bottom; an edit that takes the doors away from
+a cabinet with drawers makes the drawers all alike again unless it gives a drawer front height.
+Kind Sink base hides shelves, dividers, drawers and shelf pins; Kind Standard or Sink base
+hides the corner cabinet's fields; Doors 0 hides the hinge side, Handle holes None the handle
+position.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
@@ -151,7 +158,8 @@ Works on cabinets made by 0.1.7 or later.
 Drills the selected cabinet where its sides meet the bottom and top: holes for 7 x 50
 confirmat screws, or for 8 x 35 dowels. A sink base's sides are drilled into its two rails
 instead of a top, one hole each. The holes follow the cabinet's parameters; their
-number is set when they are drilled.
+number is set when they are drilled. The rail between drawers and doors is not drilled (nor
+are fixed shelves and dividers): screw it by hand, and count those screws yourself.
 
 ## Material
 
@@ -168,7 +176,8 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
 - counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
 - marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
   along the width, `L1` one edge along the length. Doors and drawer fronts are banded all
-  round; sides, top, bottom, shelves, a sink base's front rail and dividers at the front; backs,
+  round; sides, top, bottom, shelves, the rail between drawers and doors, a sink base's front
+  rail and dividers at the front; backs,
   plinths, a sink base's back rail and drawer boxes not. It adds up the metres of banding per
   material and thickness, plus 10 % waste;
 - lists a board of a material with a grain (Birch plywood, Oak) with its length along the

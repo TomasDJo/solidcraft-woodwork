@@ -14,18 +14,16 @@ pub fn build(cabinet: &Cabinet) {
     let Cabinet {
         kit,
         ew,
-        eh,
         et,
-        epl,
         er,
         ein,
         ecell,
         efront,
         eback,
+        edoor: [z0, z1, door_h],
         ..
     } = cabinet;
     let Input {
-        h,
         d,
         plinth,
         doors,
@@ -34,8 +32,7 @@ pub fn build(cabinet: &Cabinet) {
         handle_at,
         hinge_right,
         inset,
-        reveal,
-        t,
+        door_h: door_h_mm,
         ..
     } = cabinet.input;
     let count = doors as usize;
@@ -48,20 +45,14 @@ pub fn build(cabinet: &Cabinet) {
             count.max(1) - 1
         ),
     };
-    let o = if inset { t } else { 0.0 };
-    // From the plinth (or the bottom panel) up to the top (or under the top panel).
-    let (z0, z1) = (
-        format!("{epl} + {ein} + {er}"),
-        format!("{eh} - {ein} - {er}"),
-    );
-    let door_h = format!("{z1} - {epl} - {ein} - {er}");
-    let door_h_mm = h - plinth - 2.0 * (o + reveal);
-    let cups = fittings::cup_heights(&z0, &z1, door_h_mm);
+    // From the plinth (or the bottom panel) up to the top (or under the top panel), or to
+    // the drawers.
+    let cups = fittings::cup_heights(z0, z1, door_h_mm);
     let handle_z = fittings::handle_height(
         handles,
         handle_at,
-        &z0,
-        &z1,
+        z0,
+        z1,
         door_h_mm,
         fittings::floor_unit(plinth, d),
     );
@@ -76,7 +67,7 @@ pub fn build(cabinet: &Cabinet) {
             false => format!("{ein} + {er} + ({door_w} + {er}) * {i}"),
         };
         kit.open(&part);
-        kit.panel(&part, [&x0, efront, &z0], [&door_w, et, &door_h], None);
+        kit.panel(&part, [&x0, efront, z0], [&door_w, et, door_h], None);
         let cup_x = match (i + first) % 2 {
             0 => format!("{x0} + {}", mm(CUP_CENTRE)),
             _ => format!("{x0} + {door_w} - {}", mm(CUP_CENTRE)),
@@ -108,7 +99,7 @@ pub fn build(cabinet: &Cabinet) {
             0 => (x0.clone(), -1),
             _ => (format!("{x0} + {door_w}"), 1),
         };
-        let line = kit.at(&x, efront, &z0);
+        let line = kit.at(&x, efront, z0);
         let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
         kit.hinge(&part, None, "hinge", line, None, turn, 110.0);
     }

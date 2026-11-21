@@ -10,7 +10,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
-const SIZES: [&str; 8] = [
+const SIZES: [&str; 9] = [
     "width",
     "height",
     "depth",
@@ -19,6 +19,7 @@ const SIZES: [&str; 8] = [
     "plinth",
     "return",
     "reveal",
+    "drawer_height",
 ];
 
 /// What a cabinet's component remembers, as `component.metadata.set` takes it: the entry that
@@ -68,6 +69,11 @@ pub fn merge(
             existing.insert(key.into(), json!(mm));
         }
     }
+    let mixed = |p: &Map<String, Value>| {
+        let count = |key: &str| p.get(key).and_then(Value::as_f64).unwrap_or(0.0);
+        count("drawers") > 0.0 && count("doors") > 0.0
+    };
+    let was_mixed = mixed(&params);
     for (key, value) in changes.as_object().into_iter().flatten() {
         // `selection` is the dialog's field: which cabinet, not a change to it
         if value.is_null() || value == "keep" || key == "selection" {
@@ -82,7 +88,8 @@ pub fn merge(
                 (key.as_str(), value.clone())
             }
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
-            "doors" | "dividers" | "drawers" | "back" | "door_hinge" | "fronts" | "kind" => {
+            "doors" | "dividers" | "drawers" | "drawer_height" | "drawers_at" | "back"
+            | "door_hinge" | "fronts" | "kind" => {
                 only(false, "box cabinet")?;
                 (key.as_str(), value.clone())
             }
@@ -97,6 +104,11 @@ pub fn merge(
             _ => return Err(format!("`{key}` cannot be edited")),
         };
         params.insert(to.into(), value);
+    }
+    // Beside doors a drawer height of 0 was kept as 150 mm: without the doors, back to 0 (all
+    // alike) unless the edit gives one.
+    if was_mixed && !mixed(&params) && changes["drawer_height"].is_null() {
+        params.insert("drawer_height".into(), json!(0));
     }
     params.insert("_existing".into(), Value::Object(existing));
     Ok((entry.into(), Value::Object(params)))

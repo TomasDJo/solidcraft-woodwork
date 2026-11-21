@@ -462,7 +462,7 @@ fn sheets_from_cutting_layouts() {
 }
 
 #[test]
-fn a_sink_base() {
+fn a_sink_base_and_a_rail_under_drawers() {
     // the rails: banded at the front, grain along the width, but the back rail, hidden under
     // the worktop
     let body = |name: &str, max: [f64; 3]| json!({"name": name, "material": "Oak", "bbox": {"min": [0, 0, 0], "max": max}});
@@ -483,6 +483,13 @@ fn a_sink_base() {
     };
     let band = |l: u64| json!({"length": l, "width": 0});
     assert_eq!(marks("A Rail front"), (json!(564.0), band(1), json!(true)));
+    // the rail between drawers and doors is banded at the front as a shelf is
+    let mut measured = cabinet(false);
+    let all = measured["bodies"].as_array_mut().unwrap();
+    all.push(body("A Rail", [564.0, 523.0, 18.0]));
+    let mixed = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
+    assert_eq!(row(&mixed, "A Rail")["banding"], band(1));
+    assert_eq!(row(&mixed, "A Rail")["grain"], json!(true));
     // the back rail is as big as the plinth and, like it, not banded: one row
     assert_eq!(row(&list, "A Plinth")["parts"][1], "A Rail back");
     assert_eq!(marks("A Plinth").1, band(0));

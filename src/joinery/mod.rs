@@ -12,6 +12,9 @@ const MAX_SPACING: f64 = 250.0;
 /// `design` is `document.inspect`'s reply with the timeline, `kind` is confirmat or dowel.
 /// `cabinet` is the box cabinet's kind. A `sink` base has no top: its two rails get the top
 /// holes, the first in the front one and the last in the back one.
+// ponytail: the `Rail` between drawers and doors is not drilled (its height depends on the
+// drawer fields, which Joinery does not read); it is screwed by hand like a fixed shelf, until
+// joinery for dividers and fixed shelves (PLAN.md).
 /// The commands run with the cabinet's component active. Also returns where the cabinet's
 /// origin (the middle of its footprint, on its floor) is in the world, in mm.
 pub fn build(
