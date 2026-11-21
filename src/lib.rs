@@ -641,6 +641,9 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 let mesh = run("model.mesh", json!({"body": body, "tolerance": 1.0}))?;
                 local.insert(body, cutlist::extents(&mesh));
             }
+            let mut params = params.clone();
+            params["_notched"] = json!(cutlist::notched(&design));
+            let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
             if params["format"] == "dxf" && cutlist::file_name(entry, params)?.is_some() {
@@ -682,9 +685,11 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             // A sheet per cabinet in the drawing Woodwork; a cabinet drawn again gets a new one.
             let design = run(
                 "document.inspect",
-                json!({"bodies": false, "timeline": false}),
+                json!({"bodies": false, "timeline": "summary"}),
             )?;
-            let measure = run("inspect.measure", json!({}))?;
+            let mut measure = run("inspect.measure", json!({}))?;
+            // the board list notes them as the cut list does
+            measure["notched"] = json!(cutlist::notched(&design));
             let names = match params["scope"].as_str().unwrap_or("selected") {
                 "selected" => {
                     vec![select::cabinet(&select::picked(params, &design), &measure)?.name]

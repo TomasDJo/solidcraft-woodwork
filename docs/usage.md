@@ -39,6 +39,7 @@ component can hold its cabinets.
 | **Drawer front height** | With doors: the height of each drawer front, 0 for 150 mm. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below); 0 makes them all alike. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with Edit cabinet, not by setting the parameter to 0. |
 | **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
 | **Plinth height** | 0 for none. |
+| **Plinth type** | Shown with a plinth. **Board**: a board under the cabinet, 50 mm back from the front (`Name Plinth`). **Notched sides**: no board; each side has a 50 mm toe kick cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
 | **Doors** | Doors with 35 mm hinge cup holes: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
@@ -85,6 +86,9 @@ There is no oven housing: size a tall cabinet for your oven yourself.
 
 Builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
+**Plinth type** works as on the box cabinet: a board set back from the fronts, the two end panels
+notched at their front bottom corners, or legs under the corners of the footprint (six under the
+L, the sixth in its inner corner; five under the diagonal) with the ends and backs standing on them.
 It is parametric, takes a material, and can be placed, named and matched like the box cabinet.
 Its doors have a **Reveal** (`Name_reveal`) as on the box cabinet, and **Fronts** (shown when
 there are doors): Overlay, in front of the cabinet, or Inset, inside the opening with their faces
@@ -155,7 +159,7 @@ Changes a cabinet after it is made. Select any part of it, fill in only what sho
 leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
-the kind (standard or sink base), a corner cabinet's doors and shape. The reveal and the drawer
+plinth type, the kind (standard or sink base), a corner cabinet's doors and shape. The reveal and the drawer
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
 with doors go at the top unless Drawers at says Bottom; an edit that takes the doors away from
 a cabinet with drawers makes the drawers all alike again unless it gives a drawer front height.
@@ -217,7 +221,10 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
 
 - lays the parts out on sheets per material and thickness, and counts the sheets to buy from
   those layouts (see [Cutting layouts](#cutting-layouts));
-- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, handles;
+- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, adjustable legs, handles;
+- gives a notched side (Plinth type Notched sides) its size over the notch, on a line of its own
+  marked `notched for the toe kick; size over the notch` (in the PDF too, and `notched` on its
+  label); the cutting layouts and DXF give it as that rectangle, so saw the notch yourself;
 - marks the edges to band, as OpenCutList does: `L2 W2` is both edges along the length and both
   along the width, `L1` one edge along the length. Doors and drawer fronts (a sink base's false
   front too) are banded all round; sides, top, bottom, shelves, the rail between drawers and doors, a sink base's front
@@ -310,7 +317,7 @@ turned a quarter against its grain, as its length is told from its width by size
 commands allow gets outlines only for the rest, named in `dxf_holes_skipped`. A sketch's
 **Insert DXF** reads the files back.
 
-For scripts the reply has, beside the rows: `sheets` per material and thickness (`area_m2`,
+For scripts the reply has, beside the rows (a notched side's row also has `note`): `sheets` per material and thickness (`area_m2`,
 `sheets` to buy, `yield_pct`), `sheet_mm` (length and width), `kerf_mm`, `trim_mm`,
 `layouts` (one per sheet: `material`, `thickness`, `size`, `yield_pct` and `parts`, each with
 `part`, `row` (its row in `parts`, from 0), `x`, `y`, `w`, `h` and `rotated`; x along the
@@ -331,7 +338,8 @@ Each sheet has:
   there (1:1, 1:2, 1:4, 1:5, 1:8, 1:10, 1:15, 1:20, 1:25 or 1:50; the iso view may have its own),
   with its doors and drawers closed whatever they are in the model;
 - its width and height on the front view and its depth on the right view, in mm, measured on the
-  sides (and the back where it stands out behind them); the views and sizes follow a change of the
+  sides (and the back where it stands out behind them; on legs the height is the carcass's, above
+  them); the views and sizes follow a change of the
   cabinet's parameters, the board list does not (draw it again);
 - its boards, grouped by size as in the cut list (quantity, part, length x width x thickness,
   material), at the top right; a list longer than the room above the title block ends with a line

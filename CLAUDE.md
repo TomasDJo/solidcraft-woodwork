@@ -288,7 +288,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
   its return's end there, not a back corner: it gets the older link.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
-  `joint`, `Drawer n Front`), so renaming those breaks it. Screws and dowels are the round
+  `joint`, `Drawer n Front`, `Leg n`), so renaming those breaks it. Screws and dowels are the round
   holes in the boards Joinery drills into: `Bottom`, `Top`, `Rail front`, `Rail back`.
 - The cutting layouts (`nesting::nest`) are greedy guillotine packing into the free pieces of
   all open sheets: eight tries (four orders, best area or best short side fit, each piece split
@@ -426,10 +426,27 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   beyond it, unlinked, since the link holds the sides' seats together (`Cabinet::with_panel`); a drawing's views take the panels in (`panel::is_panel`),
   and its dimensions go to an end panel's or a filler's outer corners (with inset fronts the
   side's corners are the panel's too), so the width is over all; a filler's two boards count as
-  one box. Corner cabinets are refused. No plinth return (the sides reach the
-  floor; it waits for cabinets on legs), no label on a panel. The filler width and a given
+  one box. Corner cabinets are refused. No plinth return (an end panel reaches the
+  floor, also beside a cabinet on legs), no label on a panel. The filler width and a given
   thickness are plain lengths, not parameters. `inside` puts a moved or turned cabinet at the
   origin, square (`to_matrix`), and back: in a plugin run a box in a turned component landed
   shifted (`tests/test_panel.py`). An Edit with panels runs about a dozen commands
   more each, so a cabinet near `cabinet::build`'s 230 can then fail the 256 limit (the run is
   discarded, nothing is lost).
+- `plinth_type` (cabinet, corner and Edit; the dialogs show it when the plinth is not 0 or Match
+  selected is on; `fittings::plinth_type`, `board` when absent, so older cabinets keep theirs):
+  `board` is `<Name> Plinth` (the corner's two, or the diagonal's turned one). `notch` cuts
+  `<Name> <Side> notch` (`KICK_RECESS` deep, plinth high) out of each side's (a corner's two
+  ends') front bottom corner, no board; the cut list finds the notched sides by those feature
+  names (`cutlist::notched`, passed in as `_notched`) and gives them a line of their own with
+  `note`, at their bounding box (layouts and DXF too: the notch is not drawn); the drawing's
+  board list marks them `(notched)` (`lib.rs` puts the list in `measure` as `notched`). `legs` puts the
+  sides (a corner's ends and backs) on the plinth and makes `<Name> Leg <n>` bodies
+  (`fittings::leg`, 40 mm cylinders, not in `Kit`'s bodies, so no material): four, six over
+  900 mm wide, fixed when built; a corner gets one under each footprint corner (six on the L,
+  five diagonal). Legs are not boards (`fittings::is_leg`: the cut list skips them and counts
+  them as hardware, and `cutlist::turned` leaves them out, so no `model.mesh` for one); `select::named` takes the floor from them, so a cabinet placed beside one
+  on legs stands on the floor, and a drawing's views take them in (its height dimension is the
+  carcass's). The drawing's dimensions are on the sides' top front corners and Side L's rear
+  bottom one, as a notched side has no front bottom corner. One long plinth board across a run
+  is not made (PLAN.md).

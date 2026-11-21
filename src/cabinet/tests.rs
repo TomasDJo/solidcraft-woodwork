@@ -88,6 +88,57 @@ fn options_add_parts() {
 }
 
 #[test]
+fn plinth_types() {
+    let named = |commands: &[(&str, Value)], name: &str| -> Value {
+        let found = commands.iter().find(|c| c.1["name"] == name);
+        found.map(|c| c.1.clone()).unwrap_or_default()
+    };
+    // notched sides: no board, a toe kick cut out of each side's front bottom corner
+    let p = json!({"units": "in", "width": 24, "height": 34.5, "depth": 22, "thickness": 0.75,
+                   "back_thickness": 0.25, "plinth": 4, "plinth_type": "notch"});
+    let (commands, summary) = build(&p).unwrap();
+    assert!(named(&commands, "Cabinet Plinth").is_null());
+    assert!(!summary["bodies"].to_string().contains("Plinth"));
+    let notch = named(&commands, "Cabinet Side R notch");
+    assert_eq!(notch["operation"], "cut");
+    assert_eq!(notch["targets"], json!(["Cabinet Side R"]));
+    assert_eq!(
+        [&notch["length"], &notch["width"], &notch["height"]],
+        ["Cabinet_thickness", "50 mm", "Cabinet_plinth"]
+    );
+    assert_eq!(notch["corner"][2], "0 mm");
+    assert_eq!(
+        named(&commands, "Cabinet Bottom")["corner"][2],
+        "Cabinet_plinth"
+    );
+    assert!(!named(&commands, "Cabinet Side L notch").is_null());
+
+    // legs: no board, the carcass on four legs at the plinth's height, six when wide
+    let p = json!({"plinth": 100, "plinth_type": "legs"});
+    let (commands, summary) = build(&p).unwrap();
+    assert!(named(&commands, "Cabinet Plinth").is_null());
+    assert_eq!(count(&commands, "solid.cylinder"), 4);
+    let leg = named(&commands, "Cabinet Leg 4");
+    assert_eq!(leg["body_name"], "Cabinet Leg 4");
+    assert_eq!(leg["height"], "Cabinet_plinth");
+    assert_eq!(leg["base"][2], "0 mm");
+    assert!(!summary["bodies"].to_string().contains("Leg")); // not a board
+    let side = named(&commands, "Cabinet Side L");
+    assert_eq!(side["corner"][2], "Cabinet_plinth");
+    assert_eq!(side["height"], "Cabinet_height - Cabinet_plinth");
+    let wide = json!({"plinth": 100, "plinth_type": "legs", "width": 1000});
+    assert_eq!(count(&build(&wide).unwrap().0, "solid.cylinder"), 6);
+
+    // no plinth: the type does nothing; a board is the default
+    let none = json!({"plinth_type": "legs"});
+    assert_eq!(count(&build(&none).unwrap().0, "solid.cylinder"), 0);
+    let board = build(&json!({"plinth": 100})).unwrap().0;
+    assert!(!named(&board, "Cabinet Plinth").is_null());
+    assert_eq!(named(&board, "Cabinet Side L")["corner"][2], "0 mm");
+    assert!(build(&json!({"plinth_type": "plank"})).is_err());
+}
+
+#[test]
 fn drawers_replace_shelves() {
     let (commands, summary) = build(&json!({"drawers": 3, "shelves": 2, "plinth": 100})).unwrap();
     let named = |n: &str| {

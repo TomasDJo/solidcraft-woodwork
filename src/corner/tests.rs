@@ -367,3 +367,64 @@ fn an_inset_diagonal_door_fits_between_the_ends() {
         "Cabinet_return - Cabinet_depth - 2*Cabinet_thickness"
     );
 }
+
+#[test]
+fn plinth_types() {
+    let count = |commands: &Commands, id: &str| commands.iter().filter(|c| c.0 == id).count();
+    let has = |commands: &Commands, name: &str| commands.iter().any(|c| c.1["name"] == name);
+    // notched: a toe kick in each end's front bottom corner, no plinth boards; mirrored
+    let p = json!({"width": 1000, "return": 900, "plinth": 100, "plinth_type": "notch",
+                   "corner": "right"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(!has(&commands, "Cabinet Plinth") && !has(&commands, "Cabinet Plinth return"));
+    // a right corner: the return's end is Side R, across the front
+    let notch = named(&commands, "Cabinet Side R notch");
+    assert_eq!(notch["targets"], json!(["Cabinet Side R"]));
+    assert_eq!(
+        [&notch["length"], &notch["width"], &notch["height"]],
+        ["50 mm", "Cabinet_thickness", "Cabinet_plinth"]
+    );
+    assert_eq!(
+        notch["corner"][0],
+        "Cabinet_width - (Cabinet_depth - 50 mm) - (50 mm) - Cabinet_width/2"
+    );
+    let notch = named(&commands, "Cabinet Side L notch");
+    assert_eq!(notch["targets"], json!(["Cabinet Side L"]));
+    assert_eq!(
+        notch["corner"][1],
+        "Cabinet_return - Cabinet_depth - Cabinet_return/2"
+    );
+    // the diagonal's too, without its turned plinth
+    let p = json!({"shape": "diagonal", "width": 1000, "return": 900, "plinth": 100,
+                   "plinth_type": "notch"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(count(&commands, "component.create"), 0);
+    assert!(has(&commands, "Cabinet Side L notch") && has(&commands, "Cabinet Side R notch"));
+
+    // legs: under the corners of the footprint, six under the L, five under the diagonal;
+    // the ends and backs stand on them
+    let p = json!({"width": 1000, "return": 900, "plinth": 100, "plinth_type": "legs"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(count(&commands, "solid.cylinder"), 6);
+    assert!(!has(&commands, "Cabinet Plinth"));
+    let inner = named(&commands, "Cabinet Leg 6");
+    assert_eq!(inner["height"], "Cabinet_plinth");
+    assert_eq!(
+        inner["base"],
+        json!([
+            "Cabinet_depth - 50 mm - Cabinet_width/2",
+            "Cabinet_return - Cabinet_depth + 50 mm - Cabinet_return/2",
+            "0 mm"
+        ])
+    );
+    for part in ["Cabinet Side L", "Cabinet Back", "Cabinet Back return"] {
+        let board = board(&commands, part);
+        assert_eq!(board["corner"][2], "Cabinet_plinth", "{part}");
+        assert_eq!(board["height"], "Cabinet_height - Cabinet_plinth", "{part}");
+    }
+    let p = json!({"shape": "diagonal", "width": 1000, "return": 900, "plinth": 100,
+                   "plinth_type": "legs"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(count(&commands, "solid.cylinder"), 5);
+    assert_eq!(count(&commands, "component.create"), 0);
+}

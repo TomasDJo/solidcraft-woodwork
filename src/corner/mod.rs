@@ -15,14 +15,12 @@ mod diagonal;
 mod doors;
 mod input;
 
-use crate::fittings::{self, PinRows, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, KICK_RECESS, LEG_INSET, PIN_SETBACK, PITCH};
 use crate::kit::{mm, Kit};
 use crate::Commands;
 pub use input::hand;
 use input::Input;
 use serde_json::{json, Value};
-
-const KICK_RECESS: f64 = 50.0; // plinth boards, back from the fronts
 
 /// What the steps of a build share: the checked input in mm, and the sizes as expressions.
 struct Corner<'a> {
@@ -37,9 +35,10 @@ struct Corner<'a> {
     h: f64,
     t: f64,
     plinth: f64,
-    dr: f64,     // depth at the return's end: `d` on the L
-    g: f64,      // the reveal around the doors, and its parameter
-    inset: bool, // the doors inside the opening, the shelves a panel back behind them
+    plinth_type: &'a str, // board, notch or legs: see `fittings::plinth_type`
+    dr: f64,              // depth at the return's end: `d` on the L
+    g: f64,               // the reveal around the doors, and its parameter
+    inset: bool,          // the doors inside the opening, the shelves a panel back behind them
     er: String,
     ea: String,
     eb: String,
@@ -59,6 +58,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         h,
         t,
         plinth,
+        plinth_type,
         dr,
         shelves,
         pins,
@@ -102,6 +102,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         h,
         t,
         plinth,
+        plinth_type: if plinth > 0.0 { plinth_type } else { "none" },
         dr,
         g: reveal,
         inset,
@@ -183,24 +184,26 @@ impl Corner<'_> {
         let side = |end: &'static str| &end[end.len() - 1..];
         (self.kit).seat(side(back_end), false, &self.point(ea), eb);
         (self.kit).seat(side(return_end), true, &self.point(&zero), &zero);
-        panel(
-            back_end,
-            [&format!("{ea} - {et}"), &format!("{eb} - {ed}"), &zero],
-            [et, ed, eh],
-            None,
-        );
-        panel(return_end, [&zero, &zero, &zero], [edr, et, eh], None);
+        // On legs the whole carcass stands on them; else the ends and backs reach the floor.
+        let (z, high) = match self.plinth_type {
+            "legs" => (epl.clone(), format!("{eh} - {epl}")),
+            _ => (zero.clone(), eh.to_string()),
+        };
+        let back_end_x = format!("{ea} - {et}");
+        let front_y = format!("{eb} - {ed}");
+        panel(back_end, [&back_end_x, &front_y, &z], [et, ed, &high], None);
+        panel(return_end, [&zero, &zero, &z], [edr, et, &high], None);
         // Full panels against both walls, standing on the floor like the sides.
         panel(
             "Back",
-            [et, &format!("{eb} - {et}"), &zero],
-            [&format!("{ea} - 2*{et}"), et, eh],
+            [et, &format!("{eb} - {et}"), &z],
+            [&format!("{ea} - 2*{et}"), et, &high],
             None,
         );
         panel(
             "Back return",
-            [&zero, et, &zero],
-            [et, &format!("{eb} - {et}"), eh],
+            [&zero, et, &z],
+            [et, &format!("{eb} - {et}"), &high],
             None,
         );
         // Bottom, top and shelves are L-shaped: a board over the whole inside, with the open
@@ -276,9 +279,51 @@ impl Corner<'_> {
                 Some(&[format!("{name} {part}")]),
             );
         }
-        if self.plinth > 0.0 && self.diagonal {
+        let kick = mm(KICK_RECESS);
+        if self.plinth_type == "notch" {
+            // The toe kick cut out of each end's front bottom corner, as on the box cabinet.
+            let ends = [
+                (
+                    back_end,
+                    [back_end_x.as_str(), &front_y],
+                    [et.as_str(), &kick],
+                ),
+                (return_end, [&format!("{edr} - {kick}"), &zero], [&kick, et]),
+            ];
+            for (end, [x, y], [sx, sy]) in ends {
+                let target = [format!("{name} {end}")];
+                panel(
+                    &format!("{end} notch"),
+                    [x, y, &zero],
+                    [sx, sy, epl],
+                    Some(&target),
+                );
+            }
+        } else if self.plinth_type == "legs" {
+            // Under each corner of the footprint, and the L's inner corner.
+            let inset = mm(LEG_INSET);
+            let (near, wall_x, wall_y) = (
+                inset.clone(),
+                format!("{ea} - {inset}"),
+                format!("{eb} - {inset}"),
+            );
+            let mut at = vec![
+                (wall_x.clone(), format!("{front_y} + {inset}")),
+                (wall_x, wall_y.clone()),
+                (near.clone(), wall_y),
+                (near.clone(), near.clone()),
+                (format!("{edr} - {inset}"), near),
+            ];
+            if !self.diagonal {
+                at.push((format!("{ed} - {inset}"), format!("{front_y} + {inset}")));
+            }
+            for (n, (x, y)) in at.iter().enumerate() {
+                let at = self.kit.at(&self.point(x), y, &zero);
+                fittings::leg(self.kit, n + 1, at, epl);
+            }
+        } else if self.plinth_type == "board" && self.diagonal {
             diagonal::plinth(self);
-        } else if self.plinth > 0.0 {
+        } else if self.plinth_type == "board" {
             // Two boards set back from the fronts, meeting in the inner corner.
             let x = format!("{ed} - {} - {et}", mm(KICK_RECESS));
             let y = format!("{eb} - {ed} + {}", mm(KICK_RECESS));

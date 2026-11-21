@@ -148,6 +148,43 @@ pub fn handle_position(p: &Value) -> Result<&str, String> {
     }
 }
 
+pub const KICK_RECESS: f64 = 50.0; // the plinth board or the sides' notch, back from the front
+pub const LEG_D: f64 = 40.0; // an adjustable leg
+pub const LEG_INSET: f64 = 50.0; // a leg's middle, in from the carcass's outside edges
+
+/// The `plinth_type` field: `board` (one set back, the default), `notch` (the sides notched
+/// at the front, no board: for one long board across a run) or `legs` (the carcass on legs).
+pub fn plinth_type(p: &Value) -> Result<&str, String> {
+    match p
+        .get("plinth_type")
+        .and_then(Value::as_str)
+        .unwrap_or("board")
+    {
+        kind @ ("board" | "notch" | "legs") => Ok(kind),
+        _ => Err("plinth_type must be board, notch or legs".into()),
+    }
+}
+
+/// An adjustable leg, `<Name> Leg <n>`: a cylinder from the floor up to the bottom panel,
+/// `height` high, under `at` (`Kit::at`, at the floor). A body of its own, not a board: the
+/// cut list counts it as hardware.
+pub fn leg(kit: &Kit, n: usize, at: Value, height: &str) {
+    let body = format!("{} Leg {n}", kit.name);
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": at, "axis": [0, 0, 1], "diameter": mm(LEG_D), "height": height,
+            "name": body, "body_name": body,
+        }),
+    ));
+}
+
+/// Whether a body is one of the legs `leg` makes.
+pub fn is_leg(body: &str) -> bool {
+    body.rsplit_once(" Leg ")
+        .is_some_and(|(_, n)| n.parse::<u32>().is_ok())
+}
+
 // ponytail: on `auto` a door's handle is placed by a guess from the cabinet: mid-height on a
 // tall door, near the top on a floor unit, else near the bottom as on a wall unit.
 /// A floor unit has a plinth or is deep; a wall unit is shallow and has none.

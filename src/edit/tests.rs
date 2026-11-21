@@ -210,3 +210,14 @@ fn the_kind_survives_an_edit() {
     let corner = remember("corner", &json!({}), "A");
     assert!(merge(&corner[KEY], &json!({"kind": "sink"}), &design()).is_err());
 }
+
+#[test]
+fn the_plinth_type_survives_an_edit() {
+    for entry in ["cabinet", "corner"] {
+        let made = remember(entry, &json!({"plinth": 100, "plinth_type": "legs"}), "A");
+        let (_, params) = merge(&made[KEY], &json!({"plinth_type": "keep"}), &design()).unwrap();
+        assert_eq!(params["plinth_type"], "legs");
+        let (_, params) = merge(&made[KEY], &json!({"plinth_type": "notch"}), &design()).unwrap();
+        assert_eq!(params["plinth_type"], "notch");
+    }
+}

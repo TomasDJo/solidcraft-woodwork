@@ -294,7 +294,10 @@ pub fn render(list: &Value, title: &str, diagrams: bool) -> Vec<u8> {
                         p["banding"]["length"].as_u64().unwrap_or(0),
                         p["banding"]["width"].as_u64().unwrap_or(0),
                     ),
-                    names.join(", "),
+                    match p["note"].as_str() {
+                        Some(note) => format!("{} ({note})", names.join(", ")),
+                        None => names.join(", "),
+                    },
                 ]
             })
             .collect();

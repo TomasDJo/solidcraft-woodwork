@@ -73,3 +73,50 @@ def test_the_copy_of_a_component_one_works_in_stays_active(approval):
     assert results[3]["active_path"] == [copy], results[3]["active_path"]
     assert results[5]["active_path"] == [copy], results[5]["active_path"]
     assert results[5]["active"] == results[3]["active"]
+
+
+def test_plinth_types(approval):
+    # A on a set-back board, B with notched sides beside it, C on legs (1000 wide: six) beside
+    # that; the cut list, a drawing of B, and an Edit that puts A on legs.
+    results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": 100}),
+                   select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "plinth": 100, "plinth_type": "notch", "place": "right"}),
+                   select("B Side R"),
+                   plugin(approval, "cabinet", {"name": "C", "width": 1000, "plinth": 100, "plinth_type": "legs", "place": "right"}),
+                   select("C Side R"),
+                   plugin(approval, "cabinet", {"name": "D", "place": "right"}),
+                   MEASURE,
+                   plugin(approval, "cutlist"),
+                   select("B Side L"),
+                   plugin(approval, "drawing", {"scope": "selected"}),
+                   select("A Side L"),
+                   plugin(approval, "edit", {"plinth_type": "legs"}),
+                   MEASURE],
+                  "--save", str(ROOT / "dist" / "plinth.sc"))
+    box, measure = boxes(results[7]), results[7]
+    volume_of = lambda name: volume(measure, name)
+    # B: no board, the same sides less a 50 x 100 toe kick each, the bottom on top of it
+    assert "B Plinth" not in box and "A Plinth" in box, sorted(box)
+    assert box["B Side L"][1:3] == box["A Side L"][1:3] and box["B Side L"][5] == 720, box["B Side L"]
+    assert volume_of("A Side L") - volume_of("B Side L") == 18 * 50 * 100, (volume_of("A Side L"), volume_of("B Side L"))
+    assert box["B Bottom"][2] == 100, box["B Bottom"]
+    # C: no board, six 40 mm legs 100 high, the carcass on them; D beside it on the floor
+    legs = sorted(n for n in box if n.startswith("C Leg "))
+    assert legs == [f"C Leg {n}" for n in range(1, 7)] and "C Plinth" not in box, sorted(box)
+    x0 = box["C Side L"][0]
+    assert box["C Leg 1"] == [x0 + 30, -250, 0, x0 + 70, -210, 100], box["C Leg 1"]
+    assert box["C Side L"][2] == 100 and box["C Side L"][5] == 720 and box["C Bottom"][2] == 100, box["C Side L"]
+    assert box["D Side L"][2] == 0, box["D Side L"]
+    # the cut list: a notched side's size is its bounding box, noted; legs are hardware
+    cutlist = results[8]["result"]
+    row = next(p for p in cutlist["parts"] if "B Side L" in p["parts"])
+    assert row["note"] and (row["length"], row["width"]) == (720, 560) and "C Leg 1" not in str(cutlist["parts"]), row
+    assert "(notched" in cutlist["csv"], cutlist["csv"]
+    assert {"item": "Adjustable leg", "qty": 6} in cutlist["hardware"], cutlist["hardware"]
+    assert not any("Leg" in p["part"] for layout in cutlist["layouts"] for p in layout["parts"])
+    # the drawing of B is made: its dimensions are on corners a notched side has
+    assert results[10]["result"]["sheets"] == ["B"], results[10]
+    # Edit: A on four legs now, its board gone, where it stood
+    box = boxes(results[13])
+    assert sorted(n for n in box if n.startswith("A Leg ")) == [f"A Leg {n}" for n in range(1, 5)], sorted(box)
+    assert "A Plinth" not in box and box["A Side L"][2] == 100 and box["A Side L"][0] == boxes(results[7])["A Side L"][0], box["A Side L"]
