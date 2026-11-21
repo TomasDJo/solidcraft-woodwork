@@ -135,6 +135,23 @@
         }
       },
       {
+        "name": "panel",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Panel" }, { "kind": "ribbon", "name": "Panel" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/panel.svg",
+          "required": ["selection", "kind", "side", "units", "width", "thickness"],
+          "properties": {
+            "selection": { "type": "array", "title": "Selected cabinet", "description": "Pick the side of the box cabinet that gets the panel.", "maxItems": 1 },
+            "kind": { "type": "string", "title": "Kind", "description": "A finishing board on one end of the cabinet. It is part of the cabinet: it follows its sizes and Edit cabinet keeps it.", "default": "end", "oneOf": [{"const": "end", "title": "End panel", "description": "A board over the side, from the floor to the top and from the back to the faces of the fronts."}, {"const": "filler", "title": "Filler", "description": "A strip beside the fronts that closes a gap to a wall, with a return board behind it back to the wall."}] },
+            "side": { "type": "string", "title": "Side", "description": "Which end of the cabinet, as seen from the front.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "The side you picked: Side L or Side R."}, {"const": "left", "title": "Left"}, {"const": "right", "title": "Right"}] },
+            "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below. Inches puts inch sizes in the fields you have not changed.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
+            "width": { "type": "number", "title": "Filler width", "description": "How far the filler reaches out from the cabinet, its thickness included.", "default": 50, "minimum": 0.4, "maximum": 1000, "x-solidcraft-visible-when": {"field": "kind", "eq": "filler"}, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 2}] },
+            "thickness": { "type": "number", "title": "Thickness", "description": "0 takes the cabinet's own board thickness and follows it; or give a thickness of its own.", "default": 0, "minimum": 0, "maximum": 50 }
+          }
+        }
+      },
+      {
         "name": "cutlist",
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Cut list" }, { "kind": "ribbon", "name": "Cut list" }],

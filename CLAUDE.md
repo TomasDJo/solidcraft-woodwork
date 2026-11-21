@@ -107,6 +107,7 @@ materials, joinery and cut lists.
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
+| `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin, as Joinery: `inside`), remembers them for Edit, and refuses Place against a side that has one |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
@@ -126,7 +127,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `cutlist` and `drawing`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `cutlist` and `drawing`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -363,7 +364,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   size, so a nearly square part's holes can be turned a quarter. Layer names write a decimal
   point as `P` (R12 takes no `.`).
 - Place's Auto, the dialog's default, goes by the name of the selected board
-  (`select::side`): `Side L`, `Side R` or `Top`, and the origin for anything else. From 0.46 a
+  (`select::side`): `Side L`, `Side R` (or a panel on it) or `Top`, and the origin for anything else. From 0.46 a
   script must pass `place` (the entry has conditions, see Tools for agents).
 - A box cabinet's `kind` (cabinet and Edit, remembered like any field): `standard` or `sink`
   (no oven housing, by decision). A **sink base** has no `Top` body but `<Name> Rail front` and `<Name> Rail back`
@@ -394,3 +395,28 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   after Edit (which builds a new component) its views are blank and its dimensions lost until it
   is drawn again, and a deleted cabinet's sheet stays. The board list is text, so it does not
   follow a resize either.
+- A panel (`panel`: `<Cabinet> End panel L`, or `Filler R` and `Filler R return`) is a body
+  inside its box cabinet's component, every size an expression over the cabinet's parameters,
+  anchored on its side by `±<Prefix>_width/2`. Like a hole, a box made in a moved component
+  lands shifted in a plugin run, so `lib.rs` makes it with the cabinet on the origin (`inside`,
+  shared with Joinery). The cabinet remembers its panels (`panels` beside the remembered
+  values, each `{kind, side, units, width, thickness}`, one a side), and Edit makes again
+  those whose first board was still there, before the materials are given back and the
+  joinery drilled: the user deletes the panel's history folder with its features. Its
+  material is the Side L's. Overlay fronts (the panel comes forward to their faces: doors, or
+  drawers on a standard cabinet, not inset) and the plinth come from the remembered values (a
+  matched cabinet's plinth from its parameter), read when it is made: an Edit that changes
+  them makes the panel again to fit. The Kind field hides Filler width unless it is a filler.
+  A side with a cabinet against it (the cabinet's own `link` note while its link is there, or
+  the note of a cabinet hanging on it) is refused, but a cabinet standing there without a link
+  is not seen. Place on a side with a panel (or the panel picked, on Auto) puts the new cabinet
+  beyond it, unlinked, since the link holds the sides' seats together (`Cabinet::with_panel`); a drawing's views take the panels in (`panel::is_panel`),
+  and its dimensions go to an end panel's or a filler's outer corners (with inset fronts the
+  side's corners are the panel's too), so the width is over all; a filler's two boards count as
+  one box. Corner cabinets are refused. No plinth return (the sides reach the
+  floor; it waits for cabinets on legs), no label on a panel. The filler width and a given
+  thickness are plain lengths, not parameters. `inside` puts a moved or turned cabinet at the
+  origin, square (`to_matrix`), and back: in a plugin run a box in a turned component landed
+  shifted (`tests/test_panel.py`). An Edit with panels runs about a dozen commands
+  more each, so a cabinet near `cabinet::build`'s 230 can then fail the 256 limit (the run is
+  discarded, nothing is lost).

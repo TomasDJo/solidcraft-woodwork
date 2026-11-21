@@ -325,3 +325,22 @@ fn fills_in_the_ids_kept_earlier() {
         json!({"sheet": "s1", "a": ["v1", "$other", "x", 3], "b": {"c": "s1"}})
     );
 }
+
+#[test]
+fn the_views_take_in_the_panels() {
+    // a 1000 mm filler and its return on Base's left: 1600 wide, no longer 1:8
+    let mut m = measure();
+    let bodies = m["bodies"].as_array_mut().unwrap();
+    bodies.push(body(
+        "Base Filler L",
+        [-1300.0, -300.0, 2.0],
+        [-300.0, -282.0, 718.0],
+    ));
+    bodies.push(body(
+        "Base Filler L return",
+        [-1300.0, -282.0, 2.0],
+        [-1282.0, 280.0, 718.0],
+    ));
+    let steps = sheet(&m, &Local::new(), &tree(), &joints(), "Base").unwrap();
+    assert_eq!(steps[1].1["scale"], "1:15");
+}
