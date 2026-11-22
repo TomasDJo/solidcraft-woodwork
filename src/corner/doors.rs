@@ -75,8 +75,12 @@ pub fn build(corner: &Corner, on_return: bool) {
             fittings::hole(kit, part, position, into[0], &mm(d), depth, &what);
         };
         let cup_x = corner.point(cup[0]);
-        // inset, the first door's arms are cranked; the second hangs on the first
-        let crank = if corner.inset && !second { 18.0 } else { 0.0 };
+        // The second door folds on the first: its cups get no model (`cup_holes`).
+        let crank = match (second, corner.inset) {
+            (true, _) => None,
+            (false, true) => Some(18.0),
+            (false, false) => Some(0.0),
+        };
         hardware::cup_holes(kit, part, |z| kit.at(&cup_x, cup[1], z), into, crank, &cups);
         for (j, z) in screws.iter().enumerate().filter(|_| second) {
             hole(pull, z, HANDLE_D, et, format!("handle {}", j + 1));

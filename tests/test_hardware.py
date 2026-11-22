@@ -256,19 +256,26 @@ def flat(steps):
 
 def misplaced(steps):
     """The hinge copies that are not in a cup hole and the plates more than 12 mm from a plate
-    hole, after `steps`; and the counts of hinge copies and cups."""
-    measure = cli(flat(steps) + [MEASURE])[-1]
+    hole, after `steps`; and the counts of hinge copies and of cups that should have one (all
+    but a corner's fold door's, which has cups and no model)."""
+    results = cli(flat(steps) + [MEASURE, {"command": "joint.list", "params": {}}])
+    measure, joints = results[-2], results[-1]
+    folds = [j["name"][:-len(" fold")] for j in joints["joints"] if j["name"].endswith(" fold")]
     names = [b["name"] for b in measure["bodies"]]
     boards = [n for n in names if not n.startswith("HW ") and (" Door" in n or " Side " in n)]
     found = cli(flat(steps) + [faces(n) for n in boards])[-len(boards):]
-    round_faces = [(f["cylinder"]["radius"], f["centroid"]) for each in found for f in each["faces"] if f.get("cylinder")]
-    cups = [c for r, c in round_faces if abs(r - 17.5) < 0.01]
-    screws = [c for r, c in round_faces if abs(r - 2.5) < 0.01]
+    round_faces = [(f["cylinder"]["radius"], f["centroid"], n) for n, each in zip(boards, found)
+                   for f in each["faces"] if f.get("cylinder")]
+    cups = [c for r, c, n in round_faces if abs(r - 17.5) < 0.01 and n not in folds]
+    fold_cups = [c for r, c, n in round_faces if abs(r - 17.5) < 0.01 and n in folds]
+    screws = [c for r, c, _ in round_faces if abs(r - 2.5) < 0.01]
     box = {b["name"]: b["bbox"] for b in measure["bodies"]}
     far = lambda b, p: sum(max(b["min"][i] - p[i], 0, p[i] - b["max"][i]) ** 2 for i in range(3)) ** 0.5
     hinges = [n for n in names if n.startswith("HW hinge") and "(" in n and not n.startswith("HW hinge plate")]
     plates = [n for n in names if n.startswith("HW hinge plate (")]
     off = [h for h in hinges if min((far(box[h], c) for c in cups), default=99) > 0.5]
+    # no model in a fold door's cups
+    off += [h for h in hinges if min((far(box[h], c) for c in fold_cups), default=99) <= 0.5]
     off += [p for p in plates if min((far(box[p], c) for c in screws), default=99) > 12]
     return off, len(hinges), len(cups)
 
@@ -277,7 +284,8 @@ def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
     # Box cabinets (doors made after a drawers-only cabinet made the hardware component, inset,
     # a door on a divider), L-shaped corners left and right hung on either end, inset, and the
     # diagonal door; and after Edit of a box and a corner cabinet that stand off the origin
-    # (no copies left behind: as many hinges as cups).
+    # (no copies left behind: as many hinges as cups). A corner's fold door has cups but no
+    # hinge models.
     cab = lambda p: plugin(approval, "cabinet", p)
     away = lambda name: [{"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": False}},
                          {"command": "occurrence.move", "params": {"occurrence": f"{name}:1", "translate": [1500, 700, 0], "axis": [0, 0, 1], "angle": "90 deg"}},

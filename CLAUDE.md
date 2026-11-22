@@ -616,7 +616,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   diagonal door (its ends stand at 45 degrees).
   **Models** (`hardware_models`: `on` by default, `off`, `cut`; Woodwork settings and Edit, kept by
   `Kit::models`): `hardware::copy` pushes an `occurrence.copy` of `HW hinge` or `HW hinge crank
-  <c>` (cup and arm, in the door, from `cup_holes`, so corner doors too; `hardware::hinge`:
+  <c>` (cup and arm, in the door, from `cup_holes`, so corner doors too, but not a corner's fold
+  door, which has cups and no plate holes: `crank` None, a door-to-door hinge is not modelled; `hardware::hinge`:
   the caller gives the crank, 18 for inset, 9.5 for a box cabinet's hinge edge on a divider,
   else 0), `HW hinge plate` (in the cabinet, over each cup's plate holes, from `plate_holes`:
   none on a divider or the diagonal door) and `HW slide cabinet|middle|drawer <length>` (each
@@ -641,8 +642,9 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   copy elsewhere, and Edit deletes the cabinet. `browser.visibility` set in a plugin run is not kept
   (checked on 0.46.1 with `paths` on the component's placement: the same command through the
   CLI hides it, also after save and reopen), so `Woodwork hardware` is placed at `HIDDEN`
-  (absolute `to_matrix`), its tops 1 mm under the floor, from 15 mm behind a 560 mm cabinet's
-  front on the origin, under the first cabinet: the iso and front views' Fit frame about 3 %
+  (absolute `to_matrix`, half a turn about Z), its tops 1 mm under the floor, reaching
+  forward from 15 mm in front of a 560 mm cabinet's back on the origin, under the first
+  cabinet's back, away from the fronts: the iso and front views' Fit frame about 3 %
   wider than with it hidden (measured with `view.apply`); from below it shows. In a plugin run
   a body made in a moved component lands shifted by where the component stands, so a
   definition added later (a crank, another slide length) is made with `Woodwork hardware`

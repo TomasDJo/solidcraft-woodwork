@@ -298,11 +298,9 @@ fn the_definitions_are_made_once_at_the_root() {
     let moved = commands.last().unwrap();
     assert_eq!(moved.0, "occurrence.move");
     let to = &moved.1["to_matrix"];
-    assert_eq!(to.as_array().unwrap().len(), 12);
-    assert_eq!(
-        [&to[3], &to[7], &to[11]],
-        HIDDEN.map(|v| json!(v)).each_ref()
-    );
+    assert_eq!(to, &json!(HIDDEN));
+    // under the floor, turned half round about Z, near the back of a cabinet on the origin
+    const { assert!(HIDDEN[11] < -24.0 && HIDDEN[0] == -1.0 && HIDDEN[5] == -1.0 && HIDDEN[7] > 200.0) };
     // all there: nothing; one missing (a new length): only that one, in the hardware component
     let have = |names: &[&str]| {
         let components: Vec<Value> = names.iter().map(|n| json!({"name": n})).collect();
@@ -319,7 +317,7 @@ fn the_definitions_are_made_once_at_the_root() {
     let commands = definitions(&tree, &["HW slide drawer 300 mm".into()]);
     // a definition added later is made with `HOME` on the origin (a body made in a moved
     // component lands shifted in a plugin run), and `HOME` goes under the floor again after
-    let origin = json!([1, 0, 0, 0.0, 0, 1, 0, 0.0, 0, 0, 1, 0.0]);
+    let origin = json!(ORIGIN);
     assert_eq!(commands[1].0, "occurrence.move");
     assert_eq!(commands[1].1["to_matrix"], origin);
     assert_eq!(
@@ -328,7 +326,7 @@ fn the_definitions_are_made_once_at_the_root() {
     );
     assert_eq!(commands[3].1["name"], "HW slide drawer 300 mm");
     let last = commands.last().unwrap();
-    assert_eq!(last.1["to_matrix"][11], json!(HIDDEN[2]));
+    assert_eq!(last.1["to_matrix"], json!(HIDDEN));
 }
 
 #[test]
@@ -437,4 +435,32 @@ fn the_arm_is_cranked_for_inset_doors_and_dividers() {
         (&plate["length"], &plate["width"]),
         (&json!("40 mm"), &json!("8.5 mm"))
     );
+}
+
+#[test]
+fn a_corners_fold_has_cups_but_no_hinge_models() {
+    // the first door's cups each get a hinge; the second door's (the fold's) only holes
+    for doors in ["hinged left", "hinged right"] {
+        let (commands, _) = crate::corner::build(&json!({ "doors": doors })).unwrap();
+        let cups = |door: &str| {
+            let all = commands.iter().filter(|c| c.0 == "solid.cylinder");
+            let start = format!("Cabinet {door} hinge cup ");
+            all.filter(|c| c.1["name"].as_str().unwrap().starts_with(&start))
+                .count()
+        };
+        let hinges = |door: &str| {
+            let all = copies(&commands, HINGE);
+            let parent = format!("Cabinet {door}");
+            all.iter()
+                .filter(|h| h["parent"] == parent.as_str())
+                .count()
+        };
+        let (first, fold) = match doors {
+            // a left corner hinged left hangs on its return's end
+            "hinged left" => ("Door return", "Door"),
+            _ => ("Door", "Door return"),
+        };
+        assert!(cups(first) == 2 && hinges(first) == 2, "{doors}");
+        assert!(cups(fold) == 2 && hinges(fold) == 0, "{doors}");
+    }
 }

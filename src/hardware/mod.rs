@@ -98,19 +98,23 @@ pub fn cup_holes(
     door: &str,
     at: impl Fn(&str) -> Value,
     [into, toward]: [[i32; 3]; 2],
-    crank: f64,
+    crank: Option<f64>,
     cups: &[String],
 ) {
     let component = format!("{} {door}", kit.name);
-    let model = hinge(crank);
-    let cut = kit.models == "cut";
+    // ponytail: no model (`crank` None) for a corner's fold, a door hung on a door: its cups
+    // are drilled, but a door-to-door hinge (plate on the other door, no holes for it) is not
+    // modelled.
+    let cut = kit.models == "cut" && crank.is_some();
     for (j, z) in cups.iter().enumerate() {
         let what = format!("hinge cup {}", j + 1);
         if !cut {
             fittings::hole(kit, door, at(z), into, "HW_cup_d", "HW_cup_depth", &what);
         }
-        let name = cut.then(|| format!("{component} {what}"));
-        copy(kit, &model, &component, at(z), [into, toward], name);
+        if let Some(crank) = crank {
+            let name = cut.then(|| format!("{component} {what}"));
+            copy(kit, &hinge(crank), &component, at(z), [into, toward], name);
+        }
     }
 }
 
@@ -166,11 +170,16 @@ pub const SLIDE_MIDDLE: &str = "HW slide middle";
 pub const SLIDE_DRAWER: &str = "HW slide drawer";
 // ponytail: `browser.visibility` set in a plugin run is not kept (0.46.1; the same command
 // through the CLI is), so the definitions stand just under the floor (their tops 1 mm below
-// it) and from 15 mm behind the front of a 560 mm deep cabinet on the origin, under the first
-// cabinet: no view from above sees them (from below they show), and Fit frames 3 % wider than
-// without them. Slides longer than 530 mm reach out behind it. A hidden flag upstream would
-// do better.
-const HIDDEN: [f64; 3] = [0.0, -265.0, -25.0];
+// it), turned half round so that they reach forward from 15 mm in front of the back of a
+// 560 mm deep cabinet on the origin: under the first cabinet's back, away from the fronts
+// that are looked at through see-through boards. No view from above sees them (from below
+// they show), and Fit frames about 3 % wider than without them. A slide longer than 530 mm
+// reaches out in front. A hidden flag upstream would do better.
+/// Where `HOME` stands: a row-major 3 x 4 placement, half a turn about Z.
+const HIDDEN: [f64; 12] = [
+    -1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 265.0, 0.0, 0.0, 1.0, -25.0,
+];
+const ORIGIN: [f64; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
 // The models' sizes in mm, from a common hinge (35 mm cup, 0 mm cruciform plate on the 37/32
 // holes) and a 45 mm ball-bearing slide; they only show, so they are not parameters.
@@ -313,9 +322,8 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
     let new = !names.contains(&HOME);
     let create = |name: &str| ("component.create", json!({"name": name, "grounded": false}));
     let activate = |name: &str| ("component.activate", json!({"component": name}));
-    // Where `HOME` stands, absolutely (row-major 3 x 4).
-    let at = |[x, y, z]: [f64; 3]| {
-        let to = json!([1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z]);
+    // Where `HOME` stands, absolutely.
+    let at = |to: [f64; 12]| {
         (
             "occurrence.move",
             json!({"occurrence": format!("{HOME}:1"), "to_matrix": to}),
@@ -328,7 +336,7 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
         // In a plugin run a body made in a moved component lands shifted by where it stands
         // (as a hole does, see `inside` in lib.rs): so `HOME` goes back to the origin while
         // a definition is added, and under the floor again after.
-        commands.push(at([0.0; 3]));
+        commands.push(at(ORIGIN));
         commands.push(activate(HOME));
     }
     for model in missing {

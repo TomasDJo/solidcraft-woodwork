@@ -125,9 +125,10 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   model is a copy of a component in `Woodwork hardware` at the root (`HW hinge`, `HW hinge
   crank 18`, `HW hinge plate`, and `HW slide cabinet 500 mm`, `HW slide middle 500 mm` and
   `HW slide drawer 500 mm` for each slide length used), made by the first cabinet that needs it and kept when cabinets are edited or deleted.
-  SolidCraft cannot keep a plugin's parts hidden, so those stand just under the floor at the
-  origin, under the first cabinet: no view from above sees them, but they show when you look
-  from below. In a design made with an earlier build, a model whose definition was made
+  SolidCraft cannot keep a plugin's parts hidden, so those stand just under the floor under
+  the back of the first cabinet: no view from above sees them, but they show when you look
+  from below or through see-through boards. A corner cabinet's second door, which folds on
+  the first, has its cup holes but no hinge models. In a design made with an earlier build, a model whose definition was made
   after the first cabinet's (a cranked hinge, another slide length, or the hinge when the
   first cabinet had only drawers) can float beside its door or drawer: delete that `HW ...`
   component under `Woodwork hardware` (its copies go with it) and Edit the cabinets that used
