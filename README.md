@@ -74,7 +74,7 @@ Preferences > Plugins > Install plugin
 The kitchen in the picture is in the repo:
 
 - [`examples/kitchen.sc`](examples/kitchen.sc): the design. Open it in SolidCraft; it needs no plugin.
-- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 125 boards.
+- [`examples/kitchen-cutlist.csv`](examples/kitchen-cutlist.csv): its cut list, 140 boards.
 - [`examples/kitchen.py`](examples/kitchen.py): the script that built both, using every function of
   the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other and
   linked in size (change `Base_1_height` and the whole floor run follows), an L-shaped and a
