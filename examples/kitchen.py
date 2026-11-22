@@ -66,14 +66,16 @@ HANGING = [
 BACK = 280  # the wall: the tall unit is 560 deep and centred on the origin
 # The corner cabinet goes right of the last base unit; its return runs forward along the right
 # wall, and one more base unit continues it, turned to face into the room.
+# Biscuits in both corner cabinets: their joints are the cheapest to cut, and a corner cabinet's
+# run with screws or dowels came close to the 30 s limit on CI.
 CORNER = {**FLOOR_UNIT, **MATCH, "width": 1000, "return": 1000, "doors": "hinged left",
-          "handles": "pull", "place": "right"}
+          "handles": "pull", "place": "right", "joints": "biscuit"}
 RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"]  # the right wall
 RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "drawers": 1, "doors": 1, "handles": "pull"}
 WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "depth": 320,
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
-               "wall_mount": "cleat", "place": "right"}
+               "wall_mount": "cleat", "joints": "biscuit", "place": "right"}
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 3 Door L hinge": 70, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
