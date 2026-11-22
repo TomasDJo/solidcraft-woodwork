@@ -128,6 +128,7 @@ Cabinets:
 - [x] Drawer slides drilled: screw holes in the box sides and the carcass sides, the box width from the slide thickness, all from shared `HW_` parameters (#59 part 1)
 - [ ] Drawer slides in the model: slide length in the hardware list, undermount slides (#59)
 - [x] Hinge plates drilled: the plates' screw holes in the sides, cups and plates from shared `HW_` parameters (#60 part 1)
+- [x] Corner doors on the shared hinge holes: `HW_` cups on the pins' grid and plate holes in the end the pair hangs on (`hardware::cups`, `cup_holes`, `plate_holes`, also used by the box cabinet); the diagonal door gets cups only
 - [ ] Hinges in the model, with hinge types (#60); shared hardware models that drill their own holes (#70) wait for cheaper evaluation of `occurrence.copy` and `solid.combine` in SolidCraft
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself

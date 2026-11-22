@@ -66,6 +66,7 @@ def test_hinged_on_the_return(approval):
     assert shut["C Door return"] == [62, -448, 102, 80, -112, 718], shut["C Door return"]
     # 2 hinge cups each; 2 screw holes on the door that folds only. 15 pin holes in each of 2 rows
     assert cylinders(results[1], "C Door return") == 2 and cylinders(results[1], "C Door") == 4
+    # the hinge plates' screw holes in Side L land in its pin holes, on the same grid
     for part in ("Side L", "Side R", "Back", "Back return"):
         assert cylinders(results[1], f"C {part}") == 30, (part, cylinders(results[1], f"C {part}"))
     swung = boxes(results[4])
@@ -266,3 +267,29 @@ def test_casters(approval):
     assert cylinders(measure, "P Bottom") == 16 + 2 and cylinders(measure, "P Bottom return") == 8 + 2
     assert {"item": "Caster, locking", "qty": 17} in results[4]["result"]["hardware"], results[4]["result"]["hardware"]
     assert not [f["name"] for f in results[5]["timeline"] if f["warning"]]
+
+
+def test_hinge_holes_on_the_shared_hardware(approval):
+    # Without pins: the hinge plates' screw holes in the end the pair hangs on, 37 mm behind the
+    # front, about each cup's height; the cups sized by the shared HW_ parameters, which a
+    # change in Parameters follows. The diagonal door gets the cups only.
+    results = cli([plugin(approval, "corner", {**CORNER, "name": "C"}), MEASURE,
+                   faces("C Side R"), faces("C Door"),
+                   plugin(approval, "corner", {**CORNER, "name": "D", "shape": "diagonal"}), MEASURE,
+                   {"command": "parameters.change", "params": {"name": "HW_cup_d", "expression": "40 mm"}},
+                   faces("C Door"),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
+    measure = results[1]
+    assert cylinders(measure, "C Side R") == 4 and cylinders(measure, "C Side L") == 0
+    holes = [f for f in results[2]["faces"] if f.get("cylinder")]
+    # 37 mm behind the back leg's front (y = -110 at 1000 x 900, 560 deep), on the inner face
+    assert {round(f["centroid"][1]) for f in holes} == {-73}, holes
+    heights = sorted(round(f["centroid"][2]) for f in holes)
+    # 32 mm apart about each cup, on the pins' grid over the bottom panel (z = 118)
+    assert heights[1] - heights[0] == 32 and (heights[0] - 118) % 32 == 0, heights
+    cups = [f for f in results[3]["faces"] if (f.get("cylinder") or {}).get("radius")]
+    assert {round(f["cylinder"]["radius"], 1) for f in cups} >= {17.5}, cups
+    assert cylinders(results[5], "D Door") == 2 and cylinders(results[5], "D Side R") == 0
+    cups = [f for f in results[7]["faces"] if (f.get("cylinder") or {}).get("radius")]
+    assert {round(f["cylinder"]["radius"], 1) for f in cups} >= {20.0}, cups
+    assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]

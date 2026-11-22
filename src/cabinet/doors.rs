@@ -50,9 +50,7 @@ pub fn build(cabinet: &Cabinet) {
     // the drawers.
     // On the pin rows' grid, so that each plate's two screw holes go into the system holes.
     let (base, _) = cabinet.shelf_zone();
-    let cups: Vec<String> = (fittings::cup_heights(z0, z1, door_h_mm).iter())
-        .map(|z| hardware::on_grid(z, &base))
-        .collect();
+    let cups = hardware::cups(z0, z1, door_h_mm, &base);
     let handle_z = fittings::handle_height(
         handles,
         handle_at,
@@ -79,19 +77,8 @@ pub fn build(cabinet: &Cabinet) {
             true => format!("{x0} + HW_cup_inset"),
             false => format!("{x0} + {door_w} - HW_cup_inset"),
         };
-        for (j, z) in cups.iter().enumerate() {
-            let position = kit.at(&cup_x, eback, z);
-            let what = format!("hinge cup {}", j + 1);
-            fittings::hole(
-                kit,
-                &part,
-                position,
-                [0, -1, 0],
-                "HW_cup_d",
-                "HW_cup_depth",
-                &what,
-            );
-        }
+        let at = |z: &str| kit.at(&cup_x, eback, z);
+        hardware::cup_holes(kit, &part, at, [0, -1, 0], &cups);
         // The handle is on the side away from the hinges.
         let handle_x = match (i + first) % 2 {
             0 => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),
@@ -120,21 +107,8 @@ pub fn build(cabinet: &Cabinet) {
         };
         if let Some((board, x, into)) = side {
             let y = format!("{ein} + HW_setback");
-            for (j, z) in cups.iter().enumerate() {
-                for (k, half) in ["-", "+"].iter().enumerate() {
-                    let position = kit.at(&x, &y, &format!("{z} {half} HW_pitch/2"));
-                    let what = format!("hinge plate {}.{}", j + 1, k + 1);
-                    fittings::hole(
-                        kit,
-                        board,
-                        position,
-                        [into, 0, 0],
-                        "HW_screw_d",
-                        &hardware::screw_depth(et),
-                        &what,
-                    );
-                }
-            }
+            let at = |z: &str| kit.at(&x, &y, z);
+            hardware::plate_holes(kit, board, at, [into, 0, 0], &cups, et);
         }
     }
 }

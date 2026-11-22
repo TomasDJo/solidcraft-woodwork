@@ -433,7 +433,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - `cabinet::build` refuses a cabinet of more than 230 commands (the run itself takes the rest
   of the app's 256), counting the shared hardware parameters it may have to make: a wide tall
   cabinet with many doors, shelves, pins and labels can reach it.
-- **Hinges and slides** (box cabinets; `src/hardware/`, holes in `cabinet::doors` and
+- **Hinges and slides** (box cabinets, corner doors' hinges too; `src/hardware/`, holes in `cabinet::doors` and
   `cabinet::drawers`): every hole is a cylinder cut (`fittings::hole`) whose size and place
   are expressions over the shared `HW_` parameters, made once per design (`hardware::parameters`,
   run by `make` when the builder's commands mention `HW_`). A door's cups (`<Door> hinge cup n`,
@@ -447,7 +447,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (`hardware::on_grid`, from `Cabinet::shelf_zone`'s base, the rail's top under doors over
   drawers): a plate's two holes are pin holes or clear of the rows, never half into one. The
   grid is `HW_pitch` and the pin rows' `PITCH`, which part if `HW_pitch` is changed. Corner
-  cabinets keep their numeric cups.
+  doors use the same (`hardware::cups`, `cup_holes`, `plate_holes`, which the box cabinet's
+  doors call too): the grid over the bottom panel, the first door's plate holes in the end it
+  hangs on (`corner::doors`, after its hinge), none for the fold (it hangs on a door) nor the
+  diagonal door (its ends stand at 45 degrees).
   Shared hardware *models* (#70: definitions under a `Hardware` component, an `occurrence.copy`
   per hinge or slide on an axis joint, one `solid.combine` cut per board) worked in a plugin
   run but are too slow on 0.46.1: each copy re-evaluates every combine in the design, and once

@@ -659,3 +659,70 @@ fn a_hanging_rail_or_steel_rails_on_a_corner() {
     );
     assert!(build(&json!({"wall_mount": "screws"})).is_err());
 }
+
+#[test]
+fn hinges_on_the_shared_hardware_and_the_pins_grid() {
+    // hinged on the back leg's end, Side R in a left corner
+    let (commands, _) = build(&json!({"doors": "hinged right"})).unwrap();
+    assert!(crate::hardware::used(&commands));
+    let cup = named(&commands, "Cabinet Door hinge cup 1");
+    assert_eq!(
+        [&cup["diameter"], &cup["height"]],
+        ["HW_cup_d", "HW_cup_depth"]
+    );
+    assert!(cup["base"][2]
+        .as_str()
+        .unwrap()
+        .starts_with("0 mm + Cabinet_thickness + HW_pitch/2 + round("));
+    assert_eq!(
+        cup["base"][0],
+        "Cabinet_width - Cabinet_reveal - HW_cup_inset - Cabinet_width/2"
+    );
+    // the folding door keeps its cups
+    named(&commands, "Cabinet Door return hinge cup 2");
+    let plate = named(&commands, "Cabinet Side R hinge plate 1.1");
+    assert_eq!(plate["axis"], json!([1, 0, 0]));
+    assert_eq!(plate["diameter"], "HW_screw_d");
+    assert_eq!(
+        plate["base"][1],
+        "Cabinet_return - Cabinet_depth + HW_setback - Cabinet_return/2"
+    );
+    assert!(plate["base"][2]
+        .as_str()
+        .unwrap()
+        .ends_with(" - HW_pitch/2"));
+    named(&commands, "Cabinet Side R hinge plate 2.2");
+    // hinged on the return's end: Side L, from its inner face
+    let (commands, _) = build(&json!({"doors": "hinged left"})).unwrap();
+    let plate = named(&commands, "Cabinet Side L hinge plate 1.2");
+    assert_eq!(plate["axis"], json!([0, -1, 0]));
+    assert_eq!(
+        plate["base"][0],
+        "Cabinet_depth - HW_setback - Cabinet_width/2"
+    );
+    // inset: a panel further back
+    let p = json!({"doors": "hinged left", "fronts": "inset"});
+    let (commands, _) = build(&p).unwrap();
+    let plate = named(&commands, "Cabinet Side L hinge plate 1.1");
+    assert_eq!(
+        plate["base"][0],
+        "Cabinet_depth - Cabinet_thickness - HW_setback - Cabinet_width/2"
+    );
+    // mirrored
+    let p = json!({"doors": "hinged left", "corner": "right"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Side L hinge plate 1.1")["axis"],
+        json!([-1, 0, 0])
+    );
+    // the diagonal door: shared cups, no plates on its 45-degree ends
+    let p = json!({"shape": "diagonal", "doors": "hinged left"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Door hinge cup 1")["diameter"],
+        "HW_cup_d"
+    );
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"].to_string().contains("hinge plate")));
+}

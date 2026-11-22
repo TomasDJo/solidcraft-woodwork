@@ -88,7 +88,9 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   side beside it two more at the same height. A sink base's false front has none. A drawer box
   must be at least 250 mm deep, for the shortest slide.
 - The holes show in the DXF files (a layer per diameter and depth) and the cut list counts the
-  hinges and the pairs of slides. Corner cabinets keep their own cup holes, sized by numbers.
+  hinges and the pairs of slides. A corner cabinet's doors get the same cups on the same grid,
+  and the plates' holes in the end the pair hangs on; the diagonal door's ends stand at 45
+  degrees to it, so it gets its cups only.
 - The cups sit about 100 mm from the door's ends, moved by up to 16 mm so that each plate's two
   holes are on the shelf pins' 32 mm grid: with shelf pins, a plate screw goes into a pin hole,
   or its hole is clear of the rows. The pins keep 32 mm and 37 mm, so a changed `HW_pitch` or
