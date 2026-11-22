@@ -17,23 +17,34 @@ use serde_json::{json, Value};
 use std::cell::RefCell;
 
 /// The methods, as the dialog's `joints` field gives them. `none` leaves the boards butted.
-pub const METHODS: [&str; 6] = ["none", "dowels", "confirmat", "screws", "dado", "biscuit"];
+pub const METHODS: [&str; 8] = [
+    "none",
+    "dowels",
+    "confirmat",
+    "screws",
+    "dado",
+    "biscuit",
+    "cam",
+    "pocket",
+];
 /// The methods with fasteners in a row along the joint, spaced by `joint_spacing`.
-const SPACED: [&str; 4] = ["dowels", "confirmat", "screws", "biscuit"];
+const SPACED: [&str; 6] = ["dowels", "confirmat", "screws", "biscuit", "cam", "pocket"];
 
 /// The sizes a method can take: dialog field, which is also the parameter `<Prefix>_<key>`,
 /// and its default in mm.
-const SIZES: [(&str, f64); 5] = [
+const SIZES: [(&str, f64); 7] = [
     ("joint_spacing", 250.0),
     ("joint_edge", 50.0),
     ("dowel_d", 8.0),
     ("dowel_length", 35.0),
     ("dado_depth", 6.0),
+    ("cam_d", 15.0),
+    ("cam_bolt", 35.0),
 ];
 
 /// The parameters that count the fasteners for the cut list, `<Prefix>_<key>`: 0 once an edit
 /// took them away. `edit::merge` passes the ones a cabinet has to `Kit`.
-pub const COUNTS: [&str; 7] = [
+pub const COUNTS: [&str; 9] = [
     "dowels",
     "confirmats",
     "screws",
@@ -41,6 +52,8 @@ pub const COUNTS: [&str; 7] = [
     "biscuits_10",
     "biscuits_20",
     "dominos",
+    "cams",
+    "pocket_screws",
 ];
 
 // A screw from the face board's outside into the other's end: clearance, pilot, length.
@@ -66,6 +79,9 @@ pub struct Joint {
     pub at: [String; 3],
     /// From the joint's plane into the end board.
     pub into: [i32; 3],
+    /// Across the end board, toward its outside face (under a bottom, over a top): where a
+    /// pocket screw's pocket goes, and a cam lock's on the other face.
+    pub out: [i32; 3],
     /// The way the row runs, and its length.
     pub along: [i32; 3],
     pub run: String,
@@ -83,7 +99,8 @@ pub struct Joinery<'a> {
     counts: RefCell<Vec<(&'static str, String)>>,
     cuts: RefCell<Commands>,
     rows: RefCell<Vec<Row>>,
-    slot: usize, // in SLOTS
+    slot: usize,         // in SLOTS
+    pocket_inside: bool, // the pockets in the end board's inside face
 }
 
 /// One pattern for every joint's first cuts that run the same way with the same count: each
@@ -124,6 +141,7 @@ impl<'a> Joinery<'a> {
             let needed = match key {
                 "joint_spacing" | "joint_edge" => SPACED.iter().any(|m| uses(m)),
                 "dado_depth" => uses("dado"),
+                "cam_d" | "cam_bolt" => uses("cam"),
                 _ => uses("dowels"),
             };
             if !needed {
@@ -135,6 +153,8 @@ impl<'a> Joinery<'a> {
                 "joint_edge" => (5.0, 500.0),
                 "dowel_d" => (3.0, 20.0),
                 "dado_depth" => (0.5, 25.0),
+                "cam_d" => (10.0, 35.0),
+                "cam_bolt" => (20.0, 80.0),
                 _ => (10.0, 150.0),
             };
             check(
@@ -154,6 +174,12 @@ impl<'a> Joinery<'a> {
             size("dado_depth").is_none_or(|g| g <= t.0 - 3.0),
             "`dado_depth` must leave 3 mm of the board behind the groove",
         )?;
+        if let (Some(d), Some(bolt)) = (size("cam_d"), size("cam_bolt")) {
+            check(
+                bolt - 11.0 > d / 2.0 + 3.0 && t.0 >= 12.0,
+                "a cam lock needs boards of 12 mm or more and a bolt that reaches past the cam's edge",
+            )?;
+        }
         check(
             !(uses("confirmat") || uses("screws")) || t.0 < 40.0,
             "boards of 40 mm or more are too thick for 50 mm screws",
@@ -163,6 +189,8 @@ impl<'a> Joinery<'a> {
             "joint_edge" => "first joint fastener from the board's edge",
             "dowel_d" => "dowel diameter",
             "dado_depth" => "depth of the grooves the boards sit in",
+            "cam_d" => "cam lock diameter",
+            "cam_bolt" => "cam lock bolt length",
             _ => "dowel length",
         };
         let biscuit = p.get("biscuit").and_then(Value::as_str).unwrap_or("20");
@@ -173,6 +201,11 @@ impl<'a> Joinery<'a> {
             !uses("biscuit") || (deep <= t.0 - 3.0 && thick <= t.0 - 6.0),
             "the boards are too thin for that biscuit or domino",
         )?;
+        let pocket_inside = match p.get("pocket_face").and_then(Value::as_str) {
+            None | Some("outside") => false,
+            Some("inside") => true,
+            _ => return Err("`pocket_face` must be outside or inside".into()),
+        };
         let sizes = (sizes.into_iter())
             .map(|(key, v)| (key, kit.parameter(key, v, comment(key))))
             .collect();
@@ -185,6 +218,7 @@ impl<'a> Joinery<'a> {
             cuts: RefCell::default(),
             rows: RefCell::default(),
             slot,
+            pocket_inside,
         })
     }
 
@@ -239,7 +273,7 @@ impl<'a> Joinery<'a> {
                 "" => vec![face.clone()],
                 _ => vec![end.clone()],
             };
-            self.cylinder(&feature, base, axis, &d, &h, targets);
+            self.cylinder(&feature, base, json!(axis), &d, &h, targets);
             features.push(feature);
         };
         let item = match method.as_str() {
@@ -267,6 +301,65 @@ impl<'a> Joinery<'a> {
                 } else {
                     "confirmats"
                 }
+            }
+            "pocket" => {
+                // A screw at 15 degrees to the end board's face, from a pocket in its outside
+                // (or inside) face out through the middle of its end into the face board.
+                let (cos, sin) = (0.965926, 0.258819);
+                let side = if self.pocket_inside { 1.0 } else { -1.0 };
+                let axis: Vec<f64> = (0..3)
+                    .map(|i| -cos * j.into[i] as f64 + side * sin * j.out[i] as f64 + 0.0)
+                    .collect();
+                // `s` back along the screw from where it leaves the end
+                let at = |s: &str| -> [String; 3] {
+                    let mut p = start.clone();
+                    for i in 0..3 {
+                        if axis[i] > 0.0 {
+                            p[i] = format!("{} - ({s}) * {}", p[i], axis[i]);
+                        } else if axis[i] < 0.0 {
+                            p[i] = format!("{} + ({s}) * {}", p[i], -axis[i]);
+                        }
+                    }
+                    p
+                };
+                let entry = format!("{t} / 2 / {sin} + 5 mm"); // 5 mm outside the face
+                let feature = format!("{name} {method}");
+                let base = at(&entry);
+                let height = format!("{entry} - 10 mm");
+                self.cylinder(
+                    &feature,
+                    base,
+                    json!(axis),
+                    "9.5 mm",
+                    &height,
+                    vec![end.clone()],
+                );
+                let pilot = format!("{feature} pilot");
+                let height = format!("10 mm + min({t} - 3 mm, 15 mm) / {cos}");
+                let targets = vec![end.clone(), face.clone()];
+                self.cylinder(&pilot, at("10 mm"), json!(axis), "3.5 mm", &height, targets);
+                features.extend([feature, pilot]);
+                "pocket_screws"
+            }
+            "cam" => {
+                // The bolt's thread in the face board, its shank along the end board's middle
+                // to the cam, and the cam's housing from the end board's inside face.
+                let (d, bolt) = (self.size("cam_d"), self.size("cam_bolt"));
+                let thread = format!("min({t} - 5 mm, 11 mm)");
+                cut(
+                    "",
+                    start.clone(),
+                    neg(j.into),
+                    "5 mm".into(),
+                    thread.clone(),
+                );
+                let reach = format!("{bolt} - {thread}");
+                cut("bolt", start.clone(), j.into, "8 mm".into(), reach.clone());
+                let centre = shift(&start, j.into, &reach);
+                let face = shift(&centre, neg(j.out), &format!("{t}/2"));
+                let depth = format!("min({t} - 3 mm, {d} * 0.85)");
+                cut("housing", face, j.out, d.into(), depth);
+                "cams"
             }
             "biscuit" => {
                 // A slot across the joint, half in each board, centred on the end's thickness.
@@ -360,7 +453,7 @@ impl<'a> Joinery<'a> {
         &self,
         name: &str,
         base: [String; 3],
-        axis: [i32; 3],
+        axis: Value,
         d: &str,
         h: &str,
         targets: Vec<String>,
@@ -456,6 +549,8 @@ pub fn hardware(prefix: &str, params: &Value) -> Vec<(String, u64)> {
         let item = match key {
             "dowels" => format!("Dowel, {} x {} mm", size("dowel_d"), size("dowel_length")),
             "screws" => "Screw, 4 x 50 mm".to_string(),
+            "cams" => format!("Cam lock and bolt, {} mm", size("cam_d")),
+            "pocket_screws" => "Pocket screw, 32 mm".to_string(),
             slot if slot.starts_with("biscuits") || slot == "dominos" => {
                 let found = SLOTS.iter().find(|s| s.2 == slot);
                 found.map(|s| s.3).unwrap_or_default().to_string()

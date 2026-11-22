@@ -528,6 +528,13 @@ impl Corner<'_> {
                 end: end.into(),
                 at: [self.point(&at[0]), at[1].clone(), at[2].clone()],
                 into: [into[0] * f, into[1], into[2]],
+                // the end board's hidden face: under the bottom, over the top, a back's wall side
+                out: match end {
+                    "Back" => [0, 1, 0],
+                    "Back return" => [-f, 0, 0],
+                    e if e.starts_with("Bottom") => [0, 0, -1],
+                    _ => [0, 0, 1],
+                },
                 along: [along[0] * f, along[1], along[2]],
                 run,
                 single: false,

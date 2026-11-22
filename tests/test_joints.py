@@ -146,3 +146,26 @@ def test_biscuits(approval):
     assert abs(volume(results[3], "N Bottom") - volume(results[3], "B Bottom") - 6 * slot) < 50
     listed = hardware(results[4])
     assert listed["Biscuit, #20"] == 12 and listed["Domino, 5 x 30 mm"] == 44, listed
+
+
+def test_cam_locks_and_pocket_screws(approval):
+    # K: cam locks, 3 a joint: the bolt's thread in the side, its shank and the 15 mm cam in the
+    # bottom, the cam from the bottom's top face. P: pocket screws from under the bottom, at 15
+    # degrees, out of the middle of its end into the side.
+    results = cli([plugin(approval, "cabinet", {"name": "K", "shelves": 0, "joints": "cam", "place": "origin"}),
+                   plugin(approval, "cabinet", {"name": "P", "shelves": 0, "joints": "pocket", "place": "origin"}),
+                   MEASURE, faces("K Bottom"), faces("P Side L"), plugin(approval, "cutlist"),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
+    measure = results[2]
+    assert cylinders(measure, "K Side L") == 6 and cylinders(measure, "K Bottom") >= 12
+    cams = holes(results[3], 7.5)
+    # 24 mm in from the side (35 mm bolt less 11 mm of thread), half way down from the top face
+    assert len(cams) == 6 and all(abs(abs(c[0]) - 258) < 1 for c in cams), cams
+    assert all(9 < c[2] < 18 for c in cams), cams
+    assert cylinders(measure, "P Bottom") == 12 and cylinders(measure, "P Side L") == 6
+    tips = holes(results[4], 1.75)
+    # into the side, rising (falling at the top) from the boards' middles at 9 and 711
+    assert len(tips) == 6 and all(-300 < t[0] < -282 and (9 < t[2] < 14 or 706 < t[2] < 711) for t in tips), tips
+    listed = hardware(results[5])
+    assert listed == {"Cam lock and bolt, 15 mm": 12, "Pocket screw, 32 mm": 12}, listed
+    assert not [f["name"] for f in results[6]["timeline"] if f["warning"] or f["error"]]

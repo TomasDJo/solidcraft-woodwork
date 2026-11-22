@@ -440,7 +440,10 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   selected one has one. Material is not matched.
 - **Joinery at build** (`src/joint/`): the cabinet's `joints` field (carcass: sides to bottom and
   top, a sink base's rails one fastener each, `Joint::single`) is `none`, `dowels` (the dialog's
-  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `biscuit` (a box cut through both boards
+  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
+  away from `Joint::out`; `<Prefix>_cam_d`, `_cam_bolt`), `pocket` (a 9.5 mm pocket and a pilot,
+  cylinders on an axis at 15 degrees, a fixed angle: plugin runs take a non-axis `axis`; the
+  pocket in the end board's `out` face, or the other with `pocket_face: inside`), `biscuit` (a box cut through both boards
   and a pattern, sizes from the `biscuit` choice, `SLOTS`, not parameters; a count parameter per
   size) or `dado` (box cabinets only: the end board
   is `Joinery::extension` (`<Prefix>_dado_depth`) longer at each end in the builder, and the

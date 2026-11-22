@@ -377,3 +377,84 @@ fn a_biscuit_is_a_slot_half_in_each_board() {
         .unwrap_err()
         .contains("too thin"));
 }
+
+#[test]
+fn a_cam_lock_is_a_bolt_into_the_face_and_a_cam_in_the_end_boards_inside_face() {
+    let p = json!({"name": "K", "joints": "cam"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let thread = find(&commands, "K joint Side L Bottom cam");
+    assert_eq!(thread["targets"], json!(["K Side L"]));
+    assert_eq!(thread["axis"], json!([-1, 0, 0]));
+    let bolt = find(&commands, "K joint Side L Bottom cam bolt");
+    assert_eq!(bolt["targets"], json!(["K Bottom"]));
+    assert_eq!(
+        bolt["height"],
+        "K_cam_bolt - min(K_thickness - 5 mm, 11 mm)"
+    );
+    // the bottom's cam from its top face (inside), the top's from its underside
+    let housing = find(&commands, "K joint Side L Bottom cam housing");
+    assert_eq!(housing["axis"], json!([0, 0, -1]));
+    assert_eq!(housing["diameter"], "K_cam_d");
+    let z = housing["base"][2].as_str().unwrap();
+    assert_eq!(z, "0 mm + K_thickness/2 + (K_thickness/2)");
+    let top = find(&commands, "K joint Side R Top cam housing");
+    assert_eq!(top["axis"], json!([0, 0, 1]));
+    let x = top["base"][0].as_str().unwrap();
+    assert!(
+        x.contains("- (K_cam_bolt - min(K_thickness - 5 mm, 11 mm))"),
+        "{x}"
+    );
+    assert_eq!(
+        row(&commands, "K joint Side L Bottom cam housing")["features"]
+            .as_array()
+            .unwrap()
+            .len(),
+        12
+    );
+    let params = json!([{"name": "K_cams", "value": 12.0}, {"name": "K_cam_d", "value": 15.0}]);
+    assert_eq!(
+        hardware("K", &params),
+        vec![("Cam lock and bolt, 15 mm".to_string(), 12)]
+    );
+    assert!(
+        crate::cabinet::build(&json!({"joints": "cam", "cam_bolt": 20}))
+            .unwrap_err()
+            .contains("cam")
+    );
+}
+
+#[test]
+fn a_pocket_screw_goes_in_at_15_degrees_from_the_end_boards_outside_face() {
+    let p = json!({"name": "K", "joints": "pocket"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    // the bottom's pockets from underneath, toward the left side and up to its middle
+    let pocket = find(&commands, "K joint Side L Bottom pocket");
+    assert_eq!(pocket["axis"], json!([-0.965926, 0.0, 0.258819]));
+    assert_eq!(pocket["targets"], json!(["K Bottom"]));
+    assert_eq!(pocket["diameter"], "9.5 mm");
+    let x = pocket["base"][0].as_str().unwrap();
+    assert!(
+        x.starts_with("K_thickness + (K_thickness / 2 / 0.258819 + 5 mm) * 0.965926"),
+        "{x}"
+    );
+    let z = pocket["base"][2].as_str().unwrap();
+    assert!(
+        z.starts_with("0 mm + K_thickness/2 - (K_thickness / 2 / 0.258819 + 5 mm) * 0.258819"),
+        "{z}"
+    );
+    let pilot = find(&commands, "K joint Side L Bottom pocket pilot");
+    assert_eq!(pilot["targets"], json!(["K Bottom", "K Side L"]));
+    // the top's from above, the right side's the other way
+    let top = find(&commands, "K joint Side R Top pocket");
+    assert_eq!(top["axis"], json!([0.965926, 0.0, -0.258819]));
+    // inside: the bottom's from its top face
+    let p = json!({"name": "K", "joints": "pocket", "pocket_face": "inside"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let pocket = find(&commands, "K joint Side L Bottom pocket");
+    assert_eq!(pocket["axis"], json!([-0.965926, 0.0, -0.258819]));
+    let params = json!([{"name": "K_pocket_screws", "value": 12.0}]);
+    assert_eq!(
+        hardware("K", &params),
+        vec![("Pocket screw, 32 mm".to_string(), 12)]
+    );
+}

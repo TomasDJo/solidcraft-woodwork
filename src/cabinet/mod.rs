@@ -321,6 +321,7 @@ impl Cabinet<'_> {
                     end: part.clone(),
                     at: [mid.clone(), ein.clone(), z],
                     into: [0, 0, up],
+                    out: [-1, 0, 0],
                     along: [0, 1, 0],
                     run: eshelf_d.clone(),
                     single: false,
@@ -357,6 +358,7 @@ impl Cabinet<'_> {
                     end: "Rail".into(),
                     at: [x.clone(), ein.clone(), format!("{rail} + {et}/2")],
                     into: [into, 0, 0],
+                    out: [0, 0, 1],
                     along: [0, 1, 0],
                     run: eshelf_d.clone(),
                     single: false,
@@ -471,6 +473,8 @@ impl Cabinet<'_> {
                     end: end.to_string(),
                     at: [x.clone(), y.clone(), z.clone()],
                     into: [into, 0, 0],
+                    // under the bottom, over the top and the rails
+                    out: [0, 0, if *end == "Bottom" { -1 } else { 1 }],
                     along: [0, 1, 0],
                     run: match single {
                         true => mm(RAIL_D),
