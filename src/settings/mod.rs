@@ -199,9 +199,7 @@ pub fn design(entry: &str, params: &mut Value, stored: &Value) {
     }
     for (key, field, def, to) in table() {
         let field = if field.is_empty() { key } else { field };
-        // a frame takes only the models
-        let frame = entry == "frame" && matches!(key, "hardware_models" | "fastener_models");
-        if !(takes(to) || frame) || params.get(field).is_some() {
+        if !takes(to) || params.get(field).is_some() {
             continue;
         }
         params[field] = match def {

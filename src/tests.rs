@@ -13,7 +13,7 @@ fn calls(entry: &str) -> Vec<String> {
 
 #[test]
 fn a_run_that_builds_a_cabinet_frames_the_model() {
-    for entry in ["cabinet", "corner", "frame"] {
+    for entry in ["cabinet", "corner"] {
         let called = calls(entry);
         // Fit frames the selection, so it is cleared first.
         assert_eq!(
@@ -36,17 +36,6 @@ fn a_run_that_builds_a_cabinet_frames_the_model() {
     // Material and the cut list change nothing worth framing.
     assert!(!calls("material").contains(&"view.fit".to_string()));
     assert!(!calls("cutlist").contains(&"view.fit".to_string()));
-}
-
-#[test]
-fn a_frame_is_oak_unless_asked() {
-    let mut oak = false;
-    let mut run = |_: &str, args: Value| {
-        oak |= args.to_string().contains("\"Oak\"");
-        Ok(json!({}))
-    };
-    execute("frame", &json!({"name": "F"}), &mut run).unwrap();
-    assert!(oak);
 }
 
 #[test]

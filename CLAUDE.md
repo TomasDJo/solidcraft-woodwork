@@ -197,7 +197,6 @@ materials, joinery and cut lists.
 | `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them; and their models: definitions under `Woodwork hardware`, copies in the doors and drawers, hidden from every `inspect.measure` |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
-| `src/frame/` | Frame: a leg-and-rail base (legs, aprons, stretchers, dowel or bolt holes), built on `Kit` like a cabinet. `is_timber` tells its parts to the cut list |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts, the fastener models and counts) that the builders share |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin: `inside`), remembers them for Edit, and refuses Place against a side that has one |
@@ -222,7 +221,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `frame`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
 **One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
 `diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
 a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or
@@ -234,7 +233,7 @@ conditional defaults on `shape` (`x-solidcraft-defaults` takes any condition, fi
 `build.plugin` still takes `"corner"` in the tests and sends Cabinet with a shape.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
-`lib.rs` runs `cabinet`, `corner` and `frame` through the same steps (component, material,
+`lib.rs` runs `cabinet` and `corner` through the same steps (component, material,
 place, ground), so a builder only returns its commands and `Kit`'s summary.
 
 ## Build, test, install
@@ -416,34 +415,17 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   pieces are never joined again, so a cutting optimiser may save a sheet on a big job (the
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
   sheet is only reported (`oversize`), not split.
-- A frame (`frame`) is recognised by its `<Name> Leg front left` body (`frame::MARK`):
-  `select::owner` takes it as it takes a cabinet's `Side L`, so Edit (`select::piece`) and
-  Material find it, and `select::cabinet` refuses it (Panel, Drawing, Place against it).
-  Its legs are `Leg front left` and so on, never `Leg <n>` (`fittings::is_leg`, hardware). Its
-  parts (`frame::is_timber`: `Leg <words>`, `Apron ...`, `Stretcher ...`) are the cut list's
-  `timber`, bought to length, not on sheets; its joints are the shared joinery's (`Joinery::fixed`: dowels
-  with `joint_edge` a quarter of the rail and the spacing its height, so a row of two, and bolts
-  by `joint_by("bolts")`, `single`, the nut from the face opposite `Joint::out` (the rail's
-  inner), `face_t` the leg), counted from `<Name>_dowels` and `_bolts` (a frame is found by
-  `MARK` in `cutlist::hardware`); a frame made before keeps its `<Name> dowel <n>`, `bolt <n>`,
-  `barrel nut <n>`, counted by name. A stretcher has the apron's section. With bolts, rails that
-  meet at a middle leg are doweled. It has seats, so Place right or left of a cabinet links it;
-  on Auto a cabinet's top gives the origin. Edit's frame fields are `stretchers`, `frame_legs`
-  (the frame's `legs`) and `joint` (`edit::FRAME_ONLY`; the Edit hook hides them for a cabinet,
-  and every cabinet field, `edit::CABINETS` and the kinds' lists, for a frame); its sizes come
-  from Parameters (`edit::SIZES`). Dowels that would meet in a leg (a corner's two rails, or a
-  middle leg's split rails: a leg under 50 mm with 6 legs) and bolts from both ends of a rail
-  shorter than `2*BOLT_PAST` are refused. A frame made
-  inside a moved component has the hole shift above.
+- The Frame function (a leg-and-rail base, entry `frame`) was removed: not useful on its own, a
+  different design is planned in #101. With it went `src/frame/`, Edit's frame fields, the cut
+  list's `timber`, the worktop over a frame, and the joinery's frame-only bolts and barrel nuts
+  (`Joinery::fixed`, `face_t`). A design with a frame still opens; the plugin no longer knows it.
 - A board is a worktop, bought to length and not laid out on sheets, when its name contains
   `Worktop` (`cutlist::worktop`), at its world box (`cutlist::turned` leaves it out, so a
   mitred or cut-out piece is not measured by mesh). A worktop named otherwise is a board, and
   so is a name with ` Tool ` in it (the tool station's shelf and battens).
 - A worktop (`worktop`) is numeric: measured from the cabinets' Side L, Side R, Back and Back
   return world boxes, made at world coordinates in a component in the active component, which
-  must stand on the origin, unturned. A frame counts as a cabinet (`worktop::is_frame`,
-  `frame_foot`): one foot over its legs' world boxes, facing from its front left to front right
-  leg turned a quarter, top at the legs' top. It does not follow a cabinet; running Worktop again with
+  must stand on the origin, unturned. It does not follow a cabinet; running Worktop again with
   its name (or a piece picked) deletes its component and makes it again over the cabinets it
   remembers (`cabinets` in its metadata, entry `worktop`), with its remembered values when no
   cabinet is picked, the dialog's when one is. A picked piece belongs to the longest worktop
@@ -522,7 +504,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   on turned, corner cabinets included. Quarter turns only.
 - Match selected (`match`) is set by the Cabinet hook: `settings::matching` answers
   `{default: selected, visible: true}` when the picked board (the field, else the design's
-  selection) is a box or corner cabinet's (`select::owner` and its `Side L`; a frame is not),
+  selection) is a box or corner cabinet's (`select::owner` and its `Side L`),
   else `{visible: false}`. That is the hook's second read, `document.inspect {bodies: "names"}`
   after `storage.get`: 1-3 ms on the sample kitchen, well within its 250 ms. A hidden field is
   still sent, so the run uses `match` only when something is picked or selected
@@ -702,12 +684,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   Undermount slides are deferred. Sample kitchen, local: models on cost up to 1.5 s a cabinet run more than off.
   **Fastener models** (`fastener_models`, Woodwork settings, `off` by default by the user's
   decision: they are for looking, with See-through boards; remembered, absent is off; none
-  with `hardware_models: off`; `Joinery::fasteners`, a frame's from its `fastener_models`, which
-  `settings::design` gives a frame with `hardware_models`): after a joint's
+  with `hardware_models: off`; `Joinery::fasteners`): after a joint's
   hole `Joinery::fastener` pushes the same command without `operation` and `targets`, named and
   `body_name` `<cut> fastener` (a confirmat or screw: the clearance hole as long as the screw; a
   cam: a 6 mm rod from the bolt's tip, `cam_bolt` long, and the housing; a pocket screw: its
-  pilot; a biscuit: its slot; dowels and bolts: the hole), and the row adds a
+  pilot; a biscuit: its slot; a dowel: the hole), and the row adds a
   `solid.pattern.rectangular` of `bodies` (`<row> fasteners`, copies `<name> (2)`, a fraction of a
   millisecond; a pattern of new-body *features* names its copies `Body1`). One command a joint
   and one a row. `hardware::is_model` takes a name ending in ` fastener`, or ` fastener (n)`, so

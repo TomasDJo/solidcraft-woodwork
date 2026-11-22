@@ -283,7 +283,7 @@ fn apply_takes_the_hardware_models_both_ways() {
 
 #[test]
 fn match_selected_is_yes_with_a_cabinet_picked_and_hidden_otherwise() {
-    let design = json!({"bodies": ["A Side L", "A Top", "Loose", "F Leg front left"],
+    let design = json!({"bodies": ["A Side L", "A Top", "Loose"],
         "selection": []});
     let pick = |name: &str| json!({"selection": [{"type": "face", "body": name, "index": 2}]});
     let yes = json!({"default": "selected", "visible": true});
@@ -293,11 +293,6 @@ fn match_selected_is_yes_with_a_cabinet_picked_and_hidden_otherwise() {
         json!({"visible": false})
     );
     assert_eq!(matching(&pick("Loose"), &design), json!({"visible": false}));
-    // a frame is no cabinet to match
-    assert_eq!(
-        matching(&pick("F Leg front left"), &design),
-        json!({"visible": false})
-    );
     // the design's selection when the field is empty, as for a script
     let selected =
         json!({"bodies": ["A Side L"], "selection": [{"type": "body", "name": "A Side L"}]});

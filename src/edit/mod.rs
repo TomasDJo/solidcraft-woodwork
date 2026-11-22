@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 24] = [
+const SIZES: [&str; 19] = [
     "width",
     "height",
     "depth",
@@ -26,12 +26,6 @@ const SIZES: [&str; 24] = [
     "cleat_thickness",
     "wall_rail",
     "wall_rail_return",
-    // a frame's
-    "leg",
-    "apron_height",
-    "apron_thickness",
-    "inset",
-    "stretcher_height",
     // joinery's (`joint`)
     "joint_spacing",
     "joint_edge",
@@ -56,7 +50,7 @@ const BOX_ONLY: [&str; 11] = [
     "slide_type",
 ];
 const CORNER_ONLY: [&str; 2] = ["corner_doors", "shape"];
-/// The Edit fields both kinds of cabinet take, and those only a frame takes.
+/// The Edit fields both kinds of cabinet take.
 const CABINETS: [&str; 14] = [
     "joints",
     "shelves",
@@ -73,11 +67,9 @@ const CABINETS: [&str; 14] = [
     "shelf_pins",
     "labels",
 ];
-const FRAME_ONLY: [&str; 3] = ["stretchers", "frame_legs", "joint"];
 
 /// The dialog hook's reply for Edit: the fields the selected cabinet does not take, hidden.
-/// A corner cabinet has a `<Prefix>_return` parameter, a frame its
-/// `<Name> Leg front left` body and only its own fields. Nothing picked, or
+/// A corner cabinet has a `<Prefix>_return` parameter. Nothing picked, or
 /// not a cabinet: everything shown. Hidden only from view, so a run is the same.
 /// `design` is `document.inspect`'s reply with body names.
 pub fn hidden(values: &Value, design: &Value) -> Value {
@@ -88,16 +80,7 @@ pub fn hidden(values: &Value, design: &Value) -> Value {
     let id = format!("{}_return", kit::prefix(cabinet));
     let all = design["params"].as_array().into_iter().flatten();
     let corner = all.into_iter().any(|p| p["name"] == id.as_str());
-    let leg = format!("{cabinet}{}", crate::frame::MARK);
-    let bodies = design["bodies"].as_array().into_iter().flatten();
-    let frame = bodies
-        .into_iter()
-        .any(|b| b.as_str().or(b["name"].as_str()) == Some(&leg));
-    let hide: Vec<&str> = match (frame, corner) {
-        (true, _) => [&CABINETS[..], &BOX_ONLY, &CORNER_ONLY].concat(),
-        (_, true) => [&BOX_ONLY[..], &FRAME_ONLY].concat(),
-        _ => [&CORNER_ONLY[..], &FRAME_ONLY].concat(),
-    };
+    let hide: &[&str] = if corner { &BOX_ONLY } else { &CORNER_ONLY };
     let reply: Map<String, Value> = (hide.iter())
         .map(|key| (key.to_string(), json!({"visible": false})))
         .collect();
@@ -191,10 +174,6 @@ pub fn merge(
             "shape" | "corner_doors" => {
                 only(&["corner"], "corner cabinet")?;
                 (key.strip_prefix("corner_").unwrap_or(key), value.clone())
-            }
-            k if FRAME_ONLY.contains(&k) => {
-                only(&["frame"], "frame")?;
-                (if k == "frame_legs" { "legs" } else { k }, value.clone())
             }
             _ => return Err(format!("`{key}` cannot be edited")),
         };

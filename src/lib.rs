@@ -8,7 +8,6 @@ mod drawing;
 mod dxf;
 mod edit;
 mod fittings;
-mod frame;
 mod hardware;
 mod joint;
 mod kit;
@@ -42,13 +41,7 @@ fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value,
             run(command, args)?;
         }
     }
-    // a frame is solid timber
-    let default = if entry == "frame" {
-        "Oak"
-    } else {
-        "Birch plywood"
-    };
-    let (summary, made) = component(built, params, default, run)?;
+    let (summary, made) = component(built, params, "Birch plywood", run)?;
     let name = summary["name"].as_str().unwrap_or_default();
     run(
         "component.metadata.set",
@@ -57,11 +50,10 @@ fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value,
     Ok((summary, made))
 }
 
-/// The commands and summary of the entry that builds a cabinet or a frame.
+/// The commands and summary of the builder of a box (`cabinet`) or corner cabinet.
 fn build(entry: &str, params: &Value) -> Result<(Commands, Value), String> {
     match entry {
         "cabinet" => cabinet::build(params),
-        "frame" => frame::build(params),
         _ => corner::build(params),
     }
 }
@@ -161,7 +153,7 @@ fn component(
     Ok((summary, made))
 }
 
-/// Settings' Apply to selected: each picked cabinet (a box or corner cabinet, not a frame) whose
+/// Settings' Apply to selected: each picked cabinet (a box or corner cabinet) whose
 /// values differ from the settings is built again with them (`settings::apply`, `rebuild`),
 /// as many as fit in the run's time and commands (`drawing::fits`), at least one; the reply
 /// names those `applied` and those `remaining`, which the next run with them picked does.
@@ -311,7 +303,6 @@ fn rebuild(
             json!({"occurrence": made["occurrence"], "grounded": grounded}),
         )?;
     }
-    // (read per cabinet: a frame has none, and no Side L to read)
     for other in hanging {
         let this = select::named(&measure, &name)?;
         let about = run("component.metadata", json!({"component": other}))?;
@@ -598,7 +589,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     };
     let run: Run = &mut run;
     // Woodwork settings: the design-wide joinery and hardware of a new cabinet, and the camera.
-    let ends = matches!(entry, "cabinet" | "corner" | "frame" | "edit" | "worktop");
+    let ends = matches!(entry, "cabinet" | "corner" | "edit" | "worktop");
     let stored = match ends || entry == "cutlist" {
         true => run("storage.get", json!({}))?,
         false => Value::Null,
@@ -636,7 +627,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
         _ => (entry, params),
     };
     match entry {
-        "cabinet" | "corner" | "frame" => {
+        "cabinet" | "corner" => {
             // Where it goes: on the origin, or against the cabinet that is selected.
             let mut place = params["place"].as_str().unwrap_or("origin");
             check(
@@ -665,10 +656,6 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             if place == "auto" {
                 // By the board that is selected: its side, or its top.
                 place = select::side(&picked, &measure);
-                // a frame stands on the floor, not on a cabinet's top
-                if entry == "frame" && place == "above" {
-                    place = "origin";
-                }
                 params["place"] = json!(place);
             }
             if entry == "corner" {
@@ -730,7 +717,6 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 json!({"bodies": false, "timeline": false}),
             )?;
             let measure = run("inspect.measure", json!({}))?;
-            // a cabinet or a frame
             let name = select::piece(&select::picked(params, &design), &measure)?;
             let about = run("component.metadata", json!({"component": name}))?;
             let ours = &about["metadata"][edit::KEY];
@@ -891,9 +877,8 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 }
             };
             params["name"] = json!(name);
-            // A cabinet (or frame) deleted since a worktop remembered it is left out.
-            cabinets
-                .retain(|c| select::named(&measure, c).is_ok() || worktop::is_frame(&measure, c));
+            // A cabinet deleted since a worktop remembered it is left out.
+            cabinets.retain(|c| select::named(&measure, c).is_ok());
             let mut seen = std::collections::BTreeSet::new();
             cabinets.retain(|c| seen.insert(c.clone()));
             // Checked before anything is taken away.
