@@ -291,3 +291,14 @@ def test_the_lowest_drawer_front_height(approval):
     except subprocess.CalledProcessError:
         return
     raise AssertionError("a drawer front under the minimum went through")
+
+
+def test_drawer_box_and_bottom_thickness(approval):
+    # Woodwork settings' drawer box boards and bottoms: 15 and 9 mm instead of 12 and 6. The
+    # box keeps its outside; its front, back and bottom fit between the thicker sides.
+    results = cli([plugin(approval, "cabinet", {"drawers": 1, "drawer_thickness": 15, "drawer_bottom": 9}), MEASURE])
+    box = boxes(results[1])
+    size = lambda name, axis: round(box[f"Cabinet Drawer 1 {name}"][axis + 3] - box[f"Cabinet Drawer 1 {name}"][axis], 3)
+    assert (size("Left", 0), size("Right", 0), size("Box back", 1), size("Bottom", 2)) == (15, 15, 15, 9), box
+    assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7, box["Cabinet Drawer 1 Left"]
+    assert size("Bottom", 0) == 600 - 2 * 18 - 2 * 12.7 - 2 * 15, box["Cabinet Drawer 1 Bottom"]

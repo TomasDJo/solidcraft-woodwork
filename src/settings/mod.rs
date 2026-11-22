@@ -49,6 +49,8 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("fastener_models", "", Choice("off"), Cabinets),
         ("back", "", Choice("groove"), Box),
         ("back_thickness", "", Length(6.0, 3.175, 50.0), Box),
+        ("drawer_thickness", "", Length(12.0, 10.0, 25.0), Box),
+        ("drawer_bottom", "", Length(6.0, 3.175, 19.0), Box),
         ("fronts", "", Choice("overlay"), Cabinets),
         ("handle_position", "", Choice("auto"), Cabinets),
         // `plinth` is Cabinet's Yes or No (`design`)

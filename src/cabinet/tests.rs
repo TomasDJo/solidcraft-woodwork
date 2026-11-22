@@ -1057,3 +1057,43 @@ fn a_steel_rail_is_a_parameter_the_cut_list_reads() {
     // a cabinet that never had one gets none
     assert!(!has(&plain, "Cabinet_wall_rail"));
 }
+
+#[test]
+fn drawer_boxes_take_their_board_and_bottom_thickness() {
+    let p = json!({"drawers": 2, "drawer_thickness": 18, "drawer_bottom": 9});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_thickness")["expression"],
+        "18 mm"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_bottom")["expression"],
+        "9 mm"
+    );
+    let (t, b) = ("Cabinet_drawer_thickness", "Cabinet_drawer_bottom");
+    assert_eq!(named(&commands, "Cabinet Drawer 1 Left")["length"], t);
+    assert_eq!(named(&commands, "Cabinet Drawer 1 Box back")["width"], t);
+    let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    assert_eq!(bottom["height"], b);
+    assert!(bottom["length"]
+        .as_str()
+        .unwrap()
+        .ends_with(&format!(" - 2*{t}")));
+    // 12 and 6 mm by default; no parameters without boxes
+    let (commands, _) = build(&json!({"drawers": 1})).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_thickness")["expression"],
+        "12 mm"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_bottom")["expression"],
+        "6 mm"
+    );
+    assert!(!has(
+        &build(&json!({"doors": 1})).unwrap().0,
+        "Cabinet_drawer_thickness"
+    ));
+    // the slides' screws need 10 mm of side
+    assert!(build(&json!({"drawers": 1, "drawer_thickness": 8})).is_err());
+    assert!(build(&json!({"drawers": 1, "drawer_bottom": 25})).is_err());
+}

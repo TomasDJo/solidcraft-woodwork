@@ -7,10 +7,8 @@ use crate::hardware;
 use crate::kit::mm;
 
 pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
-const BOX_T: f64 = 12.0; // drawer box sides, front and back
-const BOX_BOTTOM: f64 = 6.0;
-// The box stays a panel thickness and this much inside its front's lower and upper edge: the
-// lowest box then clears the cabinet's bottom, and the highest its top, by this and the gap.
+                             // The box stays a panel thickness and this much inside its front's lower and upper edge: the
+                             // lowest box then clears the cabinet's bottom, and the highest its top, by this and the gap.
 pub const BOX_CLEAR: f64 = 8.0;
 pub const BOX_BEHIND: f64 = 10.0; // room behind the box
 const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front's edge
@@ -46,6 +44,7 @@ pub fn build(cabinet: &Cabinet) {
         mixed,
         drawer_z,
         kind,
+        box_t,
         ..
     } = cabinet.input;
     let sink = kind == "sink";
@@ -86,7 +85,15 @@ pub fn build(cabinet: &Cabinet) {
         true => mm(BOX_CLEAR),
         false => format!("({et} + {})", mm(BOX_CLEAR)),
     };
-    let (bt, back_y) = (mm(BOX_T), format!("{eback} + {box_d} - {}", mm(BOX_T)));
+    // The box's boards (sides, front and back) and its bottom: parameters while there are boxes.
+    let [bt, bb] = match count > 1 || (count == 1 && !sink) {
+        true => [
+            kit.parameter("drawer_thickness", box_t[0], "drawer box board thickness"),
+            kit.parameter("drawer_bottom", box_t[1], "drawer box bottom thickness"),
+        ],
+        false => return,
+    };
+    let back_y = format!("{eback} + {box_d} - {bt}");
     for i in 0..count {
         let drawer = format!("Drawer {}", i + 1);
         // the front's lower edge
@@ -122,9 +129,9 @@ pub fn build(cabinet: &Cabinet) {
         );
         let right = format!("{x} + {box_w} - {bt}");
         let inner_x = format!("{x} + {bt}");
-        let inner_w = format!("{box_w} - {}", mm(2.0 * BOX_T));
+        let inner_w = format!("{box_w} - 2*{bt}");
         let inner_y = format!("{y} + {bt}");
-        let inner_d = format!("{box_d} - {}", mm(2.0 * BOX_T));
+        let inner_d = format!("{box_d} - 2*{bt}");
         panel(
             &format!("{drawer} Left"),
             [&x, &y, &z],
@@ -148,7 +155,7 @@ pub fn build(cabinet: &Cabinet) {
         panel(
             &format!("{drawer} Bottom"),
             [&inner_x, &inner_y, &z],
-            [&inner_w, &inner_d, &mm(BOX_BOTTOM)],
+            [&inner_w, &inner_d, &bb],
         );
         // The slides' screw holes, in the middle of the box side's height: into each box side
         // from outside, `HW_setback` behind the box's front and the last whole `HW_pitch`

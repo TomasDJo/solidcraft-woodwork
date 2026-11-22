@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 19] = [
+const SIZES: [&str; 21] = [
     "width",
     "height",
     "depth",
@@ -22,6 +22,8 @@ const SIZES: [&str; 19] = [
     "return",
     "reveal",
     "drawer_height",
+    "drawer_thickness",
+    "drawer_bottom",
     "cleat_height",
     "cleat_thickness",
     "wall_rail",

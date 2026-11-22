@@ -56,6 +56,8 @@ pub struct Input<'a> {
     pub drawer_h: f64,
     /// With doors too (`mixed`), the drawers at the top or at the bottom, over a fixed rail.
     pub mixed: bool,
+    /// The drawer boxes' boards (sides, front and back) and their bottoms.
+    pub box_t: [f64; 2],
     pub drawers_top: bool,
     /// The doors' height, and the lowest drawer front's lower edge.
     pub door_h: f64,
@@ -109,6 +111,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         !sink || drawers == 0.0 || (drawers >= 2.0 && doors == 0.0),
         "a sink base has doors or drawers, not both, and 2 drawers or more (the top front is a false front)",
+    )?;
+    let box_t = [size("drawer_thickness", 12.0)?, size("drawer_bottom", 6.0)?];
+    // the slides' screws go 8 mm into the box's sides (`HW_box_screw_depth`)
+    check(
+        (10.0..=25.0).contains(&box_t[0]) && (3.0..=19.0).contains(&box_t[1]),
+        "drawer box boards must be 10 to 25 mm, and their bottoms 3 to 19 mm",
     )?;
     let dh = size("drawer_height", 0.0)?;
     check(dh >= 0.0, "drawer front height cannot be negative")?;
@@ -366,6 +374,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         front_h,
         drawer_h,
         mixed,
+        box_t,
         drawers_top,
         door_h,
         drawer_z,
