@@ -205,6 +205,15 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   (that version in `plugin.json` and `Cargo.toml`, tag `vX.Y.Z-rc.N`): a tag with a hyphen
   becomes a GitHub pre-release, which the README's latest-release link skips. When the
   candidates have settled, the version loses its suffix and `vX.Y.Z` is the full release.
+- **Release notes show the major changes in pictures.** The workflow's generated notes only list
+  the pull requests, so after the release is made, edit its notes (`gh release edit vX.Y.Z
+  --notes-file`): a short section per major change (a new function, a new option that changes
+  what is built) with a picture, and a before/after pair where the change alters something that
+  existed (the old and the new version of the same cabinet, same camera). Bug fixes and small
+  changes are a line each, without pictures. Render the pictures with `solidcraft-cli snapshot`
+  from small designs built through the CLI (as the tests do; for a before picture, build with the
+  previous release's package), all the same size and camera style, and upload them as release
+  assets so the notes can show them.
 - **Branches and pull requests, never straight to main.** One branch per function, one commit
   per function, with `docs/usage.md` updated (and `README.md`'s short list when a function is
   added) and `PLAN.md` ticked in the same commit. Do not push
