@@ -70,7 +70,8 @@ fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
     assert_eq!(mm["slide_type"], json!({"default": "full"}));
     // material keeps its Keep
     assert!(mm.get("material").is_none());
-    assert_eq!(mm.as_object().unwrap().len(), 17, "{mm}");
+    assert_eq!(mm.as_object().unwrap().len(), 18, "{mm}");
+    assert_eq!(mm["see_through"], json!({"default": "off"}));
     let inch = fields(
         "settings",
         &json!({"units": "in"}),
@@ -94,6 +95,7 @@ fn design_fills_new_cabinets_from_the_settings() {
     assert_eq!(p["slide_type"], "over");
     assert_eq!(p["hinge_angle"], "110");
     assert_eq!(p["biscuit"], "20");
+    assert!(p.get("see_through").is_none(), "no cabinet's");
     // a corner: no dado, nothing inside, no drawers
     let mut p = json!({});
     design("corner", &mut p, &stored);

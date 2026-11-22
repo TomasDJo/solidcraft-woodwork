@@ -1040,7 +1040,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 json!({"patch": settings::patch(params, &stored)?}),
             )?;
             let stored = run("storage.get", json!({}))?;
-            Ok(json!({"settings": stored["document"]["settings"]}))
+            // See-through boards: our materials made so, or solid again, now.
+            let changed = material::see_through(run, material::opacity(&stored))?;
+            Ok(json!({"settings": stored["document"]["settings"], "see_through": changed}))
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }

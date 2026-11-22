@@ -78,3 +78,24 @@ def test_a_cabinet_run_takes_no_joinery(approval):
     done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
     # (the app names no field)
     assert done.returncode and "is not an input of this entry" in done.stderr, done.stderr
+
+
+def test_see_through_boards(approval):
+    # On: the birch plywood of A made before, and the MDF of B made after, are see-through;
+    # oak, built into the app, stays solid. Off: solid again.
+    def opacity(listed):
+        return {m["name"]: m.get("appearance", {}).get("opacity", 1) for m in listed["materials"]}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "doors": 1}),
+                   setting(approval, {"see_through": "on"}),
+                   plugin(approval, "cabinet", {"name": "B", "material": "MDF", "place": "origin"}),
+                   plugin(approval, "cabinet", {"name": "C", "material": "Oak", "place": "origin"}),
+                   {"command": "material.list", "params": {}},
+                   setting(approval, {"see_through": "off"}),
+                   {"command": "material.list", "params": {}}],
+                  "--save", str(ROOT / "dist" / "see-through.sc"))
+    assert results[1]["result"]["see_through"] == ["Birch plywood"], results[1]
+    seen = opacity(results[4])
+    assert seen["Birch plywood"] == seen["MDF"] == 0.35 and seen["Oak"] == 1, seen
+    assert results[5]["result"]["see_through"] == ["Birch plywood", "MDF"], results[5]
+    seen = opacity(results[6])
+    assert seen["Birch plywood"] == seen["MDF"] == 1, seen

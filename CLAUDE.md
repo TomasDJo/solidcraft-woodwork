@@ -129,6 +129,15 @@ materials, joinery and cut lists.
   depth), chosen in Edit. Edit keeps `joints`, `joints_inner`, `hardware_models`,
   `hinge_angle`, `slide_type`, `slide_length`; the sizes are Parameters. Tests: `designed` and
   `setting` in `tests/helpers.py` (settings results left out, so indices stay the cabinets').
+  **See-through boards** (`see_through`, in `CHOICES` but no cabinet's: `design` skips it): each
+  Settings run gives our design materials (`material.list`'s `user: true`, of `BOARDS`) the
+  stored opacity, `SEE_THROUGH` 0.35 or 1, by `material.edit` of each that differs. It takes
+  `opacity` only with `color` or `appearance`, so the look is given again, and a library
+  appearance's preset PBR is opaque only ("opaque PBR requires numeric opacity 1"): `pbr: null`
+  while see-through, left out (preset back) when solid. `material::assign` reads the setting
+  (`storage.get`, one command, only when it creates a material) and creates it see-through.
+  Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Settings is
+  an edit entry, so its preview shows the change.
   `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
   the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
   kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
@@ -156,7 +165,7 @@ materials, joinery and cut lists.
 | `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts and the fastener counts) that the builders share |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin: `inside`), remembers them for Edit, and refuses Place against a side that has one |
 | `src/worktop/` | Worktop over the selected cabinets: measures their feet (a corner cabinet's two legs), groups them into runs by the way they face, joins runs in corners (butt or mitre) and makes each piece a box or an extruded outline at world coordinates; dog holes and a cut-out in piece 1. `lib.rs` finds the cabinets (a picked worktop's remembered ones), replaces a worktop of that name, makes the component and grounds it |
-| `src/material.rs` | Board materials: create on first use, assign |
+| `src/material.rs` | Board materials: create on first use, assign; See-through boards (`see_through`, `opacity`) |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
 | `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font), with a cutting diagram per sheet |

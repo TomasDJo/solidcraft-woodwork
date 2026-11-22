@@ -17,7 +17,7 @@ const FIELDS: [&str; 6] = [
 
 /// The design-wide choices, no Cabinet or Corner field: every new cabinet takes the stored
 /// one, or this default (the Cabinet dialog's before they moved here).
-const CHOICES: [(&str, &str); 7] = [
+const CHOICES: [(&str, &str); 8] = [
     ("joints", "dowels"),
     ("joints_inner", "dowels"),
     ("biscuit", "20"),
@@ -25,6 +25,8 @@ const CHOICES: [(&str, &str); 7] = [
     ("hardware_models", "on"),
     ("hinge_angle", "110"),
     ("slide_type", "full"),
+    // no cabinet's: our board materials' opacity (`material::see_through`)
+    ("see_through", "off"),
 ];
 
 /// The lengths, kept in mm and shown in the dialog's unit, with the bounds in mm that both
@@ -119,7 +121,8 @@ pub fn design(entry: &str, params: &mut Value, stored: &Value) {
     let scale = if params["units"] == "in" { 25.4 } else { 1.0 };
     let corner = entry == "corner";
     for (key, default) in CHOICES {
-        if params.get(key).is_some() || corner && matches!(key, "joints_inner" | "slide_type") {
+        let skip = key == "see_through" || corner && matches!(key, "joints_inner" | "slide_type");
+        if params.get(key).is_some() || skip {
             continue;
         }
         let v = match settings[key].as_str() {

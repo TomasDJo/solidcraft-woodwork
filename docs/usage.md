@@ -473,6 +473,12 @@ carcass method (dowels for a dado). A script cannot give them to `woodwork.cabin
 - **Camera after a run**: Fit (the default) frames the result after a cabinet, corner, edit or
   worktop run; Leave as it is keeps your view, for when you or a script set the camera. A
   script sets it with `woodwork.settings {"camera": "leave"}` (or `"fit"`).
+- **See-through boards**: On makes the boards' materials (birch plywood, MDF, white melamine)
+  see-through, 35 % opaque, so the joints, fasteners and hinges inside show; Off makes them
+  solid again. It changes the materials when Settings runs (the preview shows it as you choose),
+  and a material a later cabinet brings in is made the same way. Oak is built into SolidCraft
+  and cannot be changed, so oak boards stay solid. It is only a look: the cut list and drawings
+  are the same.
 - Nothing is cleared: to go back to a default, set it to that value.
 - The dialog does not remember the last values you used; only what Woodwork settings stored.
 
