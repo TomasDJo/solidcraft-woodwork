@@ -45,7 +45,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 10. Shop output (DXF per part, labels)
 
 0.2.0 covers 1, 2, 4, 6 and 7, and partly 3 (four materials), 5 (no minifix), 8 (back groove
-only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, labels, no DXF per part).
+and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, labels, no DXF per part).
 
 ## Done
 
@@ -114,7 +114,7 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 - [x] Casters as a plinth type on box cabinets: locking casters with pilot holes for their plates, counted as hardware (#79)
 - [x] Casters on corner cabinets, at the legs' places through the shared `fittings::foot`; the casters' post is joined before the wheel, so no timeline warning
 - [x] Frame: a leg-and-rail base for a workbench, table, desk or bench (4 or 6 legs, aprons, stretchers, dowels or bolts), solid timber in the cut list, kept by Edit cabinet (#79 part 1)
-- [x] Joinery chosen when a box cabinet is made, through one shared module (`src/joint/`): dowels (the default), confirmat screws or plain screws where the sides meet the bottom and top, rows that follow a resize, counted in the cut list from parameters, changed by Edit, a default in Woodwork settings
+- [x] Joinery chosen when a box cabinet is made, through one shared module (`src/joint/`): dowels (the default), confirmat screws, plain screws or a dado (box cabinets) where the sides meet the bottom and top, rows that follow a resize, counted in the cut list from parameters, changed by Edit, a default in Woodwork settings
 
 ## Open
 

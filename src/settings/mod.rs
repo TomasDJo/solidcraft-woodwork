@@ -96,6 +96,10 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
         if !FIELDS.contains(&key.as_str()) || (entry == "corner" && key == "joints_inner") {
             continue;
         }
+        // nor a dado
+        if entry == "corner" && key == "joints" && value == "dado" {
+            continue;
+        }
         let value = match (bounds(key), value.as_f64()) {
             (Some((min, max)), Some(mm)) if (min..=max).contains(&mm) => {
                 json!((mm / scale * 1e6).round() / 1e6)

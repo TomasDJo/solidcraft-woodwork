@@ -36,7 +36,7 @@ component can hold its cabinets.
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Wall mount**, **Cleat height**, **Cleat thickness** | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
-| **Joinery**, **Joinery inside**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length** | How the sides are fixed to the bottom and top, and (Joinery inside, shown with dividers or a rail) the dividers and the rail: dowels (the default), confirmat screws, screws or none. See [Joinery at build](#joinery-at-build). |
+| **Joinery**, **Joinery inside**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length**, **Dado depth** | How the sides are fixed to the bottom and top, and (Joinery inside, shown with dividers or a rail) the dividers and the rail: dowels (the default), confirmat screws, screws, a dado or none. See [Joinery at build](#joinery-at-build). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
@@ -135,6 +135,12 @@ bottom and its two rails), and the holes are drilled as the cabinet is made:
   under 40 mm only.
 - **Screws**: plain 4 x 50 mm wood or chipboard screws from outside, as confirmat: a 4.5 mm
   hole through the side and a 3 mm pilot into the end. Counted as "Screw, 4 x 50 mm".
+- **Dado** (box cabinets): the bottom and top sit in grooves (housings) cut across the sides,
+  **Dado depth** (6 mm) deep and as wide as the boards, through from front to back: each is that
+  much longer at each end, which the cut list shows (a 600 mm cabinet's bottom is 576, not 564).
+  Joinery inside: a divider grows into grooves in the bottom and top, the rail into the sides.
+  Glue them; nothing to buy. The depth leaves 3 mm of the side behind the groove at least.
+  A corner cabinet refuses it.
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
 **Joinery inside** does the same for the dividers (each end into the bottom's top face and the
@@ -222,7 +228,7 @@ the boards; the shelves and the pin rows stop at the backs. A steel rail is one 
 wall (`Name_wall_rail`, the width, and `Name_wall_rail_return`, the return), two hangers each.
 L-shaped and diagonal alike.
 
-**Joinery** (dowels by default, or any other method of the box cabinet), with **Joint spacing**, **Joint edge
+**Joinery** (dowels by default, or any other method of the box cabinet but a dado), with **Joint spacing**, **Joint edge
 distance**, **Dowel diameter** and **Dowel length**, works as on the box cabinet (see
 [Joinery at build](#joinery-at-build)) on every joint of the carcass: the back's two ends into
 the back leg's end and the back return, the back return's front end into the return's end,

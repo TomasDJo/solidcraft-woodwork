@@ -17,15 +17,18 @@ use serde_json::{json, Value};
 use std::cell::RefCell;
 
 /// The methods, as the dialog's `joints` field gives them. `none` leaves the boards butted.
-pub const METHODS: [&str; 4] = ["none", "dowels", "confirmat", "screws"];
+pub const METHODS: [&str; 5] = ["none", "dowels", "confirmat", "screws", "dado"];
+/// The methods with fasteners in a row along the joint, spaced by `joint_spacing`.
+const SPACED: [&str; 3] = ["dowels", "confirmat", "screws"];
 
 /// The sizes a method can take: dialog field, which is also the parameter `<Prefix>_<key>`,
 /// and its default in mm.
-const SIZES: [(&str, f64); 4] = [
+const SIZES: [(&str, f64); 5] = [
     ("joint_spacing", 250.0),
     ("joint_edge", 50.0),
     ("dowel_d", 8.0),
     ("dowel_length", 35.0),
+    ("dado_depth", 6.0),
 ];
 
 /// The parameters that count the fasteners for the cut list, `<Prefix>_<key>`: 0 once an edit
@@ -101,9 +104,8 @@ impl<'a> Joinery<'a> {
         let mut sizes = Vec::new();
         for (key, default) in SIZES {
             let needed = match key {
-                "joint_spacing" | "joint_edge" => {
-                    uses("dowels") || uses("confirmat") || uses("screws")
-                }
+                "joint_spacing" | "joint_edge" => SPACED.iter().any(|m| uses(m)),
+                "dado_depth" => uses("dado"),
                 _ => uses("dowels"),
             };
             if !needed {
@@ -114,6 +116,7 @@ impl<'a> Joinery<'a> {
                 "joint_spacing" => (20.0, 2000.0),
                 "joint_edge" => (5.0, 500.0),
                 "dowel_d" => (3.0, 20.0),
+                "dado_depth" => (0.5, 25.0),
                 _ => (10.0, 150.0),
             };
             check(
@@ -130,6 +133,10 @@ impl<'a> Joinery<'a> {
             )?;
         }
         check(
+            size("dado_depth").is_none_or(|g| g <= t.0 - 3.0),
+            "`dado_depth` must leave 3 mm of the board behind the groove",
+        )?;
+        check(
             !(uses("confirmat") || uses("screws")) || t.0 < 40.0,
             "boards of 40 mm or more are too thick for 50 mm screws",
         )?;
@@ -137,6 +144,7 @@ impl<'a> Joinery<'a> {
             "joint_spacing" => "most between two joint fasteners",
             "joint_edge" => "first joint fastener from the board's edge",
             "dowel_d" => "dowel diameter",
+            "dado_depth" => "depth of the grooves the boards sit in",
             _ => "dowel length",
         };
         let sizes = (sizes.into_iter())
@@ -158,6 +166,11 @@ impl<'a> Joinery<'a> {
         &self.methods[scope]
     }
 
+    /// How much longer a board is at each end that sits in a groove (a dado), for `scope`.
+    pub fn extension(&self, scope: usize) -> Option<&str> {
+        (self.method(scope) == "dado").then(|| self.size("dado_depth"))
+    }
+
     fn size(&self, key: &str) -> &str {
         let found = self.sizes.iter().find(|s| s.0 == key);
         found.map(|s| s.1.as_str()).unwrap_or_default()
@@ -165,7 +178,7 @@ impl<'a> Joinery<'a> {
 
     /// Checks that a row of `run_mm` has room for its fasteners: `what` names it.
     pub fn fits(&self, scope: usize, run_mm: f64, p: &Value, what: &str) -> Result<(), String> {
-        if !matches!(self.method(scope), "dowels" | "confirmat" | "screws") {
+        if !SPACED.contains(&self.method(scope)) {
             return Ok(());
         }
         let edge = self.kit.size(p, "joint_edge", 50.0)?;
@@ -227,6 +240,38 @@ impl<'a> Joinery<'a> {
                 } else {
                     "confirmats"
                 }
+            }
+            "dado" => {
+                // The end board's own volume where it reaches into the face board: a groove
+                // as long as the joint, as wide as the board and `dado_depth` deep.
+                let g = self.size("dado_depth");
+                let mut corner = j.at.clone();
+                let mut size = [t.clone(), t.clone(), t.clone()];
+                for i in 0..3 {
+                    if j.into[i] != 0 {
+                        size[i] = g.to_string();
+                        if j.into[i] > 0 {
+                            corner[i] = format!("{} - {g}", j.at[i]);
+                        }
+                    } else if j.along[i] != 0 {
+                        size[i] = j.run.clone();
+                        if j.along[i] < 0 {
+                            corner[i] = format!("{} - {}", j.at[i], j.run);
+                        }
+                    } else {
+                        corner[i] = format!("{} - {t}/2", j.at[i]);
+                    }
+                }
+                let corner = self.kit.at(&corner[0], &corner[1], &corner[2]);
+                self.cuts.borrow_mut().push((
+                    "solid.box",
+                    json!({
+                        "length": size[0], "width": size[1], "height": size[2],
+                        "corner": corner, "operation": "cut", "targets": [face],
+                        "name": format!("{name} dado"),
+                    }),
+                ));
+                return;
             }
             _ => return,
         };

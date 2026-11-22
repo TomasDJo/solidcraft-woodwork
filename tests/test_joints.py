@@ -114,3 +114,20 @@ def test_screws(approval):
     assert len(clear) == 6 and {c[0] for c in clear} == {-291}, clear
     assert len(holes(results[3], 1.5)) == 6
     assert hardware(results[4]) == {"Screw, 4 x 50 mm": 12}, hardware(results[4])
+
+
+def test_dado(approval):
+    # The bottom and top 6 mm longer at each end, in grooves in the sides; a divider into the
+    # bottom and top. The cut list gives the longer boards and no hardware.
+    results = cli([plugin(approval, "cabinet", {"name": "G", "shelves": 0, "dividers": 1, "joints": "dado",
+                                                "joints_inner": "dado", "place": "origin"}),
+                   MEASURE, plugin(approval, "cutlist")])
+    box = boxes(results[1])
+    assert box["G Bottom"][0] == -288 and box["G Bottom"][3] == 288, box["G Bottom"]
+    assert box["G Divider 1"][2] == 12 and box["G Divider 1"][5] == 708, box["G Divider 1"]
+    # the side lost the two grooves, 6 x 18 x 560 each, and the back's 9 x 6 x 690
+    side = volume(results[1], "G Side L")
+    assert abs(side - (18 * 560 * 720 - 2 * 6 * 18 * 560 - 9 * 6 * 690)) < 100, side
+    assert cylinders(results[1], "G Side L") == 0
+    assert "576" in results[2]["result"]["csv"], results[2]["result"]["csv"][:400]
+    assert hardware(results[2]) == {}, hardware(results[2])

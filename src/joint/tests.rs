@@ -301,3 +301,48 @@ fn plain_screws_are_a_thinner_confirmat() {
         vec![("Screw, 4 x 50 mm".to_string(), 12)]
     );
 }
+
+#[test]
+fn a_dado_makes_the_board_longer_and_cuts_its_groove() {
+    let p = json!({"name": "K", "dividers": 1, "joints": "dado", "joints_inner": "dado"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let bottom = find(&commands, "K Bottom");
+    assert_eq!(
+        bottom["length"],
+        "(K_width - 2*K_thickness) + 2*K_dado_depth"
+    );
+    assert_eq!(
+        bottom["corner"][0],
+        "K_thickness - K_dado_depth - K_width/2"
+    );
+    // the groove in the side: the bottom's end, dado_depth deep
+    let groove = find(&commands, "K joint Side L Bottom dado");
+    assert_eq!(groove["targets"], json!(["K Side L"]));
+    assert_eq!(groove["length"], "K_dado_depth");
+    assert_eq!(groove["height"], "K_thickness");
+    assert_eq!(
+        groove["corner"][0],
+        "K_thickness - K_dado_depth - K_width/2"
+    );
+    assert_eq!(groove["corner"][2], "0 mm + K_thickness/2 - K_thickness/2");
+    let right = find(&commands, "K joint Side R Top dado");
+    assert_eq!(right["corner"][0], "K_width - K_thickness - K_width/2");
+    // a divider grows down into the bottom and up into the top
+    let divider = find(&commands, "K Divider 1");
+    assert_eq!(
+        divider["height"],
+        "(K_height - 0 mm - 2*K_thickness) + 2*K_dado_depth"
+    );
+    let groove = find(&commands, "K joint Bottom Divider 1 dado");
+    assert_eq!(groove["height"], "K_dado_depth");
+    assert_eq!(groove["targets"], json!(["K Bottom"]));
+    assert!(!commands.iter().any(|c| c.0 == "solid.pattern.rectangular"));
+    assert!(
+        crate::cabinet::build(&json!({"joints": "dado", "dado_depth": 16}))
+            .unwrap_err()
+            .contains("dado_depth")
+    );
+    assert!(crate::corner::build(&json!({"joints": "dado"}))
+        .unwrap_err()
+        .contains("box cabinets"));
+}

@@ -440,7 +440,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   selected one has one. Material is not matched.
 - **Joinery at build** (`src/joint/`): the cabinet's `joints` field (carcass: sides to bottom and
   top, a sink base's rails one fastener each, `Joint::single`) is `none`, `dowels` (the dialog's
-  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`); absent is `none`, so a cabinet made before rebuilds as it was.
+  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`) or `dado` (box cabinets only: the end board
+  is `Joinery::extension` (`<Prefix>_dado_depth`) longer at each end in the builder, and the
+  joint is one box cut of its volume in the face board, through front to back; nothing counted;
+  a corner cabinet refuses it, as its L-shaped boards, chamfer picked by point and backs would
+  all have to grow); absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
   rail into the sides, rows along the shelves' depth from `ein`.

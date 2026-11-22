@@ -262,23 +262,35 @@ impl Cabinet<'_> {
         for (side, x) in [("Side L", &zero), ("Side R", &right_x)] {
             panel(side, [x, &zero, &side_z], [et, eside_d, &side_h], false);
         }
-        panel("Bottom", [et, &zero, epl], [eiw, eside_d, et], false);
+        // In a dado the bottom and top (and a sink base's rails) reach into the sides.
+        let (end_x, end_w) = match self.joinery.extension(CARCASS) {
+            Some(g) => (format!("{et} - {g}"), format!("{eiw} + 2*{g}")),
+            None => (et.clone(), eiw.clone()),
+        };
+        let (et_, eiw) = (&end_x, &end_w);
+        panel("Bottom", [et_, &zero, epl], [eiw, eside_d, et], false);
         let top_z = format!("{eh} - {et}");
         match sink {
             // In front of the back: the shelves' depth ends there, also behind inset fronts.
             true => {
                 let rail_d = mm(RAIL_D);
                 let back_y = format!("{ein} + {eshelf_d} - {rail_d}");
-                panel("Rail front", [et, &zero, &top_z], [eiw, &rail_d, et], false);
+                panel(
+                    "Rail front",
+                    [et_, &zero, &top_z],
+                    [eiw, &rail_d, et],
+                    false,
+                );
                 panel(
                     "Rail back",
-                    [et, &back_y, &top_z],
+                    [et_, &back_y, &top_z],
                     [eiw, &rail_d, et],
                     false,
                 );
             }
-            false => panel("Top", [et, &zero, &top_z], [eiw, eside_d, et], false),
+            false => panel("Top", [et_, &zero, &top_z], [eiw, eside_d, et], false),
         }
+        let eiw = &self.eiw;
         self.carcass_joints();
         // The mount board across the back under the top, its rear face flush with the sides'.
         // Box edges: front bottom 9, back top 3.
@@ -293,7 +305,11 @@ impl Cabinet<'_> {
         let divider_x: Vec<String> = (1..=n).map(|k| format!("({ecell} + {et}) * {k}")).collect();
         for (k, x) in divider_x.iter().enumerate() {
             let part = format!("Divider {}", k + 1);
-            panel(&part, [x, ein, &bottom_top], [et, eshelf_d, ech], false);
+            let (z0, tall) = match self.joinery.extension(INNER) {
+                Some(g) => (format!("{bottom_top} - {g}"), format!("{ech} + 2*{g}")),
+                None => (bottom_top.clone(), ech.to_string()),
+            };
+            panel(&part, [x, ein, &z0], [et, eshelf_d, &tall], false);
             // its ends into the bottom's top face and the top's underside
             let mid = format!("{x} + {et}/2");
             for (face, z, up) in [
@@ -330,7 +346,11 @@ impl Cabinet<'_> {
             }
         }
         if let Some(rail) = erail {
-            panel("Rail", [et, ein, rail], [eiw, eshelf_d, et], false);
+            let (x0, wide) = match self.joinery.extension(INNER) {
+                Some(g) => (format!("{et} - {g}"), format!("{eiw} + 2*{g}")),
+                None => (et.clone(), eiw.clone()),
+            };
+            panel("Rail", [&x0, ein, rail], [&wide, eshelf_d, et], false);
             for (side, x, into) in [("Side L", et, 1), ("Side R", &right_x, -1)] {
                 let joint = Joint {
                     face: side.into(),
