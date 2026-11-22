@@ -144,6 +144,7 @@ Cabinets:
 - [x] Joinery and hardware are design wide: the two methods, their sizes, hardware models, hinge opening and slide type are Woodwork settings, no longer Cabinet and Corner fields (a new cabinet takes them and remembers them; Edit changes the methods, models, opening and type of one cabinet; slide length is Auto at build, chosen in Edit); the manifest 6.5 KB smaller
 - [x] See-through boards (Woodwork settings): our board materials at 35 % opacity to look at the joinery and fittings inside, also materials made later; Oak (built into the app) stays solid
 - [x] Fastener models: dowels, screws, cam locks with bolts and biscuits as bodies in their holes, one per joint and a pattern of bodies per row, hidden from every measure like the hinge models; Fastener models in Woodwork settings (on by default). Each joint adds a feature: past about 400 features SolidCraft 0.46 names faces another way and a later picked chamfer breaks on delete or Edit, so the sample kitchen shows them only on the return's units
+- [x] More design-wide settings: back, fronts, handle position, the plinth (Cabinet keeps Yes or No), labels, cleat sizes, the cut list's banding, sizes, sheet, kerf and trim, a worktop's material and thickness
 - [ ] Corner chamfers and cleat bevels without picked edges (a cut by a sketched profile), so a design past 400 features survives deleting an early cabinet
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats

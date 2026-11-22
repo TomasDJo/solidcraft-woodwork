@@ -2,7 +2,7 @@
 import json
 import subprocess
 
-from build import CLI
+from build import CLI, entry_step
 from helpers import *
 
 
@@ -14,25 +14,26 @@ def without(step, *keys):
 
 
 def test_settings(approval):
-    kept = ("material", "thickness", "plinth", "plinth_type")
+    kept = ("material", "thickness")
     results = cli([plugin(approval, "settings", {"material": "MDF", "thickness": 25, "plinth": 100,
                                                  "plinth_type": "legs"}),
                    plugin(approval, "settings", {"units": "in", "thickness": 1}),  # only this changes
-                   without(plugin(approval, "cabinet", {"name": "A"}), *kept),
-                   without(plugin(approval, "cabinet", {"name": "B", "units": "in", "place": "origin"}), *kept),
-                   plugin(approval, "corner", {"name": "C", "material": "Oak", "thickness": 18, "plinth": 0}),
+                   without(plugin(approval, "cabinet", {"name": "A", "plinth": "yes"}), *kept),
+                   without(plugin(approval, "cabinet", {"name": "B", "units": "in", "place": "origin",
+                                                        "plinth": "yes"}), *kept),
+                   plugin(approval, "corner", {"name": "C", "material": "Oak", "thickness": 18, "plinth": "no"}),
                    MEASURE])
     stored = results[1].get("result", results[1])["settings"]
-    assert stored == {"material": "MDF", "thickness": 25.4, "plinth": 100, "plinth_type": "legs"}, stored
+    assert stored == {"material": "MDF", "thickness": 25.4, "plinth_type": "legs"}, stored  # 100 is the default
     box = boxes(results[5])
     material = {b["name"]: b["material"] for b in results[5]["bodies"]}
-    # A from the settings: MDF, 25.4 mm sides, on 100 mm legs.
+    # A from the settings: MDF, 25.4 mm sides, on 100 mm legs (Plinth Yes).
     assert material["A Side L"] == "MDF", material
     assert round(box["A Side L"][3] - box["A Side L"][0], 3) == 25.4 and box["A Side L"][2] == 100, box["A Side L"]
     assert "A Leg 1" in box, box
     # B's dialog in inches gets them in inches: the same boards.
     assert round(box["B Side L"][3] - box["B Side L"][0], 3) == 25.4 and box["B Side L"][2] == 100, box["B Side L"]
-    # What a run gives wins: C is oak, 18 mm, on the floor.
+    # What a run gives wins: C is oak, 18 mm, on the floor (Plinth No).
     assert material["C Side L"] == "Oak", material
     assert box["C Side L"][2] == 0 and "C Leg 1" not in box, box
 
@@ -99,3 +100,29 @@ def test_see_through_boards(approval):
     assert results[5]["result"]["see_through"] == ["Birch plywood", "MDF"], results[5]
     seen = opacity(results[6])
     assert seen["Birch plywood"] == seen["MDF"] == 1, seen
+
+
+def test_plinth_fronts_cut_list_and_worktop_from_the_settings(approval):
+    # Settings: a 120 mm plinth on legs, inset fronts, no back, 2800 x 2070 sheets, a 30 mm
+    # worktop. A takes them (Plinth Yes); W, a wall unit, has Plinth No; W gets the settings'
+    # plinth by Edit (Plinth Yes), and A keeps its own when the settings change.
+    results = cli([setting(approval, {"plinth": 120, "plinth_type": "legs", "fronts": "inset", "back": "none",
+                                      "sheet": "2800x2070", "worktop_thickness": 30}),
+                   entry_step(approval, "cabinet", {"name": "A", "doors": 1, "plinth": "yes"}),
+                   entry_step(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin"}),
+                   MEASURE,
+                   setting(approval, {"plinth": 80}),
+                   select("W Side L"), plugin(approval, "edit", {"plinth": "yes"}),
+                   select("A Side L"), plugin(approval, "edit", {"plinth": "yes", "shelves": 2}),
+                   MEASURE, plugin(approval, "cutlist"),
+                   select("A Top"), plugin(approval, "worktop"), MEASURE])
+    box = boxes(results[3])
+    assert box["A Side L"][2] == 120 and "A Leg 1" in box and "A Back" not in box, box["A Side L"]
+    assert box["A Door"][1] == box["A Side L"][1], (box["A Door"], box["A Side L"])  # inset: flush
+    assert box["W Side L"][2] == 0 and "W Leg 1" not in box
+    box = boxes(results[9])
+    assert box["W Side L"][2] == 80 and "W Leg 1" in box, box["W Side L"]  # the settings' now
+    assert box["A Side L"][2] == 120 and "A Shelf 2" in box, box["A Side L"]  # its own kept
+    assert results[10]["result"]["sheet_mm"] == [2800, 2070], results[10]["result"]["sheet_mm"]
+    worktop = boxes(results[13])["Worktop"]
+    assert round(worktop[5] - worktop[2], 3) == 30, worktop

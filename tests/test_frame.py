@@ -21,7 +21,7 @@ def outline(box, prefix="Frame "):
 
 def refused(steps):
     script = ROOT / "dist" / "refused.json"
-    script.write_text(json.dumps(steps), encoding="utf-8")
+    script.write_text(json.dumps(flat(steps)), encoding="utf-8")
     done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
     return done.stderr if done.returncode else None
 

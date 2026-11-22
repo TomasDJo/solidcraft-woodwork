@@ -129,6 +129,22 @@ materials, joinery and cut lists.
   depth), chosen in Edit. Edit keeps `joints`, `joints_inner`, `hardware_models`,
   `hinge_angle`, `slide_type`, `slide_length`; the sizes are Parameters. Tests: `designed` and
   `setting` in `tests/helpers.py` (settings results left out, so indices stay the cabinets').
+  Since then also `back`, `back_thickness` (box only), `fronts`, `handle_position`, `plinth`
+  (the height, 100 mm by default), `plinth_type`, `plinth_setback`, `labels` (stored `yes`/`no`,
+  given as a bool), `cleat_height`, `cleat_thickness`; the cut list's `banding`, `cut_sizes`
+  (its field `size`), `sheet`, `kerf`, `trim` (mm in every unit, `Def::Mm`); a worktop's
+  `worktop_material` and `worktop_thickness` (its `material` and `thickness`; a worktop made
+  again keeps its remembered ones). `settings::table` is the one list: key, the entry's field,
+  `Def` (choice, length, mm number with bounds) and `To` (who takes it). Cabinet and Corner keep
+  `plinth` as `yes`/`no` (`design` makes it the settings' height or 0; Match selected still
+  takes the selected cabinet's in `Kit`); Edit's `plinth` is `keep`/`yes`/`no`
+  (`settings::edit_plinth` before `merge`: Yes keeps a plinth the cabinet has, else the settings'
+  height and type). `execute` reads the settings for `cutlist` too. Over `plugin.run` a size that
+  a choice shows must come with that choice (the app checks the controller first: "is
+  required"). `build.plugin` turns a test's moved fields into a group (Settings, the entry,
+  Settings back to the defaults) that `build.cli` runs as one step (`flat`), and gives a cabinet
+  without a plinth Plinth No; it sends Settings only `units`, `material`, `handles`, `camera`
+  (the hook fills the rest).
   **See-through boards** (`see_through`, in `CHOICES` but no cabinet's: `design` skips it): each
   Settings run gives our design materials (`material.list`'s `user: true`, of `BOARDS`) the
   stored opacity, `SEE_THROUGH` 0.35 or 1, by `material.edit` of each that differs. It takes
@@ -712,8 +728,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   shifted (`tests/test_panel.py`). An Edit with panels runs about a dozen commands
   more each, so a cabinet near `cabinet::build`'s 230 can then fail the 256 limit (the run is
   discarded, nothing is lost).
-- `plinth_type` (cabinet, corner and Edit; the dialogs show it when the plinth is not 0 or Match
-  selected is on; `fittings::plinth_type`, `board` when absent, so older cabinets keep theirs):
+- `plinth_type` (Woodwork settings and Edit; `fittings::plinth_type`, `board` when absent, so older cabinets keep theirs):
   `board` is `<Name> Plinth` (the corner's two, or the diagonal's turned one), `plinth_setback`
   back from the front: the field (shown for board or notch, 50 mm when absent: `KICK_RECESS`)
   is the parameter `<Prefix>_plinth_setback` while a board or notch uses it, kept once made

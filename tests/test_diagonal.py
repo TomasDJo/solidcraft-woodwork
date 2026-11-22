@@ -5,7 +5,7 @@ from helpers import *
 def cli(script, *extra):
     """These tests count the doors' and pins' holes: cabinets without joinery
     (tests/test_joints.py has it)."""
-    approval = next(s["params"]["approval"] for s in script if s["command"] == "plugin.run")
+    approval = next(s["params"]["approval"] for s in flat(script) if s["command"] == "plugin.run")
     return designed(approval, NONE, script, *extra)
 
 CORNER = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"}

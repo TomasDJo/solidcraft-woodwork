@@ -422,7 +422,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     let run: Run = &mut run;
     // Woodwork settings: the design-wide joinery and hardware of a new cabinet, and the camera.
     let ends = matches!(entry, "cabinet" | "corner" | "frame" | "edit" | "worktop");
-    let stored = match ends {
+    let stored = match ends || entry == "cutlist" {
         true => run("storage.get", json!({}))?,
         false => Value::Null,
     };
@@ -539,8 +539,10 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // a cabinet or a frame
             let name = select::piece(&select::picked(params, &design), &measure)?;
             let about = run("component.metadata", json!({"component": name}))?;
-            let (entry, params) = edit::merge(&about["metadata"][edit::KEY], params, &design)
-                .map_err(|e| format!("`{name}`: {e}"))?;
+            let ours = &about["metadata"][edit::KEY];
+            let changes = settings::edit_plinth(params, ours, &design, stored);
+            let (entry, params) =
+                edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
             // Checked before anything is taken away.
             build(&entry, &params)?;
             let tree = run("component.list", json!({}))?;
@@ -722,7 +724,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 }))
             };
             let (mut cabinets, mut old) = (Vec::<String>::new(), Vec::<String>::new());
-            let (mut stored, mut any_cabinet) = (None, false);
+            let (mut kept, mut any_cabinet) = (None, false);
             for body in select::picked(params, &design) {
                 if let Some(cabinet) = select::owner(&measure, &body) {
                     cabinets.push(cabinet.to_string());
@@ -734,7 +736,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     if let Some((theirs, values)) = remembered(c)? {
                         old.push(c.to_string());
                         cabinets.extend(theirs);
-                        stored.get_or_insert(values);
+                        kept.get_or_insert(values);
                         found = true;
                         break;
                     }
@@ -745,10 +747,12 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 )?;
             }
             // Only a worktop picked: made again as it was, its name and options kept.
-            let mut params = match (stored, any_cabinet) {
+            let mut params = match (kept, any_cabinet) {
                 (Some(values), false) => values,
                 _ => params.clone(),
             };
+            // its material and thickness from Woodwork settings, unless it remembers them
+            settings::design(entry, &mut params, stored);
             let name = params["name"]
                 .as_str()
                 .unwrap_or("Worktop")
@@ -860,6 +864,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 local.insert(body, cutlist::extents(&mesh));
             }
             let mut params = params.clone();
+            settings::design(entry, &mut params, stored);
             params["_notched"] = json!(cutlist::notched(&design));
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;

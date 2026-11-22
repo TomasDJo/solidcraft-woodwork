@@ -16,7 +16,7 @@ def refused(steps):
     """The reason a script fails, or None when it runs."""
     with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
         script = Path(folder) / "refused.json"
-        script.write_text(json.dumps(steps), encoding="utf-8")
+        script.write_text(json.dumps(flat(steps)), encoding="utf-8")
         done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
     return done.stderr if done.returncode else None
 
@@ -29,7 +29,7 @@ def test_panels_follow_the_cabinet_and_survive_edit(approval):
                    select("A Side R"), plugin(approval, "panel", {"kind": "end"}),
                    select("A Side L"), plugin(approval, "panel", {"kind": "filler", "width": 50}),
                    MEASURE, change("A_width", 800), change("A_height", 900), MEASURE,
-                   select("A Top"), plugin(approval, "edit", {"shelves": 3, "plinth": 0}), MEASURE,
+                   select("A Top"), plugin(approval, "edit", {"shelves": 3, "plinth": "no"}), MEASURE,
                    delete, select("A Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE])
     assert results[2]["result"]["side"] == "right", results[2]
     box = boxes(results[5])

@@ -16,7 +16,8 @@ It uses every function of the plugin:
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
-- Woodwork settings: the joinery is design wide, set there before the cabinets that take it:
+- Woodwork settings: the joinery, fronts, labels, handle position and plinth height are design
+  wide, set there before the cabinets that take them (wall units have Plinth No). Joinery:
   confirmat screws in most floor units (biscuits in the tall one, cam locks in the drawer unit,
   pocket screws in the sink base), dowels in the wall units (a dado in the first) and inside
 - Edit cabinet: the wall unit on the return gets a third shelf after it is made, hung, turned and drilled
@@ -101,10 +102,16 @@ LATE = ("Base 4", "Wall 4")
 
 
 def cabinet(entry, params):
-    """The steps for a cabinet: Woodwork settings first when its joinery differs from what they
-    hold (it is design wide, no Cabinet field), then the cabinet."""
+    """The steps for a cabinet: Woodwork settings first when what it takes from them (joinery,
+    fronts, labels, handle position, the plinth's height: the same for the whole design, no
+    Cabinet field) differs from what they hold, then the cabinet with Plinth Yes or No."""
     params = dict(params)
-    wanted = {"joints": params.pop("joints", "dowels"), "fastener_models": "on" if params["name"] in LATE else "off"}
+    wanted = {"joints": params.pop("joints", "dowels"), "fastener_models": "on" if params["name"] in LATE else "off",
+              "fronts": params.pop("fronts", "overlay"), "handle_position": params.pop("handle_position", "auto"),
+              "labels": "yes" if params.pop("labels", False) else "no"}
+    if params.get("plinth"):
+        wanted["plinth"] = params["plinth"]
+    params["plinth"] = "yes" if params.get("plinth") else "no"
     steps = []
     if wanted != {key: joinery.get(key) for key in wanted}:
         joinery.update(wanted)

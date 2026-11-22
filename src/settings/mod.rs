@@ -1,76 +1,118 @@
 //! Woodwork settings: defaults kept in the design (`storage@0.1`) that the Cabinet and Corner
-//! dialogs start from, through the dialog hook (`dialog@0.1`), and the design-wide joinery and
-//! hardware every new cabinet takes (`design`).
+//! dialogs start from, through the dialog hook (`dialog@0.1`), and what is the same for the whole
+//! design, which a new cabinet, the cut list and a worktop take (`design`).
 
-use crate::joint;
+use crate::{joint, kit};
 use serde_json::{json, Map, Value};
 
 /// The fields Settings keeps that the Cabinet and Corner dialogs show: the hook's defaults.
-const FIELDS: [&str; 6] = [
-    "material",
-    "thickness",
-    "reveal",
-    "handles",
-    "plinth",
-    "plinth_type",
-];
+const FIELDS: [&str; 4] = ["material", "thickness", "reveal", "handles"];
 
-/// The design-wide choices, no Cabinet or Corner field: every new cabinet takes the stored
-/// one, or this default (the Cabinet dialog's before they moved here).
-const CHOICES: [(&str, &str); 9] = [
-    ("joints", "dowels"),
-    ("joints_inner", "dowels"),
-    ("biscuit", "20"),
-    ("pocket_face", "outside"),
-    ("hardware_models", "on"),
-    ("hinge_angle", "110"),
-    ("slide_type", "full"),
-    ("fastener_models", "on"),
-    // no cabinet's: our board materials' opacity (`material::see_through`)
-    ("see_through", "off"),
-];
+/// What a setting is: a choice and its default, a length (kept in mm, shown and given in the
+/// dialog's unit) or a number in mm in every unit, with its default and bounds in mm. A
+/// length's bounds are what both units of its field allow (0.125 in to 50 mm for a board): a
+/// default outside them makes the app drop the hook's whole reply.
+#[derive(Clone, Copy)]
+enum Def {
+    Choice(&'static str),
+    Length(f64, f64, f64),
+    Mm(f64, f64, f64),
+}
 
-/// The lengths, kept in mm and shown in the dialog's unit, with the bounds in mm that both
-/// units of the Cabinet and Corner fields allow (thickness 0.125 in to 50 mm): a default
-/// outside them makes the app drop the hook's whole reply. The reveal is mm in every unit.
-/// The joinery's sizes are design-wide, with `Joinery`'s bounds.
-fn bounds(key: &str) -> Option<(f64, f64)> {
-    match key {
-        "thickness" => Some((3.175, 50.0)),
-        "plinth" => Some((0.0, 500.0)),
-        _ if joint::SIZES.iter().any(|s| s.0 == key) => Some(joint::range(key)),
-        _ => None,
+/// Who takes a setting: only the Cabinet and Corner dialogs' hook, new box cabinets, new box and
+/// corner cabinets, the cut list, a worktop, or nothing built (See-through boards).
+#[derive(Clone, Copy, PartialEq)]
+enum To {
+    Hook,
+    Box,
+    Cabinets,
+    Cutlist,
+    Worktop,
+    Nothing,
+}
+
+/// The settings with a default: key, the entry's field it fills (`""`: the same), what it is
+/// and who takes it. The defaults are the dialogs' from before the fields moved here.
+fn table() -> Vec<(&'static str, &'static str, Def, To)> {
+    use Def::*;
+    use To::*;
+    let mut all = vec![
+        ("thickness", "", Length(18.0, 3.175, 50.0), Hook),
+        ("reveal", "", Mm(2.0, 0.5, 6.0), Hook),
+        ("joints", "", Choice("dowels"), Cabinets),
+        ("joints_inner", "", Choice("dowels"), Box),
+        ("biscuit", "", Choice("20"), Cabinets),
+        ("pocket_face", "", Choice("outside"), Cabinets),
+        ("hardware_models", "", Choice("on"), Cabinets),
+        ("hinge_angle", "", Choice("110"), Cabinets),
+        ("slide_type", "", Choice("full"), Box),
+        ("fastener_models", "", Choice("on"), Cabinets),
+        ("back", "", Choice("groove"), Box),
+        ("back_thickness", "", Length(6.0, 3.175, 50.0), Box),
+        ("fronts", "", Choice("overlay"), Cabinets),
+        ("handle_position", "", Choice("auto"), Cabinets),
+        // `plinth` is Cabinet's Yes or No (`design`)
+        ("plinth", "", Length(100.0, 0.0, 500.0), Nothing),
+        ("plinth_type", "", Choice("board"), Cabinets),
+        ("plinth_setback", "", Length(50.0, 0.0, 200.0), Cabinets),
+        ("labels", "", Choice("no"), Cabinets),
+        ("cleat_height", "", Length(90.0, 3.175, 500.0), Cabinets),
+        ("cleat_thickness", "", Length(18.0, 3.175, 50.0), Cabinets),
+        ("banding", "", Choice("1"), Cutlist),
+        ("cut_sizes", "size", Choice("finished"), Cutlist),
+        ("sheet", "", Choice("2440x1220"), Cutlist),
+        ("kerf", "", Mm(4.0, 0.0, 10.0), Cutlist),
+        ("trim", "", Mm(10.0, 0.0, 50.0), Cutlist),
+        ("worktop_material", "material", Choice("Oak"), Worktop),
+        (
+            "worktop_thickness",
+            "thickness",
+            Length(38.0, 3.175, 200.0),
+            Worktop,
+        ),
+        // no cabinet's: our board materials' opacity (`material::see_through`)
+        ("see_through", "", Choice("off"), Nothing),
+    ];
+    for (key, mm) in joint::SIZES {
+        let (low, high) = joint::range(key);
+        all.push((key, "", Length(mm, low, high), Cabinets));
+    }
+    all
+}
+
+fn def(key: &str) -> Option<Def> {
+    table().into_iter().find(|s| s.0 == key).map(|s| s.2)
+}
+
+/// A number's bounds in mm, and whether it is shown in the dialog's unit.
+fn bounds(key: &str) -> Option<(f64, f64, bool)> {
+    match def(key)? {
+        Def::Length(_, low, high) => Some((low, high, true)),
+        Def::Mm(_, low, high) => Some((low, high, false)),
+        Def::Choice(_) => None,
     }
 }
 
-/// The numbers the Settings dialog shows when nothing is stored: the Cabinet dialog's defaults
-/// in mm, and the joinery's. A number with a value is a drag field the app keeps within its
-/// bounds.
-fn numbers() -> impl Iterator<Item = (&'static str, f64)> {
-    [("thickness", 18.0), ("reveal", 2.0), ("plinth", 0.0)]
-        .into_iter()
-        .chain(joint::SIZES)
-}
-
-/// The default of a design-wide choice or a number.
+/// The default of a setting that has one.
 fn default(key: &str) -> Option<Value> {
-    let choice = CHOICES.iter().find(|c| c.0 == key).map(|c| json!(c.1));
-    choice.or_else(|| numbers().find(|n| n.0 == key).map(|n| json!(n.1)))
+    Some(match def(key)? {
+        Def::Choice(c) => json!(c),
+        Def::Length(mm, ..) | Def::Mm(mm, ..) => json!(mm),
+    })
 }
 
 /// Every field Settings keeps.
-fn kept() -> impl Iterator<Item = &'static str> {
-    (FIELDS.into_iter())
-        .chain(CHOICES.iter().map(|c| c.0))
-        .chain(joint::SIZES.iter().map(|s| s.0))
-        .chain(["camera"])
+fn kept() -> Vec<&'static str> {
+    let mut all = vec!["material", "handles", "camera"];
+    all.extend(table().into_iter().map(|s| s.0));
+    all
 }
 
 /// The `storage.patch` merge patch for the Settings dialog's values: only the fields that were
 /// set (empty or `keep` leaves the stored value), lengths in mm. A value the same as the
 /// stored one, or the default when none is, is left out: the hook fills omitted keys.
 pub fn patch(params: &Value, stored: &Value) -> Result<Value, String> {
-    let scale = if params["units"] == "in" { 25.4 } else { 1.0 };
+    let unit = if params["units"] == "in" { 25.4 } else { 1.0 };
     let mut set = Map::new();
     for key in kept() {
         let value = &params[key];
@@ -78,8 +120,9 @@ pub fn patch(params: &Value, stored: &Value) -> Result<Value, String> {
             continue;
         }
         let value = match bounds(key) {
-            Some((min, max)) => {
+            Some((min, max, scaled)) => {
                 let v = value.as_f64().ok_or(format!("`{key}` must be a number"))?;
+                let scale = if scaled { unit } else { 1.0 };
                 let mm = (v * scale * 1e6).round() / 1e6;
                 if !(min..=max).contains(&mm) {
                     return Err(format!("`{key}` must be {min} to {max} mm"));
@@ -112,41 +155,108 @@ pub fn fits(stored: &Value) -> bool {
     stored["document"]["settings"]["camera"] != "leave"
 }
 
-/// Fills a new cabinet's or corner cabinet's `params` with the design-wide joinery and
-/// hardware from `storage.get`'s reply, or their defaults, lengths in its `units`: they are no
-/// field of its dialog, and so the cabinet remembers them for Edit. A corner cabinet has
-/// nothing inside to join, no drawers, and no dado (it takes the default instead). A key
-/// already given is kept: the dialogs have none, but the unit tests give them.
+/// A stored setting within its bounds, else its default, in mm.
+fn mm(settings: &Value, key: &str) -> f64 {
+    let Some((low, high, _)) = bounds(key) else {
+        return 0.0;
+    };
+    let stored = settings[key].as_f64().filter(|v| (low..=high).contains(v));
+    stored
+        .or(default(key).and_then(|d| d.as_f64()))
+        .unwrap_or(0.0)
+}
+
+fn rounded(v: f64) -> f64 {
+    (v * 1e6).round() / 1e6
+}
+
+/// Fills the `params` of a new box or corner cabinet (`entry` cabinet or corner), the cut list
+/// or a worktop with what Woodwork settings keep for the whole design, from `storage.get`'s
+/// reply, or the defaults, lengths in its `units`: they are no field of its dialog, and so a
+/// cabinet remembers them for Edit. A corner cabinet has nothing inside to join, no drawers, no
+/// back choice and no dado (it takes the default instead). Cabinet's Plinth Yes takes the
+/// height from here, No none. A key already given is kept: the dialogs have none, but the
+/// unit tests and a worktop's remembered values give them.
 pub fn design(entry: &str, params: &mut Value, stored: &Value) {
     let settings = &stored["document"]["settings"];
-    let scale = if params["units"] == "in" { 25.4 } else { 1.0 };
-    let corner = entry == "corner";
-    for (key, default) in CHOICES {
-        let skip = key == "see_through" || corner && matches!(key, "joints_inner" | "slide_type");
-        if params.get(key).is_some() || skip {
-            continue;
-        }
-        let v = match settings[key].as_str() {
-            Some("dado") if corner => default,
-            Some(v) => v,
-            None => default,
+    let unit = if params["units"] == "in" { 25.4 } else { 1.0 };
+    let takes = |to: To| match entry {
+        "cabinet" => matches!(to, To::Box | To::Cabinets),
+        "corner" => to == To::Cabinets,
+        "cutlist" => to == To::Cutlist,
+        "worktop" => to == To::Worktop,
+        _ => false,
+    };
+    if matches!(entry, "cabinet" | "corner") {
+        let plinth = match &params["plinth"] {
+            Value::String(no) if no == "no" => Some(0.0),
+            Value::Number(_) => None,
+            _ => Some(rounded(mm(settings, "plinth") / unit)),
         };
-        params[key] = json!(v);
+        if let Some(plinth) = plinth {
+            params["plinth"] = json!(plinth);
+        }
     }
-    for (key, default) in joint::SIZES {
-        if params.get(key).is_some() {
+    for (key, field, def, to) in table() {
+        let field = if field.is_empty() { key } else { field };
+        if !takes(to) || params.get(field).is_some() {
             continue;
         }
-        let (low, high) = joint::range(key);
-        let mm = settings[key].as_f64().filter(|v| (low..=high).contains(v));
-        params[key] = json!((mm.unwrap_or(default) / scale * 1e6).round() / 1e6);
+        params[field] = match def {
+            Def::Choice(default) => {
+                let v = match settings[key].as_str() {
+                    Some("dado") if entry == "corner" => default,
+                    Some(v) => v,
+                    None => default,
+                };
+                match key {
+                    "labels" => json!(v == "yes"),
+                    _ => json!(v),
+                }
+            }
+            Def::Length(..) => json!(rounded(mm(settings, key) / unit)),
+            Def::Mm(..) => json!(mm(settings, key)),
+        };
     }
+}
+
+/// Edit's Plinth (`keep`, `yes`, `no`) as the plinth height `edit::merge` takes: No is 0; Yes
+/// keeps a plinth the cabinet has (its parameter, from `document.inspect`'s `design`) and gives
+/// one without the height and type of Woodwork settings; Keep leaves it.
+pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: &Value) -> Value {
+    let mut changes = changes.clone();
+    let ask = changes["plinth"].as_str().map(String::from);
+    if let Some(all) = changes.as_object_mut() {
+        all.remove("plinth");
+    }
+    match ask.as_deref() {
+        Some("no") => changes["plinth"] = json!(0),
+        Some("yes") => {
+            let p = &remembered["params"];
+            let id = format!(
+                "{}_plinth",
+                kit::prefix(p["name"].as_str().unwrap_or_default())
+            );
+            let all = design["params"].as_array().into_iter().flatten();
+            let found = all.into_iter().find(|q| q["name"] == id.as_str());
+            if found.and_then(|q| q["value"].as_f64()).unwrap_or(0.0) <= 0.0 {
+                let settings = &stored["document"]["settings"];
+                let unit = if p["units"] == "in" { 25.4 } else { 1.0 };
+                changes["plinth"] = json!(rounded(mm(settings, "plinth") / unit));
+                if changes["plinth_type"].as_str().is_none_or(|t| t == "keep") {
+                    let kind = settings["plinth_type"].as_str().unwrap_or("board");
+                    changes["plinth_type"] = json!(kind);
+                }
+            }
+        }
+        _ => {}
+    }
+    changes
 }
 
 /// The dialog hook's reply for `entry` with the dialog's `values`, from `storage.get`'s
 /// reply: each stored setting as the field's default, lengths in the dialog's unit. The
-/// Settings dialog gets every number and design-wide choice, stored or the default, and no
-/// hint.
+/// Settings dialog gets every setting with a default, stored or the default, and no hint.
 pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     let mut reply = Map::new();
     let own = entry == "settings";
@@ -159,20 +269,19 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
         .unwrap_or_default();
     if own {
         settings.retain(|key, _| default(key).is_some());
-        for (key, mm) in numbers() {
-            settings.entry(key).or_insert(json!(mm));
-        }
-        for (key, choice) in CHOICES {
-            settings.entry(key).or_insert(json!(choice));
+        for (key, ..) in table() {
+            if let Some(d) = default(key) {
+                settings.entry(key).or_insert(d);
+            }
         }
     } else {
         settings.retain(|key, _| FIELDS.contains(&key.as_str()));
     }
-    let scale = if values["units"] == "in" { 25.4 } else { 1.0 };
+    let unit = if values["units"] == "in" { 25.4 } else { 1.0 };
     for (key, value) in &settings {
         let value = match (bounds(key), value.as_f64()) {
-            (Some((min, max)), Some(mm)) if (min..=max).contains(&mm) => {
-                json!((mm / scale * 1e6).round() / 1e6)
+            (Some((min, max, scaled)), Some(mm)) if (min..=max).contains(&mm) => {
+                json!(rounded(mm / if scaled { unit } else { 1.0 }))
             }
             // stored before the bounds were checked
             (Some(_), _) => continue,

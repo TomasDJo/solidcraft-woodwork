@@ -39,25 +39,81 @@ def sh(*args):
     subprocess.run(args, cwd=ROOT, check=True)
 
 
+def flat(script):
+    """The steps of a script, a `plugin` step that came as a group (settings, entry, settings) as
+    its three."""
+    return [step for group in script for step in (group if isinstance(group, tuple) else (group,))]
+
+
 def cli(script, *extra):
-    """Run a command script through solidcraft-cli and return the results."""
+    """Run a command script through solidcraft-cli and return the results: one a step, a group's
+    the result of its entry."""
     with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
         path, out = Path(folder) / "script.json", Path(folder) / "results.json"
-        path.write_text(json.dumps(script), encoding="utf-8")
+        path.write_text(json.dumps(flat(script)), encoding="utf-8")
         subprocess.run([CLI, "run", str(path), "--results", "--quiet", "--json-out", str(out), *extra],
                        cwd=ROOT, check=True, env=env())
-        return json.loads(out.read_text(encoding="utf-8"))
+        results = iter(json.loads(out.read_text(encoding="utf-8")))
+        return [[next(results) for _ in group][1] if isinstance(group, tuple) else next(results)
+                for group in script]
+
+
+# The fields Woodwork settings keep for the whole design (no field of these entries any more):
+# the entry's name for each, the setting's, and the setting's default (lengths in mm).
+MOVED = {
+    "cabinets": {"back": ("back", "groove"), "back_thickness": ("back_thickness", 6), "fronts": ("fronts", "overlay"),
+                 "handle_position": ("handle_position", "auto"), "plinth_type": ("plinth_type", "board"),
+                 "plinth_setback": ("plinth_setback", 50), "labels": ("labels", "no"),
+                 "cleat_height": ("cleat_height", 90), "cleat_thickness": ("cleat_thickness", 18)},
+    "cutlist": {"banding": ("banding", "1"), "size": ("cut_sizes", "finished"), "sheet": ("sheet", "2440x1220"),
+                "kerf": ("kerf", 4), "trim": ("trim", 10)},
+    "worktop": {"material": ("worktop_material", "Oak"), "thickness": ("worktop_thickness", 38)},
+}
 
 
 def plugin(approval, entry, params=None):
     """A plugin.run step. The fields left out get their defaults, as in the dialog: from 0.46 an
-    entry with conditional fields is checked strictly, every visible required field present."""
+    entry with conditional fields is checked strictly, every visible required field present.
+    A field Woodwork settings keep now (`MOVED`) goes to a Settings run before the step and back
+    to its default after it, a group `cli` runs as one step; a cabinet's plinth height too,
+    the cabinet then Plinth Yes. A cabinet the test gives no plinth stands on the floor."""
+    params = dict(params or {})
+    moved = MOVED.get("cabinets" if entry in ("cabinet", "corner") else entry, {})
+    setting = {}
+    for field, (key, _) in moved.items():
+        if field in params:
+            value = params.pop(field)
+            setting[key] = ("yes" if value else "no") if key == "labels" else value
+    if entry in ("cabinet", "corner") and not isinstance(params.get("plinth", 0), str):
+        height = params.get("plinth", 0)
+        if height:
+            setting["plinth"] = height
+        params["plinth"] = "yes" if height else "no"
+    step = entry_step(approval, entry, params)
+    if not setting:
+        return step
+    # A conditional setting needs the field that shows it (the app checks that first).
+    for field, controller, value in (("plinth_setback", "plinth_type", "board"), ("back_thickness", "back", "groove"),
+                                     ("cut_sizes", "banding", "1")):
+        if field in setting:
+            setting.setdefault(controller, value)
+    reset = {key: default for key, default in moved.values() if key in setting}
+    if "plinth" in setting:
+        reset["plinth"] = 100
+    units = params.get("units", "mm")
+    return (entry_step(approval, "settings", setting | {"units": units}), step,
+            entry_step(approval, "settings", reset | {"units": "mm"}))
+
+
+def entry_step(approval, entry, params=None):
+    """The plugin.run step itself, with the schema's defaults."""
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     schema = next(e["input_schema"] for e in manifest["runtime"]["entries"] if e["name"] == entry)
-    # Woodwork settings' hook starts its numbers at the stored values, as for plugin.run.
+    # Woodwork settings' hook starts its fields at the stored values, as for plugin.run: all
+    # but these, which start at Keep.
     defaults = {key: field.get("default", []) for key, field in schema["properties"].items()
                 if ("default" in field or field["type"] == "array")
-                and not (entry == "settings" and field["type"] == "number")}
+                and (entry != "settings" or key in ("units", "material", "handles", "camera"))}
     # Each field's conditional default when its rule holds, as the dialog does (sizes in inches).
     given = defaults | (params or {})
     for key, field in schema["properties"].items():

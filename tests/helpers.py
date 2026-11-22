@@ -6,7 +6,7 @@ import re
 import shutil
 import threading
 
-from build import LOCAL, PKG, ROOT, cli, env, plugin  # noqa: F401 (the tests use them through `import *`)
+from build import LOCAL, PKG, ROOT, cli, env, flat, plugin  # noqa: F401 (the tests use them through `import *`)
 
 MEASURE = {"command": "inspect.measure", "params": {}}
 # The tests with a profile share dist/profile and the folders they empty: one at a time.
@@ -41,7 +41,8 @@ def designed(approval, settings, script, *extra):
     are left out, so the indices are those of the other steps."""
     script = [setting(approval, settings), *script]
     results = cli(script, *extra)
-    return [r for step, r in zip(script, results) if step["params"].get("entry") != "settings"]
+    return [r for step, r in zip(script, results)
+            if isinstance(step, tuple) or step["params"].get("entry") != "settings"]
 
 
 def setting(approval, settings):

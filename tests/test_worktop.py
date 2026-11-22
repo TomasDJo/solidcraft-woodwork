@@ -98,7 +98,7 @@ def test_a_diagonal_corner_and_what_is_refused(approval):
                    {"command": "occurrence.move", "params": {"occurrence": "F:1", "translate": [0, -2000, 0], "axis": [0, 0, 1], "angle": "180 deg"}},
                    pick("A Top", "F Top"), plugin(approval, "worktop")]):
         script = ROOT / "dist" / "refused.json"
-        script.write_text(json.dumps(steps), encoding="utf-8")
+        script.write_text(json.dumps(flat(steps)), encoding="utf-8")
         done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
         refused.append(done.stderr if done.returncode else "")
     assert "`H` is not as high as `A`" in refused[0], refused[0]
@@ -182,6 +182,6 @@ def test_a_tool_too_short_is_refused(approval):
     steps = [plugin(approval, "cabinet", {"name": "S", "width": 900, "depth": 650}), pick("S Top"),
              plugin(approval, "worktop", {"tool": "benchtop", "tool_x": 450, "tool_y": 345, "tool_height": 20})]
     script = ROOT / "dist" / "refused-tool.json"
-    script.write_text(json.dumps(steps), encoding="utf-8")
+    script.write_text(json.dumps(flat(steps)), encoding="utf-8")
     done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
     assert done.returncode and "the shelf would be above the worktop's underside" in done.stderr, done.stderr
