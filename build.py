@@ -78,6 +78,12 @@ def plugin(approval, entry, params=None):
     to its default after it, a group `cli` runs as one step; a cabinet's plinth height too,
     the cabinet then Plinth Yes. A cabinet the test gives no plinth stands on the floor."""
     params = dict(params or {})
+    # Corner cabinets are Cabinet with a corner shape (its doors are `corner_doors`).
+    if entry == "corner":
+        entry = "cabinet"
+        params = {"shape": "L-shaped", **params}
+        if "doors" in params:
+            params["corner_doors"] = params.pop("doors")
     moved = MOVED.get("cabinets" if entry in ("cabinet", "corner") else entry, {})
     setting = {}
     for field, (key, _) in moved.items():
@@ -105,6 +111,17 @@ def plugin(approval, entry, params=None):
             entry_step(approval, "settings", reset | {"units": "mm"}))
 
 
+def holds(condition, values):
+    """Whether a dialog condition (`{field, eq}`, `{field, in}`, `all`, `any`, `not`) holds."""
+    if "field" in condition:
+        value = values.get(condition["field"])
+        return value == condition["eq"] if "eq" in condition else value in condition["in"]
+    (key, inner), = condition.items()
+    if key == "not":
+        return not holds(inner, values)
+    return (all if key == "all" else any)(holds(c, values) for c in inner)
+
+
 def entry_step(approval, entry, params=None):
     """The plugin.run step itself, with the schema's defaults."""
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
@@ -118,7 +135,7 @@ def entry_step(approval, entry, params=None):
     given = defaults | (params or {})
     for key, field in schema["properties"].items():
         for rule in field.get("x-solidcraft-defaults", []):
-            if given.get(rule["when"]["field"]) == rule["when"]["eq"]:
+            if holds(rule["when"], given):
                 defaults[key] = rule["value"]
                 break
     # The tests name their parts after the plugin's own fallback name, not the dialog's.

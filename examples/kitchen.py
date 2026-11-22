@@ -10,7 +10,7 @@ It uses every function of the plugin:
 - Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth; an
   inset door on the tall unit, a graduated drawer unit (a lower top drawer), a drawer over
   a door on the return, and Base 3 is a sink base (rails instead of a top)
-- Corner cabinet, at the right end of the base units and of the wall units; the wall one hangs on French cleats along both walls
+- Cabinet with a corner Shape, at the right end of the base units and of the wall units; the wall one hangs on French cleats along both walls
 - Place: each floor unit goes to the right of the one before it, by selecting that one, and is
   held to it: widen `Base_1_width` and the units after it move along
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
@@ -70,12 +70,12 @@ BACK = 280  # the wall: the tall unit is 560 deep and centred on the origin
 # wall, and one more base unit continues it, turned to face into the room.
 # Biscuits in both corner cabinets: their joints are the cheapest to cut, and a corner cabinet's
 # run with screws or dowels came close to the 30 s limit on CI.
-CORNER = {**FLOOR_UNIT, **MATCH, "width": 1000, "return": 1000, "doors": "hinged left",
+CORNER = {**FLOOR_UNIT, **MATCH, "shape": "L-shaped", "width": 1000, "return": 1000, "corner_doors": "hinged left",
           "handles": "pull", "place": "right", "joints": "biscuit"}
 RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"]  # the right wall
 RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "drawers": 1, "doors": 1, "handles": "pull"}
 WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "depth": 320,
-               "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
+               "shape": "diagonal", "shelves": 2, "shelf_pins": True, "corner_doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
                "wall_mount": "cleat", "joints": "biscuit", "place": "right"}
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
@@ -141,8 +141,8 @@ for name, left, params in HANGING:
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", translate=move),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
-steps += [select(f"{FLOOR[-1][0]} Side R"), *cabinet("corner", {**CORNER, "name": "Corner"}),
-          select(f"{HANGING[-1][0]} Top"), *cabinet("corner", {**WALL_CORNER, "name": "Wall corner"})]
+steps += [select(f"{FLOOR[-1][0]} Side R"), *cabinet("cabinet", {**CORNER, "name": "Corner"}),
+          select(f"{HANGING[-1][0]} Top"), *cabinet("cabinet", {**WALL_CORNER, "name": "Wall corner"})]
 # The units on the return are made on the origin, then turned a quarter and put at the end of
 # the corner cabinet's return.
 end = BACK - CORNER["return"]

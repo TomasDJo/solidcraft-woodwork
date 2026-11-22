@@ -211,7 +211,16 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `frame`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `frame`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+**One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
+`diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
+a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or
+the corner's (`corner`, `return`, `corner_doors`, `boards`); the corner's sizes and name are
+conditional defaults on `shape` (`x-solidcraft-defaults` takes any condition, first rule wins).
+`entries` in `lib.rs` sends a corner shape to `corner::build` as the entry `corner`, its
+`corner_doors` as `doors`, so the cabinet remembers `corner` and Edit, the Edit hook and every
+`entry == "corner"` test work as before. There is no `corner` entry (`woodwork.corner` is gone);
+`build.plugin` still takes `"corner"` in the tests and sends Cabinet with a shape.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet`, `corner` and `frame` through the same steps (component, material,

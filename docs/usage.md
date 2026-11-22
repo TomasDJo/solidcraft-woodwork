@@ -9,7 +9,7 @@ thickness when there is a back, and a sink base has no shelf or divider fields, 
 without doors.
 
 - [Cabinet](#cabinet)
-- [Corner cabinet](#corner-cabinet)
+- [Corner cabinets](#corner-cabinets)
 - [Frame](#frame)
 - [Building a run: Place and Match selected](#building-a-run-place-and-match-selected)
 - [Changing sizes](#changing-sizes)
@@ -23,7 +23,13 @@ without doors.
 
 ## Cabinet
 
-Builds a box carcass: sides, top, bottom, shelves, back and optional plinth. Each panel is an
+One dialog for every cabinet: **Shape** is a Box (below) or a corner cabinet, L-shaped or
+diagonal (see [Corner cabinets](#corner-cabinets)); the dialog shows only the fields of the
+shape chosen, and a corner starts at its own sizes (900 wide, 900 return). Corner
+cabinets used to have a dialog of their own, `woodwork.corner`: it is gone, and a script makes one with
+`woodwork.cabinet` and `"shape": "L-shaped"` or `"diagonal"` (its doors are `corner_doors`).
+
+A box builds a carcass: sides, top, bottom, shelves, back and optional plinth. Each panel is an
 ordinary named body. The cabinet stands on Z = 0, centred on the origin, and is a component
 of its own inside whichever component is active, so it moves as one piece and a room
 component can hold its cabinets.
@@ -241,7 +247,7 @@ that run the same way with the same count share one (`Name joint Side L Bottom d
 ### Wall mount
 
 **Wall mount** hangs a box or corner cabinet on the wall (for a corner cabinet see
-[Corner cabinet](#corner-cabinet)). Legs and wall mount are independent: a cabinet can have both.
+[Corner cabinets](#corner-cabinets)). Legs and wall mount are independent: a cabinet can have both.
 
 - **None**: as before, nothing to hang it by.
 - **French cleat**: `Name Cleat`, a board across the back between the sides, right under the
@@ -271,9 +277,9 @@ board's thickness from the rear instead of 12 mm; with no back, the shelves stop
 it. Shelves, dividers and drawer boxes follow. An overlaid back would hold the cabinet off the
 wall, so a cleat or a hanging rail needs a back in a groove or none; a steel rail takes any back.
 
-## Corner cabinet
+## Corner cabinets
 
-Builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
+Cabinet with **Shape** Corner, L-shaped or Corner, diagonal builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
 **Plinth** (Yes or No) and the plinth of Woodwork settings work as on the box cabinet: a board set back from the fronts, the two end panels
 notched at their front bottom corners, or legs under the corners of the footprint (six under the
@@ -383,7 +389,7 @@ shelves are.
 
 ## Building a run: Place and Match selected
 
-Select any part of a cabinet, then open **Cabinet** or **Corner cabinet**. The selection
+Select any part of a cabinet, then open **Cabinet**. The selection
 shows in the dialog as **Selected cabinet**. Click that field and pick another board in the
 model while the dialog is open, and the preview follows. Edit cabinet, Material and Drawing
 have the same field.
@@ -482,8 +488,7 @@ defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowe
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
 them later leaves the cabinets made before as they are, and Edit cabinet changes the methods,
 the models, the hinge opening and the slide type of one cabinet. A corner cabinet takes the
-carcass method (dowels for a dado). A script cannot give them to `woodwork.cabinet` or
-`woodwork.corner` (an unknown field is refused): it runs `woodwork.settings` first, such as
+carcass method (dowels for a dado). A script cannot give them to `woodwork.cabinet` (an unknown field is refused): it runs `woodwork.settings` first, such as
 `{"joints": "confirmat", "joint_spacing": 300}`. A size that shows only with a choice needs the
 choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `back`,
 `plinth_setback` with `plinth_type`).
@@ -758,12 +763,12 @@ quarter turn) is drawn from its own front.
 
 - **After a cabinet is added or edited the view shows the whole model** (SolidCraft 0.45), and
   nothing is selected: pick the board to place the next cabinet against.
-- **An AI agent can use every function as a tool** (SolidCraft 0.45): `woodwork.cabinet`,
-  `woodwork.corner` and so on, with the dialog's fields as its arguments. Every field
+- **An AI agent can use every function as a tool** (SolidCraft 0.45): `woodwork.cabinet`
+  (corner cabinets too, by its `shape`), `woodwork.frame` and so on, with the dialog's fields as its arguments. Every field
   with a default is required there, so the agent sends them all, the defaults with what it wants changed; a
   field the dialog would hide is left out. From SolidCraft 0.46 the same check applies to a
   script's `plugin.run` and `woodwork.<entry>` (except Material and Drawing): pass
-  every field the dialog would show. Cabinet and Corner cabinet are the exception (0.46,
+  every field the dialog would show. Cabinet is the exception (0.46,
   Woodwork settings): a field left out takes the stored setting, and only then must every
   field be there. The joinery and hardware are no fields of theirs at all: set them with
   `woodwork.settings` first.

@@ -607,6 +607,22 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
 }
 
 fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
+    // One Cabinet dialog for both builders: a corner shape goes to the corner one, with the
+    // fields it knows (its `doors` are the dialog's `corner_doors`), and is remembered as such.
+    let corner;
+    let (entry, params) = match params["shape"].as_str() {
+        Some("L-shaped" | "diagonal") if entry == "cabinet" => {
+            let mut p = params.clone();
+            if let Some(all) = p.as_object_mut() {
+                if let Some(doors) = all.remove("corner_doors") {
+                    all.insert("doors".into(), doors);
+                }
+            }
+            corner = p;
+            ("corner", &corner)
+        }
+        _ => (entry, params),
+    };
     match entry {
         "cabinet" | "corner" | "frame" => {
             // Where it goes: on the origin, or against the cabinet that is selected.

@@ -38,7 +38,8 @@ def test_agent_tools(approval):
         measure = ("measure", {})
         tools, (few, built, measured) = mcp(("woodwork.cabinet", TYPICAL), ("woodwork.cabinet", everything), measure)
         listed = {t["name"]: t for t in tools if t["name"].startswith("woodwork.")}
-        names = ("cabinet", "corner", "frame", "edit", "material", "panel", "worktop", "cutlist", "drawing", "settings")
+        # (no `woodwork.corner` any more: a corner cabinet is `woodwork.cabinet` with a shape)
+        names = ("cabinet", "frame", "edit", "material", "panel", "worktop", "cutlist", "drawing", "settings")
         assert sorted(listed) == sorted(f"woodwork.{n}" for n in names), sorted(listed)
         # With the dialog hook (0.46) the tool's schema leaves `required` out, for the hook to
         # fill in what is missing; the fields are checked after it, so `few` is still refused.
@@ -52,7 +53,10 @@ def test_agent_tools(approval):
         # The command an engine call or a script uses: from 0.46 checked as strictly, as the
         # cabinet's schema has conditional fields (`few` would be refused there too).
         command = {"command": "woodwork.cabinet", "params": {"approval": installed["approval"], "params": everything}}
-        results = cli([install, {"command": "plugin.tools", "params": {}}, command, MEASURE])
+        corner = {"command": "woodwork.cabinet", "params": {"approval": installed["approval"], "params": everything | {
+            "shape": "diagonal", "name": "Corner", "width": 900, "return": 900, "place": "origin"}}}
+        results = cli([install, {"command": "plugin.tools", "params": {}}, command, MEASURE, corner, MEASURE])
         tools = {t["name"]: t["input_schema"] for t in results[1]["tools"]}
         assert "required" not in tools["woodwork.cabinet"], tools.keys()
         assert outline(results[3]) == [-400, -200, 0, 400, 200, 900], outline(results[3])
+        assert "Corner Side L" in boxes(results[5]) and "Corner Door" not in boxes(results[5])
