@@ -157,3 +157,23 @@ fn a_cabinet_goes_against_the_side_it_is_placed_on() {
     );
     assert_eq!(corner.seat("right", 400.0, 560.0), ([650.0, 170.0, 0.0], 0));
 }
+
+#[test]
+fn a_frame_is_found_by_its_front_left_leg_and_is_no_cabinet() {
+    let body = |name: &str| json!({"name": name, "bbox": {"min": [0, 0, 0], "max": [70, 70, 870]}});
+    let measure = json!({"bodies": [
+        body("Bench Leg front left"), body("Bench Apron front"),
+        body("Bench 2 Side L"), body("Bench 2 Side R"), body("Bench 2 Top"),
+    ]});
+    assert_eq!(owner(&measure, "Bench Apron front"), Some("Bench"));
+    assert_eq!(owner(&measure, "Bench 2 Top"), Some("Bench 2"));
+    assert_eq!(
+        parts(&measure, "Bench"),
+        ["Bench Leg front left", "Bench Apron front"]
+    );
+    let picked = ["Bench Apron front".to_string()];
+    assert_eq!(piece(&picked, &measure).unwrap(), "Bench");
+    let err = cabinet(&picked, &measure).err().unwrap();
+    assert!(err.contains("`Bench` is a frame"), "{err}");
+    assert!(cabinet(&["Bench 2 Top".to_string()], &measure).is_ok());
+}

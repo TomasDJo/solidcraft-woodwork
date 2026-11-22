@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 14] = [
+const SIZES: [&str; 19] = [
     "width",
     "height",
     "depth",
@@ -26,6 +26,12 @@ const SIZES: [&str; 14] = [
     "cleat_thickness",
     "wall_rail",
     "wall_rail_return",
+    // a frame's
+    "leg",
+    "apron_height",
+    "apron_thickness",
+    "inset",
+    "stretcher_height",
 ];
 
 /// The Edit fields only a box cabinet takes, and only a corner cabinet: `merge` refuses them
@@ -41,9 +47,25 @@ const BOX_ONLY: [&str; 8] = [
     "back",
 ];
 const CORNER_ONLY: [&str; 2] = ["corner_doors", "shape"];
+/// The Edit fields both kinds of cabinet take, and those only a frame takes.
+const CABINETS: [&str; 11] = [
+    "shelves",
+    "handles",
+    "handle_position",
+    "plinth",
+    "plinth_type",
+    "plinth_setback",
+    "reveal",
+    "fronts",
+    "wall_mount",
+    "shelf_pins",
+    "labels",
+];
+const FRAME_ONLY: [&str; 3] = ["stretchers", "frame_legs", "joint"];
 
 /// The dialog hook's reply for Edit: the fields the selected cabinet does not take, hidden.
-/// A corner cabinet has a `<Prefix>_return` parameter (as Joinery tells it). Nothing picked, or
+/// A corner cabinet has a `<Prefix>_return` parameter (as Joinery tells it), a frame its
+/// `<Name> Leg front left` body and only its own fields. Nothing picked, or
 /// not a cabinet: everything shown. Hidden only from view, so a run is the same.
 /// `design` is `document.inspect`'s reply with body names.
 pub fn hidden(values: &Value, design: &Value) -> Value {
@@ -54,10 +76,15 @@ pub fn hidden(values: &Value, design: &Value) -> Value {
     let id = format!("{}_return", kit::prefix(cabinet));
     let all = design["params"].as_array().into_iter().flatten();
     let corner = all.into_iter().any(|p| p["name"] == id.as_str());
-    let hide = if corner {
-        &BOX_ONLY[..]
-    } else {
-        &CORNER_ONLY[..]
+    let leg = format!("{cabinet}{}", crate::frame::MARK);
+    let bodies = design["bodies"].as_array().into_iter().flatten();
+    let frame = bodies
+        .into_iter()
+        .any(|b| b.as_str().or(b["name"].as_str()) == Some(&leg));
+    let hide: Vec<&str> = match (frame, corner) {
+        (true, _) => [&CABINETS[..], &BOX_ONLY, &CORNER_ONLY].concat(),
+        (_, true) => [&BOX_ONLY[..], &FRAME_ONLY].concat(),
+        _ => [&CORNER_ONLY[..], &FRAME_ONLY].concat(),
     };
     let reply: Map<String, Value> = (hide.iter())
         .map(|key| (key.to_string(), json!({"visible": false})))
@@ -92,7 +119,6 @@ pub fn merge(
     ) else {
         return Err("it does not remember how it was made: only a cabinet made by Woodwork 0.1.7 or later can be edited".into());
     };
-    let corner = entry == "corner";
     let mut params = params.clone();
     let scale = if params.get("units") == Some(&json!("in")) {
         25.4
@@ -122,23 +148,32 @@ pub fn merge(
         if value.is_null() || value == "keep" || key == "selection" {
             continue;
         }
-        let only = |wanted: bool, kind: &str| match corner == wanted {
+        // the entries a field is for, and how a message calls them
+        let only = |entries: &[&str], kind: &str| match entries.contains(&entry) {
             true => Ok(()),
             false => Err(format!("`{key}` is only for a {kind}")),
         };
+        let cabinets = ["cabinet", "corner"];
         let (to, value) = match key.as_str() {
-            "shelves" | "handles" | "handle_position" | "plinth" | "plinth_type"
-            | "plinth_setback" | "reveal" | "fronts" | "wall_mount" => {
-                (key.as_str(), value.clone())
+            "shelf_pins" | "labels" => {
+                only(&cabinets, "cabinet")?;
+                (key.as_str(), json!(value == "yes"))
             }
-            "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
+            k if CABINETS.contains(&k) => {
+                only(&cabinets, "cabinet")?;
+                (k, value.clone())
+            }
             k if BOX_ONLY.contains(&k) => {
-                only(false, "box cabinet")?;
+                only(&["cabinet"], "box cabinet")?;
                 (k, value.clone())
             }
             "shape" | "corner_doors" => {
-                only(true, "corner cabinet")?;
+                only(&["corner"], "corner cabinet")?;
                 (key.strip_prefix("corner_").unwrap_or(key), value.clone())
+            }
+            k if FRAME_ONLY.contains(&k) => {
+                only(&["frame"], "frame")?;
+                (if k == "frame_legs" { "legs" } else { k }, value.clone())
             }
             _ => return Err(format!("`{key}` cannot be edited")),
         };

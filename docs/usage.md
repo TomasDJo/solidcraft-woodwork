@@ -10,6 +10,7 @@ without doors.
 
 - [Cabinet](#cabinet)
 - [Corner cabinet](#corner-cabinet)
+- [Frame](#frame)
 - [Building a run: Place and Match selected](#building-a-run-place-and-match-selected)
 - [Changing sizes](#changing-sizes)
 - [Edit cabinet](#edit-cabinet)
@@ -205,6 +206,50 @@ Two shapes:
   at the end of the return follows from the width and the return, and equals Depth when the
   two are the same.
 
+## Frame
+
+A leg-and-rail base for a workbench, a table, a desk or a bench: square legs, aprons (the rails
+under the top) between them, and stretchers low down if you want them. The top itself is not
+part of it. It is a component of its own, standing on Z = 0 centred on the origin (or against
+a cabinet, see Place below), made of solid timber, oak unless you choose another material.
+
+| Field | What it does |
+|---|---|
+| **Units** | The sizes in mm or inches, as in the cabinet dialog. |
+| **Width, Depth** | Over the legs. Each pair of legs side by side must leave more than 100 mm between them. |
+| **Height** | From the floor to the top of the legs, which is also the top of the aprons. |
+| **Leg size** | The legs' square section (20 mm or more; with dowels more than inset + half the apron thickness + 24 mm, so the two rails' dowels in a corner leg do not meet; with 6 legs at least 50 mm). |
+| **Apron height, Apron thickness** | The aprons' section (at least 40 x 12 mm); the stretchers have the same. |
+| **Apron inset** | How far the aprons' outer faces stand back from the legs' outer faces (0 for flush). Inset and thickness together are at most the leg. The stretchers sit at the same inset. |
+| **Stretchers** | None, Ends (one at each end, front leg to back leg) or All round (the front and back too). |
+| **Stretcher height** | Shown with stretchers: from the floor to their underside. Their top must stay 50 mm under the aprons. |
+| **Legs** | 4, or 6: a middle pair at the middle of the width, the long aprons (and stretchers) split there, and a middle apron (and with stretchers a middle stretcher) across between them. |
+| **Joint** | With bolts, depth (and with 4 legs width) must leave 160 mm between the legs, so the bolts from both ends of a rail do not meet. **Dowels**: two 8 x 40 mm dowel holes at each rail end, 20 mm into the leg and 20 mm into the rail, along the rail, centred on its thickness, at a quarter and three quarters of its height. **Bolts**: a 10 mm bed bolt hole from the leg's outer face through the leg and 80 mm into the rail's end, and a 10 mm barrel nut hole from the rail's inner face, 60 mm from its end, across to past the bolt. The rails along the width are bolted higher than those along the depth, so the two bolts in a corner leg do not meet. Rails that meet at a middle leg are doweled, as a bolt cannot come from both sides. |
+| **Material, Place, Selected cabinet, Name** | As for a cabinet. Place: Auto, the origin, or right or left of the selected cabinet, against its side with the backs flush and held to it as a cabinet is (the frame has seats at its back corners). Auto on a cabinet's top puts it at the origin. |
+
+The parts are `Name Leg front left`, `Leg front right`, `Leg back left`, `Leg back right`
+(`Leg middle front`, `Leg middle back`), `Name Apron front`, `Apron back`, `Apron L`, `Apron R`
+(with six legs `Apron front L`, `Apron front R`, `Apron back L`, `Apron back R` and
+`Apron middle`) and the stretchers named the same way (`Stretcher L`, ...). The holes are
+features `Name dowel 1`, `Name bolt 1`, `Name barrel nut 1` and so on. The sizes are the
+parameters `Name_width`, `Name_depth`, `Name_height`, `Name_leg`, `Name_apron_height`,
+`Name_apron_thickness`, `Name_inset` and, with stretchers, `Name_stretcher_height`: change one
+in Parameters and the frame and its holes follow.
+
+The cut list lists the legs, aprons and stretchers as solid timber bought to length (length x
+width x thickness), not laid out on sheets, and counts the dowels, bed bolts and barrel nuts.
+Edit cabinet changes a frame's stretchers, legs and joint (Stretchers, Frame legs, Frame
+joint), keeping its sizes from Parameters; Material works on a frame. Joinery, Panel and
+Drawing are for cabinets and refuse a frame.
+
+The top: run [Worktop](#worktop) with a frame part picked. It goes over the legs' outer faces
+(plus the overhangs), on the aprons' top, and the cut list lists it bought to length. Run
+again with the worktop picked, it is made again over the frame.
+
+Limits: a frame part cannot be selected to place a cabinet against (pick a cabinet), and a
+frame does not go on top of a cabinet. The leg count is fixed when it is built, as a cabinet's
+shelves are.
+
 ## Building a run: Place and Match selected
 
 Select any part of a cabinet, then open **Cabinet** or **Corner cabinet**. The selection
@@ -249,7 +294,9 @@ Changes a cabinet after it is made. Select any part of it, fill in only what sho
 leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
-plinth type, plinth set-back, the kind (standard or sink base), the wall mount, a corner cabinet's doors and shape. The reveal, the plinth set-back and the drawer
+plinth type, plinth set-back, the kind (standard or sink base), the wall mount, a corner cabinet's doors and shape, and a
+[frame](#frame)'s stretchers, legs and joint (a cabinet's fields are refused on a frame, and
+the frame's on a cabinet). The reveal, the plinth set-back and the drawer
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
 with doors go at the top unless Drawers at says Bottom; an edit that takes the doors away from
 a cabinet with drawers makes the drawers all alike again unless it gives a drawer front height.
@@ -333,6 +380,8 @@ Lays a worktop over the selected cabinets. Pick a board of each cabinet (the **S
 field takes several): one straight run, or runs that meet in corners, such as an L or a U round
 corner cabinets. A gap between cabinets, for a dishwasher or an oven, is covered by the same
 piece. Every cabinet must have its top at the same height and stand square to the walls.
+A [frame](#frame) counts as a cabinet: pick any of its parts, and the worktop lies on its
+aprons' top over its legs' outer faces, its front where the front legs are.
 
 | Field | What it does |
 |---|---|
@@ -439,6 +488,11 @@ Sheet sizes, kerf and trim are metric mm: a 4 x 8 ft sheet is 2438.4 x 1219.2 mm
 A board whose name contains `Worktop` (made by Worktop, or drawn yourself) is not sheet stock: it
 is left out of the layouts and the sheets, and listed as bought to length (the reply's `worktops`, and a table "Worktops,
 bought to length" in the PDF), at its bounding box, also when mitred or cut out. It still appears in the cut list's rows.
+
+A [frame](#frame)'s legs, aprons and stretchers are solid timber, bought to length the same
+way: the reply's `timber` (the same fields as `worktops`), a table "Solid timber, bought to
+length" in the PDF, and on the labels "bought to length". They stay in the cut list's rows and
+the CSV.
 
 The layouts are a quick greedy fit, not an optimiser: a few orders and two ways of choosing
 the free piece are tried and the one with the fewest sheets kept. A cutting program may well

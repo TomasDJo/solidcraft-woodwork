@@ -93,13 +93,40 @@
         }
       },
       {
+        "name": "frame",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Frame" }, { "kind": "ribbon", "name": "Frame" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/frame.svg",
+          "required": ["units", "width", "depth", "height", "leg", "apron_height", "apron_thickness", "inset", "stretchers", "stretcher_height", "legs", "joint", "selection", "material", "place", "name"],
+          "properties": {
+            "units": { "type": "string", "title": "Units", "description": "Unit of the sizes in this dialog. Inches puts inch sizes in the fields you have not changed.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
+            "width": { "type": "number", "title": "Width", "description": "Outside width, over the legs, side to side.", "default": 1200, "minimum": 4, "maximum": 5000, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 48}] },
+            "depth": { "type": "number", "title": "Depth", "description": "Outside depth, over the legs, front to back.", "default": 600, "minimum": 4, "maximum": 3000, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 24}] },
+            "height": { "type": "number", "title": "Height", "description": "From the floor to the top of the legs and aprons. The top goes on that.", "default": 870, "minimum": 4, "maximum": 2000, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 34}] },
+            "leg": { "type": "number", "title": "Leg size", "description": "The legs are square posts this wide each way.", "default": 70, "minimum": 0.5, "maximum": 300, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 2.75}] },
+            "apron_height": { "type": "number", "title": "Apron height", "description": "Height of the aprons, the rails under the top that join the legs. The stretchers are the same size.", "default": 100, "minimum": 0.5, "maximum": 1000, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 4}] },
+            "apron_thickness": { "type": "number", "title": "Apron thickness", "description": "Thickness of the aprons and stretchers.", "default": 22, "minimum": 0.25, "maximum": 300, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 0.875}] },
+            "inset": { "type": "number", "title": "Apron inset", "description": "How far the aprons' outer faces sit back from the legs' outer faces. 0 for flush.", "default": 10, "minimum": 0, "maximum": 300, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 0.375}] },
+            "stretchers": { "type": "string", "title": "Stretchers", "description": "Rails low down between the legs, to stiffen the frame or carry a shelf.", "default": "ends", "oneOf": [{"const": "none", "title": "None", "description": "No stretchers."}, {"const": "ends", "title": "Ends", "description": "One at each end, front leg to back leg (and one between the middle legs)."}, {"const": "all", "title": "All round", "description": "At the ends, the front and the back."}] },
+            "stretcher_height": { "type": "number", "title": "Stretcher height", "description": "From the floor to the stretchers' underside.", "default": 150, "minimum": 0, "maximum": 2000, "x-solidcraft-visible-when": {"field": "stretchers", "in": ["ends", "all"]}, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 6}] },
+            "legs": { "type": "string", "title": "Legs", "description": "Four legs, or six for a long frame: a middle pair with a rail across between them.", "default": "4", "oneOf": [{"const": "4", "title": "4", "description": "One at each corner."}, {"const": "6", "title": "6", "description": "A pair in the middle too, the long rails split there."}] },
+            "joint": { "type": "string", "title": "Joint", "description": "How the rails are fixed to the legs. The holes are cut; the cut list counts the hardware.", "default": "dowels", "oneOf": [{"const": "dowels", "title": "Dowels", "description": "Two 8 x 40 mm wooden dowels at each rail end, glued."}, {"const": "bolts", "title": "Bolts", "description": "A 10 mm bed bolt through the leg into each rail end, held by a barrel nut in the rail, so the frame comes apart. Rails meeting at a middle leg get dowels."}] },
+            "selection": { "type": "array", "title": "Selected cabinet", "description": "Pick a side of a cabinet to place the frame against. Empty: none.", "maxItems": 1 },
+            "material": { "type": "string", "title": "Material", "description": "What every part is made of. Change single parts later with Material.", "default": "Oak", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None", "description": "No material set."}] },
+            "place": { "type": "string", "title": "Place", "description": "Where the frame goes. Right and left put it against the selected cabinet.", "default": "auto", "oneOf": [{"const": "auto", "title": "Auto", "description": "Against the selected side of a cabinet; else at the origin."}, {"const": "origin", "title": "At the origin", "description": "At the centre of the design."}, {"const": "right", "title": "Right of selected", "description": "Against its right side, backs flush."}, {"const": "left", "title": "Left of selected", "description": "Against its left side, backs flush."}] },
+            "name": { "type": "string", "title": "Name", "description": "The frame's name; each part is named after it, such as Frame Leg front left. A taken name gets the next free number.", "default": "Frame", "minLength": 1, "maxLength": 40 }
+          }
+        }
+      },
+      {
         "name": "edit",
         "dialog_hook": true,
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Edit cabinet" }, { "kind": "ribbon", "name": "Edit cabinet" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/edit.svg",
-          "required": ["selection", "kind", "drawers_at", "door_hinge", "fronts", "corner_doors", "shape", "back", "wall_mount", "shelf_pins", "handles", "handle_position", "labels", "plinth_type"],
+          "required": ["selection", "kind", "drawers_at", "door_hinge", "fronts", "corner_doors", "shape", "back", "wall_mount", "shelf_pins", "handles", "handle_position", "labels", "plinth_type", "stretchers", "frame_legs", "joint"],
           "properties": {
             "selection": { "type": "array", "title": "Selected cabinet", "description": "Pick any board of the cabinet to change. Keep leaves a choice as it is.", "maxItems": 1 },
             "kind": { "type": "string", "title": "Kind", "description": "Box cabinet only: a standard cabinet or a sink base, with rails instead of a top.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "standard", "title": "Standard"}, {"const": "sink", "title": "Sink base"}] },
@@ -122,7 +149,10 @@
             "labels": { "type": "string", "title": "Labels", "description": "Each board's name written on it.", "default": "keep", "oneOf": [{ "const": "keep", "title": "Keep" }, { "const": "yes", "title": "Yes" }, { "const": "no", "title": "No" }] },
             "plinth_type": { "type": "string", "title": "Plinth type", "description": "A board set back under the cabinet, notched sides for one long board along a run, legs, or casters.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "board", "title": "Board"}, {"const": "notch", "title": "Notched sides"}, {"const": "legs", "title": "Legs"}, {"const": "casters", "title": "Casters"}] },
             "plinth": { "type": "number", "title": "Plinth height", "description": "The space at floor level under the doors. In the cabinet's unit; 0 for none. Empty: as it is.", "minimum": 0, "maximum": 500 },
-            "plinth_setback": { "type": "number", "title": "Plinth set-back", "description": "How far the plinth board or the sides' notch is back from the front. In the cabinet's unit. Empty: as it is.", "minimum": 0, "maximum": 200, "x-solidcraft-visible-when": {"not": {"field": "plinth_type", "in": ["legs", "casters"]}} }
+            "plinth_setback": { "type": "number", "title": "Plinth set-back", "description": "How far the plinth board or the sides' notch is back from the front. In the cabinet's unit. Empty: as it is.", "minimum": 0, "maximum": 200, "x-solidcraft-visible-when": {"not": {"field": "plinth_type", "in": ["legs", "casters"]}} },
+            "stretchers": { "type": "string", "title": "Stretchers", "description": "Rails low down between the legs. Frame only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "none", "title": "None"}, {"const": "ends", "title": "Ends"}, {"const": "all", "title": "All round"}] },
+            "frame_legs": { "type": "string", "title": "Frame legs", "description": "Four legs, or six with a middle pair. Frame only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "4", "title": "4"}, {"const": "6", "title": "6"}] },
+            "joint": { "type": "string", "title": "Frame joint", "description": "Dowels, or bolts with barrel nuts. Frame only.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "dowels", "title": "Dowels"}, {"const": "bolts", "title": "Bolts"}] }
           }
         }
       },

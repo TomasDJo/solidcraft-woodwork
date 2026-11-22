@@ -666,3 +666,40 @@ fn the_tools_opening_must_stop_at_the_cabinets_back() {
     let why = refused(tool(json!({"tool_y": 322})), &["A"], &m);
     assert_eq!(why, "the tool's opening reaches over the cabinet's back");
 }
+
+/// A frame 1200 x 600 x 870 on the origin, legs 70 mm, an apron between the front legs.
+fn frame(name: &str) -> Vec<Value> {
+    let leg = |part: &str, x: f64, y: f64| {
+        body(
+            &format!("{name} Leg {part}"),
+            [x, y, 0.0],
+            [x + 70.0, y + 70.0, 870.0],
+        )
+    };
+    vec![
+        leg("front left", -600.0, -300.0),
+        leg("front right", 530.0, -300.0),
+        leg("back left", -600.0, 230.0),
+        leg("back right", 530.0, 230.0),
+        body(
+            &format!("{name} Apron front"),
+            [-530.0, -290.0, 770.0],
+            [530.0, -268.0, 870.0],
+        ),
+    ]
+}
+
+#[test]
+fn a_frame_gives_its_legs_outer_faces() {
+    let m = measure(vec![frame("Bench")]);
+    let p = json!({"left_overhang": 30, "right_overhang": 30});
+    let (commands, _) = build(&p, &names(&["Bench"]), &m).unwrap();
+    // on the legs' top, over their outer faces, 40 past the front and the overhangs at the ends
+    let top = named(&commands, "Worktop");
+    assert_eq!(top["corner"], json!([-630.0, -340.0, 870.0]));
+    assert_eq!(
+        [&top["length"], &top["width"]],
+        [&json!("1260 mm"), &json!("640 mm")]
+    );
+    assert!(is_frame(&m, "Bench") && !is_frame(&m, "Bench 2"));
+}

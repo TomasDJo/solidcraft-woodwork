@@ -19,6 +19,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   (rails instead of a top), with doors or drawers. Hangs on a French cleat, a hanging rail or a steel rail.
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door, overlay
   or inset.
+- **Frame**: a leg-and-rail base for a workbench, table, desk or bench: square legs, aprons
+  and stretchers in solid timber, joined with dowels or bolts, listed in the cut list as timber
+  bought to length.
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
   a run stays together when a cabinet changes size.
 - **Edit cabinet**: change shelves, doors, drawers and more on a cabinet that is already made.

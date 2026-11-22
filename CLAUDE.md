@@ -135,6 +135,7 @@ materials, joinery and cut lists.
 | `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
+| `src/frame/` | Frame: a leg-and-rail base (legs, aprons, stretchers, dowel or bolt holes), built on `Kit` like a cabinet. `is_timber` tells its parts to the cut list |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin, as Joinery: `inside`), remembers them for Edit, and refuses Place against a side that has one |
@@ -159,11 +160,11 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `corner`, `frame`, `edit`, `joinery`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
-`lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
-ground), so a builder only returns its commands and `Kit`'s summary.
+`lib.rs` runs `cabinet`, `corner` and `frame` through the same steps (component, material,
+place, ground), so a builder only returns its commands and `Kit`'s summary.
 
 ## Build, test, install
 
@@ -331,13 +332,30 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   pieces are never joined again, so a cutting optimiser may save a sheet on a big job (the
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
   sheet is only reported (`oversize`), not split.
+- A frame (`frame`) is recognised by its `<Name> Leg front left` body (`frame::MARK`):
+  `select::owner` takes it as it takes a cabinet's `Side L`, so Edit (`select::piece`) and
+  Material find it, and `select::cabinet` refuses it (Joinery, Panel, Drawing, Place against it).
+  Its legs are `Leg front left` and so on, never `Leg <n>` (`fittings::is_leg`, hardware). Its
+  parts (`frame::is_timber`: `Leg <words>`, `Apron ...`, `Stretcher ...`) are the cut list's
+  `timber`, bought to length, not on sheets; its holes `<Name> dowel <n>`, `bolt <n>`, `barrel
+  nut <n>` are counted as hardware. A stretcher has the apron's section. With bolts, rails that
+  meet at a middle leg are doweled. It has seats, so Place right or left of a cabinet links it;
+  on Auto a cabinet's top gives the origin. Edit's frame fields are `stretchers`, `frame_legs`
+  (the frame's `legs`) and `joint` (`edit::FRAME_ONLY`; the Edit hook hides them for a cabinet,
+  and every cabinet field, `edit::CABINETS` and the kinds' lists, for a frame); its sizes come
+  from Parameters (`edit::SIZES`). Dowels that would meet in a leg (a corner's two rails, or a
+  middle leg's split rails: a leg under 50 mm with 6 legs) and bolts from both ends of a rail
+  shorter than `2*BOLT_PAST` are refused. A frame made
+  inside a moved component has the hole shift above.
 - A board is a worktop, bought to length and not laid out on sheets, when its name contains
   `Worktop` (`cutlist::worktop`), at its world box (`cutlist::turned` leaves it out, so a
   mitred or cut-out piece is not measured by mesh). A worktop named otherwise is a board, and
   so is a name with ` Tool ` in it (the tool station's shelf and battens).
 - A worktop (`worktop`) is numeric: measured from the cabinets' Side L, Side R, Back and Back
   return world boxes, made at world coordinates in a component in the active component, which
-  must stand on the origin, unturned. It does not follow a cabinet; running Worktop again with
+  must stand on the origin, unturned. A frame counts as a cabinet (`worktop::is_frame`,
+  `frame_foot`): one foot over its legs' world boxes, facing from its front left to front right
+  leg turned a quarter, top at the legs' top. It does not follow a cabinet; running Worktop again with
   its name (or a piece picked) deletes its component and makes it again over the cabinets it
   remembers (`cabinets` in its metadata, entry `worktop`), with its remembered values when no
   cabinet is picked, the dialog's when one is. A picked piece belongs to the longest worktop
