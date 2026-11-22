@@ -154,6 +154,28 @@ fn hardware_is_counted_from_names() {
 }
 
 #[test]
+fn steel_wall_rails_are_bought_to_length() {
+    let design = json!({"params": [
+        {"name": "A_wall_rail", "value": 600.0}, {"name": "B_wall_rail", "value": 600.0},
+        {"name": "C_2_wall_rail", "value": 800.4},
+        {"name": "D_wall_rail", "value": 0.0}, // an edit took its rail away
+        {"name": "E_wall_rail", "value": 500.0}, // a deleted cabinet's
+        {"name": "A_width", "value": 600.0},
+    ]});
+    let bodies: Vec<Value> = ["A Side L", "B Side L", "C 2 Side L", "D Side L"]
+        .iter()
+        .map(|n| json!({"name": n}))
+        .collect();
+    let list = hardware(&json!({"bodies": bodies}), &design);
+    let expected = json!([
+        {"item": "Steel wall rail, 600 mm", "qty": 2},
+        {"item": "Steel wall rail, 800 mm", "qty": 1},
+        {"item": "Cabinet hanger", "qty": 6},
+    ]);
+    assert_eq!(list, expected);
+}
+
+#[test]
 fn notched_sides_are_noted_and_legs_are_not_boards() {
     let mut m = measure();
     let leg = json!({"name": "A Leg 1", "material": "Default",

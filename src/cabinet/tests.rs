@@ -822,3 +822,153 @@ fn drawer_slides_set_the_box_width_and_drill_both_sides() {
     assert!(build(&json!({"drawers": 1, "depth": 260})).is_err());
     assert!(build(&json!({"drawers": 1, "depth": 300})).is_ok());
 }
+
+#[test]
+fn a_french_cleat_and_its_wall_cleat() {
+    let (commands, summary) = build(&json!({"wall_mount": "cleat"})).unwrap();
+    let param = |n: &str| named(&commands, n)["expression"].clone();
+    assert_eq!(param("Cabinet_cleat_height"), "90 mm");
+    assert_eq!(param("Cabinet_cleat_thickness"), "18 mm");
+    let (tm, h) = ("Cabinet_cleat_thickness", "Cabinet_cleat_height");
+    let cleat = named(&commands, "Cabinet Cleat");
+    let wall = named(&commands, "Cabinet Wall cleat");
+    let top_z = "Cabinet_height - Cabinet_thickness";
+    for (board, z) in [
+        (cleat, format!("{top_z} - {h}")),
+        (wall, format!("{top_z} - {h} + {tm} - {h}")),
+    ] {
+        // between the sides, its rear face on theirs, under the top
+        assert_eq!(
+            [&board["length"], &board["width"], &board["height"]],
+            ["(Cabinet_width - 2*Cabinet_thickness)", tm, h]
+        );
+        assert_eq!(
+            board["corner"][1],
+            format!("Cabinet_depth - {tm} - Cabinet_depth/2")
+        );
+        assert_eq!(board["corner"][2], z);
+    }
+    // bevelled by their thickness: the cabinet's under its front, the wall's on top at the wall
+    let bevel = named(&commands, "Cabinet Cleat bevel");
+    assert_eq!(
+        bevel["edges"],
+        json!([{"body": "Cabinet Cleat", "index": 9}])
+    );
+    assert_eq!(bevel["distance"], tm);
+    let bevel = named(&commands, "Cabinet Wall cleat bevel");
+    assert_eq!(bevel["edges"][0]["index"], 3);
+    // both are boards of the cabinet
+    assert!(summary["bodies"].to_string().contains("Cabinet Wall cleat"));
+    // the back's groove moves forward by the cleat: shelves follow
+    let groove = named(&commands, "Cabinet Back groove");
+    assert_eq!(
+        groove["corner"][1],
+        format!("Cabinet_depth - {tm} - Cabinet_back_thickness - Cabinet_depth/2")
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Shelf 1")["width"],
+        format!("(Cabinet_depth - {tm} - Cabinet_back_thickness)")
+    );
+    // a cleat in inches
+    let p = json!({"units": "in", "width": 24, "height": 30, "depth": 12, "thickness": 0.75,
+                   "back_thickness": 0.25, "wall_mount": "cleat", "cleat_height": 3.5,
+                   "cleat_thickness": 0.75});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_cleat_height")["expression"],
+        "3.5 in"
+    );
+}
+
+#[test]
+fn a_hanging_rail() {
+    let p = json!({"wall_mount": "rail", "back": "none"});
+    let (commands, _) = build(&p).unwrap();
+    let rail = named(&commands, "Cabinet Hanging rail");
+    assert_eq!(
+        [&rail["width"], &rail["height"]],
+        ["Cabinet_thickness", "90 mm"]
+    );
+    assert_eq!(
+        rail["corner"][2],
+        "Cabinet_height - Cabinet_thickness - 90 mm"
+    );
+    assert_eq!(count(&commands, "solid.chamfer"), 0);
+    assert!(!has(&commands, "Cabinet_cleat_height"));
+    // no back: the shelves stop in front of the rail
+    assert_eq!(
+        named(&commands, "Cabinet Shelf 1")["width"],
+        "(Cabinet_depth - Cabinet_thickness)"
+    );
+    // in a groove: the back right in front of it
+    let (commands, _) = build(&json!({"wall_mount": "rail"})).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Back")["corner"][1],
+        "Cabinet_depth - Cabinet_thickness - Cabinet_back_thickness - Cabinet_depth/2"
+    );
+}
+
+#[test]
+fn no_wall_mount_is_as_before() {
+    let plain = build(&json!({})).unwrap().0;
+    assert_eq!(build(&json!({"wall_mount": "none"})).unwrap().0, plain);
+    // the groove stays 12 mm from the rear
+    assert_eq!(
+        named(&plain, "Cabinet Back")["corner"][1],
+        "Cabinet_depth - 12 mm - Cabinet_back_thickness - Cabinet_depth/2"
+    );
+    assert!(build(&json!({"wall_mount": "screws"})).is_err());
+}
+
+#[test]
+fn a_wall_mount_board_is_refused_behind_an_overlaid_back() {
+    for mount in ["cleat", "rail"] {
+        let p = json!({"wall_mount": mount, "back": "overlay"});
+        let error = build(&p).unwrap_err();
+        assert!(error.contains("groove or none"), "{error}");
+    }
+    // steel needs no board
+    assert!(build(&json!({"wall_mount": "steel", "back": "overlay"})).is_ok());
+}
+
+#[test]
+fn cleats_that_do_not_fit_are_refused() {
+    // 2*H - T = 162 mm fits 200 - 36; 2*100 - 18 does not
+    let low =
+        |h: f64| json!({"wall_mount": "cleat", "height": 200, "shelves": 0, "cleat_height": h});
+    assert!(build(&low(90.0)).is_ok());
+    assert!(build(&low(100.0)).unwrap_err().contains("do not fit"));
+    let p = json!({"wall_mount": "cleat", "cleat_height": 18});
+    assert!(build(&p).unwrap_err().contains("taller"));
+    let p = json!({"wall_mount": "cleat", "cleat_thickness": 4});
+    assert!(build(&p).unwrap_err().contains("6 to 50"));
+    let p = json!({"wall_mount": "rail", "height": 120, "shelves": 0});
+    assert!(build(&p).unwrap_err().contains("hanging rail"));
+}
+
+#[test]
+fn a_steel_rail_is_a_parameter_the_cut_list_reads() {
+    let (commands, _) = build(&json!({"wall_mount": "steel", "back": "overlay"})).unwrap();
+    let rail = named(&commands, "Cabinet_wall_rail");
+    assert_eq!(rail["expression"], "Cabinet_width");
+    assert!(rail["comment"]
+        .as_str()
+        .unwrap()
+        .contains("steel wall rail"));
+    // nothing modelled, the back where it was
+    let plain = build(&json!({"back": "overlay"})).unwrap().0;
+    assert_eq!(count(&commands, "solid.box"), count(&plain, "solid.box"));
+    // an edit away from steel sets it to 0; one that keeps it leaves it alone
+    let existing = json!({"width": 600.0, "height": 720.0, "depth": 560.0, "thickness": 18.0,
+                          "back_thickness": 6.0, "wall_rail": 600.0});
+    let away = build(&json!({"_existing": existing})).unwrap().0;
+    let change = named(&away, "Cabinet_wall_rail");
+    assert_eq!(change["expression"], "0 mm");
+    assert_eq!(count(&away, "parameters.add"), 0);
+    let kept = build(&json!({"_existing": existing, "wall_mount": "steel"}))
+        .unwrap()
+        .0;
+    assert!(!has(&kept, "Cabinet_wall_rail"));
+    // a cabinet that never had one gets none
+    assert!(!has(&plain, "Cabinet_wall_rail"));
+}

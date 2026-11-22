@@ -33,6 +33,7 @@ component can hold its cabinets.
 | **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
+| **Wall mount**, **Cleat height**, **Cleat thickness** | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
@@ -113,6 +114,39 @@ pick a rail or a side to select it, as it has no top. Joinery screws the sides t
 first hole of a row goes into the front rail, the last into the back one.
 
 There is no oven housing: size a tall cabinet for your oven yourself.
+
+### Wall mount
+
+**Wall mount** hangs a box cabinet on the wall (corner cabinets: not yet). Legs and wall mount
+are independent: a cabinet can have both.
+
+- **None**: as before, nothing to hang it by.
+- **French cleat**: `Name Cleat`, a board across the back between the sides, right under the
+  top (on a sink base under the rails), its rear face flush with the sides' rear edges. Its
+  lower edge is bevelled at 45 degrees: the rear face reaches lowest, the front face stops a
+  cleat thickness higher. `Name Wall cleat` is the cleat you screw to the wall: the same length
+  and thickness, nested under the cabinet's, its top bevelled to match (low at the wall, high in
+  front), its long front face a cleat height tall. The cabinet's weight pulls it into the wall.
+  The wall cleat is a body in the cabinet's component, so it moves with the cabinet, is built
+  again by Edit cabinet and Match selected, is deleted with the cabinet, and is in the cut list
+  as `Name Wall cleat`. **Cleat height** (on the long face, 90 mm or 3.5 in) and **Cleat
+  thickness** (18 mm or 3/4 in) are the design parameters `Name_cleat_height` and
+  `Name_cleat_thickness`: change them in Parameters and both cleats follow. Twice the height
+  less the thickness must fit between the bottom and the top, and a cleat must be taller than
+  it is thick. The cut list gives each cleat as a square board thickness x height x length: saw the
+  45° bevel along it after cutting (or rip one board twice the height at 45° into both cleats).
+- **Hanging rail**: `Name Hanging rail`, a plain board as thick as the panels and 90 mm high,
+  in the same place, to screw through into the wall.
+- **Steel rail**: nothing is modelled. The cut list's hardware lists `Steel wall rail, <width>
+  mm` (one per cabinet, bought to the cabinet's width, grouped by length) and two `Cabinet
+  hanger` per cabinet. The cabinet has the parameter `Name_wall_rail` (its width) while it
+  hangs on one, 0 after an Edit that takes it away. Hanger models and their holes come with
+  the hardware models (#70).
+
+With a cleat or a hanging rail the back stands in front of it: in a groove, the groove is the
+board's thickness from the rear instead of 12 mm; with no back, the shelves stop in front of
+it. Shelves, dividers and drawer boxes follow. An overlaid back would hold the cabinet off the
+wall, so a cleat or a hanging rail needs a back in a groove or none; a steel rail takes any back.
 
 ## Corner cabinet
 
@@ -199,7 +233,7 @@ Changes a cabinet after it is made. Select any part of it, fill in only what sho
 leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
-plinth type, plinth set-back, the kind (standard or sink base), a corner cabinet's doors and shape. The reveal, the plinth set-back and the drawer
+plinth type, plinth set-back, the kind (standard or sink base), the wall mount, a corner cabinet's doors and shape. The reveal, the plinth set-back and the drawer
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
 with doors go at the top unless Drawers at says Bottom; an edit that takes the doors away from
 a cabinet with drawers makes the drawers all alike again unless it gives a drawer front height.
@@ -276,7 +310,8 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
 
 - lays the parts out on sheets per material and thickness, and counts the sheets to buy from
   those layouts (see [Cutting layouts](#cutting-layouts));
-- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, adjustable legs, handles;
+- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, adjustable legs, handles,
+  steel wall rails (to length) and cabinet hangers;
 - gives a notched side (Plinth type Notched sides) its size over the notch, on a line of its own
   marked `notched for the toe kick; size over the notch` (in the PDF too, and `notched` on its
   label); the cutting layouts and DXF give it as that rectangle, so saw the notch yourself;

@@ -520,3 +520,12 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   carcass's). The drawing's dimensions are on the sides' top front corners and Side L's rear
   bottom one, as a notched side has no front bottom corner. One long plinth board across a run
   is not made (PLAN.md).
+- `wall_mount` (box cabinet and Edit; corner deferred): `cleat` makes `<Name> Cleat` and
+  `<Name> Wall cleat` (a body in the cabinet's component, so it moves and is rebuilt with it),
+  bevelled by `solid.chamfer` on a box edge picked by index, sizes the parameters
+  `<Prefix>_cleat_height` and `_cleat_thickness`; `rail` makes `<Name> Hanging rail` (panel
+  thickness, 90 mm fixed). Either sits under the top, flush with the sides' rear, and the back
+  groove moves forward by its thickness (an overlaid back is refused). `steel` is only hardware:
+  the parameter `<Prefix>_wall_rail` (the width, 0 after an Edit takes it away) gives the cut
+  list a rail bought to length and two hangers; hanger models come with #70. The cut list gives
+  the cleats as square boards (the bevel is sawn after).

@@ -1,7 +1,7 @@
 //! Reads and checks the dialog's fields. The numbers here only check the input.
 
 use super::drawers::{BOX_BEHIND, BOX_CLEAR, SLIDE};
-use super::{GROOVE_INSET, RAIL_D};
+use super::{GROOVE_INSET, NAILER_H, RAIL_D};
 use crate::fittings::{DOOR_GAP, PITCH};
 use crate::kit::{check, num, Kit};
 use serde_json::Value;
@@ -31,6 +31,11 @@ pub struct Input<'a> {
     pub drawers: f64,
     pub pins: bool,
     pub back: &'a str,
+    /// none, cleat (French cleat), rail (a hanging rail) or steel (bought rail and hangers).
+    pub wall_mount: &'a str,
+    /// The mount board's thickness and height (a cleat's on its rear face): 0 without one.
+    pub mount_t: f64,
+    pub mount_h: f64,
     pub handles: &'a str,
     pub handle_at: &'a str,
     pub hinge_right: bool, // the first door is hinged on its right
@@ -138,6 +143,39 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         w <= 5000.0 && h <= 5000.0 && d <= 5000.0,
         "sizes are limited to 5000 mm",
+    )?;
+
+    let wall_mount = p.get("wall_mount").and_then(Value::as_str);
+    let wall_mount = match wall_mount.unwrap_or("none") {
+        m @ ("none" | "cleat" | "rail" | "steel") => m,
+        _ => return Err("wall_mount must be none, cleat, rail or steel".into()),
+    };
+    let between = h - plinth - 2.0 * t; // between the bottom and the top
+    let (mount_t, mount_h) = match wall_mount {
+        "cleat" => {
+            let (ct, ch) = (size("cleat_thickness", 18.0)?, size("cleat_height", 90.0)?);
+            check(
+                (6.0..=50.0).contains(&ct),
+                "cleat thickness must be 6 to 50 mm",
+            )?;
+            check(ch > ct, "the cleat must be taller than it is thick")?;
+            // the wall cleat hangs below the cabinet's, overlapping it by the bevel
+            check(
+                2.0 * ch - ct <= between,
+                "the cleats do not fit: twice the cleat height less its thickness must fit between the bottom and the top",
+            )?;
+            (ct, ch)
+        }
+        "rail" => {
+            check(NAILER_H <= between, "too low for a hanging rail")?;
+            (t, NAILER_H)
+        }
+        _ => (0.0, 0.0),
+    };
+    // An overlaid back would hold the cabinet off the wall by its thickness.
+    check(
+        mount_t == 0.0 || back != "overlay",
+        "a wall mount board needs a back in a groove or none",
     )?;
 
     let inner_w = w - 2.0 * t;
@@ -262,8 +300,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     let shelf_d = match back {
         "overlay" => d - bt,
+        // in front of a mount board, the back moves forward by its thickness
+        "groove" if mount_t > 0.0 => d - mount_t - bt,
         "groove" => d - GROOVE_INSET - bt,
-        _ => d,
+        _ => d - mount_t,
     } - o;
     // A sink base's two rails run from the front and from where the shelves' depth ends.
     check(
@@ -296,6 +336,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawers,
         pins,
         back,
+        wall_mount,
+        mount_t,
+        mount_h,
         handles,
         handle_at,
         hinge_right,

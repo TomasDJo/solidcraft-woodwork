@@ -240,9 +240,34 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         ("Pull, 128 mm", pulls as u64),
     ];
     let bought = counts.iter().filter(|(_, qty)| *qty > 0);
-    bought
+    let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
-        .collect()
+        .collect();
+    // A cabinet on a steel rail has `<Prefix>_wall_rail`, its width (0 once an edit took the
+    // rail away): a rail bought to that length and two hangers. Only for a cabinet that is
+    // still there, as a deleted cabinet's parameters stay.
+    let standing: Vec<String> = (bodies.iter())
+        .filter_map(|b| b.strip_suffix(" Side L"))
+        .map(crate::kit::prefix)
+        .collect();
+    let mut rails: BTreeMap<i64, u64> = BTreeMap::new();
+    for p in design["params"].as_array().into_iter().flatten() {
+        let (Some(name), Some(mm)) = (p["name"].as_str(), p["value"].as_f64()) else {
+            continue;
+        };
+        let cabinet = name.strip_suffix("_wall_rail");
+        if mm > 0.0 && cabinet.is_some_and(|c| standing.iter().any(|s| s == c)) {
+            *rails.entry(mm.round() as i64).or_default() += 1;
+        }
+    }
+    for (length, qty) in &rails {
+        list.push(json!({"item": format!("Steel wall rail, {length} mm"), "qty": qty}));
+    }
+    let hangers: u64 = rails.values().sum::<u64>() * 2;
+    if hangers > 0 {
+        list.push(json!({"item": "Cabinet hanger", "qty": hangers}));
+    }
+    Value::from(list)
 }
 
 /// The sides cut with a toe-kick notch, from the features that cut them (`<Side> notch`) in
