@@ -164,10 +164,13 @@ const SLIDE: &str = "HW slide";
 pub const SLIDE_CABINET: &str = "HW slide cabinet";
 pub const SLIDE_MIDDLE: &str = "HW slide middle";
 pub const SLIDE_DRAWER: &str = "HW slide drawer";
-// ponytail: `browser.visibility` is not kept after a plugin run, so the definitions stand
-// just under the floor about the origin, under the first cabinet, where no view from above
-// sees them and Fit hardly changes. A hidden flag upstream would do better.
-const HIDDEN: [f64; 3] = [0.0, -125.0, -30.0];
+// ponytail: `browser.visibility` set in a plugin run is not kept (0.46.1; the same command
+// through the CLI is), so the definitions stand just under the floor (their tops 1 mm below
+// it) and from 15 mm behind the front of a 560 mm deep cabinet on the origin, under the first
+// cabinet: no view from above sees them (from below they show), and Fit frames 3 % wider than
+// without them. Slides longer than 530 mm reach out behind it. A hidden flag upstream would
+// do better.
+const HIDDEN: [f64; 3] = [0.0, -265.0, -25.0];
 
 // The models' sizes in mm, from a common hinge (35 mm cup, 0 mm cruciform plate on the 37/32
 // holes) and a 45 mm ball-bearing slide; they only show, so they are not parameters.
@@ -310,18 +313,31 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
     let new = !names.contains(&HOME);
     let create = |name: &str| ("component.create", json!({"name": name, "grounded": false}));
     let activate = |name: &str| ("component.activate", json!({"component": name}));
+    // Where `HOME` stands, absolutely (row-major 3 x 4).
+    let at = |[x, y, z]: [f64; 3]| {
+        let to = json!([1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z]);
+        (
+            "occurrence.move",
+            json!({"occurrence": format!("{HOME}:1"), "to_matrix": to}),
+        )
+    };
     let mut commands = vec![activate("root")];
-    commands.push(if new { create(HOME) } else { activate(HOME) });
+    if new {
+        commands.push(create(HOME));
+    } else {
+        // In a plugin run a body made in a moved component lands shifted by where it stands
+        // (as a hole does, see `inside` in lib.rs): so `HOME` goes back to the origin while
+        // a definition is added, and under the floor again after.
+        commands.push(at([0.0; 3]));
+        commands.push(activate(HOME));
+    }
     for model in missing {
         commands.push(create(model));
         commands.extend(shape(model));
         commands.push(activate(HOME));
     }
     commands.push(activate("root"));
-    if new {
-        let to = json!({"occurrence": format!("{HOME}:1"), "translate": HIDDEN});
-        commands.push(("occurrence.move", to));
-    }
+    commands.push(at(HIDDEN));
     commands
 }
 
@@ -434,7 +450,7 @@ pub fn cost(commands: &Commands) -> usize {
     let shared = if used(commands) { PARAMETERS.len() } else { 0 };
     let definitions = match copies {
         0 => 0,
-        _ => definitions(&json!({}), &wanted(commands)).len() + 1,
+        _ => definitions(&json!({}), &wanted(commands)).len() + 2, // and back to the user's component; one more when `HOME` is there already
     };
     commands.len() + copies + 2 * cuts + usize::from(cuts > 0) + shared + definitions
 }

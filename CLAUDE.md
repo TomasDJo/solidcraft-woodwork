@@ -646,9 +646,19 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   (`hardware::definitions` of `hardware::wanted`, the components a build copies: one slide
   definition a length, since a move cannot scale; made by `component` before the cabinet when
   one is missing, then back to the user's component): a definition inside a cabinet is deleted with it, with every
-  copy elsewhere, and Edit deletes the cabinet. `browser.visibility` is not kept after a plugin
-  run, so `Woodwork hardware` is moved to `HIDDEN`, just under the floor at the origin (under
-  the first cabinet; `view.fit` hardly changes). Every `inspect.measure` reply in a run goes
+  copy elsewhere, and Edit deletes the cabinet. `browser.visibility` set in a plugin run is not kept
+  (checked on 0.46.1 with `paths` on the component's placement: the same command through the
+  CLI hides it, also after save and reopen), so `Woodwork hardware` is placed at `HIDDEN`
+  (absolute `to_matrix`), its tops 1 mm under the floor, from 15 mm behind a 560 mm cabinet's
+  front on the origin, under the first cabinet: the iso and front views' Fit frame about 3 %
+  wider than with it hidden (measured with `view.apply`); from below it shows. In a plugin run
+  a body made in a moved component lands shifted by where the component stands, so a
+  definition added later (a crank, another slide length) is made with `Woodwork hardware`
+  back on the origin, and it goes to `HIDDEN` again after (before, such a definition's body stood
+  at the origin, offset from its component by `HIDDEN`, so every copy of it floated that far
+  (125 mm back, 30 up) from its cup or slide; in an older design it stays so until its
+  component is deleted and the cabinets using it are edited; `tests/test_hardware.py` checks
+  every hinge copy against its cup and every plate against its holes, Edit included). Every `inspect.measure` reply in a run goes
   through `hardware::hide` (`execute`), so the cut list, drawing, worktop, select, Edit's
   materials and panels never see a model; the hardware list still counts features (`hinge
   cup`, drawer fronts), so nothing is counted twice. A drawing's views are of the cabinet's

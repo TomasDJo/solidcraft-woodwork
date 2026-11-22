@@ -243,7 +243,7 @@ fn the_models_are_counted_against_the_command_limit() {
     let (commands, _) = crate::cabinet::build(&json!({"doors": 1})).unwrap();
     let n = commands.len();
     // two hinges and their plates, moved after they are copied; the definitions and back
-    let made = definitions(&json!({}), &[HINGE.into(), PLATE.into()]).len() + 1;
+    let made = definitions(&json!({}), &[HINGE.into(), PLATE.into()]).len() + 2;
     assert_eq!(cost(&commands), n + 4 + PARAMETERS.len() + made);
     let (cut, _) = crate::cabinet::build(&json!({"doors": 1, "hardware_models": "cut"})).unwrap();
     assert_eq!(cut.len(), n - 2);
@@ -294,10 +294,15 @@ fn the_definitions_are_made_once_at_the_root() {
     );
     let bodies: Vec<&Value> = commands.iter().map(|c| &c.1["body_name"]).collect();
     assert!(all.iter().all(|m| bodies.contains(&&json!(m))));
-    // out of sight, under the floor
+    // out of sight, under the floor, placed absolutely
     let moved = commands.last().unwrap();
     assert_eq!(moved.0, "occurrence.move");
-    assert!(moved.1["translate"][2].as_f64().unwrap() < -25.0);
+    let to = &moved.1["to_matrix"];
+    assert_eq!(to.as_array().unwrap().len(), 12);
+    assert_eq!(
+        [&to[3], &to[7], &to[11]],
+        HIDDEN.map(|v| json!(v)).each_ref()
+    );
     // all there: nothing; one missing (a new length): only that one, in the hardware component
     let have = |names: &[&str]| {
         let components: Vec<Value> = names.iter().map(|n| json!({"name": n})).collect();
@@ -312,12 +317,18 @@ fn the_definitions_are_made_once_at_the_root() {
     ]);
     assert!(definitions(&tree, &all).is_empty());
     let commands = definitions(&tree, &["HW slide drawer 300 mm".into()]);
+    // a definition added later is made with `HOME` on the origin (a body made in a moved
+    // component lands shifted in a plugin run), and `HOME` goes under the floor again after
+    let origin = json!([1, 0, 0, 0.0, 0, 1, 0, 0.0, 0, 0, 1, 0.0]);
+    assert_eq!(commands[1].0, "occurrence.move");
+    assert_eq!(commands[1].1["to_matrix"], origin);
     assert_eq!(
-        commands[1],
+        commands[2],
         ("component.activate", json!({"component": HOME}))
     );
-    assert!(commands.iter().all(|c| c.0 != "occurrence.move"));
-    assert_eq!(commands[2].1["name"], "HW slide drawer 300 mm");
+    assert_eq!(commands[3].1["name"], "HW slide drawer 300 mm");
+    let last = commands.last().unwrap();
+    assert_eq!(last.1["to_matrix"][11], json!(HIDDEN[2]));
 }
 
 #[test]

@@ -226,3 +226,75 @@ def test_slide_type_and_hinge_angle_set_the_joints_limits(approval):
     assert not models(results[2], "HW slide middle")
     hardware = {h["item"]: h["qty"] for h in results[6]["result"]["hardware"]}
     assert hardware["Drawer slide, partial extension, 500 mm, pair"] == 1, hardware
+
+
+def test_definitions_made_later_stay_under_the_floor(approval):
+    # The first cabinet makes Woodwork hardware and moves it under the floor; a later one adds
+    # definitions to it (a cranked hinge for an inset door, another slide length). They went
+    # in at the origin, shifted by where the component stood: now every one is under the floor
+    # and under the first cabinet, its copies still in their cups.
+    results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1}),
+                   plugin(approval, "cabinet", {"name": "B", "doors": 1, "fronts": "inset", "drawers": 1,
+                                                "depth": 450, "place": "origin"}),  # 400 mm slides
+                   MEASURE, faces("B Door")])
+    shut = models(results[2])
+    definitions = {n: b for n, b in shut.items() if "(" not in n}
+    assert {"HW hinge crank 18", "HW slide drawer 400 mm", "HW hinge"} <= set(definitions), sorted(definitions)
+    for name, box in definitions.items():
+        assert box[5] < 0 and box[2] > -60 and -280 <= box[1], (name, box)
+    cups = holes(results[3], 17.5)
+    hinges = sorted(n for n in shut if n.startswith("HW hinge crank 18 (B:1/B Door:1/"))
+    assert len(hinges) == 2 and all(abs(middle(shut[n])[2] - z) < 0.2 for n, (_, _, z) in zip(hinges, sorted(cups, key=lambda c: c[2]))), (hinges, cups)
+
+
+def flat(steps):
+    out = []
+    for step in steps:
+        out += step if isinstance(step, list) else [step]
+    return out
+
+
+def misplaced(steps):
+    """The hinge copies that are not in a cup hole and the plates more than 12 mm from a plate
+    hole, after `steps`; and the counts of hinge copies and cups."""
+    measure = cli(flat(steps) + [MEASURE])[-1]
+    names = [b["name"] for b in measure["bodies"]]
+    boards = [n for n in names if not n.startswith("HW ") and (" Door" in n or " Side " in n)]
+    found = cli(flat(steps) + [faces(n) for n in boards])[-len(boards):]
+    round_faces = [(f["cylinder"]["radius"], f["centroid"]) for each in found for f in each["faces"] if f.get("cylinder")]
+    cups = [c for r, c in round_faces if abs(r - 17.5) < 0.01]
+    screws = [c for r, c in round_faces if abs(r - 2.5) < 0.01]
+    box = {b["name"]: b["bbox"] for b in measure["bodies"]}
+    far = lambda b, p: sum(max(b["min"][i] - p[i], 0, p[i] - b["max"][i]) ** 2 for i in range(3)) ** 0.5
+    hinges = [n for n in names if n.startswith("HW hinge") and "(" in n and not n.startswith("HW hinge plate")]
+    plates = [n for n in names if n.startswith("HW hinge plate (")]
+    off = [h for h in hinges if min((far(box[h], c) for c in cups), default=99) > 0.5]
+    off += [p for p in plates if min((far(box[p], c) for c in screws), default=99) > 12]
+    return off, len(hinges), len(cups)
+
+
+def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
+    # Box cabinets (doors made after a drawers-only cabinet made the hardware component, inset,
+    # a door on a divider), L-shaped corners left and right hung on either end, inset, and the
+    # diagonal door; and after Edit of a box and a corner cabinet that stand off the origin
+    # (no copies left behind: as many hinges as cups).
+    cab = lambda p: plugin(approval, "cabinet", p)
+    away = lambda name: [{"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": False}},
+                         {"command": "occurrence.move", "params": {"occurrence": f"{name}:1", "translate": [1500, 700, 0], "axis": [0, 0, 1], "angle": "90 deg"}},
+                         {"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": True}}]
+    cases = {
+        "box": [cab({"drawers": 2}), cab({"name": "B", "doors": 2, "place": "origin"}),
+                cab({"name": "I", "doors": 1, "fronts": "inset", "place": "origin"}),
+                cab({"name": "T", "width": 900, "dividers": 2, "doors": 3, "place": "origin"})],
+        "L": [cab({"name": f"L{i}", "shape": "L-shaped", "corner": corner, "corner_doors": doors, "fronts": fronts, "place": "origin"})
+              for i, (corner, doors, fronts) in enumerate([("left", "hinged left", "overlay"), ("left", "hinged right", "overlay"),
+                                                           ("right", "hinged left", "overlay"), ("right", "hinged right", "inset")])],
+        "diagonal": [cab({"name": f"D{i}", "shape": "diagonal", "corner": corner, "corner_doors": doors, "place": "origin"})
+                     for i, (corner, doors) in enumerate([("left", "hinged left"), ("right", "hinged right")])],
+        "edit": [cab({"name": "E", "doors": 2, "fronts": "inset"}), *away("E"), select("E Side L"), plugin(approval, "edit", {"shelves": 2}),
+                 cab({"name": "C", "shape": "L-shaped", "corner_doors": "hinged left", "place": "origin"}), *away("C"),
+                 select("C Side L"), plugin(approval, "edit", {"shelves": 2})],
+    }
+    for label, steps in cases.items():
+        off, hinges, cups = misplaced(steps)
+        assert not off and hinges == cups, (label, off, hinges, cups)
