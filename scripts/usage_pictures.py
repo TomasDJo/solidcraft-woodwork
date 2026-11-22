@@ -1,0 +1,145 @@
+"""Draws the usage guide's pictures, docs/images/<name>.png, from small designs built with the
+plugin in dist/woodwork (build it first: python build.py, or python -c "import build; build.build()").
+
+    python scripts/usage_pictures.py            all of them
+    python scripts/usage_pictures.py plinths    only those named
+
+One list, SHOTS: name, caption, the steps, and the camera (and any snapshot options). Adding,
+changing or removing a picture is one entry there and its line in docs/usage.md
+(`![caption](images/<name>.png)`, which tests/test_docs.py checks). Rerun after a change that
+alters how things look. solidcraft-cli renders one picture at a time. It never installs the plugin:
+every step is plugin.run with the package's path, as the tests do.
+"""
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from build import CLI, PKG, cli, flat, plugin  # noqa: E402
+
+OUT = ROOT / "docs" / "images"
+SIZE = (800, 560)
+_approval = []
+
+
+def run(entry, params=None):
+    """A plugin.run step (with Woodwork settings around it for a moved field, as in the tests)."""
+    if not _approval:
+        _approval.append(cli([{"command": "plugin.inspect", "params": {"path": str(PKG)}}])[0]["approval"])
+    return plugin(_approval[0], entry, params)
+
+
+def pick(*names):
+    return {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}
+
+
+def drive(joint, value):
+    return {"command": "joint.drive", "params": {"joint": joint, "value": value}}
+
+
+def at(name, x, y=0):
+    """Moves a cabinet made on the origin along the floor."""
+    return [{"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": False}},
+            {"command": "occurrence.move", "params": {"occurrence": f"{name}:1", "translate": [x, y, 0]}}]
+
+
+def row(entry, variants, step=750):
+    """One cabinet per variant, side by side: A, B, C..."""
+    steps = []
+    for i, params in enumerate(variants):
+        name = "ABCDEF"[i]
+        steps += [lambda name=name, params=params: run(entry, {"name": name, **params}), *at(name, step * i)]
+    return steps
+
+
+def cam(target, distance, yaw=-0.65, pitch=0.22):
+    return ["--camera", json.dumps({"target": target, "yaw": yaw, "pitch": pitch, "distance": distance})]
+
+
+ONE = cam([0, 0, 380], 1700)
+TWO = cam([375, 0, 380], 2500, yaw=-0.45)
+FOUR = cam([1125, 0, 420], 3300, yaw=-0.3, pitch=0.15)
+CORNER = cam([0, -100, 330], 2100)
+BASE = {"plinth": 100, "handles": "knob"}
+
+# name, caption, steps (a step may be a function, called when the picture is drawn), snapshot options
+SHOTS = [
+    ("cabinet", "A cabinet with two doors, a shelf and knobs, on a plinth.",
+     [lambda: run("cabinet", {"doors": 2, **BASE})], ONE),
+    ("drawers", "Three drawers: the top one 140 mm, the others share the rest.",
+     [lambda: run("cabinet", {"drawers": 3, "drawer_height": 140, "plinth": 100, "handles": "pull"})], ONE),
+    ("drawers-doors", "A drawer over two doors, on a rail.",
+     [lambda: run("cabinet", {"doors": 2, "drawers": 1, "plinth": 100, "handles": "pull"})], ONE),
+    ("fronts", "Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.",
+     row("cabinet", [{"doors": 2, **BASE}, {"doors": 2, "fronts": "inset", **BASE}]), TWO),
+    ("open", "Doors and drawers open on their joints, with the hinge and slide models.",
+     [lambda: run("cabinet", {"doors": 1, "drawers": 1, **BASE}),
+      drive("Cabinet Door hinge", 100), drive("Cabinet Drawer 1 slide", 350)], cam([0, -200, 380], 2400, yaw=-0.9)),
+    ("sink", "A sink base: two rails instead of a top, no shelves.",
+     [lambda: run("cabinet", {"kind": "sink", "doors": 2, **BASE})], cam([0, 0, 380], 2100, pitch=0.6)),
+    ("plinths", "Plinth types: board, notched sides, legs and casters.",
+     row("cabinet", [{"doors": 1, "plinth": 100, "plinth_type": t} for t in ("board", "notch", "legs", "casters")]),
+     FOUR),
+    ("wall-mount", "A wall cabinet on a French cleat, cut through: the back stands in front of the cleat.",
+     [lambda: run("cabinet", {"depth": 320, "wall_mount": "cleat", "doors": 1})],
+     [*cam([0, 0, 360], 1400, yaw=-1.2), "--section", "YZ"]),
+    ("joinery", "Dowels at build, with fastener models on and see-through boards.",
+     [lambda: run("settings", {"see_through": "on", "fastener_models": "on"}), lambda: run("cabinet", {})],
+     ONE),
+    ("wood-runners", "Wooden runners: each drawer's bottom runs in a groove in the sides.",
+     [lambda: run("settings", {"slide_type": "wood", "drawer_bottom": 9}), lambda: run("cabinet", {"drawers": 3})],
+     [*cam([-100, 0, 420], 1000, yaw=-0.3, pitch=0.1), "--section", "y=150,flip"]),
+    ("corner", "An L-shaped corner cabinet with a pair of folding doors.",
+     [lambda: run("corner", {"doors": "hinged left", **BASE})], CORNER),
+    ("corner-diagonal", "A diagonal corner cabinet: one door across the corner.",
+     [lambda: run("corner", {"shape": "diagonal", "doors": "hinged left", **BASE})], CORNER),
+    ("corner-split", "Split boards: the L-shaped top, bottom and shelves in two dowelled pieces.",
+     [lambda: run("corner", {"boards": "split", "plinth": 100})], cam([0, -100, 330], 2100, pitch=0.7)),
+    ("run", "A run: each cabinet placed against the side of the one picked.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "drawers": 3, "plinth": 100, "handles": "pull"}),
+      pick("B Side R"), lambda: run("cabinet", {"name": "C", "place": "auto", "doors": 1, **BASE})],
+     cam([600, 0, 380], 3000, yaw=-0.4)),
+    ("panel", "Panel: an end panel on the right, a filler with its return on the left.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"), lambda: run("panel", {"kind": "end"}),
+      pick("A Side L"), lambda: run("panel", {"kind": "filler", "width": 50})], ONE),
+    ("material", "Material: white melamine doors on a birch plywood cabinet.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Door L", "A Door R"),
+      lambda: run("material", {"material": "White melamine", "scope": "parts"}),
+      {"command": "select.clear", "params": {}}], ONE),
+    ("worktop", "Worktop over a corner, a sink base and a cabinet, with a sink cut-out.",
+     [lambda: run("corner", {"name": "K", "corner": "left", "doors": "hinged left", **BASE}), pick("K Side L"),
+      lambda: run("cabinet", {"name": "C", "place": "auto", "kind": "sink", "doors": 2, **BASE}), pick("K Side R"),
+      lambda: run("cabinet", {"name": "A", "place": "auto", "doors": 2, **BASE}), pick("K Top", "A Top", "C Side R"),
+      lambda: run("worktop", {"cutout": "plain", "cutout_x": 300, "cutout_y": 300})], cam([300, -300, 450], 2700)),
+    ("bench", "A bench top with a zone of dog holes and a rebated cut-out.",
+     [lambda: run("cabinet", {"name": "A", "width": 1800, "height": 900, "doors": 2}), pick("A Top"),
+      lambda: run("worktop", {"name": "Bench top", "material": "Birch plywood", "dog_holes": "zone", "zone_x": 100,
+                              "zone_y": 100, "zone_length": 800, "zone_width": 400, "cutout": "rebated",
+                              "cutout_length": 300, "cutout_width": 200, "cutout_x": 1400, "cutout_y": 300})],
+     cam([0, 0, 450], 3200, pitch=0.5)),
+]
+
+
+def draw(name, steps, options):
+    script = flat([step() if callable(step) else step for step in steps])
+    with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
+        path, png = Path(folder) / "script.json", Path(folder) / "shot.png"
+        path.write_text(json.dumps(script), encoding="utf-8")
+        subprocess.run([CLI, "snapshot", str(path), "--out", str(png), "--width", str(SIZE[0]),
+                        "--height", str(SIZE[1]), "--no-axes", *options], cwd=ROOT, check=True)
+        # A small PNG: 128 colours are plenty for flat-shaded boards.
+        from PIL import Image
+        Image.open(png).convert("RGB").quantize(128).save(OUT / f"{name}.png", optimize=True)
+    print(f"{name}.png  {(OUT / f'{name}.png').stat().st_size // 1024} KB")
+
+
+if __name__ == "__main__":
+    OUT.mkdir(parents=True, exist_ok=True)
+    wanted = sys.argv[1:]
+    for name, _, steps, options in SHOTS:
+        if not wanted or name in wanted:
+            draw(name, steps, options)

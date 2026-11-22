@@ -22,6 +22,15 @@ without doors.
 
 ## Cabinet
 
+| | |
+|---|---|
+| ![A cabinet with two doors, a shelf and knobs, on a plinth.](images/cabinet.png) | ![Three drawers: the top one 140 mm, the others share the rest.](images/drawers.png) |
+| *A cabinet with two doors, a shelf and knobs, on a plinth.* | *Three drawers: the top one 140 mm, the others share the rest.* |
+| ![A drawer over two doors, on a rail.](images/drawers-doors.png) | ![Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.](images/fronts.png) |
+| *A drawer over two doors, on a rail.* | *Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.* |
+| ![Plinth types: board, notched sides, legs and casters.](images/plinths.png) | |
+| *Plinth types: board, notched sides, legs and casters.* | |
+
 One dialog for every cabinet: **Shape** is a Box (below) or a corner cabinet, L-shaped or
 diagonal (see [Corner cabinets](#corner-cabinets)); the dialog shows only the fields of the
 shape chosen, and a corner starts at its own sizes (900 wide, 900 return). Corner
@@ -72,6 +81,10 @@ choose another.
 
 ### Doors and drawers move
 
+![Doors and drawers open on their joints, with the hinge and slide models.](images/open.png)
+
+*Doors and drawers open on their joints, with the hinge and slide models.*
+
 Every door and every drawer is a component of its own inside the cabinet, held by a joint:
 doors hinge open as far as their hinges (**Hinge opening** in Woodwork settings, 110 degrees
 unless chosen), drawers slide out as far as their slides (**Slide type**, the same). Drive the joints to open them. A door
@@ -82,6 +95,10 @@ The cabinet is grounded so they have something fixed to open against; unground i
 it. A cabinet placed against another is held to that one instead.
 
 ### Hinges and slides
+
+![Wooden runners: each drawer's bottom runs in a groove in the sides.](images/wood-runners.png)
+
+*Wooden runners: each drawer's bottom runs in a groove in the sides.*
 
 A box cabinet drills the holes its hinges and drawer slides need, every size and place an
 expression over design parameters that all cabinets share, made the first time a cabinet
@@ -173,6 +190,10 @@ needs them. Change one in Parameters and every cabinet's holes follow:
 
 ### Sink base
 
+![A sink base: two rails instead of a top, no shelves.](images/sink.png)
+
+*A sink base: two rails instead of a top, no shelves.*
+
 **Sink base** (Kind: Sink base): no top, but two flat rails between the sides at the top,
 each 100 mm deep and a panel thick: `Name Rail front`, flush with the front, and `Name Rail
 back`, at the back of the sides in front of the back panel. The sink and its pipes go between
@@ -192,6 +213,10 @@ bottom and to each rail, one fastener in the middle of a rail.
 There is no oven housing: size a tall cabinet for your oven yourself.
 
 ### Joinery at build
+
+![Dowels at build, with fastener models on and see-through boards.](images/joinery.png)
+
+*Dowels at build, with fastener models on and see-through boards.*
 
 **Joinery** (in [Woodwork settings](#woodwork-settings), for the whole design, with the sizes
 below; Edit cabinet changes the method of one cabinet) chooses how the sides are fixed to the
@@ -260,6 +285,10 @@ that run the same way with the same count share one (`Name joint Side L Bottom d
 
 ### Wall mount
 
+![A wall cabinet on a French cleat, cut through: the back stands in front of the cleat.](images/wall-mount.png)
+
+*A wall cabinet on a French cleat, cut through: the back stands in front of the cleat.*
+
 **Wall mount** hangs a box or corner cabinet on the wall (for a corner cabinet see
 [Corner cabinets](#corner-cabinets)). Legs and wall mount are independent: a cabinet can have both.
 
@@ -292,6 +321,13 @@ it. Shelves, dividers and drawer boxes follow. An overlaid back would hold the c
 wall, so a cleat or a hanging rail needs a back in a groove or none; a steel rail takes any back.
 
 ## Corner cabinets
+
+| | |
+|---|---|
+| ![An L-shaped corner cabinet with a pair of folding doors.](images/corner.png) | ![A diagonal corner cabinet: one door across the corner.](images/corner-diagonal.png) |
+| *An L-shaped corner cabinet with a pair of folding doors.* | *A diagonal corner cabinet: one door across the corner.* |
+| ![Split boards: the L-shaped top, bottom and shelves in two dowelled pieces.](images/corner-split.png) | |
+| *Split boards: the L-shaped top, bottom and shelves in two dowelled pieces.* | |
 
 Cabinet with **Shape** Corner, L-shaped or Corner, diagonal builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
@@ -356,6 +392,10 @@ Two shapes:
   two are the same.
 
 ## Building a run: Place and Match selected
+
+![A run: each cabinet placed against the side of the one picked.](images/run.png)
+
+*A run: each cabinet placed against the side of the one picked.*
 
 Select any part of a cabinet, then open **Cabinet**. The selection
 shows in the dialog as **Selected cabinet**. Click that field and pick another board in the
@@ -431,6 +471,10 @@ it no method of its own; until then the cut list still counts its old holes.
 
 ## Material
 
+![Material: white melamine doors on a birch plywood cabinet.](images/material.png)
+
+*Material: white melamine doors on a birch plywood cabinet.*
+
 Gives the selected cabinet, or only the selected parts (the doors, say), a board material:
 birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 
@@ -495,6 +539,10 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
 
 ## Panel
 
+![Panel: an end panel on the right, a filler with its return on the left.](images/panel.png)
+
+*Panel: an end panel on the right, a filler with its return on the left.*
+
 Adds an end panel or a filler to one end of the selected box cabinet. It is part of the cabinet: it
 follows its sizes, comes along when the cabinet moves, gets the material of its sides, and Edit
 cabinet makes it again.
@@ -520,6 +568,11 @@ corner cabinet's return) a panel is not tested yet: check it lands at the side, 
 before turning the cabinet.
 
 ## Worktop
+
+| | |
+|---|---|
+| ![Worktop over a corner, a sink base and a cabinet, with a sink cut-out.](images/worktop.png) | ![A bench top with a zone of dog holes and a rebated cut-out.](images/bench.png) |
+| *Worktop over a corner, a sink base and a cabinet, with a sink cut-out.* | *A bench top with a zone of dog holes and a rebated cut-out.* |
 
 Lays a worktop over the selected cabinets. Pick a board of each cabinet (the **Selected cabinets**
 field takes several): one straight run, or runs that meet in corners, such as an L or a U round

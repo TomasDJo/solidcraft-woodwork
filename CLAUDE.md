@@ -214,6 +214,7 @@ materials, joinery and cut lists.
 | `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
 | `docs/intro-video.jpg` | The introduction video's thumbnail with a play button, the README's second picture; it links to the video on YouTube |
 | `docs/banner.py` | Draws `docs/banner.png`, the README's first picture (plugin lists show it): a small run of cabinets on a dark background beside the name. Needs Pillow. Rerun it when the cabinets look different |
+| `scripts/usage_pictures.py`, `docs/images/` | The usage guide's pictures: one list (`SHOTS`: name, caption, steps, camera), each a small design rendered with `solidcraft-cli snapshot` (one at a time, plugin.run on `dist/woodwork`, never installed) and saved as a 128-colour PNG. `tests/test_docs.py` checks each is drawn and shown in `docs/usage.md`. Rerun when the cabinets look different |
 | `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it when the plugin's output changes |
 
 The pattern: a module is plain Rust that turns input into `Vec<(command, json args)>`, so
