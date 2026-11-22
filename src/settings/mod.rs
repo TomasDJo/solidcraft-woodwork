@@ -30,7 +30,8 @@ fn bounds(key: &str) -> Option<(f64, f64)> {
 pub fn patch(params: &Value, stored: &Value) -> Result<Value, String> {
     let scale = if params["units"] == "in" { 25.4 } else { 1.0 };
     let mut set = Map::new();
-    for key in FIELDS {
+    // Camera is a setting of its own, not a Cabinet field.
+    for key in FIELDS.into_iter().chain(["camera"]) {
         let value = &params[key];
         if value.is_null() || value == "keep" {
             continue;
@@ -57,6 +58,11 @@ pub fn patch(params: &Value, stored: &Value) -> Result<Value, String> {
         set.insert(key.into(), value);
     }
     Ok(json!({ "settings": set }))
+}
+
+/// Whether a run ends by framing the result (`view.fit`): unless Camera is stored as `leave`.
+pub fn fits(stored: &Value) -> bool {
+    stored["document"]["settings"]["camera"] != "leave"
 }
 
 /// The numbers the Settings dialog shows when nothing is stored: the Cabinet dialog's defaults

@@ -90,7 +90,10 @@ materials, joinery and cut lists.
   view command of an accepted run (`view.fit`, `view.home`); the preview's dry runs leave the
   camera alone. `execute` ends a cabinet, corner or edit run with `select.clear` and
   `view.fit`: Fit frames the selection when there is one, such as the board a cabinet was placed
-  against. `plugin.run` through the CLI reports it as `view: {kind: fit}`.
+  against. `plugin.run` through the CLI reports it as `view: {kind: fit}`. Woodwork settings'
+  `camera: leave` leaves `view.fit` out (`settings::fits`, one `storage.get` before
+  `select.clear`); `select.clear` stays, so the next run does not place against a board picked
+  before. The run takes one command more than before (three of the 26 `cabinet::build` leaves).
 - `build.py` runs `solidcraft-cli plugin check` on the package: an error fails the build.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
   `tangency-labs/solidcraft`. A `ui` capability is planned there.
@@ -104,7 +107,9 @@ materials, joinery and cut lists.
   of the design, 250 ms and 10M fuel: one command. `plugin.run` and the tools call it once
   before the entry, filling only keys left out; a hook entry's tool schema has no `required`
   (checked after the hook, with "is required" and no field name). The hook cannot write, so
-  the last used values are not remembered; settings are per design, not per user. `settings` has
+  the last used values are not remembered; settings are per design, not per user. `camera`
+  (`keep`, `fit`, `leave`) is stored like the choices but is no Cabinet field, so
+  `settings::fields` skips it and the Settings dialog starts at Keep. `settings` has
   the hook too: its three numbers start at the stored value or the Cabinet default, so the app
   draws them as drag fields kept within their bounds, and `settings::patch` leaves out a number
   equal to the stored one (or that default), as the hook fills omitted keys for scripts too.

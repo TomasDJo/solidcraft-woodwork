@@ -241,7 +241,7 @@
         "slots": [{ "kind": "menu", "name": "Woodwork settings" }, { "kind": "ribbon", "name": "Woodwork settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
-          "required": ["units", "material", "handles", "plinth_type"],
+          "required": ["units", "material", "handles", "plinth_type", "camera"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the panel thickness and plinth height below. Kept in mm, shown in the Cabinet dialog's own unit.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "material": { "type": "string", "title": "Material", "description": "The material new cabinets start with in this design. Keep leaves the one stored.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None", "description": "No material set."}] },
@@ -249,7 +249,8 @@
             "reveal": { "type": "number", "title": "Reveal (mm)", "description": "The gap around doors and drawer fronts new cabinets start with, 0.5 to 6 mm: the stored one, else 2 mm.", "minimum": 0.5, "maximum": 6 },
             "handles": { "type": "string", "title": "Handle holes", "description": "The handle holes new cabinets start with. Keep leaves the one stored.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "none", "title": "None"}, {"const": "knob", "title": "Knob"}, {"const": "pull", "title": "Pull"}] },
             "plinth": { "type": "number", "title": "Plinth height", "description": "The plinth height new cabinets start with, 0 for none: the stored one, else 0.", "minimum": 0, "maximum": 500 },
-            "plinth_type": { "type": "string", "title": "Plinth type", "description": "What fills the plinth height on new cabinets. Keep leaves the one stored.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "board", "title": "Board"}, {"const": "notch", "title": "Notched sides"}, {"const": "legs", "title": "Legs"}] }
+            "plinth_type": { "type": "string", "title": "Plinth type", "description": "What fills the plinth height on new cabinets. Keep leaves the one stored.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "board", "title": "Board"}, {"const": "notch", "title": "Notched sides"}, {"const": "legs", "title": "Legs"}] },
+            "camera": { "type": "string", "title": "Camera after a run", "description": "Whether a cabinet, corner, edit or worktop run frames the result. Keep leaves the one stored.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "fit", "title": "Fit: frame the result"}, {"const": "leave", "title": "Leave as it is"}] }
           }
         }
       }

@@ -368,10 +368,15 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     let summary = entries(entry, params, run)?;
     // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
     // preview's dry runs leave the camera alone). Fit frames the selection when there is one,
-    // such as the board a cabinet was placed against, so that is cleared first.
+    // such as the board a cabinet was placed against, so that is cleared first. Woodwork
+    // settings' Camera `leave` leaves the view as it is; the selection is still cleared, so the
+    // next run does not place against a board picked before this one.
     if matches!(entry, "cabinet" | "corner" | "edit" | "worktop") {
+        let stored = run("storage.get", json!({}))?;
         run("select.clear", json!({}))?;
-        run("view.fit", json!({}))?;
+        if settings::fits(&stored) {
+            run("view.fit", json!({}))?;
+        }
     }
     Ok(summary)
 }
