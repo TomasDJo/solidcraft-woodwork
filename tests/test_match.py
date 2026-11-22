@@ -25,3 +25,17 @@ def test_match_selected(approval):
     for cabinet in "ABK":
         assert box[f"{cabinet} Side L"][5] == 800 and box[f"{cabinet} Bottom"][2] == 150, cabinet
     assert not [f["name"] for f in results[9]["timeline"] if f["warning"]]
+
+
+def test_match_follows_what_is_picked(approval):
+    # The Cabinet hook gives Match selected Yes when a cabinet is picked and hides it otherwise.
+    # A script that leaves `match` out gets that: B, with A's top selected, is matched. One that
+    # says `selected` with nothing picked or selected is not refused: C is made unmatched.
+    b = plugin(approval, "cabinet", {"name": "B", "place": "right"})
+    del b["params"]["params"]["match"]
+    results = cli([plugin(approval, "cabinet", {"name": "A", "height": 900}), select("A Top"), b,
+                   plugin(approval, "cabinet", {"name": "C", "match": "selected", "place": "origin"}),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": False}}])
+    params = {p["name"]: p.get("expression") for p in results[4]["params"]}
+    assert params["B_height"] == "A_height", params["B_height"]
+    assert params["C_height"] != "A_height", params["C_height"]

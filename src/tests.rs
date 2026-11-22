@@ -284,14 +284,18 @@ fn settings_patch_then_show_and_the_hook_names_our_data() {
             "material.list"
         ]
     );
-    let mut asked = Value::Null;
+    let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
-        asked = json!([command, args]);
+        asked.push(json!([command, args]));
         Ok(json!({"document": {"settings": {"material": "MDF"}}}))
     };
     let reply = dialog("cabinet", &json!({}), &mut run).unwrap();
-    assert_eq!(asked, json!(["storage.get", {"plugin": "woodwork"}]));
+    // our data, then the body names for Match selected: two reads
+    assert_eq!(asked[0], json!(["storage.get", {"plugin": "woodwork"}]));
+    assert_eq!(asked[1][0], "document.inspect");
+    assert_eq!(asked.len(), 2);
     assert_eq!(reply["material"]["default"], "MDF");
+    assert_eq!(reply["match"], json!({"visible": false}));
 }
 
 #[test]

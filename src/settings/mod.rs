@@ -325,6 +325,24 @@ fn unit(params: &Value) -> f64 {
     }
 }
 
+/// The Cabinet hook's reply for Match selected, from the dialog's `values` and
+/// `document.inspect`'s reply with body names: Yes and shown when the picked board (the field,
+/// else the design's selection) is a box or corner cabinet's, hidden otherwise.
+pub fn matching(values: &Value, design: &Value) -> Value {
+    let picked = crate::select::picked(values, design);
+    let bodies = design["bodies"].as_array().into_iter().flatten();
+    let names: Vec<&str> = bodies
+        .filter_map(|b| b.as_str().or(b["name"].as_str()))
+        .collect();
+    let cabinet = (picked.first())
+        .and_then(|b| crate::select::owner(design, b))
+        .filter(|c| names.contains(&format!("{c} Side L").as_str()));
+    match cabinet {
+        Some(_) => json!({"default": "selected", "visible": true}),
+        None => json!({"visible": false}),
+    }
+}
+
 /// The dialog hook's reply for `entry` with the dialog's `values`, from `storage.get`'s
 /// reply: each stored setting as the field's default, lengths in the dialog's unit. The
 /// Settings dialog gets every setting with a default, stored or the default, and no hint.

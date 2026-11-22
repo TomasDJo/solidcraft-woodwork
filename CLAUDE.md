@@ -520,6 +520,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   way that panel faces (`select::Cabinet::seat`, read from the boxes of the two sides and the
   back): so one continues a corner cabinet's return turned a quarter, and a turned run carries
   on turned, corner cabinets included. Quarter turns only.
+- Match selected (`match`) is set by the Cabinet hook: `settings::matching` answers
+  `{default: selected, visible: true}` when the picked board (the field, else the design's
+  selection) is a box or corner cabinet's (`select::owner` and its `Side L`; a frame is not),
+  else `{visible: false}`. That is the hook's second read, `document.inspect {bodies: "names"}`
+  after `storage.get`: 1-3 ms on the sample kitchen, well within its 250 ms. A hidden field is
+  still sent, so the run uses `match` only when something is picked or selected
+  (`entries`: `matching && !picked.is_empty()`).
 - Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
   A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
   parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the

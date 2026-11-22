@@ -655,6 +655,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 json!({"bodies": false, "timeline": false}),
             )?;
             let picked = select::picked(&params, &design);
+            // Match selected with nothing picked or selected: the dialog hides the field then,
+            // but still sends a value it had.
+            let matching = matching && !picked.is_empty();
             let measure = match matching || place != "origin" {
                 true => run("inspect.measure", json!({}))?,
                 false => Value::Null,
@@ -1190,7 +1193,19 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
         return Ok(design.map_or(json!({}), |d| edit::hidden(values, &d)));
     }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
-    Ok(settings::fields(entry, values, &stored))
+    let mut reply = settings::fields(entry, values, &stored);
+    // Match selected: Yes when a cabinet is picked, hidden when none is. A second read, a few
+    // ms on the sample kitchen; if it fails, the field stays as it is.
+    if entry == "cabinet" {
+        let design = run(
+            "document.inspect",
+            json!({"bodies": "names", "timeline": false}),
+        );
+        if let Ok(design) = design {
+            reply["match"] = settings::matching(values, &design);
+        }
+    }
+    Ok(reply)
 }
 
 #[cfg(test)]
