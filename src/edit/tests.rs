@@ -262,8 +262,13 @@ fn the_wall_mount_is_kept_or_changed() {
     assert_eq!(params["_existing"]["wall_rail"], 0.0);
     let (_, params) = merge(&made[KEY], &json!({"wall_mount": "steel"}), &design).unwrap();
     assert_eq!(params["wall_mount"], "steel");
-    // box cabinets only
+    // a corner cabinet too, with its return's rail known
     let corner = remember("corner", &json!({}), "A");
-    let error = merge(&corner[KEY], &json!({"wall_mount": "rail"}), &design).unwrap_err();
-    assert!(error.contains("only for a box cabinet"), "{error}");
+    let design = json!({"params": [{"name": "A_wall_rail_return", "value": 0.0}]});
+    let (entry, params) = merge(&corner[KEY], &json!({"wall_mount": "rail"}), &design).unwrap();
+    assert_eq!(
+        (entry.as_str(), &params["wall_mount"]),
+        ("corner", &json!("rail"))
+    );
+    assert_eq!(params["_existing"]["wall_rail_return"], 0.0);
 }

@@ -117,7 +117,7 @@ materials, joinery and cut lists.
 | `src/lib.rs` | Entry dispatch (`execute`) and the wasm guest. The only place that runs commands |
 | `src/<module>/mod.rs`, `tests.rs` | Each module below that has unit tests is a folder: the code in `mod.rs`, its tests in `tests.rs` beside it |
 | `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
-| `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
+| `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes, legs and casters, and the wall mount (cleats, hanging rail, steel rail) |
 | `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
@@ -543,7 +543,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   caster) is what the cut list, `cutlist::turned`, `select::named` and the drawing use; the
   hardware line is "Caster, locking". An end panel beside a cabinet on casters starts at the
   plinth (it rolls), read from the remembered `plinth_type`.
-- `wall_mount` (box cabinet and Edit; corner deferred): `cleat` makes `<Name> Cleat` and
+- `wall_mount` (box and corner cabinets and Edit; `fittings::wall_mount`, `mount_sizes`, `steel_rail`, `mount_board`, shared): `cleat` makes `<Name> Cleat` and
   `<Name> Wall cleat` (a body in the cabinet's component, so it moves and is rebuilt with it),
   bevelled by `solid.chamfer` on a box edge picked by index, sizes the parameters
   `<Prefix>_cleat_height` and `_cleat_thickness`; `rail` makes `<Name> Hanging rail` (panel
@@ -552,3 +552,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   the parameter `<Prefix>_wall_rail` (the width, 0 after an Edit takes it away) gives the cut
   list a rail bought to length and two hangers; hanger models come with #70. The cut list gives
   the cleats as square boards (the bevel is sawn after).
+  A corner cabinet gets them along both walls (`Cleat`, `Cleat return`, and the same for the
+  wall cleats and rails; the return's bevel edges are the box's +x or -x ones, 11 and 0 or 7
+  and 2): the backs stand the mount's thickness off the walls between bottom and top (`ech`
+  high), bottom and top reach the walls (`w0` 0), the shelves and pin rows stop at the backs.
+  Steel gives it `_wall_rail` and `_wall_rail_return` (`edit::SIZES` has both); the cut list reads
+  either.

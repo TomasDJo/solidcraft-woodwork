@@ -118,8 +118,8 @@ There is no oven housing: size a tall cabinet for your oven yourself.
 
 ### Wall mount
 
-**Wall mount** hangs a box cabinet on the wall (corner cabinets: not yet). Legs and wall mount
-are independent: a cabinet can have both.
+**Wall mount** hangs a box or corner cabinet on the wall (for a corner cabinet see
+[Corner cabinet](#corner-cabinet)). Legs and wall mount are independent: a cabinet can have both.
 
 - **None**: as before, nothing to hang it by.
 - **French cleat**: `Name Cleat`, a board across the back between the sides, right under the
@@ -168,6 +168,16 @@ about the carcass's inner front corner. The diagonal door fills the opening betw
 ends; as the ends stand at 45 degrees to it, its edges stay the reveal clear of their inner
 corners, which leaves a slanted strip of each end showing beside it. An inset front changes
 nothing about where neighbouring cabinets stand.
+
+**Wall mount**, **Cleat height** and **Cleat thickness** work as on the box cabinet (see
+[Wall mount](#wall-mount)), along both walls: `Name Cleat` and `Name Wall cleat` along the back
+wall, from the side wall to the back leg's end, and `Name Cleat return` and `Name Wall cleat
+return` along the side wall behind the return's end, each bevelled towards the room; a hanging
+rail is `Name Hanging rail` and `Name Hanging rail return`. With a cleat or a rail both backs
+stand its thickness off the walls, between the bottom and the top, which reach the walls over
+the boards; the shelves and the pin rows stop at the backs. A steel rail is one rail on each
+wall (`Name_wall_rail`, the width, and `Name_wall_rail_return`, the return), two hangers each.
+L-shaped and diagonal alike.
 
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the

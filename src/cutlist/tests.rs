@@ -167,16 +167,19 @@ fn steel_wall_rails_are_bought_to_length() {
         {"name": "D_wall_rail", "value": 0.0}, // an edit took its rail away
         {"name": "E_wall_rail", "value": 500.0}, // a deleted cabinet's
         {"name": "A_width", "value": 600.0},
+        // a corner cabinet: one on each wall
+        {"name": "F_wall_rail", "value": 900.0}, {"name": "F_wall_rail_return", "value": 800.0},
     ]});
-    let bodies: Vec<Value> = ["A Side L", "B Side L", "C 2 Side L", "D Side L"]
+    let bodies: Vec<Value> = ["A Side L", "B Side L", "C 2 Side L", "D Side L", "F Side L"]
         .iter()
         .map(|n| json!({"name": n}))
         .collect();
     let list = hardware(&json!({"bodies": bodies}), &design);
     let expected = json!([
         {"item": "Steel wall rail, 600 mm", "qty": 2},
-        {"item": "Steel wall rail, 800 mm", "qty": 1},
-        {"item": "Cabinet hanger", "qty": 6},
+        {"item": "Steel wall rail, 800 mm", "qty": 2},
+        {"item": "Steel wall rail, 900 mm", "qty": 1},
+        {"item": "Cabinet hanger", "qty": 10},
     ]);
     assert_eq!(list, expected);
 }

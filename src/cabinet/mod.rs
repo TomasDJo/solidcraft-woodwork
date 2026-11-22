@@ -18,7 +18,6 @@ use serde_json::{json, Value};
 
 const GROOVE_INSET: f64 = 12.0; // back groove, from the rear edge
 const RAIL_D: f64 = 100.0; // a sink base's rails, front to back
-const NAILER_H: f64 = 90.0; // ponytail: a hanging rail is always this high, no field for it
 
 /// What the steps of a build share: the checked input, and the sizes as expressions.
 struct Cabinet<'a> {
@@ -81,29 +80,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         true => parameter("plinth", input.plinth, "plinth height"),
         false => mm(0.0),
     };
-    let emount = match input.wall_mount {
-        "cleat" => Some([
-            parameter("cleat_thickness", input.mount_t, "French cleat thickness"),
-            parameter("cleat_height", input.mount_h, "French cleat height"),
-        ]),
-        "rail" => Some([et.clone(), mm(NAILER_H)]),
-        _ => None,
-    };
-    // ponytail: steel is not modelled (hanger models and their holes come with #70); the cut
-    // list buys a rail to this length. Kept at 0 once an edit stops using it.
-    let steel = input.wall_mount == "steel";
-    if steel || kit.has("wall_rail") {
-        let (value, length) = match steel {
-            true => (w, ew.clone()),
-            false => (0.0, mm(0.0)),
-        };
-        kit.parameter_as(
-            "wall_rail",
-            value,
-            "steel wall rail, bought to length",
-            length,
-        );
-    }
+    let emount = fittings::mount_sizes(&kit, input.wall_mount, input.mount_t, input.mount_h, &et);
+    fittings::steel_rail(&kit, "wall_rail", input.wall_mount == "steel", w, &ew);
     // The back stands in front of a mount board, in its groove or with no back.
     let inset = emount.as_ref().map_or(mm(GROOVE_INSET), |m| m[0].clone());
     let (eside_d, eshelf_d) = match (back, &emount) {
@@ -290,29 +268,13 @@ impl Cabinet<'_> {
             false => panel("Top", [et, &zero, &top_z], [eiw, eside_d, et], false),
         }
         // The mount board across the back under the top, its rear face flush with the sides'.
+        // Box edges: front bottom 9, back top 3.
         if let Some([tm, mh]) = emount {
             let y = format!("{ed} - {tm}");
             let z = format!("{top_z} - {mh}");
-            match input.wall_mount {
-                "rail" => panel("Hanging rail", [et, &y, &z], [eiw, tm, mh], false),
-                // A French cleat: bevelled 45 degrees under its front, and the wall's cleat
-                // nested below it, bevelled on top at the wall. The edges are the box's own
-                // (front bottom 9, back top 3), so they follow a resize.
-                _ => {
-                    let wall_z = format!("{z} + {tm} - {mh}");
-                    for (part, z, edge) in [("Cleat", &z, 9), ("Wall cleat", &wall_z, 3)] {
-                        panel(part, [et, &y, z], [eiw, tm, mh], false);
-                        let body = format!("{name} {part}");
-                        kit.push((
-                            "solid.chamfer",
-                            json!({
-                                "edges": [{"body": body, "index": edge}], "distance": tm,
-                                "body": body, "name": format!("{body} bevel"),
-                            }),
-                        ));
-                    }
-                }
-            }
+            let board = |part: &str, at: [&str; 3], size: [&str; 3]| panel(part, at, size, false);
+            let at = [[et.as_str(), &y, &z], [eiw.as_str(), tm, mh]];
+            fittings::mount_board(kit, input.wall_mount, tm, board, at, "", [9, 3]);
         }
         // Left face of each divider. They stand between bottom and top, as deep as the shelves.
         let divider_x: Vec<String> = (1..=n).map(|k| format!("({ecell} + {et}) * {k}")).collect();

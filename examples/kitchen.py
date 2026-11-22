@@ -10,7 +10,7 @@ It uses every function of the plugin:
 - Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth; an
   inset door on the tall unit, a graduated drawer unit (a lower top drawer), a drawer over
   a door on the return, and Base 3 is a sink base (rails instead of a top)
-- Corner cabinet, at the right end of the base units and of the wall units
+- Corner cabinet, at the right end of the base units and of the wall units; the wall one hangs on French cleats along both walls
 - Place: each floor unit goes to the right of the one before it, by selecting that one, and is
   held to it: widen `Base_1_width` and the units after it move along
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
@@ -69,7 +69,7 @@ RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "drawers": 1, "doors": 1, "handle
 WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "depth": 320,
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
-               "place": "right"}
+               "wall_mount": "cleat", "place": "right"}
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 3 Door L hinge": 70, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,

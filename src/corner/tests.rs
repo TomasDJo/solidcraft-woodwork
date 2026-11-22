@@ -531,3 +531,101 @@ fn split_shelves_behind_inset_doors_start_a_panel_back() {
     let bottom = board(&commands, "Cabinet Bottom return");
     assert_eq!(bottom["length"], "Cabinet_depth - Cabinet_thickness");
 }
+
+#[test]
+fn a_french_cleat_along_both_walls() {
+    let (commands, summary) = build(&json!({"wall_mount": "cleat"})).unwrap();
+    let (tm, h) = ("Cabinet_cleat_thickness", "Cabinet_cleat_height");
+    assert_eq!(named(&commands, h)["expression"], "90 mm");
+    let z = format!("Cabinet_height - Cabinet_thickness - {h}");
+    // along the back wall, its rear face on the wall, under the top, to the back leg's end
+    let cleat = board(&commands, "Cabinet Cleat");
+    assert_eq!(
+        cleat["corner"][1],
+        format!("Cabinet_return - {tm} - Cabinet_return/2")
+    );
+    assert_eq!(cleat["corner"][2], z);
+    assert_eq!(cleat["length"], "Cabinet_width - Cabinet_thickness");
+    let wall = board(&commands, "Cabinet Wall cleat");
+    assert_eq!(wall["corner"][2], format!("{z} + {tm} - {h}"));
+    // along the side wall, from behind the return's end to the back wall's cleat
+    let cleat = board(&commands, "Cabinet Cleat return");
+    assert_eq!(cleat["corner"][0], "0 mm - Cabinet_width/2");
+    assert_eq!(
+        [&cleat["length"], &cleat["width"]],
+        [
+            tm,
+            "Cabinet_return - Cabinet_thickness - Cabinet_cleat_thickness"
+        ]
+    );
+    // bevelled under the inner face, and the wall's on top at the wall
+    let edge = |n: &str, c: &Commands| {
+        named(c, &format!("Cabinet {n} bevel"))["edges"][0]["index"].clone()
+    };
+    assert_eq!(edge("Cleat", &commands), 9);
+    assert_eq!(edge("Wall cleat", &commands), 3);
+    assert_eq!(edge("Cleat return", &commands), 11);
+    assert_eq!(edge("Wall cleat return", &commands), 0);
+    assert!(summary["bodies"]
+        .to_string()
+        .contains("Cabinet Wall cleat return"));
+    // the backs stand off the walls by the cleat, between bottom and top, which reach the walls
+    let back = board(&commands, "Cabinet Back");
+    assert_eq!(
+        back["corner"][1],
+        format!("Cabinet_return - Cabinet_thickness - {tm} - Cabinet_return/2")
+    );
+    assert_eq!(back["corner"][2], "0 mm + Cabinet_thickness");
+    let back = board(&commands, "Cabinet Back return");
+    assert_eq!(back["corner"][0], format!("{tm} - Cabinet_width/2"));
+    let top = board(&commands, "Cabinet Top");
+    assert_eq!(top["corner"][0], "0 mm - Cabinet_width/2");
+    assert_eq!(top["width"], "Cabinet_return - Cabinet_thickness - 0 mm");
+    let shelf = board(&commands, "Cabinet Shelf 1");
+    assert_eq!(
+        shelf["corner"][0],
+        format!("(Cabinet_thickness + {tm}) - Cabinet_width/2")
+    );
+    // inside the back return and the back leg's end
+    assert_eq!(
+        shelf["length"],
+        format!("Cabinet_width - Cabinet_thickness - (Cabinet_thickness + {tm})")
+    );
+    // a right corner's bevels are mirrored
+    let (right, _) = build(&json!({"wall_mount": "cleat", "corner": "right"})).unwrap();
+    assert_eq!(edge("Cleat return", &right), 7);
+    assert_eq!(edge("Wall cleat return", &right), 2);
+}
+
+#[test]
+fn a_hanging_rail_or_steel_rails_on_a_corner() {
+    let (commands, _) = build(&json!({"wall_mount": "rail", "shape": "diagonal"})).unwrap();
+    let rail = board(&commands, "Cabinet Hanging rail return");
+    assert_eq!(
+        [&rail["length"], &rail["height"]],
+        ["Cabinet_thickness", "90 mm"]
+    );
+    assert!(!commands
+        .iter()
+        .any(|c| c.0 == "solid.chamfer" && c.1["name"].as_str().unwrap().contains("bevel")));
+    // steel: a rail on each wall, no board
+    let (commands, _) = build(&json!({"wall_mount": "steel"})).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_wall_rail")["expression"],
+        "Cabinet_width"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_wall_rail_return")["expression"],
+        "Cabinet_return"
+    );
+    assert_eq!(
+        board(&commands, "Cabinet Back")["corner"],
+        board(&build(&json!({})).unwrap().0, "Cabinet Back")["corner"]
+    );
+    // the cleats must fit, and the legs stay deep enough for them
+    assert!(build(&json!({"wall_mount": "cleat", "height": 190, "shelves": 0})).is_err());
+    assert!(
+        build(&json!({"wall_mount": "cleat", "depth": 180, "width": 400, "return": 400})).is_err()
+    );
+    assert!(build(&json!({"wall_mount": "screws"})).is_err());
+}

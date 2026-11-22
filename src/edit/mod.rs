@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 13] = [
+const SIZES: [&str; 14] = [
     "width",
     "height",
     "depth",
@@ -25,6 +25,7 @@ const SIZES: [&str; 13] = [
     "cleat_height",
     "cleat_thickness",
     "wall_rail",
+    "wall_rail_return",
 ];
 
 /// What a cabinet's component remembers, as `component.metadata.set` takes it: the entry that
@@ -90,10 +91,12 @@ pub fn merge(
         };
         let (to, value) = match key.as_str() {
             "shelves" | "handles" | "handle_position" | "plinth" | "plinth_type"
-            | "plinth_setback" | "reveal" | "fronts" => (key.as_str(), value.clone()),
+            | "plinth_setback" | "reveal" | "fronts" | "wall_mount" => {
+                (key.as_str(), value.clone())
+            }
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
             "doors" | "dividers" | "drawers" | "drawer_height" | "drawers_at" | "back"
-            | "door_hinge" | "kind" | "wall_mount" => {
+            | "door_hinge" | "kind" => {
                 only(false, "box cabinet")?;
                 (key.as_str(), value.clone())
             }

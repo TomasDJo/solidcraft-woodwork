@@ -252,7 +252,8 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
     // A cabinet on a steel rail has `<Prefix>_wall_rail`, its width (0 once an edit took the
-    // rail away): a rail bought to that length and two hangers. Only for a cabinet that is
+    // rail away), and a corner cabinet `_wall_rail_return` too: a rail bought to that length
+    // and two hangers each. Only for a cabinet that is
     // still there, as a deleted cabinet's parameters stay.
     let standing: Vec<String> = (bodies.iter())
         .filter_map(|b| b.strip_suffix(" Side L"))
@@ -263,7 +264,8 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         let (Some(name), Some(mm)) = (p["name"].as_str(), p["value"].as_f64()) else {
             continue;
         };
-        let cabinet = name.strip_suffix("_wall_rail");
+        // a corner cabinet has one on each wall
+        let cabinet = (name.strip_suffix("_wall_rail")).or(name.strip_suffix("_wall_rail_return"));
         if mm > 0.0 && cabinet.is_some_and(|c| standing.iter().any(|s| s == c)) {
             *rails.entry(mm.round() as i64).or_default() += 1;
         }

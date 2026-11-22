@@ -247,6 +247,119 @@ pub fn caster(kit: &Kit, n: usize, x: &str, y: &str, height: &str, thickness: &s
     ));
 }
 
+pub const NAILER_H: f64 = 90.0; // ponytail: a hanging rail is always this high, no field for it
+
+/// The `wall_mount` field and its board's thickness and height in mm (0 without one): none,
+/// cleat (a French cleat, sized by its fields), rail (a hanging rail, a panel thick) or steel
+/// (a bought rail and hangers, no board). `between` is the height between bottom and top.
+pub fn wall_mount<'a>(
+    kit: &Kit,
+    p: &'a Value,
+    t: f64,
+    between: f64,
+) -> Result<(&'a str, f64, f64), String> {
+    let mount = match p
+        .get("wall_mount")
+        .and_then(Value::as_str)
+        .unwrap_or("none")
+    {
+        m @ ("none" | "cleat" | "rail" | "steel") => m,
+        _ => return Err("wall_mount must be none, cleat, rail or steel".into()),
+    };
+    let (mount_t, mount_h) = match mount {
+        "cleat" => {
+            let ct = kit.size(p, "cleat_thickness", 18.0)?;
+            let ch = kit.size(p, "cleat_height", 90.0)?;
+            crate::kit::check(
+                (6.0..=50.0).contains(&ct),
+                "cleat thickness must be 6 to 50 mm",
+            )?;
+            crate::kit::check(ch > ct, "the cleat must be taller than it is thick")?;
+            // the wall cleat hangs below the cabinet's, overlapping it by the bevel
+            crate::kit::check(
+                2.0 * ch - ct <= between,
+                "the cleats do not fit: twice the cleat height less its thickness must fit between the bottom and the top",
+            )?;
+            (ct, ch)
+        }
+        "rail" => {
+            crate::kit::check(NAILER_H <= between, "too low for a hanging rail")?;
+            (t, NAILER_H)
+        }
+        _ => (0.0, 0.0),
+    };
+    Ok((mount, mount_t, mount_h))
+}
+
+/// The mount board's thickness and height as expressions (a cleat's are parameters), or
+/// `None` for no board. `et` is the panel thickness.
+pub fn mount_sizes(
+    kit: &Kit,
+    mount: &str,
+    mount_t: f64,
+    mount_h: f64,
+    et: &str,
+) -> Option<[String; 2]> {
+    match mount {
+        "cleat" => Some([
+            kit.parameter("cleat_thickness", mount_t, "French cleat thickness"),
+            kit.parameter("cleat_height", mount_h, "French cleat height"),
+        ]),
+        "rail" => Some([et.to_string(), mm(NAILER_H)]),
+        _ => None,
+    }
+}
+
+// ponytail: steel is not modelled (hanger models and their holes come with #70); the cut
+// list buys a rail to this length and two hangers. Kept at 0 once an edit stops using it.
+/// A steel wall rail, the parameter `<Prefix>_<key>`, `length` long (mm and expression).
+pub fn steel_rail(kit: &Kit, key: &str, steel: bool, length: f64, expression: &str) {
+    if steel || kit.has(key) {
+        let (value, length) = match steel {
+            true => (length, expression.to_string()),
+            false => (0.0, mm(0.0)),
+        };
+        kit.parameter_as(key, value, "steel wall rail, bought to length", length);
+    }
+}
+
+/// The board a cabinet hangs by, along one wall under its top: a hanging rail (`mount` rail),
+/// or a French cleat and the wall's cleat nested below it (cleat). `panel` makes a board from
+/// its corner and size; `board` is the cabinet's (corner and size, its height the mount's),
+/// `tm` the mount's thickness, `suffix` follows each part's name. `edges` are the box edges to
+/// bevel by `tm`: the cabinet cleat's under its inner face, the wall cleat's on top at the
+/// wall. Box edges by index, so they follow a resize.
+pub fn mount_board(
+    kit: &Kit,
+    mount: &str,
+    tm: &str,
+    panel: impl Fn(&str, [&str; 3], [&str; 3]),
+    [at, size]: [[&str; 3]; 2],
+    suffix: &str,
+    edges: [u32; 2],
+) {
+    if mount == "rail" {
+        return panel(&format!("Hanging rail{suffix}"), at, size);
+    }
+    let wall_z = format!("{} + {tm} - {}", at[2], size[2]);
+    let parts = [
+        ("Cleat", at[2], edges[0]),
+        ("Wall cleat", &wall_z, edges[1]),
+    ];
+    for (part, z, edge) in parts {
+        let part = format!("{part}{suffix}");
+        panel(&part, [at[0], at[1], z], size);
+        let body = format!("{} {part}", kit.name);
+        kit.push((
+            "solid.chamfer",
+            json!({
+                "edges": [{"body": body, "index": edge}], "distance": tm,
+                "body": body, "name": format!("{body} bevel"),
+            }),
+        ));
+    }
+}
+
 /// Whether a body is one of the legs `leg` makes.
 pub fn is_leg(body: &str) -> bool {
     numbered(body, " Leg ")
