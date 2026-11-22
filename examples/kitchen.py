@@ -20,6 +20,8 @@ It uses every function of the plugin:
 - Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
 - Labels: the tall unit has each board's name written on it
 - Panel: an end panel on the tall unit's free side and one at the open end of the return run
+- Worktop: oak over the base units and the corner cabinet, butt-jointed in the corner, with a
+  sink cut-out over the sink base
 - Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
 - Cut list: written out as CSV (boards with grain and banded edges, and the banding to buy); the sheets from the cutting layouts and the hardware are printed
 
@@ -132,6 +134,14 @@ for cabinet in made:
         continue
     kind = "dowel" if cabinet["name"].startswith("Wall") else "confirmat"
     steps += [select(f"{cabinet['name']} Side L"), build.plugin(approval, "joinery", {"type": kind})]
+# An oak worktop over the floor units but the tall one: the back run is piece 1, through to the
+# right wall; the return's piece butts against its front edge and covers the end panel. The
+# sink's opening is over Base 3, between its rails (100 mm each, the front one 40 mm behind the
+# worktop's front edge), measured from piece 1's left end (Base 1's left side).
+SINK = {"cutout": "plain", "cutout_length": 760, "cutout_width": 300, "cutout_y": 311,
+        "cutout_x": FLOOR[1][1]["width"] + FLOOR[2][1]["width"] + FLOOR[3][1]["width"] / 2}
+steps += [select("Base 1 Top", "Base 2 Top", "Base 3 Rail front", "Corner Top", "Base 4 Top"),
+          build.plugin(approval, "worktop", {"right_overhang": 18, **SINK})]
 # One more shelf in a wall unit that is already hung, has an oak door and is drilled for dowels.
 steps += [select("Wall 2 Top"), build.plugin(approval, "edit", {"shelves": 3})]
 steps += [step("joint.drive", joint=joint, value=value) for joint, value in OPEN.items()]
@@ -146,6 +156,8 @@ cutlist = results[-1]["result"]
 OUT.with_name(OUT.stem + "-cutlist.csv").write_text(cutlist["csv"], encoding="utf-8", newline="\n")
 for sheet in cutlist["sheets"]:
     print(f"{sheet['sheets']} sheets of {sheet['thickness']:g} mm {sheet['material']} ({sheet['area_m2']} m2, {sheet['yield_pct']} % yield)")
+for part in cutlist["worktops"]:
+    print(f"worktop, bought to length: {part['part']} ({part['length']:g} x {part['width']:g} x {part['thickness']:g} mm)")
 for part in cutlist["oversize"]:
     print(f"not laid out: {part['part']} ({part['length']:g} x {part['width']:g} mm), {part['reason']}")
 for item in cutlist["hardware"]:

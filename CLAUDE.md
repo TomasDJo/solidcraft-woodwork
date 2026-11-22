@@ -124,6 +124,7 @@ materials, joinery and cut lists.
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin, as Joinery: `inside`), remembers them for Edit, and refuses Place against a side that has one |
+| `src/worktop/` | Worktop over the selected cabinets: measures their feet (a corner cabinet's two legs), groups them into runs by the way they face, joins runs in corners (butt or mitre) and makes each piece a box or an extruded outline at world coordinates; dog holes and a cut-out in piece 1. `lib.rs` finds the cabinets (a picked worktop's remembered ones), replaces a worktop of that name, makes the component and grounds it |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
@@ -144,7 +145,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -317,7 +318,20 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
   sheet is only reported (`oversize`), not split.
 - A board is a worktop, bought to length and not laid out on sheets, when its name contains
-  `Worktop` (drawn by hand; the Worktop function is postponed, #62) (`cutlist::cutlist`).
+  `Worktop` (`cutlist::cutlist`), at its world box (`cutlist::turned` leaves it out, so a
+  mitred or cut-out piece is not measured by mesh). A worktop named otherwise is a board.
+- A worktop (`worktop`) is numeric: measured from the cabinets' Side L, Side R, Back and Back
+  return world boxes, made at world coordinates in a component in the active component, which
+  must stand on the origin, unturned. It does not follow a cabinet; running Worktop again with
+  its name (or a piece picked) deletes its component and makes it again over the cabinets it
+  remembers (`cabinets` in its metadata, entry `worktop`), with its remembered values when no
+  cabinet is picked, the dialog's when one is. A picked piece belongs to the longest worktop
+  name it fits (`worktop::owners`). Quarter turns only (a side that does
+  not fill 80 % of its box is refused). A corner cabinet's leg is as deep as its end panel is
+  long. Runs are grouped by the way they face; two facing the same way must share a wall, and
+  facing each other only with a run across (a U). In a butt corner the longer run passes through
+  (equal: the first found). End panels and fillers are not part of the footprint: give an end
+  overhang. Dog holes (one cylinder and a pattern) and the cut-out go into piece 1 only.
 - Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no
   per-part override (that would need `storage@0.1`). A cabinet's width axis is across its
   `Side L` in the world, or X for a board measured in its own component, so a cabinet turned

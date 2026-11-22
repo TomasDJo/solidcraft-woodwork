@@ -34,11 +34,12 @@ pub fn turned(measure: &Value) -> Vec<String> {
         let sides = (0..3).filter_map(side).map(|(max, min)| max - min);
         (body["volume_mm3"].as_f64()).is_some_and(|volume| volume < 0.97 * sides.product::<f64>())
     };
-    // A leg or a caster is not a board, so never measured.
+    // A leg or a caster is not a board, so never measured. A worktop is bought at its box, also
+    // when it is mitred or has a cut-out, and it stands square in a component on the origin.
     bodies
         .filter(loose)
         .filter_map(|body| body["name"].as_str().map(String::from))
-        .filter(|name| !crate::fittings::is_foot(name))
+        .filter(|name| !crate::fittings::is_foot(name) && !name.contains("Worktop"))
         .collect()
 }
 

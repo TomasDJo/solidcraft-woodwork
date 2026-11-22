@@ -16,6 +16,7 @@ without doors.
 - [Joinery](#joinery)
 - [Material](#material)
 - [Panel](#panel)
+- [Worktop](#worktop)
 - [Cut list](#cut-list)
 - [Drawing](#drawing)
 - [Good to know](#good-to-know)
@@ -304,6 +305,38 @@ drawing's width is over all, the panels included; its views take the panels in. 
 corner cabinet's return) a panel is not tested yet: check it lands at the side, or add it
 before turning the cabinet.
 
+## Worktop
+
+Lays a worktop over the selected cabinets. Pick a board of each cabinet (the **Selected cabinets**
+field takes several): one straight run, or runs that meet in corners, such as an L or a U round
+corner cabinets. A gap between cabinets, for a dishwasher or an oven, is covered by the same
+piece. Every cabinet must have its top at the same height and stand square to the walls.
+
+| Field | What it does |
+|---|---|
+| **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
+| **Corner joint** | **Butt**: the longer run's piece goes through to the wall, the other stops against its front edge. **Mitre**: both go to the walls and are cut on the line from the inside corner to the outside one (45 degrees when both are equally deep). |
+| **Thickness** | Of the worktop, 38 mm by default. |
+| **Front overhang** | Past the front of the deepest cabinet of the run (doors stand about 20 mm proud). The back is flush with the wall. |
+| **Left end overhang**, **Right end overhang** | Past a free end of a run, left and right as seen from its front. In an L that is the left run's left end and the right run's right end. |
+| **Dog holes** | 20 mm holes through the first piece on a 96 mm grid, for bench dogs: **All over** (centred, at least 60 mm from the edges) or **In a zone** (Zone from left, Zone from front, Zone length, Zone width, measured from the piece's left end and front edge; the grid is centred in it). |
+| **Cut-out** | An opening through the first piece: **Plain**, or **Rebated** with a shallow ledge all round at the top (Ledge width and Ledge depth), so a router plate or a sink rim sits flush. Opening length and width, and its middle from the piece's left end and front edge. |
+| **Material** | Oak by default. |
+| **Name** | One piece is named `Worktop`; more are `Worktop 1`, `Worktop 2`, the longest first. |
+
+The worktop is a component of its own on the origin, grounded, with no parameters: it is measured
+from the cabinets as they stand. It does not follow when a cabinet changes; **run Worktop again**
+(with only a piece of it picked, or with nothing picked and its name) and it is made again as it
+was, over the same cabinets, with its name and options kept, replacing the old one. To change its
+options, pick its cabinets (a worktop piece too, if you like) and give its name: it is made again
+with the dialog's values. A diagonal corner cabinet
+gets the same square L as an L-shaped one. Dog holes and the cut-out go into the first piece, the
+longest; one that does not fit on it is refused. Two runs facing the same way along different
+walls, or facing each other, are two worktops: make each with its own name.
+
+A name with `Worktop` in it is bought to length in the cut list. Named otherwise, such as `Bench
+top` in birch plywood, it is a board laid out on the sheets like any other.
+
 ## Cut list
 
 Returns every board as length x width x thickness with quantities, and as CSV. In a design
@@ -356,9 +389,9 @@ reply lists it under `oversize` with the reason, and the PDF names it under the 
 Sheet sizes, kerf and trim are metric mm: a 4 x 8 ft sheet is 2438.4 x 1219.2 mm, so pick
 2440 x 1220 and leave the trim on.
 
-A board whose name contains `Worktop` (a worktop you drew yourself) is not sheet stock: it
+A board whose name contains `Worktop` (made by Worktop, or drawn yourself) is not sheet stock: it
 is left out of the layouts and the sheets, and listed as bought to length (the reply's `worktops`, and a table "Worktops,
-bought to length" in the PDF). It still appears in the cut list's rows.
+bought to length" in the PDF), at its bounding box, also when mitred or cut out. It still appears in the cut list's rows.
 
 The layouts are a quick greedy fit, not an optimiser: a few orders and two ways of choosing
 the free piece are tried and the one with the fewest sheets kept. A cutting program may well

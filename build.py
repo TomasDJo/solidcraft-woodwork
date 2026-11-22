@@ -64,7 +64,7 @@ def plugin(approval, entry, params=None):
                 defaults[key] = rule["value"]
                 break
     # The tests name their parts after the plugin's own fallback name, not the dialog's.
-    if "name" in defaults:
+    if "name" in defaults and entry != "worktop":
         defaults["name"] = "Cabinet"
     return {"command": "plugin.run", "params": {
         "path": str(PKG), "approval": approval, "entry": entry, "params": defaults | (params or {})}}

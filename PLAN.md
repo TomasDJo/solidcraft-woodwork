@@ -118,7 +118,8 @@ Cabinets:
 - [ ] Joinery for dividers and fixed shelves
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
-- [ ] Worktop over a straight run of the selected cabinets: postponed until it handles corners and joints (#62)
+- [x] Worktop over the selected cabinets: runs and corners (butt or mitre), gaps spanned, made again by running it again (#62)
+- [x] Worktop dog holes (96 mm grid, all over or in a zone) and a plain or rebated cut-out (#79)
 - [ ] Plinth run over the selected cabinets: one long board across a run of cabinets with notched sides or on legs (Plinth type gives them no board of their own)
 - [x] End panels and fillers on a cabinet's end, kept by Edit cabinet (#57 part 2)
 - [ ] Plinth return: for cabinets on legs, later
@@ -128,7 +129,6 @@ Cabinets:
 - [ ] Hinges in the model, with hinge types (#60); shared hardware models that drill their own holes (#70) wait for cheaper evaluation of `occurrence.copy` and `solid.combine` in SolidCraft
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
-- Sink and hob cutouts in a worktop dropped
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
 
 Cut list and shop output:

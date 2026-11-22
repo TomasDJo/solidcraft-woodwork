@@ -44,6 +44,8 @@ fn an_open_door_is_measured_in_its_own_component() {
         // a leg is round, so fills pi/4 of its box: not a board, never measured
         body("A Leg 1", [40.0, 40.0, 100.0], 125_664.0),
         body("A Caster 1", [80.0, 80.0, 100.0], 100_000.0),
+        // a worktop is bought at its box, mitred or cut out, so not measured either
+        body("Worktop 1", [2800.0, 600.0, 38.0], 2800.0 * 600.0 * 38.0 * 0.9),
     ]});
     assert_eq!(turned(&measured), ["Ajar", "Open"]);
 

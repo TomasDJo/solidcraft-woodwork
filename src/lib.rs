@@ -17,6 +17,7 @@ mod panel;
 mod pdf;
 mod select;
 mod settings;
+mod worktop;
 
 use kit::check;
 use serde_json::{json, Value};
@@ -368,7 +369,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
     // preview's dry runs leave the camera alone). Fit frames the selection when there is one,
     // such as the board a cabinet was placed against, so that is cleared first.
-    if matches!(entry, "cabinet" | "corner" | "edit") {
+    if matches!(entry, "cabinet" | "corner" | "edit" | "worktop") {
         run("select.clear", json!({}))?;
         run("view.fit", json!({}))?;
     }
@@ -642,6 +643,124 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             params["side"] = json!(side);
             let bodies = panel(&name, &params, &measure, run)?;
             Ok(json!({"cabinet": name, "side": side, "bodies": bodies}))
+        }
+        "worktop" => {
+            // A worktop over the selected cabinets, in a component of its own on the origin.
+            // Run again it replaces the worktop of that name, and any worktop picked.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let measure = run("inspect.measure", json!({}))?;
+            let tree = run("component.list", json!({}))?;
+            let components: Vec<&str> = (tree["components"].as_array().into_iter().flatten())
+                .filter_map(|c| c["name"].as_str())
+                .collect();
+            // A component that is a worktop: the cabinets and the values it remembers.
+            type Remembered = Option<(Vec<String>, Value)>;
+            let mut remembered = |component: &str| -> Result<Remembered, String> {
+                if !components.contains(&component) {
+                    return Ok(None);
+                }
+                let about = run("component.metadata", json!({"component": component}))?;
+                let ours = &about["metadata"][edit::KEY];
+                Ok((ours["entry"] == "worktop").then(|| {
+                    let all = ours["cabinets"].as_array().into_iter().flatten();
+                    let cabinets = all.filter_map(|c| c.as_str().map(String::from)).collect();
+                    (cabinets, ours["params"].clone())
+                }))
+            };
+            let (mut cabinets, mut old) = (Vec::<String>::new(), Vec::<String>::new());
+            let (mut stored, mut any_cabinet) = (None, false);
+            for body in select::picked(params, &design) {
+                if let Some(cabinet) = select::owner(&measure, &body) {
+                    cabinets.push(cabinet.to_string());
+                    any_cabinet = true;
+                    continue;
+                }
+                let mut found = false;
+                for c in worktop::owners(&body, &components) {
+                    if let Some((theirs, values)) = remembered(c)? {
+                        old.push(c.to_string());
+                        cabinets.extend(theirs);
+                        stored.get_or_insert(values);
+                        found = true;
+                        break;
+                    }
+                }
+                check(
+                    found,
+                    &format!("`{body}` is not part of a cabinet or a worktop"),
+                )?;
+            }
+            // Only a worktop picked: made again as it was, its name and options kept.
+            let mut params = match (stored, any_cabinet) {
+                (Some(values), false) => values,
+                _ => params.clone(),
+            };
+            let name = params["name"]
+                .as_str()
+                .unwrap_or("Worktop")
+                .trim()
+                .to_string();
+            let name = match remembered(&name)? {
+                Some((theirs, values)) => {
+                    // Run again with nothing picked: as it was made, over the same cabinets.
+                    if cabinets.is_empty() {
+                        cabinets = theirs;
+                        params = values;
+                    }
+                    old.push(name.clone());
+                    name
+                }
+                None => {
+                    let free = kit::free_name(&name, &design);
+                    check(
+                        !components.contains(&free.as_str()),
+                        &format!("name: `{free}` is taken; choose another"),
+                    )?;
+                    free
+                }
+            };
+            params["name"] = json!(name);
+            // A cabinet deleted since a worktop remembered it is left out.
+            cabinets.retain(|c| select::named(&measure, c).is_ok());
+            let mut seen = std::collections::BTreeSet::new();
+            cabinets.retain(|c| seen.insert(c.clone()));
+            // Checked before anything is taken away.
+            let built = worktop::build(&params, &cabinets, &measure)?;
+            let bodies = (measure["bodies"].as_array().into_iter().flatten())
+                .filter_map(|b| b["name"].as_str());
+            for taken in bodies.filter(|b| !old.iter().any(|w| worktop::piece_of(b, w))) {
+                check(
+                    !built.1["bodies"]
+                        .as_array()
+                        .is_some_and(|all| all.contains(&json!(taken))),
+                    &format!("name: a body `{taken}` is already in the design; choose another"),
+                )?;
+            }
+            old.sort();
+            old.dedup();
+            for component in &old {
+                run("component.delete", json!({"component": component}))?;
+            }
+            // ponytail: made in the active component at world coordinates, so that component
+            // must stand on the origin, unturned, as a room component normally does.
+            let (mut summary, made) = component(built, &params, "Oak", run)?;
+            run(
+                "occurrence.ground",
+                json!({"occurrence": made["occurrence"], "grounded": true}),
+            )?;
+            let mut values = edit::remember("worktop", &params, &name);
+            values[edit::KEY]["cabinets"] = json!(cabinets);
+            run(
+                "component.metadata.set",
+                json!({"component": name, "values": values}),
+            )?;
+            if !old.is_empty() {
+                summary["replaced"] = json!(old);
+            }
+            Ok(summary)
         }
         "cutlist" => {
             // Inches when the design is in inches or feet, else mm.
