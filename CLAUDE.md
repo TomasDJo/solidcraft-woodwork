@@ -151,8 +151,10 @@ materials, joinery and cut lists.
   Settings back to the defaults) that `build.cli` runs as one step (`flat`), and gives a cabinet
   without a plinth Plinth No; it sends Settings only `units`, `material`, `handles`, `camera`
   (the hook fills the rest).
-  **Apply to** (`settings`' `selection`, several bodies; only the field, not the design's
-  selection, which tests and scripts leave behind): `lib.rs` `apply` reads the picked cabinets
+  **Apply to** (`settings`' `apply: yes` and its `selection`, several bodies; `apply` is No by
+  default because the dialog fills `selection` with whatever is selected, which must not
+  rebuild a cabinet by itself; only the field, not the design's selection, which tests and
+  scripts leave behind): `lib.rs` `apply` reads the picked cabinets
   (`select::owner`, box and corner only), takes each one's `edit::merge` with no changes (sizes
   from Parameters) and `settings::apply` (what the settings give it now: the design-wide ones
   stored or default, the hook's four only stored, the plinth's only on a cabinet with one, and

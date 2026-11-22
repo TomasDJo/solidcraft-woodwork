@@ -1149,12 +1149,13 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let changed = material::see_through(run, material::opacity(&stored))?;
             let mut reply =
                 json!({"settings": stored["document"]["settings"], "see_through": changed});
-            // Apply to selected: the cabinets picked in its field (not the design's selection,
-            // which a script may have left) built again with these settings.
-            if params["selection"]
+            // Apply to picked cabinets Yes: the cabinets picked in its field (not the design's
+            // selection, which a script may have left) built again with these settings. Only
+            // then, as the dialog fills the field with whatever is selected when it opens.
+            let picked = params["selection"]
                 .as_array()
-                .is_some_and(|picked| !picked.is_empty())
-            {
+                .is_some_and(|p| !p.is_empty());
+            if params["apply"] == "yes" && picked {
                 let applied = apply(params, &stored, run)?;
                 if let (Some(all), Some(more)) = (reply.as_object_mut(), applied.as_object()) {
                     all.extend(more.clone());

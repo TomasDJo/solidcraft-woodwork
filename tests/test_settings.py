@@ -134,14 +134,16 @@ def test_apply_to_selected(approval):
     # plinth, keeps none though the settings have one. Run again: nothing left to do.
     def pick(*names):
         return [{"type": "body", "name": n} for n in names]
-    new = {"thickness": 19, "joints": "confirmat", "plinth": 120}
+    new = {"thickness": 19, "joints": "confirmat", "plinth": 120, "apply": "yes"}
     results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": "yes"}), select("A Side R"),
                    plugin(approval, "cabinet", {"name": "B", "place": "right", "plinth": "yes"}),
                    plugin(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin"}),
                    MEASURE,
                    setting(approval, {**new, "selection": pick("A Top", "W Side L")}),
                    MEASURE, plugin(approval, "cutlist"),
-                   setting(approval, {**new, "selection": pick("A Top", "W Side L")})])
+                   setting(approval, {**new, "selection": pick("A Top", "W Side L")}),
+                   # B picked but Apply No (the dialog fills the field with the selection): only stored
+                   setting(approval, {"thickness": 25, "selection": pick("B Top")}), MEASURE])
     before, after = boxes(results[4]), boxes(results[6])
     reply = results[5]["result"]
     assert sorted(reply["applied"]) == ["A", "W"] and reply["remaining"] == [], reply
@@ -152,3 +154,4 @@ def test_apply_to_selected(approval):
     hardware = {h["item"]: h["qty"] for h in results[7]["result"]["hardware"]}
     assert hardware["Confirmat screw, 7 x 50 mm"] == 24 and "Dowel, 8 x 35 mm" in hardware, hardware
     assert results[8]["result"]["applied"] == [], results[8]
+    assert "applied" not in results[9]["result"] and boxes(results[10])["B Side L"] == before["B Side L"], results[9]
