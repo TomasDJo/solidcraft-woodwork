@@ -61,8 +61,11 @@ materials, joinery and cut lists.
   does not remember it.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
   features, so a design opens without the plugin.
-- Limits per run: 256 app commands, 30 s, 1 MiB result. No network access; we keep no plugin
-  data in the design (`storage@0.1`, below).
+- Limits per run: 256 app commands, 30 s (native command time included), 1 MiB result. The
+  manifest asks for `runtime.permissions.clock` so that `clock.now` gives Unix seconds (0
+  without it), which Drawing uses to stop in time (`lib.rs` `now`). No network access. Plugin
+  data in the design (`storage@0.1`) holds only Woodwork settings; beyond that the design keeps
+  component metadata and the drawing's fingerprints.
   Files: only `files.write-file` into a folder the manifest asks for under
   `runtime.permissions.files` and the user approves when installing (0.43: the install
   screen asks for a path). The plugin names the grant and a relative path and never learns
@@ -90,9 +93,21 @@ materials, joinery and cut lists.
   against. `plugin.run` through the CLI reports it as `view: {kind: fit}`.
 - `build.py` runs `solidcraft-cli plugin check` on the package: an error fails the build.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
-  `tangency-labs/solidcraft`. A `ui` capability is planned there. `storage@0.1`, plugin data
-  kept in a design, exists from 0.45 ("Plugin data in a design" in `docs/plugins.md`); we do
-  not use it.
+  `tangency-labs/solidcraft`. A `ui` capability is planned there.
+- **Woodwork settings (0.46, `storage@0.1` and `dialog@0.1`).** `settings` writes its fields
+  into our data in the design (`storage.patch {patch: {settings: ...}}`, lengths in mm,
+  `data_format` 1; `settings::patch`). `cabinet` and `corner` have `dialog_hook`: the dialog
+  calls `update-fields` (world `command-dialog-plugin` in `wit/plugin.wit`, added to our 0.1
+  wit as upstream allows), `lib.rs`'s `dialog` reads `storage.get {plugin: "woodwork"}` (the
+  hook runs outside a run, so it must name us) and `settings::fields` answers each stored value
+  as the field's `default`, lengths in the dialog's `units`. The hook is a read entry on a copy
+  of the design, 250 ms and 10M fuel: one command. `plugin.run` and the tools call it once
+  before the entry, filling only keys left out; a hook entry's tool schema has no `required`
+  (checked after the hook, with "is required" and no field name). The hook cannot write, so
+  the last used values are not remembered; settings are per design, not per user. `settings` has
+  the hook too: its three numbers start at the stored value or the Cabinet default, so the app
+  draws them as drag fields kept within their bounds, and `settings::patch` leaves out a number
+  equal to the stored one (or that default), as the hook fills omitted keys for scripts too.
 
 ## Layout
 
@@ -103,6 +118,7 @@ materials, joinery and cut lists.
 | `src/<module>/mod.rs`, `tests.rs` | Each module below that has unit tests is a folder: the code in `mod.rs`, its tests in `tests.rs` beside it |
 | `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
 | `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
+| `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
@@ -115,6 +131,7 @@ materials, joinery and cut lists.
 | `src/dxf/` | The cutting layouts as DXF R12, a file per sheet, written by hand: sheet, part outlines and names, and holes (read with `model.faces`, mapped onto the part as it lies on the sheet) on a layer per diameter and depth |
 | `src/drawing/` | Shop drawings: a sheet per cabinet in the drawing `Woodwork`, as steps whose args name ids from earlier replies (`$sheet`, `$front`): scale, layout, the dimension corners and the board list as notes |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
+| `src/settings/` | Woodwork settings: the storage patch from its dialog, and the Cabinet and Corner dialogs' defaults from what is stored |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
 | `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
@@ -127,7 +144,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `cutlist` and `drawing`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `cutlist`, `drawing` and `settings`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -266,7 +283,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 
 ## Known limits
 
-- The dialog cannot remember values. A size the user changed stays as typed when Units changes.
+- The dialog cannot remember the last values (only Woodwork settings' stored defaults). A size the user changed stays as typed when Units changes.
 - `select` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
   a cabinet that is rotated off the axes.
 - The cut list measures a board by its world bounding box when the board fills that box, and
@@ -342,6 +359,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are
   cut with `solid.chamfer`, picking the edge by a point in mm that is worked out twice: as an
   expression for the board and as a number for the pick.
+- A corner cabinet's `boards: split` (L-shaped only; `corner::input` ignores it on the diagonal)
+  makes its bottom, top and shelves `<Part>` (the back leg's, whole width) and `<Part> return`
+  (in front of it), with two `<Part> return dowel <n>` cuts, each one cylinder through both boards
+  (`targets` takes two). The cut list counts those features as 60 mm dowels and takes a
+  cabinet's width axis along its `Back` (across `Side L` without one), as a left corner's Side L
+  is its return's end. The backs and ends stay whole: a 1400 mm corner's back (1364 wide, grain
+  up) is still oversize on a 1220 sheet in a grained material.
 - A corner cabinet's `corner` field is auto by default (`corner::hand`): right when it is
   placed right of the selected cabinet, else left. `lib.rs` settles it before building, so
   the cabinet remembers left or right and Edit keeps it.
@@ -393,7 +417,30 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (`ours["params"]["kind"]` in `drill`) and drills the top corners into the rails: only the
   first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.
 - `cabinet::build` refuses a cabinet of more than 230 commands (the run itself takes the rest
-  of the app's 256): a wide tall cabinet with many doors, shelves, pins and labels can reach it.
+  of the app's 256), counting the shared hardware parameters it may have to make: a wide tall
+  cabinet with many doors, shelves, pins and labels can reach it.
+- **Hinges and slides** (box cabinets; `src/hardware/`, holes in `cabinet::doors` and
+  `cabinet::drawers`): every hole is a cylinder cut (`fittings::hole`) whose size and place
+  are expressions over the shared `HW_` parameters, made once per design (`hardware::parameters`,
+  run by `make` when the builder's commands mention `HW_`). A door's cups (`<Door> hinge cup n`,
+  which the cut list counts) and the plate's two holes in the side it hangs on (`<Side> hinge
+  plate n.k`, cut after `Kit::hinge` so the cabinet is active), `HW_setback` behind the front
+  of the opening (`ein`, the shelf pins' line); a hinge edge on a divider gets no plate holes.
+  A drawer box's sides (`<Drawer n Left> slide k`, cut before `Kit::close` while the drawer is
+  active) and the carcass sides (`<Side> Drawer n slide k`, after), 6 pitches apart; the box is
+  `2*HW_slide_t` narrower than the opening, and one shallower than 250 mm is refused
+  (`input::MIN_SLIDE`, numbers only). The box cabinet's cups are moved to the pins' grid
+  (`hardware::on_grid`, from `Cabinet::shelf_zone`'s base, the rail's top under doors over
+  drawers): a plate's two holes are pin holes or clear of the rows, never half into one. The
+  grid is `HW_pitch` and the pin rows' `PITCH`, which part if `HW_pitch` is changed. Corner
+  cabinets keep their numeric cups.
+  Shared hardware *models* (#70: definitions under a `Hardware` component, an `occurrence.copy`
+  per hinge or slide on an axis joint, one `solid.combine` cut per board) worked in a plugin
+  run but are too slow on 0.46.1: each copy re-evaluates every combine in the design, and once
+  a design holds such cuts every `component.create` re-evaluates the whole design (the sample
+  kitchen's runs went from 1-4 s to 25-30 s and over the 30 s limit). `browser.visibility` is
+  still not kept after a plugin run, and a definition made inside a cabinet's component is
+  deleted with it (and every copy elsewhere).
 - Drawing (`drawing::sheet`): the drawing commands (0.45) run inside a plugin run; while a
   drawing is open the model's commands wait, so `lib.rs` reads everything first, then opens or
   makes `Woodwork`, draws, deletes the replaced sheets and closes it. The board list is four notes
@@ -405,7 +452,23 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   and over the title block, so a list reaching the title block leaves it 1:50. A corner cabinet
   (`corner_views`) is drawn from the side of its open corner, the iso along that corner's
   diagonal. Corner cabinets get no dimensions; quarter turns only; A3 and mm only. 12 commands a
-  sheet, so about 20 cabinets a run (`drawing::budget`). Doors are closed by a `pose` of the
+  sheet. **Runs:** scope all skips a cabinet whose sheet is up to date: each sheet's
+  `drawing::fingerprint` (FNV-1a over its steps, component and occurrence ids in) is noted in
+  the drawing's property `io.github.tomasdjo.woodwork` (`{sheet id: fingerprint}`, written once
+  at the end, `drawing.properties.set`; it comes back in `drawing.open`'s reply), and a sheet
+  of the cabinet's name with the same one is kept (`drawing::up_to_date`). Then it draws sheets
+  while `drawing::fits`: under `STOP_S` (20 s, by `clock.now`) and the 256 commands, at least one
+  a run; each redrawn cabinet's old sheet is deleted right after its new one, so a stopped run
+  leaves one sheet a cabinet. The reply has `sheets` (drawn), `remaining` and `message`; the
+  app's status line only says Done, so the message is also logged (`log`). `drawing::budget`
+  refuses only when turned boards leave no room for one sheet. Measured on the sample kitchen
+  here: `drawing.open` (it answers with `drawing.inspect`, every title block's text) of the
+  existing drawing took 6.5 s with 11 sheets: a sheet whose title block has a cell reading the
+  component's `material` or `mass` weighs it each time (`title_block_text::with_values`
+  upstream), cold. So each sheet is added with `drawing::unweighed` (the first sheet's block
+  without those two cells): 2.7 ms for all 11. A sheet drawn before keeps its block until it is
+  drawn again (it has no fingerprint, so the next All does). `inspect.measure` 1 s, a sheet
+  about 0.15 s; CI is about three times slower. Doors are closed by a `pose` of the
   cabinet's ` hinge`, ` fold` and ` slide` joints at 0. The drawing is set to mm (create and
   `drawing.set`), also in an inch design. A sheet points at the cabinet's component and bodies:
   after Edit (which builds a new component) its views are blank and its dimensions lost until it
@@ -438,8 +501,12 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   discarded, nothing is lost).
 - `plinth_type` (cabinet, corner and Edit; the dialogs show it when the plinth is not 0 or Match
   selected is on; `fittings::plinth_type`, `board` when absent, so older cabinets keep theirs):
-  `board` is `<Name> Plinth` (the corner's two, or the diagonal's turned one). `notch` cuts
-  `<Name> <Side> notch` (`KICK_RECESS` deep, plinth high) out of each side's (a corner's two
+  `board` is `<Name> Plinth` (the corner's two, or the diagonal's turned one), `plinth_setback`
+  back from the front: the field (shown for board or notch, 50 mm when absent: `KICK_RECESS`)
+  is the parameter `<Prefix>_plinth_setback` while a board or notch uses it, kept once made
+  (`Kit::has`, as the reveal), in Edit and matched (a selected cabinet without it leaves the
+  dialog's: `Kit::size`). `notch` cuts
+  `<Name> <Side> notch` (`plinth_setback` deep, plinth high) out of each side's (a corner's two
   ends') front bottom corner, no board; the cut list finds the notched sides by those feature
   names (`cutlist::notched`, passed in as `_notched`) and gives them a line of their own with
   `note`, at their bounding box (layouts and DXF too: the notch is not drawn); the drawing's

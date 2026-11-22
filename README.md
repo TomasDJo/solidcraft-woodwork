@@ -15,7 +15,7 @@ The picture opens a one minute introduction on YouTube. Three how-tos follow it 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
 - **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides or legs); doors, drawers, or
-  drawers above or below doors, that open on their joints, overlay or inset; shelf pin and handle holes. Also as a sink base
+  drawers above or below doors, that open on their joints, overlay or inset; shelf pin, handle, hinge and drawer slide holes, sized by shared parameters. Also as a sink base
   (rails instead of a top), with doors or drawers.
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door, overlay
   or inset.
@@ -24,6 +24,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Edit cabinet**: change shelves, doors, drawers and more on a cabinet that is already made.
 - **Joinery**: confirmat screw or dowel holes at the carcass corners.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
+- **Woodwork settings**: the material, thickness, reveal, handles and plinth new cabinets start with, kept in the design.
 - **Panel**: an end panel or a filler on one end of a cabinet, following its sizes.
 - **Drawing**: a shop drawing sheet per cabinet, A3, with front, right and iso views, its width, height and depth, and its boards.
 - **Cut list**: every board with its size and quantity, hardware, edge banding per edge and grain direction, and the sheets to buy from cutting layouts (kerf, trim, grain), as CSV or a printable PDF with a cutting diagram per sheet, part labels to print on A4 sticker sheets, and a DXF per sheet with the parts and their holes for a CNC.
@@ -98,6 +99,7 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
   in `tests.rs`.
 - `src/kit/` and `src/fittings.rs`: what the two cabinet builders share, the panels and
   parameters, and the hardware (shelf pins, hinge cups, handles).
+- `src/hardware/`: the hinges' and slides' shared sizes, as design parameters.
 - `src/select/`: finds the cabinet that is selected.
 - `build.py`: build, package and end-to-end test through `solidcraft-cli`.
 - `tests/`: the end-to-end tests, one file per function. Unit tests are in `tests.rs` beside

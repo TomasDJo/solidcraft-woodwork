@@ -221,3 +221,17 @@ fn the_plinth_type_survives_an_edit() {
         assert_eq!(params["plinth_type"], "notch");
     }
 }
+
+#[test]
+fn the_plinth_set_back_survives_an_edit() {
+    let made = remember("cabinet", &json!({"units": "in", "plinth_setback": 3}), "A");
+    let (_, params) = merge(&made[KEY], &json!({}), &design()).unwrap();
+    assert_eq!(params["plinth_setback"], 3);
+    let (_, params) = merge(&made[KEY], &json!({"plinth_setback": 4}), &design()).unwrap();
+    assert_eq!(params["plinth_setback"], 4);
+    // the parameter, where the user may have changed it, in the cabinet's unit
+    let design = json!({"params": [{"name": "A_plinth_setback", "value": 101.6}]});
+    let (_, params) = merge(&made[KEY], &json!({}), &design).unwrap();
+    assert_eq!(params["plinth_setback"], 4.0);
+    assert_eq!(params["_existing"]["plinth_setback"], 101.6);
+}

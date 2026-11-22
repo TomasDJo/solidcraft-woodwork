@@ -2,6 +2,8 @@
 
 use super::input::Input;
 use super::Cabinet;
+use crate::fittings;
+use crate::hardware;
 use crate::kit::mm;
 
 pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
@@ -10,7 +12,7 @@ const BOX_BOTTOM: f64 = 6.0;
 // The box stays a panel thickness and this much inside its front's lower and upper edge: the
 // lowest box then clears the cabinet's bottom, and the highest its top, by this and the gap.
 pub const BOX_CLEAR: f64 = 8.0;
-const BOX_BEHIND: f64 = 10.0; // room behind the box
+pub const BOX_BEHIND: f64 = 10.0; // room behind the box
 const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front's edge
 
 /// A stack of drawers: a front, overlay or inset, and behind it a box that runs on slides. They
@@ -72,7 +74,7 @@ pub fn build(cabinet: &Cabinet) {
             (equal.clone(), equal)
         }
     };
-    let box_w = format!("({eiw} - {})", mm(2.0 * SLIDE));
+    let box_w = format!("({eiw} - 2*HW_slide_t)");
     // ponytail: a sink base's boxes stop at half depth, before the trap; a U-cut round it
     // for deeper boxes is left to the user.
     let (box_d, box_mm) = match sink {
@@ -118,7 +120,7 @@ pub fn build(cabinet: &Cabinet) {
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
         let (x, y, z) = (
-            format!("{et} + {}", mm(SLIDE)),
+            format!("{et} + HW_slide_t"),
             eback.clone(),
             format!("{z} + {lift}"),
         );
@@ -152,6 +154,32 @@ pub fn build(cabinet: &Cabinet) {
             [&inner_x, &inner_y, &z],
             [&inner_w, &inner_d, &mm(BOX_BOTTOM)],
         );
+        // The slides' screw holes, in the middle of the box side's height: into each box side
+        // from outside, `HW_setback` and `6*HW_pitch` further behind the box's front; and into
+        // the carcass side beside it, as far behind the front of the opening.
+        let slide_z = format!("{z} + {box_h}/2");
+        let right_x = format!("{right} + {bt}");
+        let halves = [
+            ("Left", &x, 1, "Side L", et.clone(), -1),
+            ("Right", &right_x, -1, "Side R", format!("{ew} - {et}"), 1),
+        ];
+        let along = ["", " + 6*HW_pitch"];
+        for (part, outer, into, ..) in &halves {
+            for (k, along) in along.iter().enumerate() {
+                let position = kit.at(outer, &format!("{y} + HW_setback{along}"), &slide_z);
+                let (d, depth) = ("HW_box_screw_d", "HW_box_screw_depth");
+                let what = format!("slide {}", k + 1);
+                fittings::hole(
+                    kit,
+                    &format!("{drawer} {part}"),
+                    position,
+                    [*into, 0, 0],
+                    d,
+                    depth,
+                    &what,
+                );
+            }
+        }
         // The slide: straight out of the front, as far as four fifths of the box.
         let back_mm = if inset { t } else { -reveal };
         let at = [
@@ -161,5 +189,20 @@ pub fn build(cabinet: &Cabinet) {
         ];
         let travel = (box_mm * 0.8).round();
         kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
+        for (_, _, _, side, inner, out) in &halves {
+            for (k, along) in along.iter().enumerate() {
+                let position = kit.at(inner, &format!("{ein} + HW_setback{along}"), &slide_z);
+                let what = format!("{drawer} slide {}", k + 1);
+                fittings::hole(
+                    kit,
+                    side,
+                    position,
+                    [*out, 0, 0],
+                    "HW_screw_d",
+                    &hardware::screw_depth(et),
+                    &what,
+                );
+            }
+        }
     }
 }

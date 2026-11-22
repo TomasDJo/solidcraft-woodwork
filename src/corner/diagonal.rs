@@ -5,7 +5,7 @@
 //! runs along the front, from the return's end in a left corner and from the back leg's end
 //! in a right one, and its -Y faces the room.
 
-use super::{Corner, KICK_RECESS};
+use super::Corner;
 use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, HANDLE_D, HANDLE_EDGE};
 use crate::kit::mm;
 use serde_json::{json, Value};
@@ -92,7 +92,7 @@ pub fn door(corner: &Corner, on_return: bool) {
             "Door",
             json!([x, back, z]),
             [0, -1, 0],
-            d,
+            &mm(d),
             depth,
             &what,
         );
@@ -146,11 +146,17 @@ pub fn door(corner: &Corner, on_return: bool) {
 
 /// One board along the front, set back from it like the L's.
 pub fn plinth(corner: &Corner) {
-    let Corner { kit, et, epl, .. } = corner;
+    let Corner {
+        kit,
+        et,
+        epl,
+        ekick,
+        ..
+    } = corner;
     kit.open("Plinth");
     kit.panel_at(
         "Plinth",
-        json!([mm(0.0), mm(KICK_RECESS), mm(0.0)]),
+        json!([mm(0.0), ekick, mm(0.0)]),
         [&corner.front_length(), et, epl],
         None,
     );

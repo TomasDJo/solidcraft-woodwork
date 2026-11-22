@@ -23,6 +23,36 @@ fn a_matched_cabinet_points_at_the_selected_ones_parameters() {
 }
 
 #[test]
+fn a_matched_plinth_takes_the_set_back_when_there_is_one() {
+    let design = json!({"params": [
+        {"name": "A_height", "value": 900.0}, {"name": "A_plinth", "value": 100.0},
+        {"name": "A_depth", "value": 560.0}, {"name": "A_thickness", "value": 18.0},
+        {"name": "A_plinth_setback", "value": 80.0},
+    ]});
+    let p = json!({"name": "B", "plinth_setback": 30, "_match": matched("A", &design).unwrap()});
+    let expression = |commands: &crate::Commands, name: &str| {
+        let found = commands.iter().find(|c| c.1["name"] == name);
+        found.map(|c| c.1["expression"].clone())
+    };
+    let commands = crate::cabinet::build(&p).unwrap().0;
+    assert_eq!(
+        expression(&commands, "B_plinth_setback"),
+        Some(json!("A_plinth_setback"))
+    );
+    // without one (on legs, or older) the dialog's
+    let design = json!({"params": [
+        {"name": "A_height", "value": 900.0}, {"name": "A_plinth", "value": 100.0},
+        {"name": "A_depth", "value": 560.0}, {"name": "A_thickness", "value": 18.0},
+    ]});
+    let p = json!({"name": "B", "plinth_setback": 30, "_match": matched("A", &design).unwrap()});
+    let commands = crate::cabinet::build(&p).unwrap().0;
+    assert_eq!(
+        expression(&commands, "B_plinth_setback"),
+        Some(json!("30 mm"))
+    );
+}
+
+#[test]
 fn a_taken_name_gets_the_next_free_number() {
     let design = json!({"params": [
         {"name": "Cabinet_width"}, {"name": "Cabinet_2_width"}, {"name": "Base_1_width"},
@@ -127,4 +157,11 @@ fn a_board_gets_its_name_written_on_it() {
         .0
         .iter()
         .all(|c| c.0 != "sketch.text"));
+}
+
+#[test]
+fn a_cabinet_prefix_is_never_the_hardwares() {
+    assert_eq!(prefix("HW cup"), "c_HW_cup");
+    assert_eq!(prefix("HWB"), "HWB");
+    assert_eq!(prefix("1 Base"), "c_1_Base");
 }

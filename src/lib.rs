@@ -8,6 +8,7 @@ mod drawing;
 mod dxf;
 mod edit;
 mod fittings;
+mod hardware;
 mod joinery;
 mod kit;
 mod material;
@@ -15,6 +16,7 @@ mod nesting;
 mod panel;
 mod pdf;
 mod select;
+mod settings;
 
 use kit::check;
 use serde_json::{json, Value};
@@ -29,11 +31,18 @@ pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
 /// moves as one piece and a room can hold its cabinets. Gives its boards their material, and
 /// leaves on the component how it was made, for Edit. Returns the summary and
 /// `component.create`'s reply.
-fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String> {
+/// `design` is `document.inspect`'s reply.
+fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value, Value), String> {
     let built = match entry {
         "cabinet" => cabinet::build(params)?,
         _ => corner::build(params)?,
     };
+    // The hinges' and slides' shared sizes, the first time a cabinet needs them.
+    if hardware::used(&built.0) {
+        for (command, args) in hardware::parameters(design) {
+            run(command, args)?;
+        }
+    }
     let (summary, made) = component(built, params, "Birch plywood", run)?;
     let name = summary["name"].as_str().unwrap_or_default();
     run(
@@ -346,6 +355,14 @@ pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Re
     Ok(())
 }
 
+/// Unix seconds, or 0 without the manifest's clock permission (and in unit tests).
+fn now() -> u64 {
+    #[cfg(target_arch = "wasm32")]
+    return guest::craft::plugin::clock::now();
+    #[cfg(not(target_arch = "wasm32"))]
+    0
+}
+
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     let summary = entries(entry, params, run)?;
     // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
@@ -408,7 +425,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     beside = Some(found);
                 }
             }
-            let (mut summary, made) = make(entry, &params, run)?;
+            let (mut summary, made) = make(entry, &params, &design, run)?;
             let mut held = false;
             if let Some(other) = beside {
                 // Against that cabinet's side, or on top of it, turned the way it is turned.
@@ -463,7 +480,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             let hanging = edit::hanging(&tree, &joints, &name);
             run("component.activate", json!({"component": parent}))?;
             let gone = run("component.delete", json!({"component": name}))?;
-            let (mut summary, made) = make(&entry, &params, run)?;
+            let (mut summary, made) = make(&entry, &params, &design, run)?;
             // Its panels, those whose boards were still there; they get their material back
             // with the rest below.
             let parts = select::parts(&measure, &name);
@@ -683,6 +700,13 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
         }
         "drawing" => {
             // A sheet per cabinet in the drawing Woodwork; a cabinet drawn again gets a new one.
+            // All: only the cabinets whose sheet would change, and as many as fit in this run.
+            let start = now();
+            let used = std::cell::Cell::new(0);
+            let run = &mut |command: &str, args: Value| {
+                used.set(used.get() + 1);
+                run(command, args)
+            };
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": "summary"}),
@@ -704,7 +728,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     select::owner(&measure, b).is_some_and(|c| names.iter().any(|n| n == c))
                 })
                 .collect();
-            drawing::budget(names.len(), turned.len())?;
+            drawing::budget(turned.len())?;
             let tree = run("component.list", json!({"compact": true}))?;
             let joints = run("joint.list", json!({}))?;
             let mut local = std::collections::BTreeMap::new();
@@ -732,29 +756,100 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     json!({"name": drawing::DRAWING, "template": "iso-a3-assembly", "units": "mm"}),
                 )?,
             };
-            let stale = drawing::stale(&opened, &names, found.is_none());
-            for steps in sheets {
+            let all = params["scope"] == "all";
+            let mut todo = (names.iter().zip(sheets))
+                .map(|(name, steps)| (name, drawing::fingerprint(&steps), steps))
+                .filter(|(name, print, _)| !all || !drawing::up_to_date(&opened, name, print))
+                .peekable();
+            let (mut drawn, mut gone, mut noted) = (Vec::new(), Vec::new(), json!({}));
+            // A title block that does not weigh the cabinet, or each open of the drawing does.
+            // ponytail: the first sheet's block, the template's unless the user changed it.
+            let block = (opened["sheets"][0]["title_block"].is_object())
+                .then(|| drawing::unweighed(&opened["sheets"][0]["title_block"]));
+            // At least one sheet a run, so that running it again always gets on.
+            while let Some((name, print, steps)) = todo.next_if(|(_, _, steps)| {
+                let elapsed = now().saturating_sub(start);
+                drawn.is_empty() || drawing::fits(elapsed, used.get(), steps.len() + 1)
+            }) {
                 let mut ids = std::collections::BTreeMap::new();
                 ids.insert("source".to_string(), opened["sources"][0]["id"].clone());
-                for (command, args, keep) in steps {
+                for (command, mut args, keep) in steps {
+                    if let (true, Some(block)) = (command == "drawing.sheet.add", block.as_ref()) {
+                        args["title_block"] = block.clone();
+                    }
                     let reply = run(command, drawing::fill(&args, &ids))?;
                     if !keep.is_empty() {
                         let id = reply.get("view").unwrap_or(&reply["sheet"]);
                         ids.insert(keep.to_string(), id.clone());
                     }
                 }
+                // Its old sheet goes now, so a run that stops leaves one sheet a cabinet.
+                for sheet in drawing::stale(&opened, std::slice::from_ref(name), false) {
+                    run(
+                        "drawing.sheet.delete",
+                        json!({"sheet": sheet, "contents": "delete"}),
+                    )?;
+                    gone.push(sheet);
+                }
+                if let Some(id) = ids["sheet"].as_str() {
+                    noted[id] = json!(print);
+                }
+                drawn.push(name.clone());
             }
-            for sheet in stale {
+            let remaining: Vec<String> = todo.map(|(name, _, _)| name.clone()).collect();
+            for sheet in drawing::stale(&opened, &[], found.is_none()) {
                 run(
                     "drawing.sheet.delete",
                     json!({"sheet": sheet, "contents": "delete"}),
                 )?;
             }
+            // The fingerprints of the sheets still there, and of those just drawn.
+            let old = opened["properties"][drawing::KEY].as_object().cloned();
+            for (id, print) in old.into_iter().flatten() {
+                let kept = (opened["sheets"].as_array().into_iter().flatten())
+                    .any(|s| s["id"] == id.as_str() && !gone.contains(&s["id"]));
+                if kept && noted.get(&id).is_none() {
+                    noted[id] = print;
+                }
+            }
+            run(
+                "drawing.properties.set",
+                json!({"key": drawing::KEY, "value": noted}),
+            )?;
             run("drawing.close", json!({}))?;
-            Ok(json!({"drawing": drawing::DRAWING, "sheets": names}))
+            let s = |n: usize| if n == 1 { "" } else { "s" };
+            let message = match (drawn.len(), remaining.len()) {
+                (0, 0) => "All sheets were up to date".to_string(),
+                (d, 0) if d == names.len() => format!("Drew {d} sheet{}", s(d)),
+                (d, 0) => format!("Drew {d} sheet{}; the rest were up to date", s(d)),
+                (d, r) => format!(
+                    "Drew {d} of {} sheets; run Drawing again for the rest",
+                    d + r
+                ),
+            };
+            Ok(
+                json!({"drawing": drawing::DRAWING, "sheets": drawn, "remaining": remaining,
+                      "message": message}),
+            )
+        }
+        "settings" => {
+            let stored = run("storage.get", json!({}))?;
+            run(
+                "storage.patch",
+                json!({"patch": settings::patch(params, &stored)?}),
+            )?;
+            let stored = run("storage.get", json!({}))?;
+            Ok(json!({"settings": stored["document"]["settings"]}))
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }
+}
+
+/// The dialog hook (`dialog@0.1`): the Cabinet and Corner dialogs' defaults from Woodwork
+/// settings. It runs outside a plugin run, so `storage.get` names our plugin.
+pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
+    let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
+    Ok(settings::fields(entry, values, &stored))
 }
 
 #[cfg(test)]
@@ -762,35 +857,48 @@ mod tests;
 
 #[cfg(target_arch = "wasm32")]
 mod guest {
-    wit_bindgen::generate!({ path: "wit", world: "command-plugin" });
+    wit_bindgen::generate!({ path: "wit", world: "command-dialog-plugin" });
 
     use craft::plugin::types::{FieldFailure, PluginError};
 
     struct Woodwork;
 
+    fn invalid(reason: String) -> PluginError {
+        PluginError::InvalidInput(FieldFailure {
+            field: "params".into(),
+            reason,
+        })
+    }
+
+    fn run(command: &str, args: serde_json::Value) -> Result<serde_json::Value, String> {
+        let reply =
+            craft::plugin::commands::run(command, &args.to_string()).map_err(|e| match e {
+                PluginError::CommandFailed(f) => format!("{}: {}", f.command, f.reason),
+                other => format!("{command}: {other:?}"),
+            })?;
+        serde_json::from_str(&reply).map_err(|e| format!("{command}: bad reply: {e}"))
+    }
+
+    impl exports::craft::plugin::dialog_provider::Guest for Woodwork {
+        fn update_fields(entry: String, values: String) -> Result<String, PluginError> {
+            let values = serde_json::from_str(&values).map_err(|e| invalid(e.to_string()))?;
+            let reply = crate::dialog(&entry, &values, &mut run).map_err(invalid)?;
+            Ok(reply.to_string())
+        }
+    }
+
     impl exports::craft::plugin::entry::Guest for Woodwork {
         fn execute(entry: String, params: String) -> Result<String, PluginError> {
-            let invalid = |reason: String| {
-                PluginError::InvalidInput(FieldFailure {
-                    field: "params".into(),
-                    reason,
-                })
-            };
             let params = serde_json::from_str(&params).map_err(|e| invalid(e.to_string()))?;
-            let mut run = |command: &str, args: serde_json::Value| {
-                let reply = craft::plugin::commands::run(command, &args.to_string()).map_err(
-                    |e| match e {
-                        PluginError::CommandFailed(f) => format!("{}: {}", f.command, f.reason),
-                        other => format!("{command}: {other:?}"),
-                    },
-                )?;
-                serde_json::from_str(&reply).map_err(|e| format!("{command}: bad reply: {e}"))
-            };
             let mut result = crate::execute(&entry, &params, &mut run).map_err(invalid)?;
             let mut write = |folder: &str, name: &str, data: &[u8]| {
                 craft::plugin::files::write_file(folder, name, data).map_err(|e| format!("{e:?}"))
             };
             crate::save(&entry, &params, &mut result, &mut write).map_err(invalid)?;
+            // The app's status line only says Done: the message goes to its log too.
+            if let Some(message) = result["message"].as_str() {
+                craft::plugin::log::log(craft::plugin::log::Level::Info, message);
+            }
             Ok(result.to_string())
         }
     }

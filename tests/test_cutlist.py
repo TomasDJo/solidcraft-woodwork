@@ -135,12 +135,15 @@ def test_saved_as_dxf(approval):
         assert len(circles) + listed["dxf_edge_holes"] == holes and "dxf_holes_skipped" not in listed, (len(circles), holes)
         hardware = {h["item"]: h["qty"] for h in listed["hardware"]}
         cups = [c for c in circles if c[0] == "DRILL_35_D13"]
-        assert len(cups) == hardware["Hinge, 35 mm cup"] == 4, layers
+        assert len(cups) == hardware["Hinge, cup"] == 4, layers
         # a cup's middle is 22.5 mm in from the door's hinge edge
         for _, p, x, y, _ in cups:
             assert "Door" in p["part"] and abs(min(x - p["x"], p["x"] + p["w"] - x, y - p["y"], p["y"] + p["h"] - y) - 22.5) < 0.1, (p, x, y)
-        pins = [c for c in circles if c[0] == "DRILL_5_D12"]
-        assert len(pins) == cylinders(measure, "Cabinet Side L") + cylinders(measure, "Cabinet Side R") > 0 and all("Side" in c[1]["part"] for c in pins), pins
+        # The pins, and the hinge plates' screw holes: on the pins' grid, so here all of them are
+        # pin holes.
+        sides = [c for c in circles if c[0].startswith("DRILL_5_D1")]
+        assert {c[0] for c in sides} == {"DRILL_5_D12"} and all("Side" in c[1]["part"] for c in sides), sides
+        assert len(sides) == cylinders(measure, "Cabinet Side L") + cylinders(measure, "Cabinet Side R"), len(sides)
         knobs = [c for c in circles if c[0] == "DRILL_5_THRU"]
         assert len(knobs) == hardware["Knob"] == 2 and all("Door" in c[1]["part"] for c in knobs)
         # The sheet drawing reads back into a sketch.

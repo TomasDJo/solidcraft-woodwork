@@ -38,11 +38,13 @@ def test_agent_tools(approval):
         measure = ("measure", {})
         tools, (few, built, measured) = mcp(("woodwork.cabinet", TYPICAL), ("woodwork.cabinet", everything), measure)
         listed = {t["name"]: t for t in tools if t["name"].startswith("woodwork.")}
-        names = ("cabinet", "corner", "edit", "joinery", "material", "panel", "cutlist", "drawing")
+        names = ("cabinet", "corner", "edit", "joinery", "material", "panel", "cutlist", "drawing", "settings")
         assert sorted(listed) == sorted(f"woodwork.{n}" for n in names), sorted(listed)
-        assert listed["woodwork.cabinet"]["inputSchema"]["required"] == schema["required"]
+        # With the dialog hook (0.46) the tool's schema leaves `required` out, for the hook to
+        # fill in what is missing; the fields are checked after it, so `few` is still refused.
+        assert "required" not in listed["woodwork.cabinet"]["inputSchema"]
         assert listed["woodwork.cabinet"]["inputSchema"]["properties"]["width"] == schema["properties"]["width"]
-        assert "missing required argument" in json.dumps(few), few
+        assert "is required" in json.dumps(few), few
         assert not built["result"].get("isError"), built
         cabinet = json.loads(measured["result"]["content"][0]["text"])
         assert outline(cabinet) == [-400, -200, 0, 400, 200, 900], outline(cabinet)
@@ -52,5 +54,5 @@ def test_agent_tools(approval):
         command = {"command": "woodwork.cabinet", "params": {"approval": installed["approval"], "params": everything}}
         results = cli([install, {"command": "plugin.tools", "params": {}}, command, MEASURE])
         tools = {t["name"]: t["input_schema"] for t in results[1]["tools"]}
-        assert tools["woodwork.cabinet"]["required"] == schema["required"], tools.keys()
+        assert "required" not in tools["woodwork.cabinet"], tools.keys()
         assert outline(results[3]) == [-400, -200, 0, 400, 200, 900], outline(results[3])

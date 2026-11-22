@@ -30,13 +30,15 @@ pub fn check(ok: bool, message: &str) -> Result<(), String> {
     }
 }
 
-/// What a cabinet's parameters start with: its name, made a valid identifier.
+/// What a cabinet's parameters start with: its name, made a valid identifier that is not the
+/// hardware's `HW_`.
 pub fn prefix(name: &str) -> String {
     let mut prefix: String = name
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
         .collect();
-    if !prefix.starts_with(|c: char| c.is_ascii_alphabetic()) {
+    // `HW_` is the shared hardware parameters' (`crate::hardware`).
+    if !prefix.starts_with(|c: char| c.is_ascii_alphabetic()) || prefix.starts_with("HW_") {
         prefix.insert_str(0, "c_");
     }
     prefix
@@ -67,8 +69,9 @@ pub fn free_name(name: &str, design: &Value) -> String {
 
 /// The sizes a new cabinet takes from the selected one, for `Kit` as `_match` in its input:
 /// that cabinet's parameter prefix, and the values in mm. `design` is `document.inspect`'s
-/// reply. A cabinet without a plinth has no plinth parameter.
-pub const MATCHED: [&str; 4] = ["height", "depth", "thickness", "plinth"];
+/// reply. A cabinet without a plinth has no plinth parameter, and one without a set-back (on
+/// legs, or made before it was a field) keeps the dialog's.
+pub const MATCHED: [&str; 5] = ["height", "depth", "thickness", "plinth", "plinth_setback"];
 
 pub fn matched(cabinet: &str, design: &Value) -> Result<Value, String> {
     let from = prefix(cabinet);
@@ -136,7 +139,11 @@ impl Kit {
     /// cabinet's instead, whatever the field says.
     pub fn size(&self, p: &Value, key: &str, default_mm: f64) -> Result<f64, String> {
         if !self.link.is_null() && MATCHED.contains(&key) {
-            return Ok(self.link["values"][key].as_f64().unwrap_or(0.0));
+            match self.link["values"][key].as_f64() {
+                Some(v) => return Ok(v),
+                None if key != "plinth_setback" => return Ok(0.0),
+                None => {}
+            }
         }
         num(p, key, default_mm / self.scale).map(|v| v * self.scale)
     }

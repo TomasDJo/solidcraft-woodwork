@@ -15,7 +15,7 @@ A SolidCraft plugin for designing cabinets and furniture in sheet goods and timb
   (0.43).
 - 0.44: the dialog previews an edit entry before Run, and the selection is a field in it.
 - 0.45: each entry is also a tool for agents (`woodwork.<entry>`), a `read` entry may not
-  write files, and `storage@0.1` can keep plugin data in a design (we do not use it yet).
+  write files, and `storage@0.1` can keep plugin data in a design (Woodwork settings, 0.46, with the dialog hook).
 - Limits that shape the design: 256 app commands per run, 30 s, 1 MiB result, a manifest of
   at most 64 KiB.
 - Install: zip of `plugin.json` + wasm, via Preferences > Plugins or `plugin.install`.
@@ -45,7 +45,7 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 10. Shop output (DXF per part, labels)
 
 0.2.0 covers 1, 2, 4, 6 and 7, and partly 3 (four materials), 5 (no minifix), 8 (back groove
-only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
+only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, labels, no DXF per part).
 
 ## Done
 
@@ -101,6 +101,7 @@ only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
 - [x] Part labels, a sticker per board (A4, 3 x 8)
 - [x] DXF per sheet: parts, names and holes on a layer per diameter and depth
 - [x] Shop drawings: a sheet per cabinet with front, right and iso views, sizes and the board list
+- [x] Drawing a big design within the 30 s run limit: only changed sheets, more runs when needed
 - [x] A tooltip on every dialog field and choice, in plain words
 - [x] Version 0.2.0, for SolidCraft 0.45
 - [x] SolidCraft 0.46: the dialogs hide the fields that do not apply (conditional fields)
@@ -119,16 +120,19 @@ Cabinets:
 - [ ] Plinth run over the selected cabinets: one long board across a run of cabinets with notched sides or on legs (Plinth type gives them no board of their own)
 - [x] End panels and fillers on a cabinet's end, kept by Edit cabinet (#57 part 2)
 - [ ] Plinth return: for cabinets on legs, later
-- [ ] Drawer slides in the model (#59)
-- [ ] Hinges in the model, with hinge types (#60)
-- [ ] Settings page: hardware and defaults the other functions use (#61, needs upstream #19979)
+- [x] Drawer slides drilled: screw holes in the box sides and the carcass sides, the box width from the slide thickness, all from shared `HW_` parameters (#59 part 1)
+- [ ] Drawer slides in the model: slide length in the hardware list, undermount slides (#59)
+- [x] Hinge plates drilled: the plates' screw holes in the sides, cups and plates from shared `HW_` parameters (#60 part 1)
+- [ ] Hinges in the model, with hinge types (#60); shared hardware models that drill their own holes (#70) wait for cheaper evaluation of `occurrence.copy` and `solid.combine` in SolidCraft
+- [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
 - Sink and hob cutouts in a worktop dropped
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
 
 Cut list and shop output:
 - [ ] Cost estimate: prices per material and thickness, the cost of sheets, banding and hardware in the cut list (postponed until conditional dialog fields, SolidCraft 0.46, #56)
-- [ ] Corner cabinet boards in the cutting layouts: L-shapes and parts larger than a sheet, split or notched (#63)
+- [x] L-shaped corner cabinet's bottom, top and shelves split in two dowelled rectangles (`boards: split`), so they nest on a sheet (#63)
+- [ ] Diagonal corner cabinet boards split in two (they keep their chamfer), and the L's backs over a sheet's width in grained material (#63)
 - [ ] DXF per part (one file per board)
 
 ## Waiting for the app

@@ -20,7 +20,8 @@ def test_a_sink_base(approval):
     assert moved["S Door L"][1] < -500, moved["S Door L"]  # turned out on its hinge
     # 3 screws a joint at the bottom, the first and last of them at the top, one in each rail
     assert cylinders(results[5], "S Rail front") == 2 and cylinders(results[5], "S Rail back") == 2
-    assert cylinders(results[5], "S Bottom") == 6 and cylinders(results[5], "S Side L") == 3 + 2
+    # (and the hinge plate's 4 holes in the side)
+    assert cylinders(results[5], "S Bottom") == 6 and cylinders(results[5], "S Side L") == 3 + 2 + 4
     # Edit keeps it a sink base, and drills the rails again
     box = boxes(results[8])
     assert "S Top" not in box and "S Door" in box and "S Rail back" in box, sorted(box)

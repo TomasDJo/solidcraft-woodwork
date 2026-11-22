@@ -52,3 +52,13 @@ world command-plugin {
     import clock;
     export entry;
 }
+// Capability `dialog@0.1` (0.46): the dialog asks an entry with `dialog_hook` for computed
+// defaults. Values and reply are JSON objects.
+interface dialog-provider {
+    use types.{json, plugin-error};
+    update-fields: func(entry: string, values: json) -> result<json, plugin-error>;
+}
+world command-dialog-plugin {
+    include command-plugin;
+    export dialog-provider;
+}

@@ -72,7 +72,7 @@ def test_hinged_on_the_return(approval):
     assert swung["C Door return"][3] > 300, swung["C Door return"]
     assert swung["C Door"] == [-6.603, -513.588, 102, 362.664, -290, 718], swung["C Door"]
     hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
-    assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
+    assert hardware == {"Hinge, cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
     assert not [f["name"] for f in results[6]["timeline"] if f["warning"]]
 
 
@@ -102,7 +102,7 @@ def test_inset_doors(approval):
     assert box["C Door"] == [462, -548, 120, 480, -110, 700], box["C Door"]  # clear of the end panel
     assert box["C Door return"] == [480, -528, 120, 498, -210, 700], box["C Door return"]
     hardware = {h["item"]: h["qty"] for h in results[9]["result"]["hardware"]}
-    assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8}, hardware
+    assert hardware == {"Hinge, cup": 4, "Shelf pin, 5 mm": 8}, hardware
     assert not [f["name"] for f in results[10]["timeline"] if f["warning"]]
     # Edit makes an overlay corner's doors inset
     results = cli([plugin(approval, "corner", CORNER), select("C Top"),
@@ -134,3 +134,53 @@ def test_plinth_types(approval):
         assert box[part][2] == 100 and box[part][5] == 720, (part, box[part])
     assert not [n for n in box if n.startswith(("L Plinth", "D Plinth"))], sorted(box)
     assert {"item": "Adjustable leg", "qty": 11} in results[7]["result"]["hardware"], results[7]["result"]["hardware"]
+
+
+def test_split_boards(approval):
+    # A big corner, 1400 x 1400: its L-shaped boards (1364 x 1364) are too big for a 2440 x 1220
+    # sheet. Split, each is two rectangles with two dowels across the joint, and they nest.
+    split = {"name": "C", "width": 1400, "return": 1400, "depth": 560, "boards": "split"}
+    results = cli([plugin(approval, "corner", {**split, "shelf_pins": True}), MEASURE,
+                   plugin(approval, "corner", {**split, "name": "W", "boards": "one piece"}), MEASURE,
+                   plugin(approval, "cutlist"),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
+                  "--save", str(ROOT / "dist" / "corner-split.sc"))
+    box = boxes(results[1])
+    # the back leg's board over the whole width; the return's in front of it, to the joint
+    assert box["C Bottom"] == [-682, 140, 0, 682, 682, 18], box["C Bottom"]
+    assert box["C Bottom return"] == [-682, -682, 0, -140, 140, 18], box["C Bottom return"]
+    assert box["C Shelf 1 return"][:2] == [-682, -682] and box["C Top return"][4] == 140
+    # a dowel hole 30 mm into each board
+    dowels = 2 * 3.14159265 * 16 * 30
+    for part, size in (("Bottom", 1364 * 542), ("Bottom return", 542 * 822)):
+        assert cylinders(results[1], f"C {part}") == 2, part
+        assert abs(volume(results[1], f"C {part}") - (size * 18 - dowels)) < 2, (part, volume(results[1], f"C {part}"))
+    # one piece, the same corner is an L with its corner cut out
+    assert "W Bottom return" not in boxes(results[3]) and boxes(results[3])["W Bottom"][1] == -682
+    shown = results[4]["result"]
+    csv = shown["csv"]
+    assert '3,1364,542,18,"Birch plywood",yes,L1,"C Bottom, C Top, C Shelf 1"' in csv, csv
+    assert '3,822,542,18,"Birch plywood",yes,L1,"C Bottom return, C Top return, C Shelf 1 return"' in csv, csv
+    # the split boards are on the sheets; the L is not (nor are the backs, 1364 wide with the grain up)
+    oversize = {o["part"] for o in shown["oversize"]}
+    assert {"W Bottom", "W Top", "W Shelf 1"} <= oversize and not [p for p in oversize if p.startswith("C ") and "Back" not in p], oversize
+    on_sheets = {p["part"] for layout in shown["layouts"] for p in layout["parts"]}
+    assert {"C Bottom", "C Bottom return", "C Shelf 1", "C Shelf 1 return"} <= on_sheets, on_sheets
+    assert {"item": "Dowel, 8 x 60 mm", "qty": 6} in shown["hardware"], shown["hardware"]
+    assert {"item": "Shelf pin, 5 mm", "qty": 8} in shown["hardware"], shown["hardware"]  # one split shelf
+    assert not [f["name"] for f in results[5]["timeline"] if f["warning"]]
+    # Edit keeps it split, with the return pieces' own material; a right corner is the mirror image
+    results = cli([plugin(approval, "corner", split), select("C Bottom return"),
+                   plugin(approval, "material", {"material": "Oak", "scope": "parts"}),
+                   {"command": "parameters.change", "params": {"name": "C_width", "expression": "1500 mm"}},
+                   select("C Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
+                   plugin(approval, "corner", {**split, "name": "R", "corner": "right"}), MEASURE])
+    box = boxes(results[6])
+    assert "C Shelf 2 return" in box, sorted(box)
+    assert box["C Bottom return"] == [-732, -682, 0, -190, 140, 18], box["C Bottom return"]
+    assert cylinders(results[6], "C Bottom return") == 2
+    material = {b["name"]: b["material"] for b in results[6]["bodies"]}
+    assert material["C Bottom return"] == "Oak" and material["C Bottom"] == "Birch plywood", material
+    box = boxes(results[8])
+    assert box["R Bottom return"] == [140, -682, 0, 682, 140, 18], box["R Bottom return"]
+    assert cylinders(results[8], "R Top return") == 2

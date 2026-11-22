@@ -11,7 +11,7 @@ fn list(rows: usize) -> Value {
         "parts": (0..rows).map(part).collect::<Vec<_>>(),
         "sheets": [{"material": "Birch plywood", "thickness": 18.0, "area_m2": 2.53, "sheets": 2, "yield_pct": 41.5}],
         "sheet_mm": [2440.0, 1220.0], "kerf_mm": 4.0, "trim_mm": 10.0, "layouts": [], "oversize": [],
-        "hardware": [{"item": "Hinge, 35 mm cup", "qty": 4}],
+        "hardware": [{"item": "Hinge, cup", "qty": 4}],
     })
 }
 
@@ -57,7 +57,7 @@ fn a_cut_list_as_pdf() {
         b"(720)",
         b"(558)",
         b"Bj\xf8rk",
-        b"(Hinge, 35 mm cup)",
+        b"(Hinge, cup)",
         b"(4)",
     ];
     for word in words {

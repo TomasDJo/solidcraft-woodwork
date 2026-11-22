@@ -1,10 +1,14 @@
 //! Reads and checks the dialog's fields. The numbers here only check the input.
 
-use super::drawers::{BOX_CLEAR, SLIDE};
+use super::drawers::{BOX_BEHIND, BOX_CLEAR, SLIDE};
 use super::{GROOVE_INSET, RAIL_D};
 use crate::fittings::{DOOR_GAP, PITCH};
 use crate::kit::{check, num, Kit};
 use serde_json::Value;
+
+// ponytail: the shortest slide for the default `HW_` sizes; a slide's holes changed in
+// Parameters are not checked.
+const MIN_SLIDE: f64 = 250.0;
 
 /// The checked input. Lengths are in mm.
 #[derive(Clone, Copy)]
@@ -19,6 +23,8 @@ pub struct Input<'a> {
     pub plinth: f64,
     /// board, notch or legs (`fittings::plinth_type`).
     pub plinth_type: &'a str,
+    /// How far the plinth board or the sides' notch is back from the front.
+    pub plinth_setback: f64,
     pub shelves: f64,
     pub dividers: f64,
     pub doors: f64,
@@ -66,6 +72,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let bt = size("back_thickness", 6.0)?;
     let plinth = size("plinth", 0.0)?;
     let plinth_type = crate::fittings::plinth_type(p)?;
+    let plinth_setback = size("plinth_setback", crate::fittings::KICK_RECESS)?;
     let shelves = num(p, "shelves", 1.0)?;
     let doors = num(p, "doors", 0.0)?;
     let pins = p
@@ -120,6 +127,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "shelves must be 0 to 20",
     )?;
     check(plinth >= 0.0, "plinth cannot be negative")?;
+    check(
+        plinth == 0.0 || plinth_type == "legs" || (0.0..d - t).contains(&plinth_setback),
+        "the plinth set-back must be 0 up to the depth less a panel thickness",
+    )?;
     check(
         matches!(back, "none" | "overlay" | "groove"),
         "back must be none, overlay or groove",
@@ -208,6 +219,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawers == 0.0 || inner_w - 2.0 * SLIDE >= 100.0,
         "too narrow for drawers",
     )?;
+    // the slides' screw holes stop 3 mm short of the outside (`hardware::screw_depth`)
+    check(
+        drawers == 0.0 || t >= 6.0,
+        "drawer slides need panels of 6 mm or more",
+    )?;
     check(
         doors == 0.0 || t >= 16.0,
         "doors with hinge cups need panels of 16 mm or more",
@@ -254,6 +270,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !sink || shelf_d + o >= 2.0 * RAIL_D,
         "too shallow for a sink base: its two 100 mm rails would overlap",
     )?;
+    // The slides' screw holes go 37 and 229 mm back from the box's front (`crate::hardware`).
+    let box_d = if sink {
+        shelf_d / 2.0
+    } else {
+        shelf_d - BOX_BEHIND
+    };
+    check(
+        drawers == 0.0 || box_d >= MIN_SLIDE,
+        "too shallow for drawers: the boxes need 250 mm slides at least",
+    )?;
     Ok(Input {
         kind,
         w,
@@ -263,6 +289,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         bt,
         plinth,
         plinth_type,
+        plinth_setback,
         shelves,
         dividers,
         doors,

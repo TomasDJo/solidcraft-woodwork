@@ -14,21 +14,68 @@ pub type Steps = Vec<(&'static str, Value, &'static str)>;
 
 /// Commands a sheet takes: the sheet, three views, three dimensions, four notes, and the old
 /// sheet's deletion. And those a run takes whatever it draws: reading the design (4), the
-/// drawing (2), setting an old drawing's units or deleting a new one's empty first sheet,
-/// closing it.
+/// drawing (2), setting an old drawing's units, and `END`.
 const PER_SHEET: usize = 12;
-const PER_RUN: usize = 8;
+const PER_RUN: usize = 7 + END;
+/// The commands after the last sheet: the fingerprints, a new drawing's empty first sheet, close.
+const END: usize = 3;
+/// Seconds into a run after which no new sheet is started, of the app's 30: reading the sample
+/// kitchen took about 1 s here, drawing a sheet about 0.15 s, and CI is about three times
+/// slower.
+const STOP_S: u64 = 20;
+/// Where the drawing notes each sheet's fingerprint, by sheet id (`drawing.properties.set`).
+pub const KEY: &str = crate::edit::KEY;
 
-/// Refuses a run that would go past the app's 256 commands: `sheets` cabinets, and `turned`
+/// Refuses a run in which not even one sheet fits in the app's 256 commands, after `turned`
 /// boards measured one command each.
-pub fn budget(sheets: usize, turned: usize) -> Result<(), String> {
-    let needed = PER_RUN + PER_SHEET * sheets + turned;
+pub fn budget(turned: usize) -> Result<(), String> {
+    let needed = PER_RUN + PER_SHEET + turned;
     match needed <= 256 {
         true => Ok(()),
         false => Err(format!(
-            "{sheets} cabinets need about {needed} commands, more than the 256 a run may use: select a cabinet and draw it with Selected cabinet"
+            "{turned} open doors and drawers need about {needed} commands, more than the 256 a run may use: close them, or draw with Selected cabinet"
         )),
     }
+}
+
+/// Whether a run may start another sheet of `next` commands, `elapsed` seconds in (0 without
+/// the clock) with `used` commands run: before `STOP_S`, and with room left for it and `END`.
+pub fn fits(elapsed: u64, used: usize, next: usize) -> bool {
+    elapsed < STOP_S && used + next + END <= 256
+}
+
+/// A sheet's fingerprint, FNV-1a over its steps (the component and occurrence ids in them): a
+/// sheet with the same one would come out the same.
+pub fn fingerprint(steps: &Steps) -> String {
+    let text = serde_json::to_string(steps).unwrap_or_default();
+    let hash = (text.bytes()).fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+        (h ^ b as u64).wrapping_mul(0x0100_0000_01b3)
+    });
+    format!("{hash:016x}")
+}
+
+/// The title block `block` (a definition from `drawing.open`'s reply) without its Material and
+/// Mass cells, Finish across their row. A cell that reads either weighs the cabinet each time
+/// the drawing is opened: about 0.6 s a sheet on the sample kitchen, 2.7 ms for all without.
+/// The board list names each board's material.
+pub fn unweighed(block: &Value) -> Value {
+    let mut block = block.clone();
+    if let Some(cells) = block["cells"].as_array_mut() {
+        cells.retain(|c| c["name"] != "material" && c["name"] != "mass");
+        for cell in cells.iter_mut().filter(|c| c["name"] == "finish") {
+            cell["rect_mm"] = json!([-180.0, 24.0, 0.0, 34.0]);
+        }
+    }
+    block
+}
+
+/// Whether the drawing (`drawing.open`'s reply) has a sheet `name` noted with `fingerprint`.
+pub fn up_to_date(drawing: &Value, name: &str, fingerprint: &str) -> bool {
+    let sheets = drawing["sheets"].as_array().into_iter().flatten();
+    sheets.into_iter().any(|s| {
+        let noted = s["id"].as_str().map(|id| &drawing["properties"][KEY][id]);
+        s["name"] == name && noted.is_some_and(|f| f == fingerprint)
+    })
 }
 
 /// Every cabinet in the design, by its `<name> Side L` body. `measure` is `inspect.measure`'s

@@ -25,7 +25,8 @@ def test_drawing_of_one_cabinet(approval):
     results = cli([cabinet, select("Cabinet Top"), plugin(approval, "drawing", {"scope": "selected"})],
                   "--save", str(saved))
     boards = [b.removeprefix("Cabinet ") for b in results[0]["result"]["bodies"]]
-    assert results[2]["result"] == {"drawing": "Woodwork", "sheets": ["Cabinet"]}, results[2]
+    assert results[2]["result"] == {"drawing": "Woodwork", "sheets": ["Cabinet"], "remaining": [],
+                                    "message": "Drew 1 sheet"}, results[2]
 
     def views(drawing):
         sheet = drawing["sheets"][0]
@@ -43,6 +44,8 @@ def test_drawing_of_one_cabinet(approval):
     assert sheet["name"] == "Cabinet" and sheet["size_mm"] == [420.0, 297.0], sheet["name"]
     cells = {c["name"]: c.get("text") for c in sheet["title_block_cells"]}
     assert cells["title"] == "Cabinet", cells
+    # No cell weighs the cabinet: that made each open of the drawing take 0.6 s a sheet.
+    assert "mass" not in cells and "material" not in cells, cells
     # Front, right and iso views of the cabinet, at one scale, its doors closed.
     kinds = sorted((v["kind"], v.get("side") or "") for v in sheet["views"])
     assert kinds == [("base", ""), ("base", ""), ("projected", "right")], kinds
@@ -76,9 +79,14 @@ def test_drawing_of_every_cabinet_twice(approval):
     every = plugin(approval, "drawing", {"scope": "all"})
     results = cli([plugin(approval, "cabinet", {}), select("Cabinet Side R"),
                    plugin(approval, "cabinet", {"place": "auto", "width": 400, "drawers": 2, "shelves": 0}),
-                   every, every], "--save", str(saved))
+                   every, every, select("Cabinet Side L"), plugin(approval, "edit", {"shelves": 2}), every],
+                  "--save", str(saved))
     assert results[3]["result"]["sheets"] == ["Cabinet", "Cabinet 2"], results[3]
-    # Drawn again: each cabinet's sheet is replaced, not added.
+    # Drawn again unchanged: both sheets are up to date and kept.
+    assert results[4]["result"] == {"drawing": "Woodwork", "sheets": [], "remaining": [],
+                                    "message": "All sheets were up to date"}, results[4]
+    # After an Edit only that cabinet's sheet is drawn again, and replaced, not added.
+    assert results[7]["result"]["sheets"] == ["Cabinet"] and results[7]["result"]["remaining"] == [], results[7]
     drawing, _ = read(saved)
     assert sorted(s["name"] for s in drawing["sheets"]) == ["Cabinet", "Cabinet 2"], drawing["sheets"]
     # The second cabinet's sizes, in its own sheet.

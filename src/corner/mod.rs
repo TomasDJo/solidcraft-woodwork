@@ -15,18 +15,25 @@ mod diagonal;
 mod doors;
 mod input;
 
-use crate::fittings::{self, PinRows, KICK_RECESS, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, LEG_INSET, PIN_SETBACK, PITCH};
 use crate::kit::{mm, Kit};
 use crate::Commands;
 pub use input::hand;
 use input::Input;
 use serde_json::{json, Value};
 
+// Split boards: two dowels across each joint, in from its ends far enough for the shortest
+// leg (`input` keeps it 100 mm or more).
+const DOWEL_D: f64 = 8.0;
+const DOWEL_INTO: f64 = 30.0; // into each board
+const DOWEL_INSET: f64 = 40.0; // from each end of the joint
+
 /// What the steps of a build share: the checked input in mm, and the sizes as expressions.
 struct Corner<'a> {
     kit: &'a Kit,
     right: bool,
     diagonal: bool,
+    split: bool, // the L-shaped boards as two dowelled boards
     handles: &'a str,
     handle_at: &'a str,
     a: f64,
@@ -47,6 +54,7 @@ struct Corner<'a> {
     eh: String,
     et: String,
     epl: String,
+    ekick: String, // the plinth board's or the notch's set-back
 }
 
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
@@ -59,6 +67,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         t,
         plinth,
         plinth_type,
+        plinth_setback,
         dr,
         shelves,
         pins,
@@ -67,6 +76,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handle_at,
         right,
         diagonal,
+        split,
         reveal,
         inset,
     } = input::read(&kit, p)?;
@@ -79,6 +89,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let epl = match plinth > 0.0 {
         true => kit.parameter("plinth", plinth, "plinth height"),
         false => mm(0.0),
+    };
+    // As on the box cabinet.
+    let ekick = match plinth > 0.0 && plinth_type != "legs" || kit.has("plinth_setback") {
+        true => kit.parameter("plinth_setback", plinth_setback, "plinth set-back"),
+        false => mm(plinth_setback),
     };
     // Only with doors, or when an edit took them off (as on the box cabinet).
     let er = match on_return.is_some() || kit.has("reveal") {
@@ -94,6 +109,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         kit: &kit,
         right,
         diagonal,
+        split,
         handles,
         handle_at,
         a,
@@ -114,6 +130,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         eh,
         et,
         epl,
+        ekick,
     };
     let drill = corner.carcass(shelves, pins); // holes, run after the panels exist
     match on_return {
@@ -235,6 +252,49 @@ impl Corner<'_> {
         for (part, z, z_mm) in &boards {
             // Behind inset doors a shelf's front edges are a panel further back.
             let back = self.inset && part.starts_with("Shelf");
+            // The open corner: x from, its width, and its depth from y = t.
+            let notch = match back {
+                true => [
+                    format!("{ed} - {et}"),
+                    format!("{ea} - {ed}"),
+                    format!("{eb} - {ed}"),
+                ],
+                false => [
+                    ed.to_string(),
+                    format!("{ea} - {et} - {ed}"),
+                    format!("{eb} - {ed} - {et}"),
+                ],
+            };
+            if self.split {
+                // Two rectangles, joined along the back leg's front edge: the back leg's
+                // board over the whole width, and the return's in front of it.
+                let leg = format!("{} - {et}", notch[0]); // inside depth of both legs
+                let joint = format!("{et} + {}", notch[2]);
+                let wide = format!("{ea} - 2*{et}");
+                panel(part, [et, &joint, z], [&wide, &leg, et], None);
+                let piece = format!("{part} return");
+                panel(&piece, [et, et, z], [&leg, &notch[2], et], None);
+                let targets = [format!("{name} {part}"), format!("{name} {piece}")];
+                let ends = [
+                    format!("{et} + {}", mm(DOWEL_INSET)),
+                    format!("{} - {}", notch[0], mm(DOWEL_INSET)),
+                ];
+                for (n, x) in ends.iter().enumerate() {
+                    // One cut through both boards, across the joint.
+                    let y = format!("{joint} - {}", mm(DOWEL_INTO));
+                    let base = self.kit.at(&self.point(x), &y, &format!("{z} + {et}/2"));
+                    self.kit.push((
+                        "solid.cylinder",
+                        json!({
+                            "base": base, "axis": [0, 1, 0],
+                            "diameter": mm(DOWEL_D), "height": mm(2.0 * DOWEL_INTO),
+                            "operation": "cut", "targets": targets,
+                            "name": format!("{name} {piece} dowel {}", n + 1),
+                        }),
+                    ));
+                }
+                continue;
+            }
             panel(
                 part,
                 [et, et, z],
@@ -260,18 +320,6 @@ impl Corner<'_> {
                 ));
                 continue;
             }
-            let notch = match back {
-                true => [
-                    format!("{ed} - {et}"),
-                    format!("{ea} - {ed}"),
-                    format!("{eb} - {ed}"),
-                ],
-                false => [
-                    ed.to_string(),
-                    format!("{ea} - {et} - {ed}"),
-                    format!("{eb} - {ed} - {et}"),
-                ],
-            };
             panel(
                 &format!("{part} notch"),
                 [&notch[0], et, z],
@@ -279,7 +327,7 @@ impl Corner<'_> {
                 Some(&[format!("{name} {part}")]),
             );
         }
-        let kick = mm(KICK_RECESS);
+        let kick = self.ekick.clone();
         if self.plinth_type == "notch" {
             // The toe kick cut out of each end's front bottom corner, as on the box cabinet.
             let ends = [
@@ -325,8 +373,8 @@ impl Corner<'_> {
             diagonal::plinth(self);
         } else if self.plinth_type == "board" {
             // Two boards set back from the fronts, meeting in the inner corner.
-            let x = format!("{ed} - {} - {et}", mm(KICK_RECESS));
-            let y = format!("{eb} - {ed} + {}", mm(KICK_RECESS));
+            let x = format!("{ed} - {kick} - {et}");
+            let y = format!("{eb} - {ed} + {kick}");
             panel(
                 "Plinth",
                 [&x, &y, &zero],
