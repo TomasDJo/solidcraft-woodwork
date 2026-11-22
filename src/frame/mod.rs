@@ -285,7 +285,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         ),
         ("face_t", el.clone()),
     ];
-    let joinery = Joinery::fixed(&kit, &eat, "dowels", sizes);
+    let fasteners = p["fastener_models"] == "on";
+    let joinery = Joinery::fixed(&kit, &eat, "dowels", sizes, fasteners);
     for r in &all {
         let a = r.along;
         let across = 1 - a;

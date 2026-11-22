@@ -637,9 +637,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 _ => return Err("match must be no or selected".into()),
             };
             let mut params = params.clone();
-            if entry != "frame" {
-                settings::design(entry, &mut params, stored);
-            }
+            settings::design(entry, &mut params, stored);
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),

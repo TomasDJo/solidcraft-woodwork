@@ -518,7 +518,8 @@ fn without_pins_the_shelves_are_fixed_and_joined_to_the_sides_and_dividers() {
 #[test]
 fn each_fastener_is_a_model_in_its_hole_copied_along_its_row() {
     let build = |joints: &str, models: &str| {
-        let p = json!({"name": "K", "joints": joints, "hardware_models": models});
+        let p = json!({"name": "K", "joints": joints, "hardware_models": models,
+            "fastener_models": "on"});
         crate::cabinet::build(&p).unwrap().0
     };
     let commands = build("dowels", "on");

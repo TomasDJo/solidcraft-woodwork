@@ -94,7 +94,8 @@ def select(*bodies):
 
 
 joinery = {}  # what Woodwork settings hold now
-# Fastener models only in the units made after the wall corner: SolidCraft names the faces of a
+# Fastener models (off by default, for looking) turned on for the units made after the wall
+# corner, to show them: SolidCraft names the faces of a
 # design's first 400 features one way and those after another, so in a design this size a
 # chamfer's picked edge (the wall corner's) is not found again once an earlier cabinet is
 # deleted or edited if more features come before it. The fasteners add a feature for each joint.

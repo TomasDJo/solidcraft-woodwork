@@ -133,8 +133,8 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   cutting the cups** lets the hinge models cut the cups themselves; it needs SolidCraft 0.47 or
   later, as before that every later run in the design gets much slower. A cabinet too big for
   one run with its models (very many doors) is made without them, and says so in its result.
-- **Fastener models** (Woodwork settings, Shown by default; None with Hardware models None
-  too): each dowel, screw (confirmat, plain or pocket), cam lock with its bolt, biscuit or
+- **Fastener models** (Woodwork settings, None by default; Shown to look at the joinery,
+  best with See-through boards; never with Hardware models None): each dowel, screw (confirmat, plain or pocket), cam lock with its bolt, biscuit or
   Domino is a simple body sitting in its hole (`Name joint Side L Bottom dowels fastener`, the
   rest of a row copies of it, `... fastener (2)`), in the cabinet's component, made per row like
   the holes. Like the hinge models they only show: the cut list, drawings' board lists,
@@ -143,9 +143,9 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   history for each joint: in a big design (about 400 features, the sample kitchen's size),
   SolidCraft 0.46 names the faces of later features another way, and a corner cabinet's picked
   chamfer further on is then not found again when an earlier cabinet is deleted or edited (the
-  run fails and nothing changes). Set Fastener models to None before the cabinets of a big
-  kitchen if that happens; the sample kitchen shows them only on the units on the return, which
-  come last.
+  run fails and nothing changes). That is one reason they are off by default; the holes and the
+  cut list's counts are the same without them. The sample kitchen shows them only on the units
+  on the return, which come last.
 - The holes show in the DXF files (a layer per diameter and depth) and the cut list counts the
   hinges and the pairs of slides. A corner cabinet's doors get the same cups on the same grid,
   and the plates' holes in the end the pair hangs on; the diagonal door's ends stand at 45

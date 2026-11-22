@@ -118,7 +118,7 @@ pub struct Joinery<'a> {
     rows: RefCell<Vec<Row>>,
     /// The fastener models of the joint being cut (`fastener`), for its row's body pattern.
     models: RefCell<Vec<String>>,
-    /// Fastener models: with Hardware models and Fastener models on.
+    /// Fastener models: with Hardware models on and Fastener models `on` (off by default).
     fasteners: bool,
     slot: usize,         // in SLOTS
     pocket_inside: bool, // the pockets in the end board's inside face
@@ -233,7 +233,7 @@ impl<'a> Joinery<'a> {
             cuts: RefCell::default(),
             rows: RefCell::default(),
             models: RefCell::default(),
-            fasteners: kit.models != "off" && p["fastener_models"] != "off",
+            fasteners: kit.models != "off" && p["fastener_models"] == "on",
             slot,
             pocket_inside,
         })
@@ -241,7 +241,13 @@ impl<'a> Joinery<'a> {
 
     /// Joinery with one method and its sizes given as expressions, not read from a dialog: a
     /// frame's dowels (and its bolts, `joint_by`). `t` is the end boards' thickness.
-    pub fn fixed(kit: &'a Kit, t: &str, method: &str, sizes: Vec<(&'static str, String)>) -> Self {
+    pub fn fixed(
+        kit: &'a Kit,
+        t: &str,
+        method: &str,
+        sizes: Vec<(&'static str, String)>,
+        fasteners: bool,
+    ) -> Self {
         Joinery {
             kit,
             t: t.to_string(),
@@ -251,7 +257,7 @@ impl<'a> Joinery<'a> {
             cuts: RefCell::default(),
             rows: RefCell::default(),
             models: RefCell::default(),
-            fasteners: kit.models != "off",
+            fasteners: fasteners && kit.models != "off",
             slot: 0,
             pocket_inside: false,
         }

@@ -680,8 +680,10 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   1600, 4 to 2000, 5 above (the first two cups at the ends keep their names). The cup's two
   screw holes (45 apart, 9.5 off its centre) are not cut: 2 commands a cup more.
   Undermount slides are deferred. Sample kitchen, local: models on cost up to 1.5 s a cabinet run more than off.
-  **Fastener models** (`fastener_models`, Woodwork settings, `on` by default, remembered; none
-  with `hardware_models: off`; `Joinery::fasteners`, a frame's with the models): after a joint's
+  **Fastener models** (`fastener_models`, Woodwork settings, `off` by default by the user's
+  decision: they are for looking, with See-through boards; remembered, absent is off; none
+  with `hardware_models: off`; `Joinery::fasteners`, a frame's from its `fastener_models`, which
+  `settings::design` gives a frame with `hardware_models`): after a joint's
   hole `Joinery::fastener` pushes the same command without `operation` and `targets`, named and
   `body_name` `<cut> fastener` (a confirmat or screw: the clearance hole as long as the screw; a
   cam: a 6 mm rod from the bolt's tip, `cam_bolt` long, and the housing; a pocket screw: its

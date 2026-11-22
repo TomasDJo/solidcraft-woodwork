@@ -46,7 +46,7 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("hardware_models", "", Choice("on"), Cabinets),
         ("hinge_angle", "", Choice("110"), Cabinets),
         ("slide_type", "", Choice("full"), Box),
-        ("fastener_models", "", Choice("on"), Cabinets),
+        ("fastener_models", "", Choice("off"), Cabinets),
         ("back", "", Choice("groove"), Box),
         ("back_thickness", "", Length(6.0, 3.175, 50.0), Box),
         ("fronts", "", Choice("overlay"), Cabinets),
@@ -199,7 +199,9 @@ pub fn design(entry: &str, params: &mut Value, stored: &Value) {
     }
     for (key, field, def, to) in table() {
         let field = if field.is_empty() { key } else { field };
-        if !takes(to) || params.get(field).is_some() {
+        // a frame takes only the models
+        let frame = entry == "frame" && matches!(key, "hardware_models" | "fastener_models");
+        if !(takes(to) || frame) || params.get(field).is_some() {
             continue;
         }
         params[field] = match def {
