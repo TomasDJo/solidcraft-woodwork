@@ -48,7 +48,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.46 | next version | The dialogs show only the fields that apply: fields hide when they don't apply to the choices made. |
+| 0.46 | 0.3.0 | Tested on every change, on 0.46.1. The dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults, and Edit shows only what the picked cabinet takes. |
 | 0.45 | 0.2.0 | Tested on every change, on 0.45.0. The view is framed after a cabinet is added, a placed cabinet is previewed where it goes, and agents get each function as a tool. |
 | 0.44 | 0.1.8 | A cabinet is previewed in the model before it is added, the selection is a field in the dialog, and each function has its own icon. The preview of a placed cabinet can show on the origin. |
 | 0.43 | 0.1.6 and 0.1.7 | The dropdowns show a title and an explanation for each choice, and installing asks you to approve the plugin. |
