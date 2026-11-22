@@ -190,7 +190,8 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     };
     let shelves = |cabinet: &str| {
         let start = format!("{cabinet} Shelf ");
-        bodies.iter().filter(|b| b.starts_with(&start)).count() as u64
+        let shelf = |b: &&String| b.starts_with(&start) && !b.ends_with(" return");
+        bodies.iter().filter(shelf).count() as u64 // a split shelf is one shelf
     };
     let pulls = ending(" handle 2");
     let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front");
@@ -223,6 +224,13 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         (
             "Dowel, 8 x 35 mm",
             cabinets(" joint Side L Bottom dowel end").map(holes).sum(),
+        ),
+        (
+            "Dowel, 8 x 60 mm", // a split corner board's joints
+            features
+                .iter()
+                .filter(|f| f.contains(" return dowel "))
+                .count() as u64,
         ),
         (
             "Adjustable leg",
@@ -295,6 +303,11 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
     match part {
         "Side L" | "Side R" => (Edges::Front, Some(2)),
         "Top" | "Bottom" | "Rail front" | "Rail" => (Edges::Front, Some(width)),
+        // a split corner board's return piece: its front edge runs front to back
+        "Top return" | "Bottom return" => (Edges::Front, Some(1 - width)),
+        _ if part.starts_with("Shelf ") && part.ends_with(" return") => {
+            (Edges::Front, Some(1 - width))
+        }
         "Rail back" => (Edges::None, Some(width)), // hidden under the worktop
         _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
         _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),
@@ -407,12 +420,20 @@ pub fn cutlist(
     };
     // A cabinet's width axis: across its Side L. A turned board is measured in its own
     // component, whose X is the cabinet's width.
+    // Along its Back first: a left corner's Side L is the return's end, across the back leg.
     let width_axis = |cabinet: &str, name: &str| -> Result<usize, String> {
-        let side = format!("{cabinet} Side L");
-        let found = bodies.iter().find(|b| b["name"] == side.as_str());
-        Ok(match found {
-            Some(body) if !local.contains_key(name) && !local.contains_key(&side) => {
-                let s = size(body)?;
+        let find = |part: &str| {
+            let part = format!("{cabinet} {part}");
+            let found = bodies.iter().find(|b| b["name"] == part.as_str());
+            found.filter(|_| !local.contains_key(name) && !local.contains_key(&part))
+        };
+        Ok(match (find("Back"), find("Side L")) {
+            (Some(back), _) => {
+                let s = size(back)?;
+                usize::from(s[1] > s[0])
+            }
+            (None, Some(side)) => {
+                let s = size(side)?;
                 usize::from(s[1] < s[0])
             }
             _ => 0,

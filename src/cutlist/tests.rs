@@ -127,11 +127,13 @@ fn hardware_is_counted_from_names() {
         "A Door hinge cup 1", "A Door hinge cup 2", "A Door handle 1", "A Door handle 2",
         "A Side L pins", "A Side R pins", "A 2 Drawer 1 Front handle 1",
         "A joint Side L Bottom pilot", "A joint Side L Bottom row",
+        "C Bottom return dowel 1", "C Bottom return dowel 2",
     ])});
     let mut bodies = named(&[
         "A Shelf 1",
         "A Shelf 2",
         "A 2 Shelf 1",
+        "A Shelf 1 return", // half of a split shelf: not a shelf of its own
         "A 2 Drawer 1 Front",
         "A Leg 1",
         "A Leg 2",
@@ -145,7 +147,7 @@ fn hardware_is_counted_from_names() {
     let expected = json!([
         {"item": "Hinge, 35 mm cup", "qty": 2}, {"item": "Drawer slide, pair", "qty": 1},
         {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
-        {"item": "Adjustable leg", "qty": 3},
+        {"item": "Dowel, 8 x 60 mm", "qty": 2}, {"item": "Adjustable leg", "qty": 3},
         {"item": "Knob", "qty": 1}, {"item": "Pull, 128 mm", "qty": 1},
     ]);
     assert_eq!(list, expected);
@@ -556,6 +558,35 @@ fn a_sink_base_and_a_rail_under_drawers() {
         {"item": "Confirmat screw, 7 x 50 mm", "qty": 10}, {"item": "Dowel, 8 x 35 mm", "qty": 12},
     ]);
     assert_eq!(hardware(&bodies, &design), expected);
+}
+
+#[test]
+fn a_split_corner_board_is_banded_and_grained_along_each_front_edge() {
+    // A left corner: its Side L is the return's end, across the back leg, so the width axis
+    // is taken along the Back. The return piece's front edge runs front to back.
+    let body = |name: &str, max: [f64; 3]| json!({"name": name, "material": "Oak", "bbox": {"min": [0, 0, 0], "max": max}});
+    let measured = json!({"bodies": [
+        body("C Side L", [560.0, 18.0, 720.0]),
+        body("C Side R", [18.0, 560.0, 720.0]),
+        body("C Back", [1364.0, 18.0, 720.0]),
+        body("C Bottom", [1364.0, 542.0, 18.0]),
+        body("C Bottom return", [542.0, 822.0, 18.0]),
+        body("C Shelf 1 return", [542.0, 804.0, 18.0]),
+    ]});
+    let list = cutlist(&measured, &BTreeMap::new(), false, &json!({})).unwrap();
+    let parts = [
+        ("C Bottom", 1364.0),
+        ("C Bottom return", 822.0),
+        ("C Shelf 1 return", 804.0),
+    ];
+    for (part, length) in parts {
+        assert_eq!(row(&list, part)["length"], length, "{part}");
+        assert_eq!(
+            row(&list, part)["banding"],
+            json!({"length": 1, "width": 0})
+        );
+        assert_eq!(row(&list, part)["grain"], json!(true));
+    }
 }
 
 #[test]

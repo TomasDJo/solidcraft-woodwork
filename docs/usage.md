@@ -112,6 +112,14 @@ Two shapes:
   hinged on the cabinet and closes the inner corner; the second hangs on it there and folds
   out onto its face, so the two swing out together. The handle is on the second door, at the
   position you choose.
+
+  **Bottom, top, shelves** (L-shaped only): **One piece** makes each an L cut from one board;
+  **Split in two** makes each two rectangles, so a big corner nests on 2440 x 1220 mm sheets.
+  The back leg's board runs the whole width (`Name Bottom`), and the return's board
+  (`Name Bottom return`, `Name Top return`, `Name Shelf 1 return`) stands in front of it, the
+  joint along the back leg's front edge. Two 8 mm dowel holes, 30 mm into each board, 40 mm in
+  from each end of the joint, hold them together; the cut list counts them as `Dowel, 8 x 60
+  mm`. An Edit keeps the choice.
 - **Diagonal**: one front straight across the corner at 45 degrees, with one door. The depth
   at the end of the return follows from the width and the return, and equals Depth when the
   two are the same.

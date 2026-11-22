@@ -129,7 +129,8 @@ Cabinets:
 
 Cut list and shop output:
 - [ ] Cost estimate: prices per material and thickness, the cost of sheets, banding and hardware in the cut list (postponed until conditional dialog fields, SolidCraft 0.46, #56)
-- [ ] Corner cabinet boards in the cutting layouts: L-shapes and parts larger than a sheet, split or notched (#63)
+- [x] L-shaped corner cabinet's bottom, top and shelves split in two dowelled rectangles (`boards: split`), so they nest on a sheet (#63)
+- [ ] Diagonal corner cabinet boards split in two (they keep their chamfer), and the L's backs over a sheet's width in grained material (#63)
 - [ ] DXF per part (one file per board)
 
 ## Waiting for the app

@@ -22,11 +22,18 @@ pub use input::hand;
 use input::Input;
 use serde_json::{json, Value};
 
+// Split boards: two dowels across each joint, in from its ends far enough for the shortest
+// leg (`input` keeps it 100 mm or more).
+const DOWEL_D: f64 = 8.0;
+const DOWEL_INTO: f64 = 30.0; // into each board
+const DOWEL_INSET: f64 = 40.0; // from each end of the joint
+
 /// What the steps of a build share: the checked input in mm, and the sizes as expressions.
 struct Corner<'a> {
     kit: &'a Kit,
     right: bool,
     diagonal: bool,
+    split: bool, // the L-shaped boards as two dowelled boards
     handles: &'a str,
     handle_at: &'a str,
     a: f64,
@@ -69,6 +76,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handle_at,
         right,
         diagonal,
+        split,
         reveal,
         inset,
     } = input::read(&kit, p)?;
@@ -101,6 +109,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         kit: &kit,
         right,
         diagonal,
+        split,
         handles,
         handle_at,
         a,
@@ -243,6 +252,49 @@ impl Corner<'_> {
         for (part, z, z_mm) in &boards {
             // Behind inset doors a shelf's front edges are a panel further back.
             let back = self.inset && part.starts_with("Shelf");
+            // The open corner: x from, its width, and its depth from y = t.
+            let notch = match back {
+                true => [
+                    format!("{ed} - {et}"),
+                    format!("{ea} - {ed}"),
+                    format!("{eb} - {ed}"),
+                ],
+                false => [
+                    ed.to_string(),
+                    format!("{ea} - {et} - {ed}"),
+                    format!("{eb} - {ed} - {et}"),
+                ],
+            };
+            if self.split {
+                // Two rectangles, joined along the back leg's front edge: the back leg's
+                // board over the whole width, and the return's in front of it.
+                let leg = format!("{} - {et}", notch[0]); // inside depth of both legs
+                let joint = format!("{et} + {}", notch[2]);
+                let wide = format!("{ea} - 2*{et}");
+                panel(part, [et, &joint, z], [&wide, &leg, et], None);
+                let piece = format!("{part} return");
+                panel(&piece, [et, et, z], [&leg, &notch[2], et], None);
+                let targets = [format!("{name} {part}"), format!("{name} {piece}")];
+                let ends = [
+                    format!("{et} + {}", mm(DOWEL_INSET)),
+                    format!("{} - {}", notch[0], mm(DOWEL_INSET)),
+                ];
+                for (n, x) in ends.iter().enumerate() {
+                    // One cut through both boards, across the joint.
+                    let y = format!("{joint} - {}", mm(DOWEL_INTO));
+                    let base = self.kit.at(&self.point(x), &y, &format!("{z} + {et}/2"));
+                    self.kit.push((
+                        "solid.cylinder",
+                        json!({
+                            "base": base, "axis": [0, 1, 0],
+                            "diameter": mm(DOWEL_D), "height": mm(2.0 * DOWEL_INTO),
+                            "operation": "cut", "targets": targets,
+                            "name": format!("{name} {piece} dowel {}", n + 1),
+                        }),
+                    ));
+                }
+                continue;
+            }
             panel(
                 part,
                 [et, et, z],
@@ -268,18 +320,6 @@ impl Corner<'_> {
                 ));
                 continue;
             }
-            let notch = match back {
-                true => [
-                    format!("{ed} - {et}"),
-                    format!("{ea} - {ed}"),
-                    format!("{eb} - {ed}"),
-                ],
-                false => [
-                    ed.to_string(),
-                    format!("{ea} - {et} - {ed}"),
-                    format!("{eb} - {ed} - {et}"),
-                ],
-            };
             panel(
                 &format!("{part} notch"),
                 [&notch[0], et, z],

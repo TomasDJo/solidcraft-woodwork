@@ -184,7 +184,7 @@ pub fn side(picked: &[String], measure: &Value) -> &'static str {
     match board {
         Some("Side L") => "left",
         Some("Side R") => "right",
-        Some("Top") => "above",
+        Some("Top" | "Top return") => "above",
         _ => "origin",
     }
 }

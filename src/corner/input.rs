@@ -26,6 +26,8 @@ pub struct Input<'a> {
     pub handle_at: &'a str,
     pub right: bool,
     pub diagonal: bool,
+    /// The L's bottom, top and shelves each made as two boards dowelled together.
+    pub split: bool,
     /// The gap around the doors.
     pub reveal: f64,
     /// The doors sit inside the opening, not in front of it (only with doors).
@@ -53,6 +55,15 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "L-shaped" => false,
         "diagonal" => true,
         _ => return Err("shape must be L-shaped or diagonal".into()),
+    };
+    let split = match p
+        .get("boards")
+        .and_then(Value::as_str)
+        .unwrap_or("one piece")
+    {
+        "one piece" => false,
+        "split" => !diagonal, // ponytail: the diagonal's boards stay whole (their chamfer)
+        _ => return Err("boards must be one piece or split".into()),
     };
     let right = hand(p)? == "right";
     // Left and right as you face the corner: the return's end is on the corner's own side.
@@ -120,6 +131,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "too low for a door with two hinges",
     )?;
     check(
+        !split || t >= 16.0,
+        "8 mm dowels need panels of 16 mm or more",
+    )?;
+    check(
         !pins || t >= 12.0,
         "shelf pin holes need panels of 12 mm or more",
     )?;
@@ -144,6 +159,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handle_at,
         right,
         diagonal,
+        split,
         reveal,
         inset,
     })

@@ -190,6 +190,10 @@ fn refuses_bad_input() {
     assert!(build(&json!({"corner": "middle"})).is_err());
     assert!(build(&json!({"doors": "hinged right", "thickness": 12})).is_err());
     assert!(build(&json!({"height": 200, "shelves": 8})).is_err());
+    assert!(build(&json!({"boards": "halves"})).is_err());
+    assert!(build(&json!({"boards": "split", "thickness": 15})).is_err());
+    // the diagonal's boards stay whole, so no dowels to fit
+    assert!(build(&json!({"boards": "split", "thickness": 15, "shape": "diagonal"})).is_ok());
 }
 
 #[test]
@@ -449,4 +453,77 @@ fn plinth_types() {
     let (commands, _) = build(&p).unwrap();
     assert_eq!(count(&commands, "solid.cylinder"), 5);
     assert_eq!(count(&commands, "component.create"), 0);
+}
+
+#[test]
+fn split_boards_are_two_rectangles_dowelled_together() {
+    let p = json!({"boards": "split", "shelves": 1});
+    let (commands, summary) = build(&p).unwrap();
+    let bodies = summary["bodies"].to_string();
+    for part in ["Bottom", "Top", "Shelf 1"] {
+        assert!(
+            bodies.contains(&format!("\"Cabinet {part} return\"")),
+            "{part}"
+        );
+        assert!(!commands
+            .iter()
+            .any(|c| c.1["name"] == format!("Cabinet {part} notch")));
+        // two dowels through both boards, across the joint
+        for n in [1, 2] {
+            let dowel = named(&commands, &format!("Cabinet {part} return dowel {n}"));
+            assert_eq!(dowel["axis"], json!([0, 1, 0]));
+            let targets = [format!("Cabinet {part}"), format!("Cabinet {part} return")];
+            assert_eq!(dowel["targets"], json!(targets));
+        }
+    }
+    // the back leg's board over the whole width, behind the joint
+    let bottom = board(&commands, "Cabinet Bottom");
+    assert_eq!(bottom["length"], "Cabinet_width - 2*Cabinet_thickness");
+    assert_eq!(bottom["width"], "Cabinet_depth - Cabinet_thickness");
+    assert_eq!(
+        bottom["corner"][1],
+        "Cabinet_thickness + Cabinet_return - Cabinet_depth - Cabinet_thickness - Cabinet_return/2"
+    );
+    // the return's in front of it, as deep as the joint is from the front panel
+    let ret = board(&commands, "Cabinet Bottom return");
+    assert_eq!(ret["length"], "Cabinet_depth - Cabinet_thickness");
+    assert_eq!(
+        ret["width"],
+        "Cabinet_return - Cabinet_depth - Cabinet_thickness"
+    );
+    let dowel = named(&commands, "Cabinet Bottom return dowel 2");
+    assert_eq!(dowel["base"][0], "Cabinet_depth - 40 mm - Cabinet_width/2");
+    assert_eq!(dowel["height"], "60 mm");
+
+    // one piece is the L with its notch, as before
+    let (whole, _) = build(&json!({"boards": "one piece"})).unwrap();
+    assert_eq!(whole, build(&json!({})).unwrap().0);
+    named(&whole, "Cabinet Bottom notch");
+    assert!(!whole.iter().any(|c| c.0 == "solid.cylinder"));
+    // the diagonal's boards stay whole: split is ignored
+    let diagonal = json!({"shape": "diagonal", "boards": "split"});
+    let (cut, _) = build(&diagonal).unwrap();
+    assert_eq!(cut, build(&json!({"shape": "diagonal"})).unwrap().0);
+    // a right corner's dowels are mirrored
+    let (right, _) = build(&json!({"boards": "split", "corner": "right"})).unwrap();
+    let dowel = named(&right, "Cabinet Top return dowel 1");
+    assert_eq!(
+        dowel["base"][0],
+        "Cabinet_width - (Cabinet_thickness + 40 mm) - (0 mm) - Cabinet_width/2"
+    );
+}
+
+#[test]
+fn split_shelves_behind_inset_doors_start_a_panel_back() {
+    let p = json!({"boards": "split", "doors": "hinged right", "fronts": "inset"});
+    let (commands, _) = build(&p).unwrap();
+    let shelf = board(&commands, "Cabinet Shelf 1 return");
+    assert_eq!(
+        shelf["length"],
+        "Cabinet_depth - Cabinet_thickness - Cabinet_thickness"
+    );
+    assert_eq!(shelf["width"], "Cabinet_return - Cabinet_depth");
+    // the bottom does not
+    let bottom = board(&commands, "Cabinet Bottom return");
+    assert_eq!(bottom["length"], "Cabinet_depth - Cabinet_thickness");
 }

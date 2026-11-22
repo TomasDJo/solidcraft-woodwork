@@ -345,6 +345,13 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   The depth at the return's end follows instead (`width - return + depth`). Their boards are
   cut with `solid.chamfer`, picking the edge by a point in mm that is worked out twice: as an
   expression for the board and as a number for the pick.
+- A corner cabinet's `boards: split` (L-shaped only; `corner::input` ignores it on the diagonal)
+  makes its bottom, top and shelves `<Part>` (the back leg's, whole width) and `<Part> return`
+  (in front of it), with two `<Part> return dowel <n>` cuts, each one cylinder through both boards
+  (`targets` takes two). The cut list counts those features as 60 mm dowels and takes a
+  cabinet's width axis along its `Back` (across `Side L` without one), as a left corner's Side L
+  is its return's end. The backs and ends stay whole: a 1400 mm corner's back (1364 wide, grain
+  up) is still oversize on a 1220 sheet in a grained material.
 - A corner cabinet's `corner` field is auto by default (`corner::hand`): right when it is
   placed right of the selected cabinet, else left. `lib.rs` settles it before building, so
   the cabinet remembers left or right and Edit keeps it.
