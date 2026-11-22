@@ -346,3 +346,34 @@ fn a_dado_makes_the_board_longer_and_cuts_its_groove() {
         .unwrap_err()
         .contains("box cabinets"));
 }
+
+#[test]
+fn a_biscuit_is_a_slot_half_in_each_board() {
+    let p = json!({"name": "K", "joints": "biscuit", "biscuit": "10"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let slot = find(&commands, "K joint Side L Bottom biscuit");
+    assert_eq!(slot["targets"], json!(["K Side L", "K Bottom"]));
+    // across the joint 11 mm each way, 59 mm along it, 4 mm thick in the bottom's middle
+    assert_eq!(
+        [&slot["length"], &slot["width"], &slot["height"]],
+        [&json!("22 mm"), &json!("59 mm"), &json!("4 mm")]
+    );
+    let x = slot["corner"][0].as_str().unwrap();
+    assert_eq!(x, "K_thickness - 11 mm - K_width/2");
+    let row = row(&commands, "K joint Side L Bottom biscuit");
+    assert_eq!(row["features"].as_array().unwrap().len(), 4);
+    assert!(commands.iter().any(|c| c.1["name"] == "K_biscuits_10"));
+    let params =
+        json!([{"name": "K_dominos", "value": 12.0}, {"name": "K_biscuits_20", "value": 2.0}]);
+    assert_eq!(
+        hardware("K", &params),
+        vec![
+            ("Biscuit, #20".to_string(), 2),
+            ("Domino, 5 x 30 mm".to_string(), 12)
+        ]
+    );
+    let thin = json!({"joints": "biscuit", "biscuit": "domino", "thickness": 9});
+    assert!(crate::cabinet::build(&thin)
+        .unwrap_err()
+        .contains("too thin"));
+}

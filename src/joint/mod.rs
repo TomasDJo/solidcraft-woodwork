@@ -17,9 +17,9 @@ use serde_json::{json, Value};
 use std::cell::RefCell;
 
 /// The methods, as the dialog's `joints` field gives them. `none` leaves the boards butted.
-pub const METHODS: [&str; 5] = ["none", "dowels", "confirmat", "screws", "dado"];
+pub const METHODS: [&str; 6] = ["none", "dowels", "confirmat", "screws", "dado", "biscuit"];
 /// The methods with fasteners in a row along the joint, spaced by `joint_spacing`.
-const SPACED: [&str; 3] = ["dowels", "confirmat", "screws"];
+const SPACED: [&str; 4] = ["dowels", "confirmat", "screws", "biscuit"];
 
 /// The sizes a method can take: dialog field, which is also the parameter `<Prefix>_<key>`,
 /// and its default in mm.
@@ -33,11 +33,28 @@ const SIZES: [(&str, f64); 5] = [
 
 /// The parameters that count the fasteners for the cut list, `<Prefix>_<key>`: 0 once an edit
 /// took them away. `edit::merge` passes the ones a cabinet has to `Kit`.
-pub const COUNTS: [&str; 3] = ["dowels", "confirmats", "screws"];
+pub const COUNTS: [&str; 7] = [
+    "dowels",
+    "confirmats",
+    "screws",
+    "biscuits_0",
+    "biscuits_10",
+    "biscuits_20",
+    "dominos",
+];
 
 // A screw from the face board's outside into the other's end: clearance, pilot, length.
 const CONFIRMAT: [f64; 3] = [7.0, 5.0, 50.0];
 const SCREW: [f64; 3] = [4.5, 3.0, 50.0]; // a 4 x 50 mm chipboard screw
+
+/// The `biscuit` field's slots: the slot's length along the joint, depth into each board and
+/// thickness (a rectangle for the biscuit's half moon), the count's parameter and the item.
+const SLOTS: [(&str, [f64; 3], &str, &str); 4] = [
+    ("0", [53.0, 9.0, 4.0], "biscuits_0", "Biscuit, #0"),
+    ("10", [59.0, 11.0, 4.0], "biscuits_10", "Biscuit, #10"),
+    ("20", [62.0, 13.0, 4.0], "biscuits_20", "Biscuit, #20"),
+    ("domino", [21.0, 15.0, 5.0], "dominos", "Domino, 5 x 30 mm"),
+];
 
 /// Where the end of one board meets the face of another. Positions are counted from the
 /// cabinet's front left bottom corner, as a panel's (`Kit::at` shifts them).
@@ -66,6 +83,7 @@ pub struct Joinery<'a> {
     counts: RefCell<Vec<(&'static str, String)>>,
     cuts: RefCell<Commands>,
     rows: RefCell<Vec<Row>>,
+    slot: usize, // in SLOTS
 }
 
 /// One pattern for every joint's first cuts that run the same way with the same count: each
@@ -147,6 +165,14 @@ impl<'a> Joinery<'a> {
             "dado_depth" => "depth of the grooves the boards sit in",
             _ => "dowel length",
         };
+        let biscuit = p.get("biscuit").and_then(Value::as_str).unwrap_or("20");
+        let slot = (SLOTS.iter().position(|s| s.0 == biscuit))
+            .ok_or("`biscuit` must be 0, 10, 20 or domino")?;
+        let [_, deep, thick] = SLOTS[slot].1;
+        check(
+            !uses("biscuit") || (deep <= t.0 - 3.0 && thick <= t.0 - 6.0),
+            "the boards are too thin for that biscuit or domino",
+        )?;
         let sizes = (sizes.into_iter())
             .map(|(key, v)| (key, kit.parameter(key, v, comment(key))))
             .collect();
@@ -158,6 +184,7 @@ impl<'a> Joinery<'a> {
             counts: RefCell::default(),
             cuts: RefCell::default(),
             rows: RefCell::default(),
+            slot,
         })
     }
 
@@ -240,6 +267,35 @@ impl<'a> Joinery<'a> {
                 } else {
                     "confirmats"
                 }
+            }
+            "biscuit" => {
+                // A slot across the joint, half in each board, centred on the end's thickness.
+                let (_, [long, deep, thick], item, _) = SLOTS[self.slot];
+                let mut corner = start.clone();
+                let mut size = [mm(thick), mm(thick), mm(thick)];
+                for i in 0..3 {
+                    if j.into[i] != 0 {
+                        size[i] = mm(2.0 * deep);
+                        corner[i] = format!("{} - {}", start[i], mm(deep));
+                    } else if j.along[i] != 0 {
+                        size[i] = mm(long);
+                        corner[i] = format!("{} - {}", start[i], mm(long / 2.0));
+                    } else {
+                        corner[i] = format!("{} - {}", start[i], mm(thick / 2.0));
+                    }
+                }
+                let corner = self.kit.at(&corner[0], &corner[1], &corner[2]);
+                let feature = format!("{name} {method}");
+                self.cuts.borrow_mut().push((
+                    "solid.box",
+                    json!({
+                        "length": size[0], "width": size[1], "height": size[2],
+                        "corner": corner, "operation": "cut", "targets": [face, end],
+                        "name": feature,
+                    }),
+                ));
+                features.push(feature);
+                item
             }
             "dado" => {
                 // The end board's own volume where it reaches into the face board: a groove
@@ -400,6 +456,10 @@ pub fn hardware(prefix: &str, params: &Value) -> Vec<(String, u64)> {
         let item = match key {
             "dowels" => format!("Dowel, {} x {} mm", size("dowel_d"), size("dowel_length")),
             "screws" => "Screw, 4 x 50 mm".to_string(),
+            slot if slot.starts_with("biscuits") || slot == "dominos" => {
+                let found = SLOTS.iter().find(|s| s.2 == slot);
+                found.map(|s| s.3).unwrap_or_default().to_string()
+            }
             _ => "Confirmat screw, 7 x 50 mm".to_string(),
         };
         items.push((item, qty));

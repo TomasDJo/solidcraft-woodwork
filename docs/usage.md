@@ -36,7 +36,7 @@ component can hold its cabinets.
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Wall mount**, **Cleat height**, **Cleat thickness** | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
-| **Joinery**, **Joinery inside**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length**, **Dado depth** | How the sides are fixed to the bottom and top, and (Joinery inside, shown with dividers or a rail) the dividers and the rail: dowels (the default), confirmat screws, screws, a dado or none. See [Joinery at build](#joinery-at-build). |
+| **Joinery**, **Joinery inside**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length**, **Dado depth**, **Biscuit size** | How the sides are fixed to the bottom and top, and (Joinery inside, shown with dividers or a rail) the dividers and the rail: dowels (the default), confirmat screws, screws, biscuits, a dado or none. See [Joinery at build](#joinery-at-build). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
@@ -135,6 +135,11 @@ bottom and its two rails), and the holes are drilled as the cabinet is made:
   under 40 mm only.
 - **Screws**: plain 4 x 50 mm wood or chipboard screws from outside, as confirmat: a 4.5 mm
   hole through the side and a 3 mm pilot into the end. Counted as "Screw, 4 x 50 mm".
+- **Biscuits**: a slot across the joint, half in each board, in the middle of the end's
+  thickness, for a flat glued biscuit: **Biscuit size** #0, #10 or #20 (53, 59 or 62 mm long,
+  9, 11 or 13 mm into each board, 4 mm thick; drawn as a rectangle, a biscuit jointer cuts a
+  half moon) or a Domino 5 x 30 (21 x 5 mm, 15 mm into each board). Spaced as dowels; counted
+  as "Biscuit, #20" or "Domino, 5 x 30 mm". The boards must leave 3 mm behind the slot.
 - **Dado** (box cabinets): the bottom and top sit in grooves (housings) cut across the sides,
   **Dado depth** (6 mm) deep and as wide as the boards, through from front to back: each is that
   much longer at each end, which the cut list shows (a 600 mm cabinet's bottom is 576, not 564).
@@ -156,7 +161,7 @@ runs. A sink base's rails get one each, in their
 middle. The sizes are the cabinet's design parameters (`Name_joint_spacing`,
 `Name_joint_edge`, `Name_dowel_d`, `Name_dowel_length`): change one in Parameters, or change
 the depth, and the holes follow, their number too. The cut list counts what to buy from the
-parameters `Name_dowels`, `Name_confirmats` and `Name_screws` (the sum of the joints' counts, so they follow
+parameters `Name_dowels`, `Name_confirmats`, `Name_screws`, `Name_biscuits_20` (and `_0`, `_10`) and `Name_dominos` (the sum of the joints' counts, so they follow
 as well), as "Dowel, 8 x 35 mm" or "Confirmat screw, 7 x 50 mm". Edit cabinet changes either
 method (its sizes stay as they are in Parameters); Woodwork settings keeps the two methods new
 cabinets start with. Each joint is a cut in the cabinet's history folder (`Name joint Side L Bottom

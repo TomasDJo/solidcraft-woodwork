@@ -131,3 +131,18 @@ def test_dado(approval):
     assert cylinders(results[1], "G Side L") == 0
     assert "576" in results[2]["result"]["csv"], results[2]["result"]["csv"][:400]
     assert hardware(results[2]) == {}, hardware(results[2])
+
+
+def test_biscuits(approval):
+    # #20 slots, 62 x 4 mm, 13 mm into each board: 3 a joint, 6 in each side; N without any.
+    # A corner cabinet with Dominos.
+    results = cli([plugin(approval, "cabinet", {"name": "B", "shelves": 0, "joints": "biscuit", "place": "origin"}),
+                   plugin(approval, "cabinet", {"name": "N", "shelves": 0, "joints": "none", "place": "origin"}),
+                   plugin(approval, "corner", {"name": "C", "shelves": 0, "joints": "biscuit", "biscuit": "domino",
+                                               "place": "origin"}),
+                   MEASURE, plugin(approval, "cutlist")])
+    slot = 62 * 4 * 13
+    assert abs(volume(results[3], "N Side L") - volume(results[3], "B Side L") - 6 * slot) < 50
+    assert abs(volume(results[3], "N Bottom") - volume(results[3], "B Bottom") - 6 * slot) < 50
+    listed = hardware(results[4])
+    assert listed["Biscuit, #20"] == 12 and listed["Domino, 5 x 30 mm"] == 44, listed
