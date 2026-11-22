@@ -1149,3 +1149,34 @@ fn wooden_runners_run_the_bottom_in_grooves_in_the_sides() {
     assert!(build(&json!({"drawers": 2, "fronts": "inset", "slide_type": "wood"})).is_ok());
     assert!(build(&json!({"drawers": 1, "slide_type": "wood", "runner_depth": 13})).is_err());
 }
+
+#[test]
+fn a_cabinet_sized_from_its_drawers_inside() {
+    // 16 x 16 Gridfinity bins: 672 mm inside; 12 mm box sides, 12.7 mm slides, 18 mm panels,
+    // 10 mm behind the box and a 6 mm back 12 mm in from the rear
+    let mut p = json!({"drawers": 3, "sizing": "drawer", "drawer_width": 672, "drawer_depth": 672});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(
+        (&p["width"], &p["depth"], &p["sizing"]),
+        (&json!(757.4), &json!(724.0), &json!("outside"))
+    );
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert!((input.shelf_d - 10.0 - 2.0 * 12.0 - 672.0).abs() < 1e-9);
+    // wooden runners leave 1 mm a side instead of a slide; inches in inches
+    let mut p = json!({"units": "in", "drawers": 1, "slide_type": "wood", "thickness": 0.75,
+                       "sizing": "drawer", "drawer_width": 20, "drawer_depth": 18});
+    from_drawers(&mut p).unwrap();
+    let w = (20.0 * 25.4 + 2.0 * (12.0 + 1.0 + 19.05)) / 25.4;
+    assert!(
+        (p["width"].as_f64().unwrap() - w).abs() < 1e-5,
+        "{}",
+        p["width"]
+    );
+    // outside sizing is left alone; no drawers, or Match selected, are refused
+    let mut p = json!({"drawers": 1, "width": 600});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(p["width"], 600);
+    assert!(from_drawers(&mut json!({"sizing": "drawer"})).is_err());
+    let mut p = json!({"drawers": 1, "sizing": "drawer", "_match": {"values": {}}});
+    assert!(from_drawers(&mut p).is_err());
+}

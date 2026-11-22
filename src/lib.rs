@@ -679,6 +679,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     beside = Some(found);
                 }
             }
+            if entry == "cabinet" {
+                cabinet::from_drawers(&mut params)?;
+            }
             let (mut summary, made) = make(entry, &params, &design, run)?;
             let mut held = false;
             if let Some(other) = beside {

@@ -56,6 +56,49 @@ struct Cabinet<'a> {
     erail: Option<String>,
 }
 
+/// Sizing by the drawers' inside (`sizing: drawer`): the width and depth that give the boxes
+/// `drawer_width` x `drawer_depth` inside, written into `p` as an ordinary outside size, so
+/// the cabinet is remembered, edited and resized by that.
+pub fn from_drawers(p: &mut Value) -> Result<(), String> {
+    if p["sizing"] != "drawer" {
+        return Ok(());
+    }
+    check(
+        p["_match"].is_null(),
+        "drawer inside size cannot be combined with Match selected",
+    )?;
+    let kit = Kit::new(p)?;
+    let inside = [
+        kit.size(p, "drawer_width", 0.0)?,
+        kit.size(p, "drawer_depth", 0.0)?,
+    ];
+    check(
+        inside.iter().all(|v| *v >= 50.0),
+        "the drawers' inside width and depth must be 50 mm or more",
+    )?;
+    // The depth outside the shelves' (back, mount board, inset front) from a deep trial.
+    let scale = if kit.unit == "in" { 25.4 } else { 1.0 };
+    let mut trial = p.clone();
+    trial["depth"] = json!(1000.0 / scale);
+    trial["width"] = json!(1000.0 / scale);
+    let input = input::read(&kit, &trial)?;
+    check(input.drawers > 0.0, "drawer inside size needs drawers")?;
+    let [bt, _] = input.box_t;
+    let clear = input.runner.map_or(drawers::SLIDE, |[_, play]| play);
+    let w = inside[0] + 2.0 * (bt + clear + input.t);
+    let box_d = inside[1] + 2.0 * bt;
+    let shelf_d = match input.kind {
+        "sink" => 2.0 * box_d,
+        _ => box_d + drawers::BOX_BEHIND,
+    };
+    let d = shelf_d + 1000.0 - input.shelf_d;
+    let round = |mm: f64| (mm / scale * 1e6).round() / 1e6;
+    p["width"] = json!(round(w));
+    p["depth"] = json!(round(d));
+    p["sizing"] = json!("outside");
+    Ok(())
+}
+
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let kit = Kit::new(p)?;
     let input = input::read(&kit, p)?;

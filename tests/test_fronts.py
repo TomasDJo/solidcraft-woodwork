@@ -331,3 +331,16 @@ def test_wooden_runners(approval):
     assert notes and "grooved for the drawer runners" in notes[0], cutlist["parts"]
     b = boxes(results[7])
     assert b["B Drawer 1 Bottom"][3] - b["B Drawer 1 Bottom"][0] > b["B Drawer 1 Right"][3] - b["B Drawer 1 Left"][0], b
+
+
+def test_a_cabinet_sized_by_its_drawers_inside(approval):
+    # Size by Drawer inside, 672 x 672 mm (16 x 16 Gridfinity bins): the cabinet comes out
+    # 757.4 x 724 mm and keeps that as its ordinary size, which an edit keeps.
+    results = cli([plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 672, "drawer_depth": 672}),
+                   MEASURE, select("Cabinet Top"), plugin(approval, "edit", {"drawers": 3}), MEASURE])
+    size = results[0]["result"]["size"]
+    assert (size["width"], size["depth"]) == (757.4, 724), size
+    for measure in (results[1], results[4]):
+        box = boxes(measure)
+        inside = box["Cabinet Drawer 1 Bottom"]
+        assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (672, 672), inside
