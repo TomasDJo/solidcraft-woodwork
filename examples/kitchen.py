@@ -17,7 +17,7 @@ It uses every function of the plugin:
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
 - Joinery: confirmat screws in the floor units, dowels in the wall units
-- Edit cabinet: the second wall unit gets a third shelf after it is made, hung and drilled
+- Edit cabinet: the wall unit on the return gets a third shelf after it is made, hung, turned and drilled
 - Labels: the tall unit has each board's name written on it
 - Panel: an end panel on the tall unit's free side and one at the open end of the return run
 - Worktop: oak over the base units and the corner cabinet, butt-jointed in the corner, with a
@@ -143,7 +143,9 @@ SINK = {"cutout": "plain", "cutout_length": 760, "cutout_width": 300, "cutout_y"
 steps += [select("Base 1 Top", "Base 2 Top", "Base 3 Rail front", "Corner Top", "Base 4 Top"),
           build.plugin(approval, "worktop", {"right_overhang": 18, **SINK})]
 # One more shelf in a wall unit that is already hung, has an oak door and is drilled for dowels.
-steps += [select("Wall 2 Top"), build.plugin(approval, "edit", {"shelves": 3})]
+# The last cabinet made: an Edit rebuilds the history after it, which for Wall 2 ran past the
+# 30 s limit on CI.
+steps += [select("Wall 4 Top"), build.plugin(approval, "edit", {"shelves": 3})]
 steps += [step("joint.drive", joint=joint, value=value) for joint, value in OPEN.items()]
 steps += [step("select.clear"), step("component.activate", component="root"),
           # A run draws as many sheets as fit in its 30 s; the next carries on.
