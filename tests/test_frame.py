@@ -93,12 +93,12 @@ def test_edit_keeps_a_parameter_change_and_place_beside_a_cabinet(approval):
 
 def test_what_a_frame_refuses(approval):
     start = [frame(approval), select("Frame Leg front left")]
-    for steps in (start + [plugin(approval, "joinery", {"type": "dowel"})],
+    for steps in (start + [plugin(approval, "edit", {"joints": "dowels"})],
                   start + [plugin(approval, "panel", {"kind": "end"})],
                   start + [plugin(approval, "edit", {"shelves": 2})],
                   [frame(approval, leg=10)]):
         assert refused(steps), steps
-    assert "is a frame" in refused(start + [plugin(approval, "joinery", {"type": "dowel"})])
+    assert "is a frame" in refused(start + [plugin(approval, "panel", {"kind": "end"})])
 
 
 def test_a_worktop_over_a_frame(approval):

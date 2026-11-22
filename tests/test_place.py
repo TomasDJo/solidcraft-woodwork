@@ -52,7 +52,7 @@ def test_auto_goes_by_the_selected_board(approval):
                    plugin(approval, "corner", {"place": "auto", "name": "T", "selection": [{"type": "body", "name": "A Top"}]}),
                    pick(),
                    plugin(approval, "cabinet", {**auto, "name": "O"}),
-                   plugin(approval, "joinery", {"selection": ["L Shelf 1"]}),
+                   plugin(approval, "edit", {"joints": "confirmat", "selection": ["L Shelf 1"]}),
                    plugin(approval, "material", {"material": "Oak", "scope": "parts", "selection": ["R Top", "R Bottom"]}),
                    plugin(approval, "edit", {"shelves": 3, "selection": ["R Side L"]}),
                    MEASURE])

@@ -196,7 +196,7 @@ def test_wall_mounts(approval):
                    MEASURE,
                    plugin(approval, "cutlist"),
                    select("A Side L"),
-                   plugin(approval, "joinery", {"type": "confirmat"}),
+                   plugin(approval, "edit", {"joints": "confirmat"}),
                    select("A Side L"),
                    plugin(approval, "drawing", {"scope": "selected"}),
                    MEASURE,

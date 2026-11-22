@@ -18,8 +18,7 @@ It uses every function of the plugin:
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
 - Joinery chosen in the Cabinet dialog: confirmat screws in most floor units (biscuits in the tall
   one, cam locks in the drawer unit, pocket screws in the sink base), dowels in the wall units (a
-  dado in the first) and inside; the older Joinery function drills the wall unit on the return,
-  made with none
+  dado in the first) and inside
 - Edit cabinet: the wall unit on the return gets a third shelf after it is made, hung, turned and drilled
 - Labels: the tall unit has each board's name written on it
 - Panel: an end panel on the tall unit's free side and one at the open end of the return run
@@ -73,7 +72,7 @@ WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
                "wall_mount": "cleat", "place": "right"}
-WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1, "joints": "none"}  # drilled by Joinery
+WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
 OPEN = {"Tall Door hinge": 40, "Base 3 Door L hinge": 70, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
         "Corner Door hinge": 60, "Corner Door return fold": 60, "Base 4 Door hinge": 50, "Base 4 Drawer 1 slide": 250,
@@ -112,15 +111,12 @@ for name, left, params in HANGING:
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
 steps += [select(f"{FLOOR[-1][0]} Side R"), build.plugin(approval, "corner", {**CORNER, "name": "Corner"}),
           select(f"{HANGING[-1][0]} Top"), build.plugin(approval, "corner", {**WALL_CORNER, "name": "Wall corner"})]
-# The units on the return are made on the origin (Wall 4 drilled there by the older Joinery
-# function, which wants a cabinet square to the axes), then turned a quarter and put at the end
-# of the corner cabinet's return.
+# The units on the return are made on the origin, then turned a quarter and put at the end of
+# the corner cabinet's return.
 end = BACK - CORNER["return"]
 for name, params, z, like in (("Base 4", RETURN, 0, "Corner"), ("Wall 4", WALL_RETURN, WALL_Z, "Wall corner")):
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
-    drill = [select(f"{name} Top"), build.plugin(approval, "joinery", {"type": "dowel"})] if name == "Wall 4" else []
     steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name, "place": "origin"}),
-              *drill,
               *([select("Base 4 Side R"), build.plugin(approval, "panel", {"kind": "end"})] if name == "Base 4" else []),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),

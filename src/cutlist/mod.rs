@@ -184,7 +184,8 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let ending = |end: &str| features.iter().filter(|f| f.ends_with(end)).count();
     // Cabinets with a feature of this name, such as `<Cabinet> Side L pins`.
     let cabinets = |end: &'static str| features.iter().filter_map(move |f| f.strip_suffix(end));
-    // ponytail: a screw or dowel is a round hole in a board Joinery drills into (the bottom,
+    // ponytail: a design drilled by the Joinery function of 0.2.0 and before: a screw or dowel
+    // is a round hole in a board it drilled into (the bottom,
     // top, a sink base's rails), so a hole the user drills
     // there by hand is counted too.
     let holes = |cabinet: &str| -> u64 {
@@ -270,7 +271,7 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
     // The joinery chosen when a cabinet was built counts its fasteners in its parameters
-    // (`joint::hardware`); an old Joinery's line of the same item takes them in.
+    // (`joint::hardware`); the old Joinery function's line of the same item takes them in.
     let cabinets = (bodies.iter()).filter_map(|b| {
         b.strip_suffix(" Side L")
             .or(b.strip_suffix(crate::frame::MARK))

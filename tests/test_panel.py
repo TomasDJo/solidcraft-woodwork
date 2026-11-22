@@ -86,7 +86,7 @@ def test_not_beside_a_cabinet_and_on_a_moved_one(approval):
     # C left of B (x -900 to -300), moved and held: an end panel on its left, then joinery,
     # which takes C to the origin and back
     results = cli([*beside, select("C Side L"), plugin(approval, "panel", {"thickness": 25}), MEASURE,
-                   select("C Top"), plugin(approval, "joinery"), MEASURE])
+                   select("C Top"), plugin(approval, "edit", {"joints": "confirmat"}), MEASURE])
     box = boxes(results[7])
     assert box["B End panel R"] == [300, -280, 0, 318, 280, 720], box["B End panel R"]
     assert box["C End panel L"] == [-925, -280, 0, -900, 280, 720], box["C End panel L"]

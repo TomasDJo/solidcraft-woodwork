@@ -72,7 +72,7 @@ const CABINETS: [&str; 12] = [
 const FRAME_ONLY: [&str; 3] = ["stretchers", "frame_legs", "joint"];
 
 /// The dialog hook's reply for Edit: the fields the selected cabinet does not take, hidden.
-/// A corner cabinet has a `<Prefix>_return` parameter (as Joinery tells it), a frame its
+/// A corner cabinet has a `<Prefix>_return` parameter, a frame its
 /// `<Name> Leg front left` body and only its own fields. Nothing picked, or
 /// not a cabinet: everything shown. Hidden only from view, so a run is the same.
 /// `design` is `document.inspect`'s reply with body names.
@@ -200,6 +200,23 @@ pub fn merge(
     // alike) unless the edit gives one.
     if was_mixed && !mixed(&params) && changes["drawer_height"].is_null() {
         params.insert("drawer_height".into(), json!(0));
+    }
+    // Holes drilled by the Joinery function of 0.2.0 and before (`joinery` beside the values):
+    // the same kind of joint at build, unless the edit or the cabinet chose one.
+    let method = |p: &Map<String, Value>| {
+        p.get("joints").and_then(Value::as_str).unwrap_or("none") != "none"
+    };
+    let asked = changes["joints"].as_str().is_some_and(|m| m != "keep");
+    if let Some(kind) = remembered["joinery"]
+        .as_str()
+        .filter(|_| !method(&params) && !asked)
+    {
+        let joints = if kind == "dowel" {
+            "dowels"
+        } else {
+            "confirmat"
+        };
+        params.insert("joints".into(), json!(joints));
     }
     params.insert("_existing".into(), Value::Object(existing));
     Ok((entry.into(), Value::Object(params)))

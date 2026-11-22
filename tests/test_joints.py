@@ -48,12 +48,12 @@ def test_dowels_and_confirmat_follow_a_resize_and_edit(approval):
     assert not [f["name"] for f in results[14]["timeline"] if f["warning"] or f["error"]]
 
 
-def test_a_sink_base_and_an_old_cabinet(approval):
-    # A sink base: one dowel in the middle of each rail. An old cabinet (no method remembered)
-    # drilled by the Joinery entry keeps its holes through an Edit, and gets none of its own.
+def test_a_sink_base_and_joinery_by_edit(approval):
+    # A sink base: one dowel in the middle of each rail. A cabinet made without joinery gets it
+    # by Edit, and keeps it through the next Edit (its shelf unjoined: none inside).
     results = cli([plugin(approval, "cabinet", {"name": "S", "kind": "sink", "doors": 2, "place": "origin"}),
                    plugin(approval, "cabinet", {"name": "O", "shelves": 0, "joints": "none", "joints_inner": "none", "place": "origin"}),
-                   select("O Top"), plugin(approval, "joinery", {"type": "dowel"}),
+                   select("O Top"), plugin(approval, "edit", {"joints": "dowels"}),
                    select("O Top"), plugin(approval, "edit", {"shelves": 1}), MEASURE, plugin(approval, "cutlist")])
     measure = results[6]
     assert cylinders(measure, "S Rail front") == 2 and cylinders(measure, "S Rail back") == 2

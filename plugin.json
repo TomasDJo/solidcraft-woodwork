@@ -179,19 +179,6 @@
         }
       },
       {
-        "name": "joinery",
-        "effect": "edit",
-        "slots": [{ "kind": "menu", "name": "Joinery" }, { "kind": "ribbon", "name": "Joinery" }],
-        "input_schema": {
-          "type": "object", "x-solidcraft-icon": "icons/joinery.svg",
-          "required": ["selection", "type"],
-          "properties": {
-            "selection": { "type": "array", "title": "Selected cabinet", "description": "Pick any board of the cabinet to drill.", "maxItems": 1 },
-            "type": { "type": "string", "title": "Type", "description": "How the sides are fixed to the bottom and top: holes are drilled where they meet.", "default": "confirmat", "oneOf": [{"const": "confirmat", "title": "Confirmat screws", "description": "Thick 7 x 50 mm furniture screws: a 7 mm hole through the side and a 5 mm pilot hole."}, {"const": "dowel", "title": "Dowels", "description": "8 mm holes for 8 x 35 mm wooden pegs glued into both boards."}] }
-          }
-        }
-      },
-      {
         "name": "material",
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Material" }, { "kind": "ribbon", "name": "Material" }],

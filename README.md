@@ -25,7 +25,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
   a run stays together when a cabinet changes size.
 - **Edit cabinet**: change shelves, doors, drawers and more on a cabinet that is already made.
-- **Joinery**: confirmat screw or dowel holes at the carcass corners.
+- **Joinery**: chosen in the Cabinet and Corner dialogs: dowels, confirmat or plain screws, cam locks, pocket screws, biscuits or a dado, counted in the cut list.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
 - **Woodwork settings**: the material, thickness, reveal, handles and plinth new cabinets start with, kept in the design.
 - **Panel**: an end panel or a filler on one end of a cabinet, following its sizes.
@@ -96,7 +96,7 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 
 - `plugin.json`: manifest. Entries, their input forms, and the app commands used.
 - `src/lib.rs`: entry dispatch and the wasm guest.
-- `src/cabinet/`, `src/corner/`, `src/edit/`, `src/joinery/`, `src/panel/`, `src/worktop/`, `src/material.rs`, `src/cutlist/`,
+- `src/cabinet/`, `src/corner/`, `src/edit/`, `src/joint/`, `src/panel/`, `src/worktop/`, `src/material.rs`, `src/cutlist/`,
   `src/drawing/`: one module per function, plain Rust. The cut list's files are written by
   `src/pdf/` and `src/dxf/`, its cutting layouts by `src/nesting/`. A folder holds the code in `mod.rs` (the box cabinet also has
   `input.rs`, `doors.rs` and `drawers.rs`, the corner cabinet `input.rs`, `doors.rs` and `diagonal.rs`) and its unit tests

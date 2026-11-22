@@ -63,7 +63,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Each cabinet is a component (moves as one piece, nests in a room component)
 - [x] Place a new cabinet right of, left of or above the selected one
 - [x] Materials (per cabinet or selected parts) and a sheet estimate in the cut list
-- [x] Joinery on the selected cabinet: confirmat or dowel holes at the carcass corners
+- [x] Joinery on the selected cabinet: confirmat or dowel holes at the carcass corners (removed: joinery is chosen at build; Edit gives an old drilled cabinet the same joint)
 - [x] Doors and drawers are sub-components with hinge and slide joints
 - [x] Drawers: a drawer unit with fronts and boxes sized for 12.7 mm slides
 - [x] Hardware list in the cut list: hinges, slides, shelf pins, screws, dowels, handles

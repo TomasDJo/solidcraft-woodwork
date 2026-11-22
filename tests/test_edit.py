@@ -20,7 +20,7 @@ def test_shelves_and_handles_on_a_cabinet_that_was_moved_and_resized(approval):
                    select("A Top"),
                    plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "B", "place": "right", "match": "selected"}),
                    select("A Top"),
-                   plugin(approval, "joinery", {"type": "dowel"}),
+                   plugin(approval, "edit", {"joints": "dowels"}),
                    MEASURE,
                    *move("A:1", [0, 500, 300]),
                    change("A_width", "800 mm"),
@@ -30,7 +30,7 @@ def test_shelves_and_handles_on_a_cabinet_that_was_moved_and_resized(approval):
                    change("A_height", "900 mm"),
                    MEASURE,
                    {"command": "component.list", "params": {"compact": True}}])
-    assert results[13]["result"]["edited"] and results[13]["result"]["joinery"] == "dowel", results[13]
+    assert results[13]["result"]["edited"], results[13]
     box = boxes(results[14])
     # three shelves now, and nothing left of the cabinet as it was
     assert sorted(n for n in box if n.startswith("A Shelf")) == ["A Shelf 1", "A Shelf 2", "A Shelf 3"], sorted(box)

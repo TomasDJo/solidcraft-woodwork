@@ -14,7 +14,6 @@ without doors.
 - [Building a run: Place and Match selected](#building-a-run-place-and-match-selected)
 - [Changing sizes](#changing-sizes)
 - [Edit cabinet](#edit-cabinet)
-- [Joinery](#joinery)
 - [Material](#material)
 - [Panel](#panel)
 - [Worktop](#worktop)
@@ -115,8 +114,8 @@ and no box. Drawer front height sets its height. The boxes below are half the sh
 deep, so they stop short of the trap; for deeper ones, cut a U round the trap yourself. A
 sink base with drawers changed back to a standard cabinet with Edit gets full drawers again. The back is your
 choice: Back None leaves it open for the pipes. Place works as on any cabinet;
-pick a rail or a side to select it, as it has no top. Joinery screws the sides to the rails: the
-first hole of a row goes into the front rail, the last into the back one.
+pick a rail or a side to select it, as it has no top. Its joinery fixes the sides to the
+bottom and to each rail, one fastener in the middle of a rail.
 
 There is no oven housing: size a tall cabinet for your oven yourself.
 
@@ -317,8 +316,8 @@ pattern repeating the dowels up the rails. The sizes are the parameters `Name_wi
 The cut list lists the legs, aprons and stretchers as solid timber bought to length (length x
 width x thickness), not laid out on sheets, and counts the dowels, bed bolts and barrel nuts.
 Edit cabinet changes a frame's stretchers, legs and joint (Stretchers, Frame legs, Frame
-joint), keeping its sizes from Parameters; Material works on a frame. Joinery, Panel and
-Drawing are for cabinets and refuse a frame.
+joint), keeping its sizes from Parameters; Material works on a frame. Panel and Drawing are
+for cabinets and refuse a frame.
 
 The top: run [Worktop](#worktop) with a frame part picked. It goes over the legs' outer faces
 (plus the overhangs), on the aprons' top, and the cut list lists it bought to length. Run
@@ -332,8 +331,8 @@ shelves are.
 
 Select any part of a cabinet, then open **Cabinet** or **Corner cabinet**. The selection
 shows in the dialog as **Selected cabinet**. Click that field and pick another board in the
-model while the dialog is open, and the preview follows. Edit cabinet, Joinery, Material and
-Drawing have the same field.
+model while the dialog is open, and the preview follows. Edit cabinet, Material and Drawing
+have the same field.
 
 **Place** puts the new cabinet against the selected one, backs flush. That cabinet must
 stand square to the axes.
@@ -390,22 +389,13 @@ hinge side, drawers, drawer front height, Drawers at and back. With nothing pick
 board that is no cabinet's, it shows them all.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
-in Parameters, its doors keep their material, its joinery is drilled again (holes from the
-Joinery function too, unless the edit chooses a method of its own), and cabinets
+in Parameters, its doors keep their material, its joinery is made again, and cabinets
 matched to it still follow. Doors and drawers come back closed. Its end panels and fillers
 are made again to fit it.
 
-Works on cabinets made by 0.1.7 or later.
-
-## Joinery
-
-For cabinets made with Joinery None, such as those made before 0.2.0: a cabinet now gets
-its joinery when it is made ([Joinery at build](#joinery-at-build)), and one that has any is
-refused here. Drills the selected cabinet where its sides meet the bottom and top: holes for 7 x 50
-confirmat screws, or for 8 x 35 dowels. A sink base's sides are drilled into its two rails
-instead of a top, one hole each. The holes follow the cabinet's parameters; their
-number is set when they are drilled. The rail between drawers and doors is not drilled (nor
-are dividers): choose Joinery inside when the cabinet is made for those.
+Works on cabinets made by 0.1.7 or later. A cabinet drilled by the Joinery function of
+0.2.0 and before gets the same kind of joint at build (confirmat or dowels) when an Edit gives
+it no method of its own; until then the cut list still counts its old holes.
 
 ## Material
 
@@ -679,7 +669,7 @@ quarter turn) is drawn from its own front.
   `woodwork.corner` and so on, with the dialog's fields as its arguments. Every field
   with a default is required there, so the agent sends them all, the defaults with what it wants changed; a
   field the dialog would hide is left out. From SolidCraft 0.46 the same check applies to a
-  script's `plugin.run` and `woodwork.<entry>` (except Joinery, Material and Drawing): pass
+  script's `plugin.run` and `woodwork.<entry>` (except Material and Drawing): pass
   every field the dialog would show. Cabinet and Corner cabinet are the exception (0.46,
   Woodwork settings): a field left out takes the stored setting, and only then must every
   field be there.
