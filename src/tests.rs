@@ -34,7 +34,7 @@ fn drawing_fills_in_ids_and_replaces_the_old_sheet() {
         json!({"name": name, "volume_mm3": 18.0 * 560.0 * 720.0,
         "bbox": {"min": [x, -280, 0], "max": [x + 18.0, 280, 720]}})
     };
-    let run_with = |drawings: Value| {
+    let run_with = |drawings: Value, noted: Value| {
         let mut called: Vec<(String, Value)> = Vec::new();
         let mut views = 0;
         let mut run = |command: &str, args: Value| {
@@ -47,7 +47,8 @@ fn drawing_fills_in_ids_and_replaces_the_old_sheet() {
                     {"id": 3, "name": "Base", "occurrences": [{"id": 4, "parent": 0}]}]}),
                 "drawing.list" => drawings.clone(),
                 "drawing.open" | "drawing.create" => json!({"sources": [{"id": "src"}],
-                    "sheets": [{"id": "old", "name": "Base"}]}),
+                    "sheets": [{"id": "old", "name": "Base", "title_block": {"cells": [{"name": "mass"}]}}],
+                    "properties": {drawing::KEY: noted}}),
                 "drawing.sheet.add" => json!({"sheet": "new", "sheets": []}),
                 "drawing.view.base" | "drawing.view.projected" => {
                     views += 1;
@@ -59,10 +60,11 @@ fn drawing_fills_in_ids_and_replaces_the_old_sheet() {
         let reply = execute("drawing", &json!({"scope": "all"}), &mut run);
         (called, reply)
     };
-    let (called, reply) = run_with(json!({"drawings": [{"id": "d1", "name": "Woodwork"}]}));
+    let woodwork = json!({"drawings": [{"id": "d1", "name": "Woodwork"}]});
+    let (called, reply) = run_with(woodwork.clone(), json!({"old": "0", "deleted": "1"}));
     assert_eq!(
         reply.unwrap(),
-        json!({"drawing": "Woodwork", "sheets": ["Base"]})
+        json!({"drawing": "Woodwork", "sheets": ["Base"], "remaining": [], "message": "Drew 1 sheet"})
     );
     let find = |command: &str| called.iter().find(|c| c.0 == command).unwrap().1.clone();
     assert_eq!(find("drawing.open"), json!({"drawing": "d1"}));
@@ -72,6 +74,11 @@ fn drawing_fills_in_ids_and_replaces_the_old_sheet() {
         find("drawing.sheet.add")["documents"],
         json!({"source": "src", "component": 3})
     );
+    // its title block without the cells that weigh the cabinet
+    assert_eq!(
+        find("drawing.sheet.add")["title_block"],
+        json!({"cells": []})
+    );
     assert_eq!(find("drawing.view.base")["sheet"], "new");
     assert_eq!(find("drawing.view.projected")["parent"], "v1");
     let right = called
@@ -79,18 +86,40 @@ fn drawing_fills_in_ids_and_replaces_the_old_sheet() {
         .rfind(|c| c.0 == "drawing.dimension.add")
         .unwrap();
     assert_eq!(right.1["view"], "v2");
-    // the old sheet goes once the new one is drawn, and the drawing is closed
+    // the old sheet goes once the new one is drawn, the new one's fingerprint is noted (the
+    // old sheet's dropped), and the drawing is closed
     let names: Vec<&str> = called.iter().map(|c| c.0.as_str()).collect();
     assert_eq!(
-        names[names.len() - 2..],
-        ["drawing.sheet.delete", "drawing.close"]
+        names[names.len() - 4..],
+        [
+            "drawing.note.add",
+            "drawing.sheet.delete",
+            "drawing.properties.set",
+            "drawing.close"
+        ]
     );
     assert_eq!(
-        called[names.len() - 2].1,
+        called[names.len() - 3].1,
         json!({"sheet": "old", "contents": "delete"})
     );
+    let noted = find("drawing.properties.set");
+    assert_eq!(noted["key"], drawing::KEY);
+    let print = noted["value"]["new"].clone();
+    assert_eq!(noted["value"], json!({"new": print}));
+    // Drawn again with that fingerprint on its sheet: up to date, nothing drawn.
+    let (called, reply) = run_with(woodwork, json!({"old": print}));
+    let reply = reply.unwrap();
+    assert_eq!(reply["sheets"], json!([]));
+    assert_eq!(reply["remaining"], json!([]));
+    assert_eq!(reply["message"], "All sheets were up to date");
+    assert!(!called.iter().any(|c| c.0 == "drawing.sheet.add"));
+    let kept = called
+        .iter()
+        .find(|c| c.0 == "drawing.properties.set")
+        .unwrap();
+    assert_eq!(kept.1["value"], json!({"old": print}));
     // no drawing yet: one is made, and its empty first sheet deleted
-    let (called, _) = run_with(json!({"drawings": []}));
+    let (called, _) = run_with(json!({"drawings": []}), json!(null));
     let created = called.iter().find(|c| c.0 == "drawing.create").unwrap();
     assert_eq!(created.1["units"], "mm");
     assert!(!called.iter().any(|c| c.0 == "drawing.open"));
@@ -104,6 +133,49 @@ fn drawing_fills_in_ids_and_replaces_the_old_sheet() {
     assert_eq!(err, "scope must be selected or all");
     let err = execute("drawing", &json!({"scope": "all"}), &mut run).unwrap_err();
     assert_eq!(err, "the design has no cabinets");
+}
+
+#[test]
+fn drawing_every_cabinet_stops_before_the_command_limit() {
+    // 25 cabinets of 11 commands a sheet: 22 fit after the 7 that read and open, and the 3
+    // that end the run.
+    let n = 25;
+    let side = |name: String, x: f64| {
+        json!({"name": name, "volume_mm3": 18.0 * 560.0 * 720.0,
+        "bbox": {"min": [x, -280, 0], "max": [x + 18.0, 280, 720]}})
+    };
+    let bodies: Vec<Value> = (0..n)
+        .flat_map(|i| {
+            let x = i as f64 * 600.0;
+            [
+                side(format!("C{i} Side L"), x),
+                side(format!("C{i} Side R"), x + 582.0),
+            ]
+        })
+        .collect();
+    let components: Vec<Value> = (0..n)
+        .map(|i| json!({"id": i + 1, "name": format!("C{i}"), "occurrences": [{"id": 100 + i, "parent": 0}]}))
+        .chain([json!({"id": 0, "occurrences": []})])
+        .collect();
+    let mut count = 0;
+    let mut run = |command: &str, _: Value| {
+        count += 1;
+        Ok(match command {
+            "inspect.measure" => json!({ "bodies": bodies }),
+            "component.list" => json!({ "components": components }),
+            "drawing.create" => json!({"sources": [{"id": "src"}], "sheets": []}),
+            "drawing.sheet.add" => json!({"sheet": format!("s{count}")}),
+            _ => json!({}),
+        })
+    };
+    let reply = execute("drawing", &json!({"scope": "all"}), &mut run).unwrap();
+    assert_eq!(reply["sheets"].as_array().unwrap().len(), 22);
+    assert_eq!(reply["remaining"], json!(["C22", "C23", "C24"]));
+    assert_eq!(
+        reply["message"],
+        "Drew 22 of 25 sheets; run Drawing again for the rest"
+    );
+    assert!(count <= 256, "{count}");
 }
 
 #[test]

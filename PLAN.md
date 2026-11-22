@@ -101,6 +101,7 @@ only), 9 (no slide holes) and 10 (DXF per sheet, labels, no DXF per part).
 - [x] Part labels, a sticker per board (A4, 3 x 8)
 - [x] DXF per sheet: parts, names and holes on a layer per diameter and depth
 - [x] Shop drawings: a sheet per cabinet with front, right and iso views, sizes and the board list
+- [x] Drawing a big design within the 30 s run limit: only changed sheets, more runs when needed
 - [x] A tooltip on every dialog field and choice, in plain words
 - [x] Version 0.2.0, for SolidCraft 0.45
 - [x] SolidCraft 0.46: the dialogs hide the fields that do not apply (conditional fields)

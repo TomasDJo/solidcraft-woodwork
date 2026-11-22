@@ -136,9 +136,12 @@ for cabinet in made:
 steps += [select("Wall 2 Top"), build.plugin(approval, "edit", {"shelves": 3})]
 steps += [step("joint.drive", joint=joint, value=value) for joint, value in OPEN.items()]
 steps += [step("select.clear"), step("component.activate", component="root"),
-          build.plugin(approval, "drawing", {"scope": "all"}),
+          # A run draws as many sheets as fit in its 30 s; the next carries on.
+          *[build.plugin(approval, "drawing", {"scope": "all"})] * 4,
           build.plugin(approval, "cutlist")]
-cutlist = build.cli(steps, "--in", str(OUT), "--save", str(OUT))[-1]["result"]
+results = build.cli(steps, "--in", str(OUT), "--save", str(OUT))
+assert results[-2]["result"]["remaining"] == [], results[-2]
+cutlist = results[-1]["result"]
 
 OUT.with_name(OUT.stem + "-cutlist.csv").write_text(cutlist["csv"], encoding="utf-8", newline="\n")
 for sheet in cutlist["sheets"]:

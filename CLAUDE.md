@@ -61,8 +61,11 @@ materials, joinery and cut lists.
   does not remember it.
 - One run is one undo step. A failed command discards the whole run. The result is ordinary
   features, so a design opens without the plugin.
-- Limits per run: 256 app commands, 30 s, 1 MiB result. No network access; we keep no plugin
-  data in the design (`storage@0.1`, below).
+- Limits per run: 256 app commands, 30 s (native command time included), 1 MiB result. The
+  manifest asks for `runtime.permissions.clock` so that `clock.now` gives Unix seconds (0
+  without it), which Drawing uses to stop in time (`lib.rs` `now`). No network access; we keep no plugin
+  data in the design (`storage@0.1`, below) beyond component metadata and the drawing's
+  fingerprints.
   Files: only `files.write-file` into a folder the manifest asks for under
   `runtime.permissions.files` and the user approves when installing (0.43: the install
   screen asks for a path). The plugin names the grant and a relative path and never learns
@@ -405,7 +408,23 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   and over the title block, so a list reaching the title block leaves it 1:50. A corner cabinet
   (`corner_views`) is drawn from the side of its open corner, the iso along that corner's
   diagonal. Corner cabinets get no dimensions; quarter turns only; A3 and mm only. 12 commands a
-  sheet, so about 20 cabinets a run (`drawing::budget`). Doors are closed by a `pose` of the
+  sheet. **Runs:** scope all skips a cabinet whose sheet is up to date: each sheet's
+  `drawing::fingerprint` (FNV-1a over its steps, component and occurrence ids in) is noted in
+  the drawing's property `io.github.tomasdjo.woodwork` (`{sheet id: fingerprint}`, written once
+  at the end, `drawing.properties.set`; it comes back in `drawing.open`'s reply), and a sheet
+  of the cabinet's name with the same one is kept (`drawing::up_to_date`). Then it draws sheets
+  while `drawing::fits`: under `STOP_S` (20 s, by `clock.now`) and the 256 commands, at least one
+  a run; each redrawn cabinet's old sheet is deleted right after its new one, so a stopped run
+  leaves one sheet a cabinet. The reply has `sheets` (drawn), `remaining` and `message`; the
+  app's status line only says Done, so the message is also logged (`log`). `drawing::budget`
+  refuses only when turned boards leave no room for one sheet. Measured on the sample kitchen
+  here: `drawing.open` (it answers with `drawing.inspect`, every title block's text) of the
+  existing drawing took 6.5 s with 11 sheets: a sheet whose title block has a cell reading the
+  component's `material` or `mass` weighs it each time (`title_block_text::with_values`
+  upstream), cold. So each sheet is added with `drawing::unweighed` (the first sheet's block
+  without those two cells): 2.7 ms for all 11. A sheet drawn before keeps its block until it is
+  drawn again (it has no fingerprint, so the next All does). `inspect.measure` 1 s, a sheet
+  about 0.15 s; CI is about three times slower. Doors are closed by a `pose` of the
   cabinet's ` hinge`, ` fold` and ` slide` joints at 0. The drawing is set to mm (create and
   `drawing.set`), also in an inch design. A sheet points at the cabinet's component and bodies:
   after Edit (which builds a new component) its views are blank and its dimensions lost until it

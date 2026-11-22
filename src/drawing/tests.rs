@@ -41,14 +41,54 @@ fn joints() -> Value {
 }
 
 #[test]
-fn refuses_more_than_a_run_can_do() {
-    assert!(budget(20, 8).is_ok()); // 8 + 240 + 8 = 256
-    let err = budget(20, 9).unwrap_err();
+fn refuses_a_run_with_no_room_for_one_sheet() {
+    assert!(budget(234).is_ok()); // 10 + 12 + 234 = 256
+    let err = budget(235).unwrap_err();
     assert!(
-        err.starts_with("20 cabinets need about 257 commands"),
+        err.starts_with("235 open doors and drawers need about 257 commands"),
         "{err}"
     );
     assert!(err.contains("Selected cabinet"), "{err}");
+}
+
+#[test]
+fn stops_starting_sheets_after_20_seconds_or_256_commands() {
+    assert!(fits(0, 100, 12));
+    assert!(fits(19, 100, 12));
+    assert!(!fits(20, 100, 12));
+    // room for the sheet and the three commands that end the run
+    assert!(fits(0, 241, 12));
+    assert!(!fits(0, 242, 12));
+}
+
+#[test]
+fn a_sheet_that_would_come_out_the_same_is_up_to_date() {
+    let steps = sheet(&measure(), &Local::new(), &tree(), &joints(), "Base").unwrap();
+    let print = fingerprint(&steps);
+    assert_eq!(print.len(), 16);
+    assert_eq!(print, fingerprint(&steps.clone()));
+    // Edit builds a new component: a new fingerprint.
+    let mut edited = tree();
+    edited["components"][2]["id"] = json!(9);
+    let other = sheet(&measure(), &Local::new(), &edited, &joints(), "Base").unwrap();
+    assert_ne!(print, fingerprint(&other));
+    // So is a resize: other sizes in its board list.
+    let mut wider = measure();
+    wider["bodies"][1]["bbox"]["max"][0] = json!(400.0);
+    let other = sheet(&wider, &Local::new(), &tree(), &joints(), "Base").unwrap();
+    assert_ne!(print, fingerprint(&other));
+    let drawing = json!({"sheets": [{"id": "s1", "name": "Base"}, {"id": "s2", "name": "Base 2"}],
+                         "properties": {KEY: {"s1": print, "s2": "0"}}});
+    assert!(up_to_date(&drawing, "Base", &print));
+    assert!(!up_to_date(&drawing, "Base 2", &print)); // another fingerprint
+    let mut gone = drawing.clone();
+    gone["sheets"].as_array_mut().unwrap().remove(0); // its sheet deleted by hand
+    assert!(!up_to_date(&gone, "Base", &print));
+    assert!(!up_to_date(
+        &json!({"sheets": [{"id": "s1", "name": "Base"}]}),
+        "Base",
+        &print
+    ));
 }
 
 #[test]
@@ -369,4 +409,24 @@ fn the_views_take_in_the_panels() {
     ));
     let steps = sheet(&m, &Local::new(), &tree(), &joints(), "Base").unwrap();
     assert_eq!(steps[1].1["scale"], "1:15");
+}
+
+#[test]
+fn the_title_block_does_not_weigh_the_cabinet() {
+    let cell = |name: &str, rect: [f64; 4]| json!({"name": name, "rect_mm": rect});
+    let block = json!({"size_mm": [180.0, 49.0], "cells": [
+        cell("title", [-180.0, 0.0, -68.0, 14.0]),
+        cell("material", [-180.0, 24.0, -100.0, 34.0]),
+        cell("finish", [-100.0, 24.0, -30.0, 34.0]),
+        cell("mass", [-30.0, 24.0, 0.0, 34.0]),
+    ]});
+    let light = unweighed(&block);
+    assert_eq!(light["size_mm"], block["size_mm"]);
+    assert_eq!(
+        light["cells"],
+        json!([
+            cell("title", [-180.0, 0.0, -68.0, 14.0]),
+            cell("finish", [-180.0, 24.0, 0.0, 34.0])
+        ])
+    );
 }

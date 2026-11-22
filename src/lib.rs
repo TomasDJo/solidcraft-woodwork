@@ -346,6 +346,14 @@ pub fn save(entry: &str, params: &Value, result: &mut Value, write: Write) -> Re
     Ok(())
 }
 
+/// Unix seconds, or 0 without the manifest's clock permission (and in unit tests).
+fn now() -> u64 {
+    #[cfg(target_arch = "wasm32")]
+    return guest::craft::plugin::clock::now();
+    #[cfg(not(target_arch = "wasm32"))]
+    0
+}
+
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     let summary = entries(entry, params, run)?;
     // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
@@ -683,6 +691,13 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
         }
         "drawing" => {
             // A sheet per cabinet in the drawing Woodwork; a cabinet drawn again gets a new one.
+            // All: only the cabinets whose sheet would change, and as many as fit in this run.
+            let start = now();
+            let used = std::cell::Cell::new(0);
+            let run = &mut |command: &str, args: Value| {
+                used.set(used.get() + 1);
+                run(command, args)
+            };
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": "summary"}),
@@ -704,7 +719,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     select::owner(&measure, b).is_some_and(|c| names.iter().any(|n| n == c))
                 })
                 .collect();
-            drawing::budget(names.len(), turned.len())?;
+            drawing::budget(turned.len())?;
             let tree = run("component.list", json!({"compact": true}))?;
             let joints = run("joint.list", json!({}))?;
             let mut local = std::collections::BTreeMap::new();
@@ -732,26 +747,81 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     json!({"name": drawing::DRAWING, "template": "iso-a3-assembly", "units": "mm"}),
                 )?,
             };
-            let stale = drawing::stale(&opened, &names, found.is_none());
-            for steps in sheets {
+            let all = params["scope"] == "all";
+            let mut todo = (names.iter().zip(sheets))
+                .map(|(name, steps)| (name, drawing::fingerprint(&steps), steps))
+                .filter(|(name, print, _)| !all || !drawing::up_to_date(&opened, name, print))
+                .peekable();
+            let (mut drawn, mut gone, mut noted) = (Vec::new(), Vec::new(), json!({}));
+            // A title block that does not weigh the cabinet, or each open of the drawing does.
+            // ponytail: the first sheet's block, the template's unless the user changed it.
+            let block = (opened["sheets"][0]["title_block"].is_object())
+                .then(|| drawing::unweighed(&opened["sheets"][0]["title_block"]));
+            // At least one sheet a run, so that running it again always gets on.
+            while let Some((name, print, steps)) = todo.next_if(|(_, _, steps)| {
+                let elapsed = now().saturating_sub(start);
+                drawn.is_empty() || drawing::fits(elapsed, used.get(), steps.len() + 1)
+            }) {
                 let mut ids = std::collections::BTreeMap::new();
                 ids.insert("source".to_string(), opened["sources"][0]["id"].clone());
-                for (command, args, keep) in steps {
+                for (command, mut args, keep) in steps {
+                    if let (true, Some(block)) = (command == "drawing.sheet.add", block.as_ref()) {
+                        args["title_block"] = block.clone();
+                    }
                     let reply = run(command, drawing::fill(&args, &ids))?;
                     if !keep.is_empty() {
                         let id = reply.get("view").unwrap_or(&reply["sheet"]);
                         ids.insert(keep.to_string(), id.clone());
                     }
                 }
+                // Its old sheet goes now, so a run that stops leaves one sheet a cabinet.
+                for sheet in drawing::stale(&opened, std::slice::from_ref(name), false) {
+                    run(
+                        "drawing.sheet.delete",
+                        json!({"sheet": sheet, "contents": "delete"}),
+                    )?;
+                    gone.push(sheet);
+                }
+                if let Some(id) = ids["sheet"].as_str() {
+                    noted[id] = json!(print);
+                }
+                drawn.push(name.clone());
             }
-            for sheet in stale {
+            let remaining: Vec<String> = todo.map(|(name, _, _)| name.clone()).collect();
+            for sheet in drawing::stale(&opened, &[], found.is_none()) {
                 run(
                     "drawing.sheet.delete",
                     json!({"sheet": sheet, "contents": "delete"}),
                 )?;
             }
+            // The fingerprints of the sheets still there, and of those just drawn.
+            let old = opened["properties"][drawing::KEY].as_object().cloned();
+            for (id, print) in old.into_iter().flatten() {
+                let kept = (opened["sheets"].as_array().into_iter().flatten())
+                    .any(|s| s["id"] == id.as_str() && !gone.contains(&s["id"]));
+                if kept && noted.get(&id).is_none() {
+                    noted[id] = print;
+                }
+            }
+            run(
+                "drawing.properties.set",
+                json!({"key": drawing::KEY, "value": noted}),
+            )?;
             run("drawing.close", json!({}))?;
-            Ok(json!({"drawing": drawing::DRAWING, "sheets": names}))
+            let s = |n: usize| if n == 1 { "" } else { "s" };
+            let message = match (drawn.len(), remaining.len()) {
+                (0, 0) => "All sheets were up to date".to_string(),
+                (d, 0) if d == names.len() => format!("Drew {d} sheet{}", s(d)),
+                (d, 0) => format!("Drew {d} sheet{}; the rest were up to date", s(d)),
+                (d, r) => format!(
+                    "Drew {d} of {} sheets; run Drawing again for the rest",
+                    d + r
+                ),
+            };
+            Ok(
+                json!({"drawing": drawing::DRAWING, "sheets": drawn, "remaining": remaining,
+                      "message": message}),
+            )
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }
@@ -791,6 +861,10 @@ mod guest {
                 craft::plugin::files::write_file(folder, name, data).map_err(|e| format!("{e:?}"))
             };
             crate::save(&entry, &params, &mut result, &mut write).map_err(invalid)?;
+            // The app's status line only says Done: the message goes to its log too.
+            if let Some(message) = result["message"].as_str() {
+                craft::plugin::log::log(craft::plugin::log::Level::Info, message);
+            }
             Ok(result.to_string())
         }
     }

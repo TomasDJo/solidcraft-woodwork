@@ -345,7 +345,8 @@ Each sheet has:
 - its boards, grouped by size as in the cut list (quantity, part, length x width x thickness,
   material), at the top right; a list longer than the room above the title block ends with a line
   that sends you to the cut list;
-- the cabinet's name, material and mass in the title block.
+- the cabinet's name in the title block (not its material and mass: working them out made
+  opening the drawing slow; the board list names each board's material).
 
 The drawing is with the design's drawings; print or export it from there. A turned cabinet (a
 quarter turn) is drawn from its own front.
@@ -354,8 +355,12 @@ quarter turn) is drawn from its own front.
   open corner, and its iso view looks into that corner (from the front left for a right corner).
 - **The board list is text, not the drawing's parts list.** A parts list counts components, and a
   cabinet's boards are bodies of one component, so it would only list the doors and drawers.
-- **About 20 cabinets in one run**: a sheet takes 12 of the 256 commands a run may make (and an
-  open door one more to measure). With more, Every cabinet says so; draw them one at a time.
+- **Every cabinet draws only the sheets that changed**: a cabinet whose sheet would come out the
+  same (not edited, resized or moved since) keeps it. Selected cabinet always draws it again.
+- **A big design can take more than one run**: a run may take 30 s and 256 commands, so Every
+  cabinet stops starting sheets after about 20 s (a sheet takes 12 commands) and answers with the
+  sheets drawn and those left, such as "Drew 6 of 13 sheets; run Drawing again for the rest". Run it
+  again until none are left: each run carries on where the last one stopped.
 - **Draw a cabinet again after Edit cabinet**: Edit builds the cabinet anew, and the old sheet's
   views go blank and its sizes are lost. A deleted cabinet's sheet stays until you delete it.
 - The drawing is in mm also in a design in inches.
