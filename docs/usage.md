@@ -36,6 +36,7 @@ component can hold its cabinets.
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Wall mount**, **Cleat height**, **Cleat thickness** | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
+| **Joinery**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length** | How the sides are fixed to the bottom and top: dowels (the default), confirmat screws or none. See [Joinery at build](#joinery-at-build). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
@@ -118,6 +119,33 @@ pick a rail or a side to select it, as it has no top. Joinery screws the sides t
 first hole of a row goes into the front rail, the last into the back one.
 
 There is no oven housing: size a tall cabinet for your oven yourself.
+
+### Joinery at build
+
+**Joinery** chooses how the sides are fixed to the bottom and the top (a sink base's to its
+bottom and its two rails), and the holes are drilled as the cabinet is made:
+
+- **Dowels** (the default): wooden pegs glued into both boards, hidden. Each hole is one
+  cut through both boards: blind in the side's inner face (5 mm short of coming through, at
+  most half the dowel), the rest into the end of the bottom or top, 2 mm longer than the dowel.
+  **Dowel diameter** 8 mm and **Dowel length** 35 mm by default; the dowel must be 4 mm
+  thinner than the boards and more than twice as long as it is thick.
+- **Confirmat screws**: 7 x 50 mm furniture screws from outside, heads showing: a 7 mm hole
+  through the side and a 5 mm pilot hole into the end, 50 mm less the side deep. Boards
+  under 40 mm only.
+- **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
+
+Along each joint the first and last are **Joint edge distance** (50 mm) from the front and
+back edges, and the rest are spread evenly, at most **Joint spacing** (150 mm) apart: a
+560 mm deep cabinet gets 5 a joint, 115 mm apart. A sink base's rails get one each, in their
+middle. The sizes are the cabinet's design parameters (`Name_joint_spacing`,
+`Name_joint_edge`, `Name_dowel_d`, `Name_dowel_length`): change one in Parameters, or change
+the depth, and the holes follow, their number too. The cut list counts what to buy from the
+parameters `Name_dowels` and `Name_confirmats` (the sum of the joints' counts, so they follow
+as well), as "Dowel, 8 x 35 mm" or "Confirmat screw, 7 x 50 mm". Edit cabinet changes the
+method (its sizes stay as they are in Parameters); Woodwork settings keeps the method new
+cabinets start with. Each joint is a cut and a pattern in the cabinet's history folder,
+named `Name joint Side L Bottom dowels` and `... dowels row`.
 
 ### Wall mount
 
@@ -294,7 +322,8 @@ Changes a cabinet after it is made. Select any part of it, fill in only what sho
 leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
-plinth type, plinth set-back, the kind (standard or sink base), the wall mount, a corner cabinet's doors and shape, and a
+plinth type, plinth set-back, the kind (standard or sink base), the wall mount, the
+[joinery](#joinery-at-build) (box cabinets; its sizes stay as they are in Parameters), a corner cabinet's doors and shape, and a
 [frame](#frame)'s stretchers, legs and joint (a cabinet's fields are refused on a frame, and
 the frame's on a cabinet). The reveal, the plinth set-back and the drawer
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
@@ -311,7 +340,8 @@ hinge side, drawers, drawer front height, Drawers at and back. With nothing pick
 board that is no cabinet's, it shows them all.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
-in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
+in Parameters, its doors keep their material, its joinery is drilled again (holes from the
+Joinery function too, unless the edit chooses a method of its own), and cabinets
 matched to it still follow. Doors and drawers come back closed. Its end panels and fillers
 are made again to fit it.
 
@@ -319,7 +349,9 @@ Works on cabinets made by 0.1.7 or later.
 
 ## Joinery
 
-Drills the selected cabinet where its sides meet the bottom and top: holes for 7 x 50
+For cabinets made with Joinery None, such as those made before 0.2.0: a cabinet now gets
+its joinery when it is made ([Joinery at build](#joinery-at-build)), and one that has any is
+refused here. Drills the selected cabinet where its sides meet the bottom and top: holes for 7 x 50
 confirmat screws, or for 8 x 35 dowels. A sink base's sides are drilled into its two rails
 instead of a top, one hole each. The holes follow the cabinet's parameters; their
 number is set when they are drilled. The rail between drawers and doors is not drilled (nor
@@ -333,7 +365,7 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 ## Woodwork settings
 
 The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
-holes, plinth height and plinth type. Set the ones you want and run it; Keep or an empty field
+holes, plinth height, plinth type and joinery (the Cabinet dialog's for now). Set the ones you want and run it; Keep or an empty field
 leaves what is stored, and the result shows everything stored now. The Cabinet and Corner
 cabinet dialogs then open with these values (the hint says "From Woodwork settings"), in the
 dialog's own unit: a 19.05 mm thickness shows as 0.75 in when Units is Inches. You can still

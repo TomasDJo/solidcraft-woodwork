@@ -6,7 +6,7 @@ def test_in_a_component_and_after_a_resize(approval):
     # Joinery: confirmat holes at the four corners of a cabinet inside a Kitchen component.
     # 560 deep: 3 screws per joint. They spread out with a resize to 900 deep.
     results = cli([{"command": "component.create", "params": {"name": "Kitchen"}},
-                   plugin(approval, "cabinet", {"name": "J", "shelves": 0}),
+                   plugin(approval, "cabinet", {"joints": "none", "name": "J", "shelves": 0}),
                    {"command": "select.set", "params": {"items": [{"type": "body", "name": "J Top"}]}},
                    plugin(approval, "joinery", {"type": "confirmat"}),
                    {"command": "inspect.measure", "params": {}},
@@ -26,14 +26,14 @@ def test_on_cabinets_that_have_been_moved(approval):
     # Joinery on cabinets that have been moved: placed to the right, and inside a moved room.
     # Every hole must remove material.
     # (B is as wide as A: drilled on the origin, its numbers are those of A's faces.)
-    results = cli([plugin(approval, "cabinet", {"name": "A", "height": 2100}),
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "A", "height": 2100}),
                    select("A Top"),
-                   plugin(approval, "cabinet", {"name": "B", "shelves": 0, "place": "right"}),
+                   plugin(approval, "cabinet", {"joints": "none", "name": "B", "shelves": 0, "place": "right"}),
                    select("B Top"),
                    plugin(approval, "joinery", {"type": "dowel"}),
                    {"command": "component.create", "params": {"name": "Room", "grounded": False}},
                    {"command": "occurrence.move", "params": {"occurrence": "Room:1", "translate": [2000, 500, 0]}},
-                   plugin(approval, "cabinet", {"name": "C", "shelf_pins": True}),
+                   plugin(approval, "cabinet", {"joints": "none", "name": "C", "shelf_pins": True}),
                    select("C Top"),
                    plugin(approval, "joinery", {"type": "confirmat"}),
                    {"command": "inspect.measure", "params": {}},

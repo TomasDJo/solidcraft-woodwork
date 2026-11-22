@@ -97,3 +97,13 @@ fn camera_is_stored_and_only_leave_skips_the_fit() {
     let stored = json!({"document": {"settings": {"camera": "leave"}}});
     assert_eq!(fields("cabinet", &json!({}), &stored), json!({}));
 }
+
+#[test]
+fn joinery_is_a_default_for_the_cabinet_dialog_only() {
+    let stored = json!({"document": {"settings": {"joints": "confirmat"}}});
+    let reply = fields("cabinet", &json!({}), &stored);
+    assert_eq!(reply["joints"]["default"], "confirmat");
+    assert_eq!(fields("corner", &json!({}), &stored), json!({}));
+    let patched = patch(&json!({"joints": "none"}), &Value::Null).unwrap();
+    assert_eq!(patched, json!({"settings": {"joints": "none"}}));
+}

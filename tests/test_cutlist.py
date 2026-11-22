@@ -108,7 +108,7 @@ def test_saved_as_dxf(approval):
     with own_profile(folder) as install:
         grant = {"name": "cutlists", "path": str(folder), "read": False, "write": True}
         install["params"]["approve"]["folders"].append(grant)
-        cabinet = plugin(approval, "cabinet", {"shelves": 2, "shelf_pins": True, "doors": 2, "handles": "knob"})
+        cabinet = plugin(approval, "cabinet", {"joints": "none", "shelves": 2, "shelf_pins": True, "doors": 2, "handles": "knob"})
         moved = [{"command": "occurrence.ground", "params": {"occurrence": "Cabinet:1", "grounded": False}},
                  {"command": "occurrence.move", "params": {"occurrence": "Cabinet:1", "translate": [1000, 500, 300]}}]
         results = cli([install, cabinet, *moved, MEASURE, plugin(approval, "cutlist", {"file": "Box.pdf", "format": "dxf"})])

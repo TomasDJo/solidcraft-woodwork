@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 19] = [
+const SIZES: [&str; 23] = [
     "width",
     "height",
     "depth",
@@ -32,12 +32,18 @@ const SIZES: [&str; 19] = [
     "apron_thickness",
     "inset",
     "stretcher_height",
+    // joinery's (`joint`)
+    "joint_spacing",
+    "joint_edge",
+    "dowel_d",
+    "dowel_length",
 ];
 
 /// The Edit fields only a box cabinet takes, and only a corner cabinet: `merge` refuses them
 /// for the other kind and the dialog hook hides them. Shrink them as the two kinds catch up.
-const BOX_ONLY: [&str; 8] = [
+const BOX_ONLY: [&str; 9] = [
     "kind",
+    "joints",
     "dividers",
     "doors",
     "drawers",
@@ -136,6 +142,15 @@ pub fn merge(
             let scale = if key == "reveal" { 1.0 } else { scale };
             params.insert(key.into(), json!((mm / scale * 1e6).round() / 1e6));
             existing.insert(key.into(), json!(mm));
+        }
+    }
+    // The fastener counts only tell `Kit` that the cabinet has them (`joint::COUNTS`).
+    for key in crate::joint::COUNTS {
+        let id = format!("{prefix}_{key}");
+        let all = design["params"].as_array().into_iter().flatten();
+        let found = all.into_iter().find(|p| p["name"] == id.as_str());
+        if let Some(v) = found.and_then(|p| p["value"].as_f64()) {
+            existing.insert(key.into(), json!(v));
         }
     }
     let mixed = |p: &Map<String, Value>| {

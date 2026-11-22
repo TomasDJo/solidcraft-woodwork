@@ -268,6 +268,17 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
+    // The joinery chosen when a cabinet was built counts its fasteners in its parameters
+    // (`joint::hardware`); an old Joinery's line of the same item takes them in.
+    let cabinets = (bodies.iter()).filter_map(|b| b.strip_suffix(" Side L"));
+    for cabinet in cabinets {
+        for (item, qty) in crate::joint::hardware(&crate::kit::prefix(cabinet), &design["params"]) {
+            match list.iter_mut().find(|line| line["item"] == item.as_str()) {
+                Some(line) => line["qty"] = json!(line["qty"].as_u64().unwrap_or(0) + qty),
+                None => list.push(json!({"item": item, "qty": qty})),
+            }
+        }
+    }
     // A cabinet on a steel rail has `<Prefix>_wall_rail`, its width (0 once an edit took the
     // rail away), and a corner cabinet `_wall_rail_return` too: a rail bought to that length
     // and two hangers each. Only for a cabinet that is

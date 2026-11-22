@@ -1,0 +1,180 @@
+use super::*;
+
+fn find<'a>(commands: &'a Commands, name: &str) -> &'a Value {
+    let found = commands.iter().find(|c| c.1["name"] == name);
+    &found.unwrap_or_else(|| panic!("no {name}")).1
+}
+
+fn named(commands: &Commands, part: &str) -> usize {
+    (commands.iter())
+        .filter(|c| c.1["name"].as_str().is_some_and(|n| n.contains(part)))
+        .count()
+}
+
+#[test]
+fn dowels_are_one_cut_through_both_boards_and_a_row_that_follows_the_depth() {
+    let (commands, _) = crate::cabinet::build(&json!({"name": "K", "joints": "dowels"})).unwrap();
+    let dowel = find(&commands, "K joint Side L Bottom dowels");
+    assert_eq!(dowel["targets"], json!(["K Side L", "K Bottom"]));
+    assert_eq!(dowel["axis"], json!([1, 0, 0]));
+    assert_eq!(dowel["diameter"], "K_dowel_d");
+    assert_eq!(dowel["height"], "K_dowel_length + 2 mm");
+    // blind in the side's face, from its inner face at x = t
+    let x = dowel["base"][0].as_str().unwrap();
+    assert!(
+        x.starts_with("K_thickness - (min(K_thickness - 5 mm"),
+        "{x}"
+    );
+    let y = dowel["base"][1].as_str().unwrap();
+    assert!(y.starts_with("0 mm + (K_joint_edge)"), "{y}");
+    let row = find(&commands, "K joint Side R Top dowels row");
+    assert_eq!(row["features"], json!(["K joint Side R Top dowels"]));
+    assert_eq!(row["dir1"], json!([0, 1, 0]));
+    let count = "max(2, ceil((K_depth - 2*K_joint_edge) / K_joint_spacing) + 1)";
+    assert_eq!(row["count1"], count);
+    assert_eq!(
+        row["spacing1"],
+        format!("(K_depth - 2*K_joint_edge) / ({count} - 1)")
+    );
+    assert_eq!(named(&commands, " row"), 4);
+    // the sizes are parameters, and the dowels to buy are counted in one
+    let added = |name: &str| {
+        (commands.iter())
+            .find(|c| c.0 == "parameters.add" && c.1["name"] == name)
+            .map(|c| c.1["expression"].as_str().unwrap_or_default().to_string())
+    };
+    assert_eq!(added("K_dowel_d").as_deref(), Some("8 mm"));
+    assert_eq!(added("K_joint_spacing").as_deref(), Some("150 mm"));
+    assert_eq!(added("K_dowels"), Some([count; 4].join(" + ")));
+    assert_eq!(added("K_confirmats"), None);
+    // the holes come after every board
+    let last_box = commands.iter().rposition(|c| c.0 == "solid.box").unwrap();
+    let first_joint = (commands.iter())
+        .position(|c| c.1["name"] == "K joint Side L Bottom dowels")
+        .unwrap();
+    assert!(first_joint > last_box);
+}
+
+#[test]
+fn confirmat_is_a_clearance_hole_through_the_side_and_a_pilot_in_the_end() {
+    let p = json!({"name": "K", "joints": "confirmat", "back": "overlay", "plinth": 100});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let clear = find(&commands, "K joint Side R Bottom confirmat");
+    assert_eq!(clear["targets"], json!(["K Side R"]));
+    assert_eq!(clear["diameter"], "7 mm");
+    assert_eq!(clear["axis"], json!([-1, 0, 0]));
+    let x = clear["base"][0].as_str().unwrap();
+    assert!(
+        x.starts_with("K_width - K_thickness + (K_thickness)"),
+        "{x}"
+    );
+    assert_eq!(clear["base"][2], "K_plinth + K_thickness/2");
+    let pilot = find(&commands, "K joint Side R Bottom confirmat pilot");
+    assert_eq!(pilot["targets"], json!(["K Bottom"]));
+    assert_eq!(pilot["height"], "50 mm - K_thickness + 2 mm");
+    let row = find(&commands, "K joint Side R Bottom confirmat row");
+    assert_eq!(
+        row["features"],
+        json!([
+            "K joint Side R Bottom confirmat",
+            "K joint Side R Bottom confirmat pilot"
+        ])
+    );
+    // an overlaid back: the sides stop in front of it
+    let count = row["count1"].as_str().unwrap();
+    assert!(count.contains("(K_depth - K_back_thickness)"), "{count}");
+    assert!(named(&commands, "dowel") == 0);
+    let thick = json!({"joints": "confirmat", "thickness": 40});
+    assert!(crate::cabinet::build(&thick)
+        .unwrap_err()
+        .contains("confirmat"));
+}
+
+#[test]
+fn a_sink_base_gets_one_fastener_in_the_middle_of_each_rail() {
+    let p = json!({"name": "S", "kind": "sink", "joints": "dowels"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let front = find(&commands, "S joint Side L Rail front dowels");
+    assert_eq!(front["targets"], json!(["S Side L", "S Rail front"]));
+    let y = front["base"][1].as_str().unwrap();
+    assert!(y.starts_with("0 mm + (100 mm / 2)"), "{y}");
+    let back = find(&commands, "S joint Side R Rail back dowels");
+    let y = back["base"][1].as_str().unwrap();
+    assert!(
+        y.contains("S_back_thickness) - 100 mm + (100 mm / 2)"),
+        "{y}"
+    );
+    // the bottom's two rows as on any cabinet
+    assert_eq!(named(&commands, " row"), 2);
+    let dowels = (commands.iter())
+        .find(|c| c.1["name"] == "S_dowels")
+        .unwrap();
+    let expression = dowels.1["expression"].as_str().unwrap();
+    assert_eq!(expression.matches(") + 1 + 1").count(), 2, "{expression}");
+}
+
+#[test]
+fn no_method_makes_nothing_and_an_edit_that_drops_one_zeroes_its_count() {
+    let (plain, _) = crate::cabinet::build(&json!({"name": "K"})).unwrap();
+    assert_eq!(named(&plain, " joint "), 0);
+    assert!(!plain.iter().any(|c| c.1["name"] == "K_joint_spacing"));
+    let (none, _) = crate::cabinet::build(&json!({"name": "K", "joints": "none"})).unwrap();
+    assert_eq!(plain, none);
+    let edited = json!({"name": "K", "joints": "confirmat",
+        "_existing": {"dowels": 16, "joint_spacing": 150, "joint_edge": 50}});
+    let (commands, _) = crate::cabinet::build(&edited).unwrap();
+    let change = (commands.iter())
+        .find(|c| c.0 == "parameters.change" && c.1["name"] == "K_dowels")
+        .unwrap();
+    assert_eq!(change.1["expression"], "0");
+    // kept as they were: no command for the spacing and edge
+    assert!(!commands.iter().any(|c| c.1["name"] == "K_joint_spacing"));
+    assert!(commands
+        .iter()
+        .any(|c| c.0 == "parameters.add" && c.1["name"] == "K_confirmats"));
+}
+
+#[test]
+fn sizes_are_checked() {
+    let refused = |p: Value, word: &str| {
+        let error = crate::cabinet::build(&p).unwrap_err();
+        assert!(error.contains(word), "{error}");
+    };
+    refused(json!({"joints": "glue"}), "joints");
+    refused(json!({"joints": "dowels", "dowel_d": 16}), "dowel");
+    refused(
+        json!({"joints": "dowels", "joint_spacing": 5}),
+        "joint_spacing",
+    );
+    refused(
+        json!({"joints": "dowels", "depth": 250, "joint_edge": 120}),
+        "joint_edge",
+    );
+    // inches: the sizes in the dialog's unit
+    let p = json!({"name": "I", "units": "in", "width": 24, "height": 30, "depth": 22,
+        "thickness": 0.75, "joints": "dowels", "dowel_d": 0.3125, "dowel_length": 1.5});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let d = commands
+        .iter()
+        .find(|c| c.1["name"] == "I_dowel_d")
+        .unwrap();
+    assert_eq!(d.1["expression"], "0.3125 in");
+}
+
+#[test]
+fn the_cut_list_reads_the_counts_and_sizes_from_the_parameters() {
+    let params = json!([
+        {"name": "K_dowels", "value": 16.0}, {"name": "K_dowel_d", "value": 8.0},
+        {"name": "K_dowel_length", "value": 35.0}, {"name": "K_confirmats", "value": 0.0},
+        {"name": "L_confirmats", "value": 12.0}
+    ]);
+    assert_eq!(
+        hardware("K", &params),
+        vec![("Dowel, 8 x 35 mm".to_string(), 16)]
+    );
+    assert_eq!(
+        hardware("L", &params),
+        vec![("Confirmat screw, 7 x 50 mm".to_string(), 12)]
+    );
+    assert!(hardware("M", &params).is_empty());
+}

@@ -4,13 +4,14 @@
 use serde_json::{json, Map, Value};
 
 /// The fields Settings keeps, by the names Cabinet and Corner give them.
-const FIELDS: [&str; 6] = [
+const FIELDS: [&str; 7] = [
     "material",
     "thickness",
     "reveal",
     "handles",
     "plinth",
     "plinth_type",
+    "joints",
 ];
 
 /// The lengths, kept in mm and shown in the dialog's unit, with the bounds in mm that both
@@ -90,8 +91,8 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     }
     let scale = if values["units"] == "in" { 25.4 } else { 1.0 };
     for (key, value) in &settings {
-        // both dialogs have every field Settings keeps
-        if !FIELDS.contains(&key.as_str()) {
+        // both dialogs have every field Settings keeps, but Corner no joinery yet
+        if !FIELDS.contains(&key.as_str()) || (entry == "corner" && key == "joints") {
             continue;
         }
         let value = match (bounds(key), value.as_f64()) {

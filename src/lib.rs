@@ -11,6 +11,7 @@ mod fittings;
 mod frame;
 mod hardware;
 mod joinery;
+mod joint;
 mod kit;
 mod material;
 mod nesting;
@@ -531,8 +532,10 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 }
             }
             // Its screw or dowel holes went with the old boards: drilled again, before it is
-            // put back where it stood.
-            if let Some(kind) = about["metadata"][edit::KEY]["joinery"].as_str() {
+            // put back where it stood. Joinery chosen in the dialog replaces them.
+            let chosen = params["joints"].as_str().is_some_and(|m| m != "none");
+            let old = about["metadata"][edit::KEY]["joinery"].as_str();
+            if let Some(kind) = old.filter(|_| !chosen) {
                 let found = select::named(&run("inspect.measure", json!({}))?, &name)?;
                 drill(&found, kind, run)?;
                 summary["joinery"] = json!(kind);

@@ -6,7 +6,7 @@ def test_a_sink_base(approval):
     # 600 x 720 x 560, a grooved back (12 mm from the rear, 6 thick: the shelves' depth ends at
     # y = 280 - 18 = 262). No top: a front rail flush at the front, a back rail in front of the
     # back, 100 deep, their top faces at 720. Two doors that turn; joinery into the rails.
-    results = cli([plugin(approval, "cabinet", {"name": "S", "kind": "sink", "doors": 2, "shelves": 1}), MEASURE,
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "S", "kind": "sink", "doors": 2, "shelves": 1}), MEASURE,
                    drive("S Door L hinge", 90), select("S Side L"), plugin(approval, "joinery", {"type": "confirmat"}),
                    MEASURE, select("S Side L"), plugin(approval, "edit", {"kind": "keep", "doors": 1}), MEASURE,
                    {"command": "component.metadata", "params": {"component": "S"}}, plugin(approval, "cutlist")],

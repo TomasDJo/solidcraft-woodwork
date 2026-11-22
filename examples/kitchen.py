@@ -16,7 +16,8 @@ It uses every function of the plugin:
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
-- Joinery: confirmat screws in the floor units, dowels in the wall units
+- Joinery chosen in the Cabinet dialog: confirmat screws in the floor units, dowels in the wall
+  units; the older Joinery function drills the wall unit on the return, made with none
 - Edit cabinet: the wall unit on the return gets a third shelf after it is made, hung, turned and drilled
 - Labels: the tall unit has each board's name written on it
 - Panel: an end panel on the tall unit's free side and one at the open end of the return run
@@ -37,10 +38,10 @@ import build
 
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else HERE / "kitchen.sc").resolve()
 WHITE = {"material": "White melamine"}
-FLOOR_UNIT = {**WHITE, "height": 870, "depth": 560, "plinth": 150}
+FLOOR_UNIT = {**WHITE, "height": 870, "depth": 560, "plinth": 150, "joints": "confirmat"}
 BASE = {**FLOOR_UNIT, "handles": "pull", "place": "auto"}  # auto: by the selected board, a Side R
 WALL = {**WHITE, "height": 700, "depth": 320, "shelves": 2, "shelf_pins": True, "handles": "knob",
-        "place": "origin"}  # made on the origin and moved, though a Top is selected to match
+        "joints": "dowels", "place": "origin"}  # made on the origin and moved, though a Top is selected to match
 MATCH = {"match": "selected"}  # sizes from the selected cabinet, and linked to it
 WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
 
@@ -48,7 +49,7 @@ WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
 # placed against the one before it.
 FLOOR = [
     ("Tall", {**WHITE, "width": 600, "height": 2100, "depth": 560, "plinth": 150, "shelves": 4, "doors": 1,
-              "handles": "pull", "labels": True, "fronts": "inset"}),
+              "handles": "pull", "labels": True, "fronts": "inset", "joints": "confirmat"}),
     ("Base 1", {**BASE, "width": 800, "dividers": 1, "doors": 2}),
     ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3, "drawer_height": 140}),
     ("Base 3", {**BASE, **MATCH, "kind": "sink", "width": 900, "doors": 2}),  # under the sink
@@ -62,7 +63,7 @@ HANGING = [
 BACK = 280  # the wall: the tall unit is 560 deep and centred on the origin
 # The corner cabinet goes right of the last base unit; its return runs forward along the right
 # wall, and one more base unit continues it, turned to face into the room.
-CORNER = {**FLOOR_UNIT, **MATCH, "width": 1000, "return": 1000, "doors": "hinged left",
+CORNER = {**{k: v for k, v in FLOOR_UNIT.items() if k != "joints"}, **MATCH, "width": 1000, "return": 1000, "doors": "hinged left",
           "handles": "pull", "place": "right"}
 RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"]  # the right wall
 RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "drawers": 1, "doors": 1, "handles": "pull"}
@@ -70,7 +71,7 @@ WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "
                "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
                "wall_mount": "cleat", "place": "right"}
-WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
+WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1, "joints": "none"}  # drilled by Joinery
 OPEN = {"Tall Door hinge": 40, "Base 3 Door L hinge": 70, "Base 1 Door L hinge": 100, "Base 1 Door R hinge": 75,
         "Base 2 Drawer 2 slide": 350, "Wall 3 Door 1 hinge": 95, "Wall 3 Door 3 hinge": 60,
         "Corner Door hinge": 60, "Corner Door return fold": 60, "Base 4 Door hinge": 50, "Base 4 Drawer 1 slide": 250,
@@ -109,14 +110,15 @@ for name, left, params in HANGING:
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
 steps += [select(f"{FLOOR[-1][0]} Side R"), build.plugin(approval, "corner", {**CORNER, "name": "Corner"}),
           select(f"{HANGING[-1][0]} Top"), build.plugin(approval, "corner", {**WALL_CORNER, "name": "Wall corner"})]
-# The units on the return are made on the origin and drilled there (joinery wants a cabinet
-# square to the axes), then turned a quarter and put at the end of the corner cabinet's return.
+# The units on the return are made on the origin (Wall 4 drilled there by the older Joinery
+# function, which wants a cabinet square to the axes), then turned a quarter and put at the end
+# of the corner cabinet's return.
 end = BACK - CORNER["return"]
-for name, params, kind, z, like in (("Base 4", RETURN, "confirmat", 0, "Corner"),
-                                    ("Wall 4", WALL_RETURN, "dowel", WALL_Z, "Wall corner")):
+for name, params, z, like in (("Base 4", RETURN, 0, "Corner"), ("Wall 4", WALL_RETURN, WALL_Z, "Wall corner")):
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
+    drill = [select(f"{name} Top"), build.plugin(approval, "joinery", {"type": "dowel"})] if name == "Wall 4" else []
     steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name, "place": "origin"}),
-              select(f"{name} Top"), build.plugin(approval, "joinery", {"type": kind}),
+              *drill,
               *([select("Base 4 Side R"), build.plugin(approval, "panel", {"kind": "end"})] if name == "Base 4" else []),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),
@@ -125,15 +127,10 @@ results = build.cli(steps, "--save", str(OUT))
 made = [r["result"] for r in results if isinstance(r, dict) and "bodies" in r.get("result", {})
         and "cabinet" not in r["result"]]  # the cabinets, not the panels
 
-# 2. Oak fronts, joinery, and a few doors and a drawer left open.
+# 2. Oak fronts, and a few doors and a drawer left open.
 steps = [kitchen]
 fronts = [b for cabinet in made for b in cabinet["bodies"] if b.endswith(" Front") or " Door" in b]
 steps += [select(*fronts), build.plugin(approval, "material", {"material": "Oak", "scope": "parts"})]
-for cabinet in made:
-    if "orner" in cabinet["name"] or cabinet["name"].endswith(" 4"):  # no joinery for a corner cabinet; the turned units have theirs
-        continue
-    kind = "dowel" if cabinet["name"].startswith("Wall") else "confirmat"
-    steps += [select(f"{cabinet['name']} Side L"), build.plugin(approval, "joinery", {"type": kind})]
 # An oak worktop over the floor units but the tall one: the back run is piece 1, through to the
 # right wall; the return's piece butts against its front edge and covers the end panel. The
 # sink's opening is over Base 3, between its rails (100 mm each, the front one 40 mm behind the

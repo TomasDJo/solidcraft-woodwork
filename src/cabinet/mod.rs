@@ -11,6 +11,7 @@ mod drawers;
 mod input;
 
 use crate::fittings::{self, PinRows, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::joint::{Joinery, Joint, CARCASS};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
 use input::Input;
@@ -23,6 +24,7 @@ const RAIL_D: f64 = 100.0; // a sink base's rails, front to back
 struct Cabinet<'a> {
     kit: &'a Kit,
     input: Input<'a>,
+    joinery: Joinery<'a>,
     ew: String,
     eh: String,
     ed: String,
@@ -72,6 +74,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let eh = parameter("height", h, "outside height, plinth included");
     let ed = parameter("depth", d, "outside depth, back included");
     let et = parameter("thickness", input.t, "panel thickness");
+    let joinery = Joinery::new(&kit, p, (input.t, &et), false)?;
+    let side_mm = if back == "overlay" { d - input.bt } else { d };
+    joinery.fits(CARCASS, side_mm, p, "the sides")?;
     let ebt = match back {
         "none" => mm(0.0),
         _ => parameter("back_thickness", input.bt, "back panel thickness"),
@@ -152,6 +157,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let cabinet = Cabinet {
         kit: &kit,
         input,
+        joinery,
         ecell: format!("(({eiw} - {n}*{et}) / {})", n + 1),
         eiw,
         ech: format!("({eh} - {epl} - 2*{et})"),
@@ -173,9 +179,10 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         edh,
         erail,
     };
-    let drill = cabinet.carcass(); // holes, run after the panels exist
+    let mut drill = cabinet.carcass(); // holes, run after the panels exist
     doors::build(&cabinet);
     drawers::build(&cabinet);
+    drill.extend(cabinet.joinery.finish());
     let (commands, mut summary) = kit.finish(drill, [w, h, d]);
     // The app runs at most 256 commands in one run, and the run itself takes some: also the
     // shared hardware parameters, the first time.
@@ -267,6 +274,7 @@ impl Cabinet<'_> {
             }
             false => panel("Top", [et, &zero, &top_z], [eiw, eside_d, et], false),
         }
+        self.carcass_joints();
         // The mount board across the back under the top, its rear face flush with the sides'.
         // Box edges: front bottom 9, back top 3.
         if let Some([tm, mh]) = emount {
@@ -373,6 +381,51 @@ impl Cabinet<'_> {
         match input.pins {
             true => self.pins(&divider_x, &elast, &ebase),
             false => Vec::new(),
+        }
+    }
+
+    /// The sides to the bottom and the top, or a sink base's rails.
+    fn carcass_joints(&self) {
+        let Cabinet {
+            input,
+            ew,
+            eh,
+            et,
+            epl,
+            ein,
+            eshelf_d,
+            eside_d,
+            ..
+        } = self;
+        let zero = mm(0.0);
+        let rail_y = format!("{ein} + {eshelf_d} - {}", mm(RAIL_D));
+        let mut ends = vec![("Bottom", format!("{epl} + {et}/2"), zero.clone())];
+        let top = format!("{eh} - {et}/2");
+        match input.kind {
+            "sink" => ends.extend([
+                ("Rail front", top.clone(), zero),
+                ("Rail back", top, rail_y),
+            ]),
+            _ => ends.push(("Top", top, zero)),
+        }
+        let right = format!("{ew} - {et}");
+        for (side, x, into) in [("Side L", et, 1), ("Side R", &right, -1)] {
+            for (end, z, y) in &ends {
+                let single = end.starts_with("Rail");
+                let joint = Joint {
+                    face: side.into(),
+                    end: end.to_string(),
+                    at: [x.clone(), y.clone(), z.clone()],
+                    into: [into, 0, 0],
+                    along: [0, 1, 0],
+                    run: match single {
+                        true => mm(RAIL_D),
+                        false => eside_d.clone(),
+                    },
+                    single,
+                };
+                self.joinery.joint(CARCASS, &joint);
+            }
         }
     }
 
