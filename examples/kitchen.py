@@ -16,8 +16,10 @@ It uses every function of the plugin:
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
-- Joinery chosen in the Cabinet dialog: confirmat screws in the floor units, dowels in the wall
-  units; the older Joinery function drills the wall unit on the return, made with none
+- Joinery chosen in the Cabinet dialog: confirmat screws in most floor units (biscuits in the tall
+  one, cam locks in the drawer unit, pocket screws in the sink base), dowels in the wall units (a
+  dado in the first) and inside; the older Joinery function drills the wall unit on the return,
+  made with none
 - Edit cabinet: the wall unit on the return gets a third shelf after it is made, hung, turned and drilled
 - Labels: the tall unit has each board's name written on it
 - Panel: an end panel on the tall unit's free side and one at the open end of the return run
@@ -49,14 +51,14 @@ WALL_Z = 2100 - 700  # wall units line up with the top of the tall unit
 # placed against the one before it.
 FLOOR = [
     ("Tall", {**WHITE, "width": 600, "height": 2100, "depth": 560, "plinth": 150, "shelves": 4, "doors": 1,
-              "handles": "pull", "labels": True, "fronts": "inset", "joints": "confirmat"}),
+              "handles": "pull", "labels": True, "fronts": "inset", "joints": "biscuit"}),
     ("Base 1", {**BASE, "width": 800, "dividers": 1, "doors": 2}),
-    ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3, "drawer_height": 140}),
-    ("Base 3", {**BASE, **MATCH, "kind": "sink", "width": 900, "doors": 2}),  # under the sink
+    ("Base 2", {**BASE, **MATCH, "width": 600, "drawers": 3, "drawer_height": 140, "joints": "cam"}),
+    ("Base 3", {**BASE, **MATCH, "kind": "sink", "width": 900, "doors": 2, "joints": "pocket"}),  # under the sink
 ]
 # Wall units hang over the base units: name, left edge, parameters.
 HANGING = [
-    ("Wall 1", 300, {**WALL, "width": 800, "doors": 2}),
+    ("Wall 1", 300, {**WALL, "width": 800, "doors": 2, "joints": "dado"}),
     ("Wall 2", 1100, {**WALL, "width": 600, "doors": 1}),
     ("Wall 3", 1700, {**WALL, "width": 900, "dividers": 2, "doors": 3}),
 ]
