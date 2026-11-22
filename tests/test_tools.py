@@ -23,7 +23,7 @@ def mcp(*calls):
     text = "".join(json.dumps({"jsonrpc": "2.0", "id": n, "method": method, "params": params}) + "\n"
                    for n, (method, params) in enumerate(requests))
     out = subprocess.run([CLI, "mcp", "--headless"], input=text, capture_output=True, text=True,
-                         encoding="utf-8", timeout=300).stdout
+                         encoding="utf-8", timeout=300, env=env()).stdout
     replies = {reply.get("id"): reply for reply in map(json.loads, out.splitlines())}
     return replies[1]["result"]["tools"], [replies[n] for n in range(2, len(requests))]
 
