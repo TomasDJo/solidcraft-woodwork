@@ -258,6 +258,11 @@ doors needs Doors 0 for drawers); Kind Standard or Sink base
 hides the corner cabinet's fields; Doors 0 hides the hinge side, Handle holes None the handle
 position.
 
+The dialog shows only the fields of the cabinet that is picked: a corner cabinet's doors and
+shape for a box cabinet are hidden, and for a corner cabinet the kind, dividers, doors, the
+hinge side, drawers, drawer front height, Drawers at and back. With nothing picked, or a
+board that is no cabinet's, it shows them all.
+
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
 matched to it still follow. Doors and drawers come back closed. Its end panels and fillers

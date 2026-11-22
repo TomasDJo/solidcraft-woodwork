@@ -108,6 +108,15 @@ materials, joinery and cut lists.
   the hook too: its three numbers start at the stored value or the Cabinet default, so the app
   draws them as drag fields kept within their bounds, and `settings::patch` leaves out a number
   equal to the stored one (or that default), as the hook fills omitted keys for scripts too.
+  `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
+  the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
+  kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
+  refuses it there): its one command is
+  `document.inspect {bodies: "names", timeline: false}`; the picked board (the `selection`
+  value, else the design's selection) names the cabinet (`select::owner`), a corner one has
+  `<Prefix>_return`. Nothing picked or no cabinet: no reply. It gives no `default` (in Edit an
+  empty field is unchanged), and a failed read answers `{}`, as an error from the hook fails
+  `plugin.run`. A field the hook hides is still sent (`sends_field`), so the run is the same.
 
 ## Layout
 

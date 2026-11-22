@@ -272,3 +272,60 @@ fn the_wall_mount_is_kept_or_changed() {
     );
     assert_eq!(params["_existing"]["wall_rail_return"], 0.0);
 }
+
+#[test]
+fn the_hook_hides_what_the_picked_cabinet_does_not_take() {
+    // `document.inspect` with body names: a corner C (it has C_return) and a box Base
+    let design = json!({
+        "bodies": ["C Side L", "C Back return", "Base Side L", "Base Door 1"],
+        "params": [{"name": "C_return", "value": 900.0}, {"name": "Base_width", "value": 600.0}],
+        "selection": [{"type": "body", "name": "Base Door 1"}],
+    });
+    let face = |body: &str| json!({"selection": [{"type": "face", "body": body, "index": 2}]});
+    let hidden_keys = |reply: Value| {
+        let reply = reply.as_object().cloned().unwrap_or_default();
+        assert!(reply.values().all(|f| f == &json!({"visible": false})));
+        reply.keys().cloned().collect::<Vec<_>>()
+    };
+    let mut box_only = BOX_ONLY.map(String::from).to_vec();
+    box_only.sort();
+    assert_eq!(
+        hidden_keys(hidden(&face("C Back return"), &design)),
+        box_only
+    );
+    // a corner cabinet is getting the wall mount: shown
+    assert!(!box_only.contains(&"wall_mount".to_string()));
+    assert_eq!(
+        hidden_keys(hidden(&face("Base Side L"), &design)),
+        ["corner_doors", "shape"]
+    );
+    // an empty field falls back to the design's selection, as the run does
+    assert_eq!(
+        hidden_keys(hidden(&json!({"selection": []}), &design)),
+        ["corner_doors", "shape"]
+    );
+    // not a cabinet, or nothing selected: everything shown
+    assert_eq!(hidden(&face("Sketch body"), &design), json!({}));
+    let nothing = json!({"bodies": ["C Side L"], "params": [{"name": "C_return"}]});
+    assert_eq!(hidden(&json!({}), &nothing), json!({}));
+}
+
+#[test]
+fn every_edit_field_a_kind_takes_is_one_merge_takes() {
+    let design = json!({});
+    let corner = remember("corner", &json!({}), "C");
+    let cabinet = remember("cabinet", &json!({}), "B");
+    for key in BOX_ONLY {
+        let change = json!({ key: 1 });
+        assert!(merge(&corner[KEY], &change, &design).is_err(), "{key}");
+        assert!(merge(&cabinet[KEY], &change, &design).is_ok(), "{key}");
+    }
+    for key in CORNER_ONLY {
+        let change = json!({ key: "diagonal" });
+        assert!(merge(&cabinet[KEY], &change, &design).is_err(), "{key}");
+        assert!(merge(&corner[KEY], &change, &design).is_ok(), "{key}");
+    }
+    // corner_doors are the corner's doors
+    let (_, params) = merge(&corner[KEY], &json!({"corner_doors": "none"}), &design).unwrap();
+    assert_eq!(params["doors"], "none");
+}

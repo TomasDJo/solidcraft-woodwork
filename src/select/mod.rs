@@ -134,7 +134,8 @@ fn names(measure: &Value) -> impl Iterator<Item = &str> {
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|b| b["name"].as_str())
+        // `document.inspect` with `bodies: "names"` gives plain names
+        .filter_map(|b| b.as_str().or(b["name"].as_str()))
 }
 
 /// The cabinet a body belongs to. Every cabinet has a body called "<name> Side L"; of the

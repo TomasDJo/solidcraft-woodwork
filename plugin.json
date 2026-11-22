@@ -94,6 +94,7 @@
       },
       {
         "name": "edit",
+        "dialog_hook": true,
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Edit cabinet" }, { "kind": "ribbon", "name": "Edit cabinet" }],
         "input_schema": {

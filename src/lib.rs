@@ -965,8 +965,17 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
 }
 
 /// The dialog hook (`dialog@0.1`): the Cabinet and Corner dialogs' defaults from Woodwork
-/// settings. It runs outside a plugin run, so `storage.get` names our plugin.
+/// settings. It runs outside a plugin run, so `storage.get` names our plugin. Edit's: the
+/// fields the selected cabinet does not take, hidden.
 pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
+    if entry == "edit" {
+        // A failing hook fails `plugin.run`: if the design cannot be read, hide nothing.
+        let design = run(
+            "document.inspect",
+            json!({"bodies": "names", "timeline": false}),
+        );
+        return Ok(design.map_or(json!({}), |d| edit::hidden(values, &d)));
+    }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
     Ok(settings::fields(entry, values, &stored))
 }
