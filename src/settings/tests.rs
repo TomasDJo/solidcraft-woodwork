@@ -236,7 +236,9 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
         "plinth": 120, "plinth_type": "legs"}}});
     let mut built = json!({"units": "mm", "thickness": 18.0, "plinth": 0.0});
     design("cabinet", &mut built, &json!({}));
-    let p = apply("cabinet", &built, &stored).unwrap();
+    let (p, changed) = apply("cabinet", &built, &stored).unwrap();
+    // (a cabinet without a plinth keeps its plinth type)
+    assert_eq!(changed, ["joints", "thickness"]);
     assert_eq!(
         (&p["thickness"], &p["joints"]),
         (&json!(19.0), &json!("confirmat"))
@@ -247,7 +249,7 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
     // with one: the settings' height and type
     let mut on = built.clone();
     on["plinth"] = json!(100.0);
-    let p = apply("cabinet", &on, &stored).unwrap();
+    let (p, _) = apply("cabinet", &on, &stored).unwrap();
     assert_eq!(
         (&p["plinth"], &p["plinth_type"]),
         (&json!(120.0), &json!("legs"))
@@ -255,9 +257,26 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
     // a corner takes no drawers' or inside settings
     let mut corner = json!({"units": "mm", "plinth": 0.0});
     design("corner", &mut corner, &json!({}));
-    let p = apply("corner", &corner, &stored).unwrap();
+    let (p, _) = apply("corner", &corner, &stored).unwrap();
     assert!(
         p.get("slide_type").is_none() && p.get("joints_inner").is_none(),
         "{p}"
     );
+}
+
+#[test]
+fn apply_takes_the_hardware_models_both_ways() {
+    let mut built = json!({"units": "mm", "plinth": 0.0});
+    design("cabinet", &mut built, &json!({}));
+    assert_eq!(built["hardware_models"], "on");
+    let off = json!({"document": {"settings": {"hardware_models": "off"}}});
+    let (p, changed) = apply("cabinet", &built, &off).unwrap();
+    assert_eq!(p["hardware_models"], "off");
+    assert_eq!(changed, ["hardware_models"]);
+    let (back, _) = apply("cabinet", &p, &json!({})).unwrap();
+    assert_eq!(back["hardware_models"], "on");
+    // a cabinet made before the key existed (absent) gets it
+    let mut old = built.clone();
+    old.as_object_mut().unwrap().remove("hardware_models");
+    assert!(apply("cabinet", &old, &off).is_some());
 }

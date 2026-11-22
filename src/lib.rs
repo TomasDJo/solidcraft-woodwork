@@ -21,7 +21,7 @@ mod settings;
 mod worktop;
 
 use kit::check;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 /// App commands with their arguments, in the order they run.
 pub type Commands = Vec<(&'static str, Value)>;
@@ -177,12 +177,17 @@ fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
         json!({"bodies": false, "timeline": false}),
     )?;
     let measure = run("inspect.measure", json!({}))?;
-    let mut names = Vec::new();
+    // The cabinets of the picked bodies: a board, or a hinge or slide model's copy (`HW hinge
+    // (A:1/A Door:1/HW hinge:2)`, which measures do not show: the first name on its path).
+    let (mut names, mut skipped) = (Vec::new(), Vec::new());
     for body in select::picked(params, &design) {
-        if let Some(owner) = select::owner(&measure, &body) {
-            if !names.contains(&owner.to_string()) {
-                names.push(owner.to_string());
-            }
+        let model = (body.strip_prefix("HW "))
+            .and_then(|b| b.split_once('(')?.1.split_once(':'))
+            .map(|(cabinet, _)| cabinet.to_string());
+        match select::owner(&measure, &body).map(String::from).or(model) {
+            Some(owner) if !names.contains(&owner) => names.push(owner),
+            Some(_) => {}
+            None => skipped.push(json!({"picked": body, "why": "not part of a cabinet"})),
         }
     }
     let mut todo = Vec::new();
@@ -193,16 +198,18 @@ fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
             .as_str()
             .filter(|e| matches!(*e, "cabinet" | "corner"))
         else {
+            skipped.push(json!({"cabinet": name, "why": "not a box or corner cabinet"}));
             continue;
         };
         let entry = entry.to_string();
         let (_, base) = edit::merge(ours, &json!({}), &design)?;
-        if let Some(params) = settings::apply(&entry, &base, stored) {
-            todo.push((name, about, entry, params));
+        match settings::apply(&entry, &base, stored) {
+            Some((params, changed)) => todo.push((name, about, entry, params, changed)),
+            None => skipped.push(json!({"cabinet": name, "why": "already has these settings"})),
         }
     }
-    let (mut applied, mut remaining) = (Vec::new(), Vec::new());
-    for (name, about, entry, params) in todo {
+    let (mut applied, mut remaining, mut changes) = (Vec::new(), Vec::new(), Map::new());
+    for (name, about, entry, params, changed) in todo {
         let (commands, _) = build(&entry, &params)?;
         let next = hardware::cost(&commands) + 40;
         let elapsed = now().saturating_sub(start);
@@ -215,16 +222,21 @@ fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
             json!({"bodies": false, "timeline": false}),
         )?;
         rebuild(&name, &about, &entry, &params, &design, &measure, &mut run)?;
+        changes.insert(name.clone(), json!(changed));
         applied.push(name);
     }
-    let message = match remaining.len() {
-        0 => format!("{} cabinets built again with the settings", applied.len()),
-        n => format!(
-            "{} cabinets built again with the settings; {n} left: run Settings again with them picked",
-            applied.len()
-        ),
-    };
-    Ok(json!({"applied": applied, "remaining": remaining, "message": message}))
+    let mut message = format!("{} cabinets built again with the settings", applied.len());
+    if !remaining.is_empty() {
+        let n = remaining.len();
+        message += &format!("; {n} left: run Settings again with them picked");
+    }
+    if !skipped.is_empty() {
+        message += &format!("; {} skipped (see skipped)", skipped.len());
+    }
+    Ok(
+        json!({"applied": applied, "changed": changes, "remaining": remaining,
+              "skipped": skipped, "message": message}),
+    )
 }
 
 /// Builds the cabinet `name` again from `params` (`edit::merge`'s), where it stands: the same

@@ -155,3 +155,28 @@ def test_apply_to_selected(approval):
     assert hardware["Confirmat screw, 7 x 50 mm"] == 24 and "Dowel, 8 x 35 mm" in hardware, hardware
     assert results[8]["result"]["applied"] == [], results[8]
     assert "applied" not in results[9]["result"] and boxes(results[10])["B Side L"] == before["B Side L"], results[9]
+
+
+def test_apply_hardware_models_both_ways(approval):
+    # A with doors and a drawer, models shown. Settings Hardware models None applied with a
+    # hinge model picked (what a user clicks to turn the models off): no HW copies left in A,
+    # and the reply names the change. Shown again with a board picked: they come back. Once
+    # more: A already has the settings, skipped and said so.
+    def copies(results, i):
+        return [b["name"] for b in results[i]["bodies"] if b["name"].startswith("HW ") and "(A:1" in b["name"]]
+    made = cli([plugin(approval, "cabinet", {"name": "A", "doors": 1, "drawers": 1}), MEASURE],
+               "--save", str(ROOT / "dist" / "apply-models.sc"))
+    hinge = next(n for n in copies(made, 1) if n.startswith("HW hinge ("))
+    on = [{"type": "body", "name": "A Side L"}]
+    results = cli([setting(approval, {"hardware_models": "off", "apply": "yes", "selection": [{"type": "body", "name": hinge}]}),
+                   MEASURE,
+                   setting(approval, {"hardware_models": "on", "apply": "yes", "selection": on}), MEASURE,
+                   setting(approval, {"hardware_models": "on", "apply": "yes", "selection": on})],
+                  "--in", str(ROOT / "dist" / "apply-models.sc"))
+    off = results[0]["result"]
+    assert off["applied"] == ["A"] and off["changed"]["A"] == ["hardware_models"], off
+    assert not copies(results, 1), copies(results, 1)
+    assert results[2]["result"]["applied"] == ["A"] and copies(results, 3), results[2]["result"]
+    again = results[4]["result"]
+    assert again["applied"] == [] and again["skipped"] == [{"cabinet": "A", "why": "already has these settings"}], again
+    assert "1 skipped" in again["message"], again["message"]

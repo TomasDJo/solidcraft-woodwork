@@ -508,7 +508,10 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
   that already has the settings is skipped. One run builds as many as fit in SolidCraft's 30 s
   and 256 commands (at least one); the result says how many are left, and running it again with
   the same cabinets picked does the rest. With No the settings are only stored, whatever is
-  picked (the dialog fills the field with what is selected when it opens). A script passes
+  picked (the dialog fills the field with what is selected when it opens). Any part of a
+  cabinet can be picked, a hinge or slide model too. The result names each cabinet built again
+  with the settings that changed on it (`changed`), and each one skipped and why (`skipped`:
+  already has these settings, or not part of a cabinet). A script passes
   `"apply": "yes"` and the cabinets in `selection` (the design's selection is not used).
 - The settings are kept in the design (SolidCraft 0.46, `storage@0.1`), not for you as a user:
   a new design starts with none.

@@ -261,8 +261,8 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
 /// The design-wide settings count stored or default, and the dialogs' defaults (material,
 /// thickness, reveal, handles) only when stored. Only what the cabinet's `entry` takes (a
 /// corner has no drawers, no inside joinery, no back choice), and the plinth's only when it has
-/// one: a cabinet without one keeps none.
-pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<Value> {
+/// one: a cabinet without one keeps none. With the params, the fields that change.
+pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<String>)> {
     let settings = &stored["document"]["settings"];
     let mut wanted = json!({"units": params["units"]});
     for key in ["material", "handles"] {
@@ -286,6 +286,14 @@ pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<Value> {
             };
         }
     }
+    // without a plinth its type and set-back stay as they are
+    if !has_plinth {
+        for key in ["plinth_type", "plinth_setback"] {
+            if let Some(v) = params.get(key) {
+                wanted[key] = v.clone();
+            }
+        }
+    }
     // the rest as a new cabinet gets them (Plinth given, so `design` leaves it)
     wanted["plinth"] = wanted
         .get("plinth")
@@ -293,7 +301,7 @@ pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<Value> {
         .unwrap_or(params["plinth"].clone());
     design(entry, &mut wanted, stored);
     let mut out = params.clone();
-    let mut changed = false;
+    let mut changed = Vec::new();
     for (key, value) in wanted.as_object().into_iter().flatten() {
         let same = match (&out[key.as_str()], value) {
             (Value::Number(a), Value::Number(b)) => {
@@ -303,10 +311,10 @@ pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<Value> {
         };
         if !same {
             out[key.as_str()] = value.clone();
-            changed = true;
+            changed.push(key.clone());
         }
     }
-    changed.then_some(out)
+    (!changed.is_empty()).then_some((out, changed))
 }
 
 fn unit(params: &Value) -> f64 {

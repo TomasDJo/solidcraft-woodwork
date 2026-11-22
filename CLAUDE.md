@@ -155,13 +155,16 @@ materials, joinery and cut lists.
   default because the dialog fills `selection` with whatever is selected, which must not
   rebuild a cabinet by itself; only the field, not the design's selection, which tests and
   scripts leave behind): `lib.rs` `apply` reads the picked cabinets
-  (`select::owner`, box and corner only), takes each one's `edit::merge` with no changes (sizes
+  (`select::owner`, or for a hinge or slide model's copy, which measures hide, the first name of
+  its `(A:1/...)` path; box and corner only), takes each one's `edit::merge` with no changes (sizes
   from Parameters) and `settings::apply` (what the settings give it now: the design-wide ones
   stored or default, the hook's four only stored, the plinth's only on a cabinet with one, and
   only what its entry takes; `None` when it has them all), then `rebuild` (Edit's path, shared:
   delete, `make`, panels, materials, place, links) while `drawing::fits` (20 s by `clock.now`,
   the commands counted, the next one's `hardware::cost` + 40), at least one. The reply adds
-  `applied`, `remaining` and `message`. The preview runs it too, so a dialog with cabinets
+  `applied`, `changed` (each cabinet's fields that changed), `remaining`, `skipped` (with
+  `why`) and `message`. A cabinet without a plinth keeps its plinth type and set-back too, so
+  it is skipped when nothing else differs. The preview runs it too, so a dialog with cabinets
   picked previews every change slowly.
   **See-through boards** (`see_through`, in `CHOICES` but no cabinet's: `design` skips it): each
   Settings run gives our design materials (`material.list`'s `user: true`, of `BOARDS`) the
