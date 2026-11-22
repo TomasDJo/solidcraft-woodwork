@@ -26,7 +26,8 @@ It uses every function of the plugin:
   sink cut-out over the sink base
 - Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
 - Hardware models: every hinge and drawer slide is shown (the default), moving with its door
-  or drawer; the definitions sit under the floor in the Woodwork hardware component
+  or drawer; the definitions sit under the floor in the Woodwork hardware component. The units
+  on the return also show their dowels and screws (Fastener models, kept out of the others)
 - Cut list: written out as CSV (boards with grain and banded edges, and the banding to buy); the sheets from the cutting layouts and the hardware are printed
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
@@ -92,13 +93,18 @@ def select(*bodies):
 
 
 joinery = {}  # what Woodwork settings hold now
+# Fastener models only in the units made after the wall corner: SolidCraft names the faces of a
+# design's first 400 features one way and those after another, so in a design this size a
+# chamfer's picked edge (the wall corner's) is not found again once an earlier cabinet is
+# deleted or edited if more features come before it. The fasteners add a feature for each joint.
+LATE = ("Base 4", "Wall 4")
 
 
 def cabinet(entry, params):
     """The steps for a cabinet: Woodwork settings first when its joinery differs from what they
     hold (it is design wide, no Cabinet field), then the cabinet."""
     params = dict(params)
-    wanted = {"joints": params.pop("joints", "dowels")}
+    wanted = {"joints": params.pop("joints", "dowels"), "fastener_models": "on" if params["name"] in LATE else "off"}
     steps = []
     if wanted != {key: joinery.get(key) for key in wanted}:
         joinery.update(wanted)

@@ -12,15 +12,17 @@ fn row<'a>(commands: &'a Commands, feature: &str) -> &'a Value {
         .find(|c| {
             c.1["features"]
                 .as_array()
-                .unwrap()
-                .contains(&json!(feature))
+                .is_some_and(|f| f.contains(&json!(feature)))
         });
     &found.unwrap_or_else(|| panic!("no row of {feature}")).1
 }
 
+/// The commands named with `part`, the fastener models left out.
 fn named(commands: &Commands, part: &str) -> usize {
     (commands.iter())
-        .filter(|c| c.1["name"].as_str().is_some_and(|n| n.contains(part)))
+        .filter(|c| {
+            (c.1["name"].as_str()).is_some_and(|n| n.contains(part) && !n.contains("fastener"))
+        })
         .count()
 }
 
@@ -237,7 +239,7 @@ fn a_corner_cabinet_joins_its_backs_ends_bottom_and_top() {
         (commands.iter())
             .filter(|c| c.0 == "solid.cylinder")
             .filter_map(|c| c.1["name"].as_str().map(String::from))
-            .filter(|n| n.contains(" joint "))
+            .filter(|n| n.contains(" joint ") && !n.ends_with(" fastener"))
             .collect()
     };
     let l = names(json!({"name": "C", "joints": "dowels"}));
@@ -511,4 +513,91 @@ fn without_pins_the_shelves_are_fixed_and_joined_to_the_sides_and_dividers() {
     let p = json!({"name": "K", "shelf_pins": true, "joints_inner": "dowels"});
     let (commands, _) = crate::cabinet::build(&p).unwrap();
     assert!(named(&commands, " pins") > 0 && named(&commands, " joint ") == 0);
+}
+
+#[test]
+fn each_fastener_is_a_model_in_its_hole_copied_along_its_row() {
+    let build = |joints: &str, models: &str| {
+        let p = json!({"name": "K", "joints": joints, "hardware_models": models});
+        crate::cabinet::build(&p).unwrap().0
+    };
+    let commands = build("dowels", "on");
+    let hole = find(&commands, "K joint Side L Bottom dowels");
+    let dowel = find(&commands, "K joint Side L Bottom dowels fastener");
+    // the hole's shape, a body of its own
+    assert_eq!(dowel["body_name"], "K joint Side L Bottom dowels fastener");
+    assert!(dowel.get("operation").is_none() && dowel.get("targets").is_none());
+    assert_eq!(
+        (&dowel["base"], &dowel["height"]),
+        (&hole["base"], &hole["height"])
+    );
+    // one pattern of bodies beside the row's, the same way and count
+    let row = row(&commands, "K joint Side L Bottom dowels");
+    let models = (commands.iter())
+        .find(|c| c.1["bodies"].is_array())
+        .unwrap();
+    assert_eq!(models.1["bodies"].as_array().unwrap().len(), 4);
+    assert_eq!(
+        (
+            &models.1["count1"],
+            &models.1["spacing1"],
+            &models.1["dir1"]
+        ),
+        (&row["count1"], &row["spacing1"], &row["dir1"])
+    );
+    assert!(crate::hardware::is_model(
+        "K joint Side L Bottom dowels fastener (3)"
+    ));
+    assert!(!crate::hardware::is_model("K Side L"));
+    // Hardware models off, or Fastener models off: none
+    let none = |commands: Commands| {
+        !(commands.iter()).any(|c| {
+            c.1["name"]
+                .as_str()
+                .is_some_and(|n| n.ends_with("fastener"))
+        })
+    };
+    assert!(none(build("dowels", "off")));
+    let p = json!({"name": "K", "joints": "dowels", "fastener_models": "off"});
+    assert!(none(crate::cabinet::build(&p).unwrap().0));
+    // a cam lock: the bolt from its tip and the cam; a screw from the side's outer face, as
+    // long as it is; a pocket screw: in its pilot, not the pocket; a biscuit in its slot
+    let models = |joints: &str| {
+        let all = build(joints, "on");
+        let names = (all.iter()).filter_map(|c| c.1["name"].as_str().map(String::from));
+        names
+            .filter(|n| n.starts_with("K joint Side L Bottom") && n.ends_with("fastener"))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        models("cam"),
+        [
+            "K joint Side L Bottom cam fastener",
+            "K joint Side L Bottom cam housing fastener"
+        ]
+    );
+    let all = build("cam", "on");
+    let bolt = find(&all, "K joint Side L Bottom cam fastener");
+    assert_eq!(
+        (&bolt["diameter"], &bolt["height"]),
+        (&json!("6 mm"), &json!("K_cam_bolt"))
+    );
+    assert_eq!(
+        models("confirmat"),
+        ["K joint Side L Bottom confirmat fastener"]
+    );
+    let all = build("confirmat", "on");
+    assert_eq!(
+        find(&all, "K joint Side L Bottom confirmat fastener")["height"],
+        "50 mm"
+    );
+    assert_eq!(
+        models("pocket"),
+        ["K joint Side L Bottom pocket pilot fastener"]
+    );
+    assert_eq!(
+        models("biscuit"),
+        ["K joint Side L Bottom biscuit fastener"]
+    );
+    assert!(models("dado").is_empty());
 }

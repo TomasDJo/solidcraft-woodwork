@@ -179,7 +179,7 @@ def test_models_off_is_the_same_cabinet_without_them(approval):
         measure = {b["name"]: (b["bbox"], round(b["volume_mm3"]), b["face_types"]) for b in results[1]["bodies"]}
         return measure, results[2]["result"]
     (on, on_list), (off, off_list) = made("on"), made("off")
-    assert {n: v for n, v in on.items() if not n.startswith("HW ")} == off, set(on) ^ set(off)
+    assert {n: v for n, v in on.items() if not model(n)} == off, set(on) ^ set(off)
     assert any(n.startswith("HW hinge (") for n in on) and not any(n.startswith("HW") for n in off)
     assert on_list["csv"] == off_list["csv"] and on_list["hardware"] == off_list["hardware"]
     assert {h["item"]: h["qty"] for h in on_list["hardware"]}["Hinge, cup"] == 4

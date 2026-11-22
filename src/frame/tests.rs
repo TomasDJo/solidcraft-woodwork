@@ -93,7 +93,7 @@ fn default_frame_four_legs_aprons_and_end_stretchers() {
         "Frame_height - Frame_apron_height + (Frame_apron_height/4)"
     );
     let rows: Vec<_> = (commands.iter())
-        .filter(|c| c.0 == "solid.pattern.rectangular")
+        .filter(|c| c.0 == "solid.pattern.rectangular" && c.1["features"].is_array())
         .collect();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].1["features"].as_array().unwrap().len(), 12);

@@ -17,7 +17,7 @@ const FIELDS: [&str; 6] = [
 
 /// The design-wide choices, no Cabinet or Corner field: every new cabinet takes the stored
 /// one, or this default (the Cabinet dialog's before they moved here).
-const CHOICES: [(&str, &str); 8] = [
+const CHOICES: [(&str, &str); 9] = [
     ("joints", "dowels"),
     ("joints_inner", "dowels"),
     ("biscuit", "20"),
@@ -25,6 +25,7 @@ const CHOICES: [(&str, &str); 8] = [
     ("hardware_models", "on"),
     ("hinge_angle", "110"),
     ("slide_type", "full"),
+    ("fastener_models", "on"),
     // no cabinet's: our board materials' opacity (`material::see_through`)
     ("see_through", "off"),
 ];

@@ -266,8 +266,14 @@ pub fn slide_length(field: &str, unit: &str, box_mm: f64) -> Result<(f64, &'stat
 
 /// Whether a body (`inspect.measure`'s name) is a model's definition or a copy of one, such as
 /// `HW hinge (Base:1/Base Door:1/HW hinge:2)` or `HW slide drawer 450 mm`.
+/// A joint's fastener (`<Name> joint ... fastener`, its pattern's copies `... fastener (2)`) is
+/// one too.
 pub fn is_model(body: &str) -> bool {
-    [HINGE, SLIDE].iter().any(|m| body.starts_with(m))
+    let copy = body
+        .rsplit_once(" (")
+        .filter(|(_, n)| n.trim_end_matches(')').parse::<u32>().is_ok());
+    let body_of = copy.map_or(body, |(name, _)| name);
+    [HINGE, SLIDE].iter().any(|m| body.starts_with(m)) || body_of.ends_with(" fastener")
 }
 
 /// Takes the models out of `inspect.measure`'s reply: they are not boards, nor part of any

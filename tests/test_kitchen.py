@@ -18,3 +18,7 @@ def test_the_kitchen_builds_and_survives_a_rebuild(approval):
     # and a pattern), 2 more for each of Wall 3's two dividers, as in Wall 4's (edited, turned)
     assert cylinders(results[1], "Wall 2 Top") == 4 and cylinders(results[1], "Wall 3 Top") == 8
     assert cylinders(results[1], "Wall 4 Top") == 4
+    # the units on the return show their fasteners: Wall 4's dowels, the last cabinet edited
+    names = [b["name"] for b in results[1]["bodies"]]
+    assert any(n.startswith("Wall 4 joint") and model(n) for n in names), names
+    assert not any(n.startswith("Wall 3 joint") for n in names)

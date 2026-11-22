@@ -2,6 +2,7 @@
 import contextlib
 import json
 import os
+import re
 import shutil
 import threading
 
@@ -62,10 +63,16 @@ def drive(joint, value):
     return {"command": "joint.drive", "params": {"joint": joint, "value": value}}
 
 
+def model(name):
+    """A hardware model (`HW hinge`, ...: definitions and copies) or a joint's fastener
+    (`... fastener`, its pattern's copies `... fastener (2)`), as `hardware::is_model`."""
+    return name.startswith("HW ") or re.sub(r" \(\d+\)$", "", name).endswith(" fastener")
+
+
 def boards(measure):
-    """The bodies of a measure through the CLI but the hardware models (`HW hinge`, ...: their
-    definitions and copies), which the plugin's own measures leave out."""
-    return [b for b in measure["bodies"] if not b["name"].startswith("HW ")]
+    """The bodies of a measure through the CLI but the models, which the plugin's own measures
+    leave out."""
+    return [b for b in measure["bodies"] if not model(b["name"])]
 
 
 def boxes(measure, models=False):

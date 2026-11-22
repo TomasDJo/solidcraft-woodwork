@@ -196,3 +196,28 @@ def test_without_pins_the_shelves_are_fixed_and_joined(approval):
     assert box["G Shelf 1"][0] == -288 and box["G Shelf 1"][3] == 288, box["G Shelf 1"]
     # Edit to shelf pins: adjustable, no joints, pin rows
     assert cylinders(results[7], "F Shelf 1.1") == 0 and cylinders(results[7], "F Side L") > 6, (cylinders(results[7], "F Shelf 1.1"), cylinders(results[7], "F Side L"))
+
+
+def test_fastener_models_sit_in_their_holes(approval):
+    # Dowels: a body in each hole (3 a joint, 4 joints), copied along by one pattern of bodies;
+    # the boards, the cut list and the hardware are the same as without them. Fastener models
+    # None, or Hardware models None: no models. Cam locks: a bolt and a cam each.
+    def made(settings, joints="dowels"):
+        results = designed(approval, {"joints": joints, **settings},
+                           [plugin(approval, "cabinet", {"name": "D", "shelves": 0, "place": "origin"}),
+                            MEASURE, plugin(approval, "cutlist")])
+        fasteners = {b["name"]: b for b in results[1]["bodies"] if model(b["name"]) and not b["name"].startswith("HW ")}
+        return fasteners, boxes(results[1]), results[2]["result"]
+    on, boards_on, listed_on = made({})
+    assert len(on) == 12, sorted(on)
+    dowel = on["D joint Side L Bottom dowels fastener"]
+    # 8 x 37 mm, across the side's inner face at x = -282, at the bottom's middle (z 9)
+    assert abs(dowel["volume_mm3"] - 3.14159 * 16 * 37) < 30, dowel["volume_mm3"]
+    lo, hi = dowel["bbox"]["min"], dowel["bbox"]["max"]
+    assert lo[0] < -282 < hi[0] and abs((lo[2] + hi[2]) / 2 - 9) < 0.01, dowel["bbox"]
+    off, boards_off, listed_off = made({"fastener_models": "off"})
+    assert not off and boards_on == boards_off and listed_on["csv"] == listed_off["csv"]
+    assert listed_on["hardware"] == listed_off["hardware"]
+    assert not made({"hardware_models": "off"})[0]
+    cams = made({}, "cam")[0]
+    assert len(cams) == 2 * 12 and "D joint Side L Bottom cam housing fastener (2)" in cams, sorted(cams)

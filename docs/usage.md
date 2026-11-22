@@ -127,6 +127,19 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   cutting the cups** lets the hinge models cut the cups themselves; it needs SolidCraft 0.47 or
   later, as before that every later run in the design gets much slower. A cabinet too big for
   one run with its models (very many doors) is made without them, and says so in its result.
+- **Fastener models** (Woodwork settings, Shown by default; None with Hardware models None
+  too): each dowel, screw (confirmat, plain or pocket), cam lock with its bolt, biscuit or
+  Domino is a simple body sitting in its hole (`Name joint Side L Bottom dowels fastener`, the
+  rest of a row copies of it, `... fastener (2)`), in the cabinet's component, made per row like
+  the holes. Like the hinge models they only show: the cut list, drawings' board lists,
+  Worktop, Place and Material leave them out. With See-through boards on you can look at them
+  inside the boards. A cabinet remembers whether it has them. They add a feature to the
+  history for each joint: in a big design (about 400 features, the sample kitchen's size),
+  SolidCraft 0.46 names the faces of later features another way, and a corner cabinet's picked
+  chamfer further on is then not found again when an earlier cabinet is deleted or edited (the
+  run fails and nothing changes). Set Fastener models to None before the cabinets of a big
+  kitchen if that happens; the sample kitchen shows them only on the units on the return, which
+  come last.
 - The holes show in the DXF files (a layer per diameter and depth) and the cut list counts the
   hinges and the pairs of slides. A corner cabinet's doors get the same cups on the same grid,
   and the plates' holes in the end the pair hangs on; the diagonal door's ends stand at 45
@@ -458,8 +471,8 @@ cabinet dialogs: the joinery (**Joinery**, **Joinery inside**, and the sizes of 
 chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel diameter**,
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
 face**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
-**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full or over-travel; see
-[Hinges and slides](#hinges-and-slides)). The dialog starts at what is stored, or at the
+**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full or over-travel,
+**Fastener models**; see [Hinges and slides](#hinges-and-slides)). The dialog starts at what is stored, or at the
 defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowels, models
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
 them later leaves the cabinets made before as they are, and Edit cabinet changes the methods,

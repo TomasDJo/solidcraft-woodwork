@@ -162,7 +162,7 @@ materials, joinery and cut lists.
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/frame/` | Frame: a leg-and-rail base (legs, aprons, stretchers, dowel or bolt holes), built on `Kit` like a cabinet. `is_timber` tells its parts to the cut list |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
-| `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts and the fastener counts) that the builders share |
+| `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts, the fastener models and counts) that the builders share |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin: `inside`), remembers them for Edit, and refuses Place against a side that has one |
 | `src/worktop/` | Worktop over the selected cabinets: measures their feet (a corner cabinet's two legs), groups them into runs by the way they face, joins runs in corners (butt or mitre) and makes each piece a box or an extruded outline at world coordinates; dog holes and a cut-out in piece 1. `lib.rs` finds the cabinets (a picked worktop's remembered ones), replaces a worktop of that name, makes the component and grounds it |
 | `src/material.rs` | Board materials: create on first use, assign; See-through boards (`see_through`, `opacity`) |
@@ -637,6 +637,25 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   1600, 4 to 2000, 5 above (the first two cups at the ends keep their names). The cup's two
   screw holes (45 apart, 9.5 off its centre) are not cut: 2 commands a cup more.
   Undermount slides are deferred. Sample kitchen, local: models on cost up to 1.5 s a cabinet run more than off.
+  **Fastener models** (`fastener_models`, Woodwork settings, `on` by default, remembered; none
+  with `hardware_models: off`; `Joinery::fasteners`, a frame's with the models): after a joint's
+  hole `Joinery::fastener` pushes the same command without `operation` and `targets`, named and
+  `body_name` `<cut> fastener` (a confirmat or screw: the clearance hole as long as the screw; a
+  cam: a 6 mm rod from the bolt's tip, `cam_bolt` long, and the housing; a pocket screw: its
+  pilot; a biscuit: its slot; dowels and bolts: the hole), and the row adds a
+  `solid.pattern.rectangular` of `bodies` (`<row> fasteners`, copies `<name> (2)`, a fraction of a
+  millisecond; a pattern of new-body *features* names its copies `Body1`). One command a joint
+  and one a row. `hardware::is_model` takes a name ending in ` fastener`, or ` fastener (n)`, so
+  `hide` keeps them from every measure; the drawing's views show them, as the hinge models.
+  **The naming depth:** SolidCraft names a feature's faces from its history only up to
+  `MAX_DEPTH` 400 (`crates/doc/src/naming.rs`; the depth is the highest of every body's in the
+  design plus one a feature, `eval.rs` `stamp`), and past it `Body:face:k`. A chamfer picked
+  past it stores `Wall corner Cleat:face:3|...:face:5`; deleting an earlier cabinet brings it
+  under 400, the face is `F662:+z` and the chamfer fails ("no longer exists as it was picked").
+  The sample kitchen without fasteners had 419 features before the wall corner's bevel (not all
+  count) and survived; with them everywhere it did not. So `examples/kitchen.py` sets Fastener
+  models off before all but the units on the return (`LATE`), made after the wall corner.
+  Fasteners everywhere cost the kitchen about 1.2 s on its slowest run (7.4 to 8.5 s).
 - Drawing (`drawing::sheet`): the drawing commands (0.45) run inside a plugin run; while a
   drawing is open the model's commands wait, so `lib.rs` reads everything first, then opens or
   makes `Woodwork`, draws, deletes the replaced sheets and closes it. The board list is four notes
