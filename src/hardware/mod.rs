@@ -209,10 +209,11 @@ pub fn hinge(crank: f64) -> String {
 }
 
 /// The slide types, as the `slide_type` field names them, and as the cut list does.
-pub const SLIDE_TYPES: [(&str, &str); 3] = [
+pub const SLIDE_TYPES: [(&str, &str); 4] = [
     ("partial", "partial extension"),
     ("full", "full extension"),
     ("over", "over-travel"),
+    ("wood", "wooden runners"),
 ];
 
 /// How far a drawer on slides `length` mm long of `kind` (`SLIDE_TYPES`) pulls out, in mm: a

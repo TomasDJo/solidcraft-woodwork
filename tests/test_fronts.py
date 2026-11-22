@@ -302,3 +302,32 @@ def test_drawer_box_and_bottom_thickness(approval):
     assert (size("Left", 0), size("Right", 0), size("Box back", 1), size("Bottom", 2)) == (15, 15, 15, 9), box
     assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7, box["Cabinet Drawer 1 Left"]
     assert size("Bottom", 0) == 600 - 2 * 18 - 2 * 12.7 - 2 * 15, box["Cabinet Drawer 1 Bottom"]
+
+
+def test_wooden_runners(approval):
+    # Slide type Wood: the bottom, 6 mm, is wider than the box and runs in a 6 mm deep groove in
+    # each side with 1 mm of play; the drawer comes out two thirds of its box (532 mm deep).
+    # No slide holes, models or hardware; the cut list notes the grooves. Beside a door with
+    # inset fronts too.
+    results = designed(approval, {"slide_type": "wood"}, [
+        plugin(approval, "cabinet", {"drawers": 2}), {"command": "joint.list", "params": {}}, MEASURE,
+        drive("Cabinet Drawer 1 slide", 600), MEASURE, plugin(approval, "cutlist"),
+        plugin(approval, "cabinet", {"name": "B", "drawers": 1, "doors": 1, "fronts": "inset", "place": "origin"}),
+        MEASURE])
+    limits = {j["name"]: j["values"][0]["limits"] for j in results[1]["joints"]}
+    assert limits["Cabinet Drawer 1 slide"] == [0, 355], limits
+    shut, out = boxes(results[2]), boxes(results[4])
+    bottom = shut["Cabinet Drawer 1 Bottom"]
+    assert (round(bottom[0], 3), round(bottom[3], 3)) == (-300 + 13, 300 - 13), bottom
+    assert shut["Cabinet Drawer 1 Left"][0] == -300 + 19 and shut["Cabinet Drawer 1 Left"][2] == bottom[5]
+    assert abs(out["Cabinet Drawer 1 Front"][1] - (shut["Cabinet Drawer 1 Front"][1] - 355)) < 0.01
+    # each side loses two grooves of 6 x 8 mm, front to back
+    side = volume(results[2], "Cabinet Side L")
+    assert side < 720 * 560 * 18 - 2 * 6 * 8 * 500, side
+    assert not [n for n in boxes(results[2], models=True) if n.startswith("HW slide")], "slide models"
+    cutlist = results[5]["result"]
+    assert not [h for h in cutlist["hardware"] if "slide" in h["item"].lower()], cutlist["hardware"]
+    notes = [p.get("note", "") for p in cutlist["parts"] if "Cabinet Side L" in p["parts"]]
+    assert notes and "grooved for the drawer runners" in notes[0], cutlist["parts"]
+    b = boxes(results[7])
+    assert b["B Drawer 1 Bottom"][3] - b["B Drawer 1 Bottom"][0] > b["B Drawer 1 Right"][3] - b["B Drawer 1 Left"][0], b

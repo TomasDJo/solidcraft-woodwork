@@ -693,3 +693,26 @@ fn a_split_corner_shelfs_dowels_are_their_own_line() {
         json!([{"item": "Dowel, 8 x 60 mm", "qty": 1}])
     );
 }
+
+#[test]
+fn sides_grooved_for_runners_are_noted() {
+    let mut m = measure();
+    m["bodies"][0]["name"] = json!("A Side L");
+    m["bodies"][1]["name"] = json!("A Side R");
+    let design = json!({"timeline": [{"name": "A Side L runner 1"}, {"name": "A Side L runner 2"},
+                                     {"name": "A Side R runner 1"}, {"name": "A Side L notch"}]});
+    assert_eq!(grooved(&design), ["A Side L", "A Side R"]);
+    let params = json!({"_notched": notched(&design), "_grooved": grooved(&design)});
+    let list = cutlist(&m, &BTreeMap::new(), false, &params).unwrap();
+    let notes: Vec<&Value> = list["parts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| &p["note"])
+        .collect();
+    assert!(
+        notes.contains(&&json!(format!("{NOTCHED}; {GROOVED}"))),
+        "{notes:?}"
+    );
+    assert!(notes.contains(&&json!(GROOVED)), "{notes:?}");
+}

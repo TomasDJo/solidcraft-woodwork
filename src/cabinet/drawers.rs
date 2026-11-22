@@ -45,6 +45,7 @@ pub fn build(cabinet: &Cabinet) {
         drawer_z,
         kind,
         box_t,
+        runner,
         ..
     } = cabinet.input;
     let sink = kind == "sink";
@@ -72,7 +73,18 @@ pub fn build(cabinet: &Cabinet) {
             (equal.clone(), equal)
         }
     };
-    let box_w = format!("({eiw} - 2*HW_slide_t)");
+    // Wooden runners: the box stands `play` clear of each side, on a bottom wider than it that
+    // runs in a groove `depth` deep in each side, `play` short of its end and round it.
+    let wood = runner.map(|[depth, play]| {
+        [
+            kit.parameter("runner_depth", depth, "wooden runner groove depth"),
+            kit.parameter("runner_play", play, "wooden runner play round the bottom"),
+        ]
+    });
+    let (box_w, gap_x) = match &wood {
+        Some([_, play]) => (format!("({eiw} - 2*{play})"), play.clone()),
+        None => (format!("({eiw} - 2*HW_slide_t)"), "HW_slide_t".into()),
+    };
     // ponytail: a sink base's boxes stop at half depth, before the trap; a U-cut round it
     // for deeper boxes is left to the user.
     let box_d = match sink {
@@ -123,10 +135,15 @@ pub fn build(cabinet: &Cabinet) {
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
         let (x, y, z) = (
-            format!("{et} + HW_slide_t"),
+            format!("{et} + {gap_x}"),
             eback.clone(),
             format!("{z} + {lift}"),
         );
+        // On runners the bottom is under the box, and the box's boards stand on it.
+        let (bz, box_h) = match &wood {
+            Some(_) => (format!("{z} + {bb}"), format!("({box_h} - {bb})")),
+            None => (z.clone(), box_h),
+        };
         let right = format!("{x} + {box_w} - {bt}");
         let inner_x = format!("{x} + {bt}");
         let inner_w = format!("{box_w} - 2*{bt}");
@@ -134,24 +151,56 @@ pub fn build(cabinet: &Cabinet) {
         let inner_d = format!("{box_d} - 2*{bt}");
         panel(
             &format!("{drawer} Left"),
-            [&x, &y, &z],
+            [&x, &y, &bz],
             [&bt, &box_d, &box_h],
         );
         panel(
             &format!("{drawer} Right"),
-            [&right, &y, &z],
+            [&right, &y, &bz],
             [&bt, &box_d, &box_h],
         );
         panel(
             &format!("{drawer} Box front"),
-            [&inner_x, &y, &z],
+            [&inner_x, &y, &bz],
             [&inner_w, &bt, &box_h],
         );
         panel(
             &format!("{drawer} Box back"),
-            [&inner_x, &back_y, &z],
+            [&inner_x, &back_y, &bz],
             [&inner_w, &bt, &box_h],
         );
+        // The slide (or runner): straight out of the front, as far as its type travels.
+        let travel = cabinet.input.slide_type.1;
+        let back_mm = if inset { t } else { -reveal };
+        let at = [
+            0.0,
+            -d / 2.0 + back_mm,
+            drawer_z + (front_mm + reveal) * i as f64,
+        ];
+        if let Some([depth, play]) = &wood {
+            let out = format!("{et} - {depth} + {play}");
+            let length = format!("{ew} - 2*({out})");
+            panel(
+                &format!("{drawer} Bottom"),
+                [&out, &y, &z],
+                [&length, &box_d, &bb],
+            );
+            kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
+            // Its groove in each side, from the front to the back, in the cabinet's component:
+            // named `<Side> runner <n>`, which the cut list notes.
+            let (gz, gh) = (format!("{z} - {play}"), format!("{bb} + 2*{play}"));
+            let gd = format!("{ein} + {eshelf_d} + 1 mm");
+            let sides = [
+                ("Side L", format!("{et} - {depth}")),
+                ("Side R", format!("{ew} - {et}")),
+            ];
+            for (side, gx) in sides {
+                let target = [format!("{} {side}", kit.name)];
+                let part = format!("{side} runner {}", i + 1);
+                kit.panel(&part, [&gx, "-1 mm", &gz], [depth, &gd, &gh], Some(&target));
+            }
+            continue;
+        }
         panel(
             &format!("{drawer} Bottom"),
             [&inner_x, &inner_y, &z],
@@ -168,7 +217,7 @@ pub fn build(cabinet: &Cabinet) {
             ("Left", &x, 1, "Side L", et.clone(), -1),
             ("Right", &right_x, -1, "Side R", format!("{ew} - {et}"), 1),
         ];
-        let (label, (kind, travel)) = (cabinet.input.slide.1, cabinet.input.slide_type);
+        let (label, kind) = (cabinet.input.slide.1, cabinet.input.slide_type.0);
         let back = format!(" + floor(({label} - 2*HW_setback) / HW_pitch) * HW_pitch");
         let along = ["", back.as_str()];
         for (part, outer, into, ..) in &halves {
@@ -229,13 +278,6 @@ pub fn build(cabinet: &Cabinet) {
                 hardware::copy(kit, &model, parent, at, upright, None);
             }
         }
-        // The slide: straight out of the front, as far as its type travels.
-        let back_mm = if inset { t } else { -reveal };
-        let at = [
-            0.0,
-            -d / 2.0 + back_mm,
-            drawer_z + (front_mm + reveal) * i as f64,
-        ];
         kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
         for (_, _, _, side, inner, out) in &halves {
             for (k, along) in along.iter().enumerate() {

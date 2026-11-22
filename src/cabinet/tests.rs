@@ -1097,3 +1097,55 @@ fn drawer_boxes_take_their_board_and_bottom_thickness() {
     assert!(build(&json!({"drawers": 1, "drawer_thickness": 8})).is_err());
     assert!(build(&json!({"drawers": 1, "drawer_bottom": 25})).is_err());
 }
+
+#[test]
+fn wooden_runners_run_the_bottom_in_grooves_in_the_sides() {
+    let p = json!({"drawers": 2, "slide_type": "wood"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_runner_depth")["expression"],
+        "6 mm"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_runner_play")["expression"],
+        "1 mm"
+    );
+    // the bottom under the box, into each groove less the play; the box's boards on it
+    let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    let out = "Cabinet_thickness - Cabinet_runner_depth + Cabinet_runner_play";
+    assert_eq!(bottom["length"], format!("Cabinet_width - 2*({out})"));
+    let left = named(&commands, "Cabinet Drawer 1 Left");
+    assert_eq!(
+        left["height"]
+            .as_str()
+            .unwrap()
+            .matches("Cabinet_drawer_bottom")
+            .count(),
+        1
+    );
+    // a groove in each side per drawer, the bottom's thickness and the play round it
+    for side in [
+        "Side L runner 1",
+        "Side R runner 1",
+        "Side L runner 2",
+        "Side R runner 2",
+    ] {
+        let groove = named(&commands, &format!("Cabinet {side}"));
+        assert_eq!(groove["operation"], "cut");
+        assert_eq!(
+            groove["height"],
+            "Cabinet_drawer_bottom + 2*Cabinet_runner_play"
+        );
+    }
+    // no slide holes or models; the drawer comes out two thirds of its box's depth
+    assert!(!commands.iter().any(|c| c.1.to_string().contains("HW_")));
+    let limit = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
+    assert_eq!(
+        limit.1["max"],
+        ((560.0 - 12.0 - 6.0 - 10.0) * 2.0 / 3.0_f64).round()
+    );
+    // beside doors and inset too; a groove too deep for the sides is refused
+    assert!(build(&json!({"drawers": 1, "doors": 1, "slide_type": "wood"})).is_ok());
+    assert!(build(&json!({"drawers": 2, "fronts": "inset", "slide_type": "wood"})).is_ok());
+    assert!(build(&json!({"drawers": 1, "slide_type": "wood", "runner_depth": 13})).is_err());
+}

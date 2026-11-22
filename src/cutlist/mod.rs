@@ -214,7 +214,12 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             *slides.entry(length).or_default() += 1;
         }
     }
-    let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front");
+    // a drawer on wooden runners (`<Name> Side L runner <n>`) has no slides
+    let runners = |b: &String| {
+        let runner = b.replacen(" Drawer ", " Side L runner ", 1);
+        features.contains(&runner.trim_end_matches(" Front").to_string())
+    };
+    let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front") && !runners(b);
     let counts = [
         (
             "Hinge, cup",
@@ -330,6 +335,18 @@ pub fn notched(design: &Value) -> Vec<String> {
 
 /// What a notched side's line in the cut list says.
 pub const NOTCHED: &str = "notched for the toe kick; size over the notch";
+
+/// The sides grooved for wooden drawer runners (`<Side> runner <n>`), as `notched`.
+pub fn grooved(design: &Value) -> Vec<String> {
+    let features = design["timeline"].as_array().into_iter().flatten();
+    let sides = features.filter_map(|f| Some(f["name"].as_str()?.split_once(" runner ")?.0));
+    let mut sides: Vec<String> = sides.map(String::from).collect();
+    sides.dedup();
+    sides
+}
+
+/// What a grooved side's line in the cut list says.
+pub const GROOVED: &str = "grooved for the drawer runners";
 
 /// The folder grant in `plugin.json` that a cut list is saved into.
 pub const FOLDER: &str = "cutlists";
@@ -472,9 +489,12 @@ pub fn cutlist(
         .iter()
         .filter(|b| !crate::fittings::is_foot(b["name"].as_str().unwrap_or("")))
         .collect();
-    let notched = |name: &str| {
-        let all = params["_notched"].as_array().into_iter().flatten();
-        all.into_iter().any(|n| n == name)
+    // A board's note: notched for the toe kick, grooved for runners, or both.
+    let noted = |name: &str| {
+        let has = |key: &str| (params[key].as_array().into_iter().flatten()).any(|n| n == name);
+        let notes = [(has("_notched"), NOTCHED), (has("_grooved"), GROOVED)];
+        let notes: Vec<&str> = notes.iter().filter(|n| n.0).map(|n| n.1).collect();
+        notes.join("; ")
     };
     if bodies.is_empty() {
         return Err("the design has no boards to list".into());
@@ -512,7 +532,7 @@ pub fn cutlist(
     };
     // Key: thickness, length, width in tenths of a mm, material, the banded edges along the
     // length and along the width, and whether it is notched.
-    type Key = (i64, i64, i64, String, u64, u64, bool);
+    type Key = (i64, i64, i64, String, u64, u64, String);
     let mut rows: BTreeMap<Key, Vec<String>> = BTreeMap::new();
     for &body in &bodies {
         let name = body["name"].as_str().unwrap_or("?").to_string();
@@ -546,7 +566,7 @@ pub fn cutlist(
             material,
             le,
             we,
-            notched(&name),
+            noted(&name),
         );
         rows.entry(key).or_default().push(name);
     }
@@ -620,9 +640,9 @@ pub fn cutlist(
             quoted(material),
             if grain { "yes" } else { "" },
             mark(*le, *we),
-            quoted(&match notch {
-                true => format!("{} ({NOTCHED})", names.join(", ")),
-                false => names.join(", "),
+            quoted(&match notch.is_empty() {
+                false => format!("{} ({notch})", names.join(", ")),
+                true => names.join(", "),
             })
         );
         let mut part = json!({
@@ -630,8 +650,8 @@ pub fn cutlist(
             "material": material, "grain": grain,
             "banding": {"length": le, "width": we}, "parts": names,
         });
-        if *notch {
-            part["note"] = json!(NOTCHED);
+        if !notch.is_empty() {
+            part["note"] = json!(notch);
         }
         parts.push(part);
     }

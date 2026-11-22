@@ -964,6 +964,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let mut params = params.clone();
             settings::design(entry, &mut params, stored);
             params["_notched"] = json!(cutlist::notched(&design));
+            params["_grooved"] = json!(cutlist::grooved(&design));
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
@@ -1018,6 +1019,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let mut measure = run("inspect.measure", json!({}))?;
             // the board list notes them as the cut list does
             measure["notched"] = json!(cutlist::notched(&design));
+            measure["grooved"] = json!(cutlist::grooved(&design));
             let names = match params["scope"].as_str().unwrap_or("selected") {
                 "selected" => {
                     vec![select::cabinet(&select::picked(params, &design), &measure)?.name]

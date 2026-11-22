@@ -105,6 +105,13 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   `HW_pitch` further as the slide's length leaves before `HW_setback` from its end. A sink
   base's false front has none. A drawer box must be at least 250 mm deep, for the shortest
   slide.
+- **Wooden runners** (Slide type Wood): no slides, holes or models. The box stands 1 mm
+  clear of each side on a bottom wider than it, whose edges run in a groove in each carcass
+  side (`Name Side L runner 1` and on, front to back), as high as the bottom plus 1 mm of play
+  above and below, 6 mm deep, the bottom 1 mm short of its end. The parameters
+  `Name_runner_depth` (3 mm up to the panel thickness less 6) and `Name_runner_play`. With no
+  stop, the drawer pulls out two thirds of its box's depth. The cut list notes the grooved
+  sides and counts no slides. A 9 mm bottom (Drawer bottom thickness) runs better than 6.
 - **Slide length** (Edit cabinet; a new cabinet takes Auto): the standard side-mount
   ball-bearing lengths, 250, 270 and 300 to 650 mm in steps of 50, or 10 to 28 in in steps of
   2. **Auto**
@@ -445,7 +452,7 @@ the Worktop dialog: they differ from run to run); and the joinery (**Joinery**, 
 chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel diameter**,
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
 face**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
-**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full or over-travel,
+**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel or wooden runners,
 **Fastener models**; see [Hinges and slides](#hinges-and-slides)). The dialog starts at what is stored, or at the
 defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowels, models
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
