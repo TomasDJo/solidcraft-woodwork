@@ -36,7 +36,7 @@ component can hold its cabinets.
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Wall mount**, **Cleat height**, **Cleat thickness** | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
-| **Joinery**, **Joinery inside**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length** | How the sides are fixed to the bottom and top, and (Joinery inside, shown with dividers or a rail) the dividers and the rail: dowels (the default), confirmat screws or none. See [Joinery at build](#joinery-at-build). |
+| **Joinery**, **Joinery inside**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length** | How the sides are fixed to the bottom and top, and (Joinery inside, shown with dividers or a rail) the dividers and the rail: dowels (the default), confirmat screws, screws or none. See [Joinery at build](#joinery-at-build). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
@@ -133,6 +133,8 @@ bottom and its two rails), and the holes are drilled as the cabinet is made:
 - **Confirmat screws**: 7 x 50 mm furniture screws from outside, heads showing: a 7 mm hole
   through the side and a 5 mm pilot hole into the end, 50 mm less the side deep. Boards
   under 40 mm only.
+- **Screws**: plain 4 x 50 mm wood or chipboard screws from outside, as confirmat: a 4.5 mm
+  hole through the side and a 3 mm pilot into the end. Counted as "Screw, 4 x 50 mm".
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
 **Joinery inside** does the same for the dividers (each end into the bottom's top face and the
@@ -148,7 +150,7 @@ runs. A sink base's rails get one each, in their
 middle. The sizes are the cabinet's design parameters (`Name_joint_spacing`,
 `Name_joint_edge`, `Name_dowel_d`, `Name_dowel_length`): change one in Parameters, or change
 the depth, and the holes follow, their number too. The cut list counts what to buy from the
-parameters `Name_dowels` and `Name_confirmats` (the sum of the joints' counts, so they follow
+parameters `Name_dowels`, `Name_confirmats` and `Name_screws` (the sum of the joints' counts, so they follow
 as well), as "Dowel, 8 x 35 mm" or "Confirmat screw, 7 x 50 mm". Edit cabinet changes either
 method (its sizes stay as they are in Parameters); Woodwork settings keeps the two methods new
 cabinets start with. Each joint is a cut in the cabinet's history folder (`Name joint Side L Bottom
@@ -220,7 +222,7 @@ the boards; the shelves and the pin rows stop at the backs. A steel rail is one 
 wall (`Name_wall_rail`, the width, and `Name_wall_rail_return`, the return), two hangers each.
 L-shaped and diagonal alike.
 
-**Joinery** (dowels by default, confirmat screws or none), with **Joint spacing**, **Joint edge
+**Joinery** (dowels by default, or any other method of the box cabinet), with **Joint spacing**, **Joint edge
 distance**, **Dowel diameter** and **Dowel length**, works as on the box cabinet (see
 [Joinery at build](#joinery-at-build)) on every joint of the carcass: the back's two ends into
 the back leg's end and the back return, the back return's front end into the return's end,

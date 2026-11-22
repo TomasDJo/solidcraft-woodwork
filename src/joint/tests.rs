@@ -96,7 +96,7 @@ fn confirmat_is_a_clearance_hole_through_the_side_and_a_pilot_in_the_end() {
     let thick = json!({"joints": "confirmat", "thickness": 40});
     assert!(crate::cabinet::build(&thick)
         .unwrap_err()
-        .contains("confirmat"));
+        .contains("50 mm screws"));
 }
 
 #[test]
@@ -281,4 +281,23 @@ fn a_corner_cabinet_joins_its_backs_ends_bottom_and_top() {
     assert!(names(json!({"name": "C"})).is_empty());
     let diagonal = names(json!({"name": "C", "joints": "confirmat", "shape": "diagonal"}));
     assert_eq!(diagonal.len(), 2 * (3 + 8));
+}
+
+#[test]
+fn plain_screws_are_a_thinner_confirmat() {
+    let p = json!({"name": "K", "joints": "screws"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let clear = find(&commands, "K joint Side L Top screws");
+    assert_eq!(clear["targets"], json!(["K Side L"]));
+    assert_eq!(clear["diameter"], "4.5 mm");
+    let pilot = find(&commands, "K joint Side L Top screws pilot");
+    assert_eq!(pilot["diameter"], "3 mm");
+    assert!(commands
+        .iter()
+        .any(|c| c.0 == "parameters.add" && c.1["name"] == "K_screws"));
+    let params = json!([{"name": "K_screws", "value": 12.0}]);
+    assert_eq!(
+        hardware("K", &params),
+        vec![("Screw, 4 x 50 mm".to_string(), 12)]
+    );
 }

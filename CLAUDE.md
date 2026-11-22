@@ -440,7 +440,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   selected one has one. Material is not matched.
 - **Joinery at build** (`src/joint/`): the cabinet's `joints` field (carcass: sides to bottom and
   top, a sink base's rails one fastener each, `Joint::single`) is `none`, `dowels` (the dialog's
-  default) or `confirmat`; absent is `none`, so a cabinet made before rebuilds as it was.
+  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`); absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
   rail into the sides, rows along the shelves' depth from `ein`.
@@ -458,7 +458,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   each on this machine (each copy is a boolean), more in a big design: the default spacing is
   250 mm. Measured in the sample kitchen: a box cabinet 3-7 s, the corner cabinets 7-8 s (about
   4 without joinery). `finish` adds
-  the parameters the cut list counts from, `<Prefix>_dowels` and `_confirmats` (the rows'
+  the parameters the cut list counts from, `<Prefix>_dowels`, `_confirmats`, `_screws` (the rows'
   counts summed; `parameters.change` on an edit, `0` when no longer used: `joint::COUNTS` go
   into `_existing` only), and `joint::hardware` names the items from them (the dowel's size from
   its parameters), for a cabinet that is still there (its `Side L`). Features `<Name> joint

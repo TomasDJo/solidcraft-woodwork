@@ -103,3 +103,14 @@ def test_corner_cabinets(approval):
     assert hardware_["Dowel, 8 x 35 mm"] == 44 + 44 and hardware_["Confirmat screw, 7 x 50 mm"] > 0, hardware_
     assert not [f["name"] for f in results[5]["timeline"] if f["warning"] or f["error"]]
     assert cylinders(results[8], "C Back") == 0
+
+
+def test_screws(approval):
+    # 4.5 mm through the side, a 3 mm pilot into the end: 3 a joint at 560 deep
+    results = cli([plugin(approval, "cabinet", {"name": "P", "shelves": 0, "joints": "screws", "place": "origin"}),
+                   MEASURE, faces("P Side L"), faces("P Bottom"), plugin(approval, "cutlist")])
+    assert cylinders(results[1], "P Side L") == 6 and cylinders(results[1], "P Top") == 6
+    clear = holes(results[2], 2.25)
+    assert len(clear) == 6 and {c[0] for c in clear} == {-291}, clear
+    assert len(holes(results[3], 1.5)) == 6
+    assert hardware(results[4]) == {"Screw, 4 x 50 mm": 12}, hardware(results[4])

@@ -17,7 +17,7 @@ use serde_json::{json, Value};
 use std::cell::RefCell;
 
 /// The methods, as the dialog's `joints` field gives them. `none` leaves the boards butted.
-pub const METHODS: [&str; 3] = ["none", "dowels", "confirmat"];
+pub const METHODS: [&str; 4] = ["none", "dowels", "confirmat", "screws"];
 
 /// The sizes a method can take: dialog field, which is also the parameter `<Prefix>_<key>`,
 /// and its default in mm.
@@ -30,9 +30,11 @@ const SIZES: [(&str, f64); 4] = [
 
 /// The parameters that count the fasteners for the cut list, `<Prefix>_<key>`: 0 once an edit
 /// took them away. `edit::merge` passes the ones a cabinet has to `Kit`.
-pub const COUNTS: [&str; 2] = ["dowels", "confirmats"];
+pub const COUNTS: [&str; 3] = ["dowels", "confirmats", "screws"];
 
-const CONFIRMAT: [f64; 4] = [7.0, 5.0, 50.0, 40.0]; // clearance, pilot, length, thickest board
+// A screw from the face board's outside into the other's end: clearance, pilot, length.
+const CONFIRMAT: [f64; 3] = [7.0, 5.0, 50.0];
+const SCREW: [f64; 3] = [4.5, 3.0, 50.0]; // a 4 x 50 mm chipboard screw
 
 /// Where the end of one board meets the face of another. Positions are counted from the
 /// cabinet's front left bottom corner, as a panel's (`Kit::at` shifts them).
@@ -99,7 +101,9 @@ impl<'a> Joinery<'a> {
         let mut sizes = Vec::new();
         for (key, default) in SIZES {
             let needed = match key {
-                "joint_spacing" | "joint_edge" => uses("dowels") || uses("confirmat"),
+                "joint_spacing" | "joint_edge" => {
+                    uses("dowels") || uses("confirmat") || uses("screws")
+                }
                 _ => uses("dowels"),
             };
             if !needed {
@@ -126,8 +130,8 @@ impl<'a> Joinery<'a> {
             )?;
         }
         check(
-            !uses("confirmat") || t.0 < CONFIRMAT[3],
-            "boards of 40 mm or more are too thick for 50 mm confirmat screws",
+            !(uses("confirmat") || uses("screws")) || t.0 < 40.0,
+            "boards of 40 mm or more are too thick for 50 mm screws",
         )?;
         let comment = |key: &str| match key {
             "joint_spacing" => "most between two joint fasteners",
@@ -161,7 +165,7 @@ impl<'a> Joinery<'a> {
 
     /// Checks that a row of `run_mm` has room for its fasteners: `what` names it.
     pub fn fits(&self, scope: usize, run_mm: f64, p: &Value, what: &str) -> Result<(), String> {
-        if !matches!(self.method(scope), "dowels" | "confirmat") {
+        if !matches!(self.method(scope), "dowels" | "confirmat" | "screws") {
             return Ok(());
         }
         let edge = self.kit.size(p, "joint_edge", 50.0)?;
@@ -208,14 +212,21 @@ impl<'a> Joinery<'a> {
                 cut("", base, j.into, d.into(), format!("{l} + 2 mm"));
                 "dowels"
             }
-            "confirmat" => {
+            "confirmat" | "screws" => {
                 // Through the face board from its outside, then the pilot in the end.
-                let [clear, pilot, length, _] = CONFIRMAT;
+                let [clear, pilot, length] = match method.as_str() {
+                    "confirmat" => CONFIRMAT,
+                    _ => SCREW,
+                };
                 let base = shift(&start, neg(j.into), t);
                 cut("", base, j.into, mm(clear), t.clone());
                 let depth = format!("{} - {t} + 2 mm", mm(length));
                 cut("pilot", start.clone(), j.into, mm(pilot), depth);
-                "confirmats"
+                if method == "screws" {
+                    "screws"
+                } else {
+                    "confirmats"
+                }
             }
             _ => return,
         };
@@ -343,6 +354,7 @@ pub fn hardware(prefix: &str, params: &Value) -> Vec<(String, u64)> {
         }
         let item = match key {
             "dowels" => format!("Dowel, {} x {} mm", size("dowel_d"), size("dowel_length")),
+            "screws" => "Screw, 4 x 50 mm".to_string(),
             _ => "Confirmat screw, 7 x 50 mm".to_string(),
         };
         items.push((item, qty));
