@@ -254,6 +254,67 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
     changes
 }
 
+/// A built cabinet's `params` (`edit::merge`'s, sizes from the design's parameters) with what
+/// Woodwork settings hold now, for Settings' Apply to selected; `None` when it already has them.
+/// The design-wide settings count stored or default, and the dialogs' defaults (material,
+/// thickness, reveal, handles) only when stored. Only what the cabinet's `entry` takes (a
+/// corner has no drawers, no inside joinery, no back choice), and the plinth's only when it has
+/// one: a cabinet without one keeps none.
+pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<Value> {
+    let settings = &stored["document"]["settings"];
+    let mut wanted = json!({"units": params["units"]});
+    for key in ["material", "handles"] {
+        if settings[key].is_string() {
+            wanted[key] = settings[key].clone();
+        }
+    }
+    let has_plinth = params["plinth"].as_f64().unwrap_or(0.0) > 0.0;
+    for (key, field, def, to) in table() {
+        let field = if field.is_empty() { key } else { field };
+        let plinth = matches!(key, "plinth" | "plinth_type" | "plinth_setback");
+        if to == To::Hook && settings[key].is_number() {
+            wanted[field] = match def {
+                Def::Length(..) => json!(rounded(mm(settings, key) / unit(params))),
+                _ => json!(mm(settings, key)),
+            };
+        } else if plinth && has_plinth {
+            wanted[field] = match def {
+                Def::Choice(d) => json!(settings[key].as_str().unwrap_or(d)),
+                _ => json!(rounded(mm(settings, key) / unit(params))),
+            };
+        }
+    }
+    // the rest as a new cabinet gets them (Plinth given, so `design` leaves it)
+    wanted["plinth"] = wanted
+        .get("plinth")
+        .cloned()
+        .unwrap_or(params["plinth"].clone());
+    design(entry, &mut wanted, stored);
+    let mut out = params.clone();
+    let mut changed = false;
+    for (key, value) in wanted.as_object().into_iter().flatten() {
+        let same = match (&out[key.as_str()], value) {
+            (Value::Number(a), Value::Number(b)) => {
+                (a.as_f64().unwrap_or(0.0) - b.as_f64().unwrap_or(0.0)).abs() < 1e-6
+            }
+            (a, b) => a == b,
+        };
+        if !same {
+            out[key.as_str()] = value.clone();
+            changed = true;
+        }
+    }
+    changed.then_some(out)
+}
+
+fn unit(params: &Value) -> f64 {
+    if params["units"] == "in" {
+        25.4
+    } else {
+        1.0
+    }
+}
+
 /// The dialog hook's reply for `entry` with the dialog's `values`, from `storage.get`'s
 /// reply: each stored setting as the field's default, lengths in the dialog's unit. The
 /// Settings dialog gets every setting with a default, stored or the default, and no hint.

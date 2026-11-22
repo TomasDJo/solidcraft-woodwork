@@ -126,3 +126,29 @@ def test_plinth_fronts_cut_list_and_worktop_from_the_settings(approval):
     assert results[10]["result"]["sheet_mm"] == [2800, 2070], results[10]["result"]["sheet_mm"]
     worktop = boxes(results[13])["Worktop"]
     assert round(worktop[5] - worktop[2], 3) == 30, worktop
+
+
+def test_apply_to_selected(approval):
+    # A, B and W made with the defaults; Settings with 19 mm boards and confirmat screws applied
+    # to A and W: they are built again with them, in place, B is not. W, a wall unit without a
+    # plinth, keeps none though the settings have one. Run again: nothing left to do.
+    def pick(*names):
+        return [{"type": "body", "name": n} for n in names]
+    new = {"thickness": 19, "joints": "confirmat", "plinth": 120}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": "yes"}), select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "place": "right", "plinth": "yes"}),
+                   plugin(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin"}),
+                   MEASURE,
+                   setting(approval, {**new, "selection": pick("A Top", "W Side L")}),
+                   MEASURE, plugin(approval, "cutlist"),
+                   setting(approval, {**new, "selection": pick("A Top", "W Side L")})])
+    before, after = boxes(results[4]), boxes(results[6])
+    reply = results[5]["result"]
+    assert sorted(reply["applied"]) == ["A", "W"] and reply["remaining"] == [], reply
+    width = lambda box, name: round(box[f"{name} Side L"][3] - box[f"{name} Side L"][0], 3)
+    assert width(after, "A") == width(after, "W") == 19 and width(after, "B") == 18, after
+    assert after["A Bottom"][2] == 120 and after["W Bottom"][2] == 0, (after["A Bottom"], after["W Bottom"])
+    assert after["B Side L"] == before["B Side L"] and after["A Side L"][0] == before["A Side L"][0]
+    hardware = {h["item"]: h["qty"] for h in results[7]["result"]["hardware"]}
+    assert hardware["Confirmat screw, 7 x 50 mm"] == 24 and "Dowel, 8 x 35 mm" in hardware, hardware
+    assert results[8]["result"]["applied"] == [], results[8]

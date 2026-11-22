@@ -161,6 +161,171 @@ fn component(
     Ok((summary, made))
 }
 
+/// Settings' Apply to selected: each picked cabinet (a box or corner cabinet, not a frame) whose
+/// values differ from the settings is built again with them (`settings::apply`, `rebuild`),
+/// as many as fit in the run's time and commands (`drawing::fits`), at least one; the reply
+/// names those `applied` and those `remaining`, which the next run with them picked does.
+fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
+    let start = now();
+    let used = std::cell::Cell::new(0);
+    let mut run = |command: &str, args: Value| {
+        used.set(used.get() + 1);
+        run(command, args)
+    };
+    let design = run(
+        "document.inspect",
+        json!({"bodies": false, "timeline": false}),
+    )?;
+    let measure = run("inspect.measure", json!({}))?;
+    let mut names = Vec::new();
+    for body in select::picked(params, &design) {
+        if let Some(owner) = select::owner(&measure, &body) {
+            if !names.contains(&owner.to_string()) {
+                names.push(owner.to_string());
+            }
+        }
+    }
+    let mut todo = Vec::new();
+    for name in names {
+        let about = run("component.metadata", json!({"component": name}))?;
+        let ours = &about["metadata"][edit::KEY];
+        let Some(entry) = ours["entry"]
+            .as_str()
+            .filter(|e| matches!(*e, "cabinet" | "corner"))
+        else {
+            continue;
+        };
+        let entry = entry.to_string();
+        let (_, base) = edit::merge(ours, &json!({}), &design)?;
+        if let Some(params) = settings::apply(&entry, &base, stored) {
+            todo.push((name, about, entry, params));
+        }
+    }
+    let (mut applied, mut remaining) = (Vec::new(), Vec::new());
+    for (name, about, entry, params) in todo {
+        let (commands, _) = build(&entry, &params)?;
+        let next = hardware::cost(&commands) + 40;
+        let elapsed = now().saturating_sub(start);
+        if !applied.is_empty() && !drawing::fits(elapsed, used.get(), next) {
+            remaining.push(name);
+            continue;
+        }
+        let design = run(
+            "document.inspect",
+            json!({"bodies": false, "timeline": false}),
+        )?;
+        rebuild(&name, &about, &entry, &params, &design, &measure, &mut run)?;
+        applied.push(name);
+    }
+    let message = match remaining.len() {
+        0 => format!("{} cabinets built again with the settings", applied.len()),
+        n => format!(
+            "{} cabinets built again with the settings; {n} left: run Settings again with them picked",
+            applied.len()
+        ),
+    };
+    Ok(json!({"applied": applied, "remaining": remaining, "message": message}))
+}
+
+/// Builds the cabinet `name` again from `params` (`edit::merge`'s), where it stands: the same
+/// name, place, links, the materials of the boards that had another than the rest, and its
+/// panels. `about` is its `component.metadata`, `design` and `measure` read before. Edit, and
+/// Settings' Apply to selected.
+fn rebuild(
+    name: &str,
+    about: &Value,
+    entry: &str,
+    params: &Value,
+    design: &Value,
+    measure: &Value,
+    run: Run,
+) -> Result<Value, String> {
+    let name = name.to_string();
+    let tree = run("component.list", json!({}))?;
+    let (parent, matrix, grounded) = edit::placement(&tree, &name)?;
+    let materials = edit::materials(measure, &select::parts(measure, &name));
+    // The cabinets held to this one lose their link with it: found now, held again after.
+    let joints = run("joint.list", json!({}))?;
+    let hanging = edit::hanging(&tree, &joints, &name);
+    run("component.activate", json!({"component": parent}))?;
+    let gone = run("component.delete", json!({"component": name}))?;
+    let (mut summary, made) = make(entry, params, design, run)?;
+    // Its panels, those whose boards were still there; they get their material back
+    // with the rest below.
+    let parts = select::parts(measure, &name);
+    let panels = about["metadata"][edit::KEY]["panels"].as_array().cloned();
+    for p in panels.into_iter().flatten() {
+        if parts.contains(&panel::body(&name, &p)) {
+            let bodies = panel(&name, &p, &Value::Null, run)?;
+            if let Some(all) = summary["bodies"].as_array_mut() {
+                all.extend(bodies.into_iter().map(Value::from));
+            }
+        }
+    }
+    // Boards that had another material than the rest get it back.
+    for (material, bodies) in materials {
+        let still: Vec<&String> = (bodies.iter())
+            .filter(|b| {
+                summary["bodies"]
+                    .as_array()
+                    .is_some_and(|all| all.contains(&json!(b)))
+            })
+            .collect();
+        if !still.is_empty() {
+            run(
+                "material.assign",
+                json!({"bodies": still, "material": material}),
+            )?;
+        }
+    }
+    run(
+        "occurrence.move",
+        json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
+    )?;
+    // Held again to the cabinet it stood against, when that is still there; and the
+    // cabinets that were held to it, to the new one.
+    let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
+    let was = &about["metadata"][edit::KEY]["link"];
+    let measure = run("inspect.measure", json!({}))?;
+    let mut held = false;
+    if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
+        if let Ok(other) = select::named(&measure, to) {
+            held = link(&other, place, &name, stands(&matrix), run)?;
+        }
+    }
+    if !held {
+        run(
+            "occurrence.ground",
+            json!({"occurrence": made["occurrence"], "grounded": grounded}),
+        )?;
+    }
+    // (read per cabinet: a frame has none, and no Side L to read)
+    for other in hanging {
+        let this = select::named(&measure, &name)?;
+        let about = run("component.metadata", json!({"component": other}))?;
+        let place = about["metadata"][edit::KEY]["link"]["place"].as_str();
+        let (_, matrix, _) = edit::placement(&tree, &other)?;
+        let held = match place {
+            Some(place) => link(&this, place, &other, stands(&matrix), run)?,
+            None => false,
+        };
+        if !held {
+            run(
+                "occurrence.ground",
+                json!({"occurrence": format!("{other}:1"), "grounded": true}),
+            )?;
+        }
+    }
+    // Back to where the user was working, unless that was inside the old cabinet.
+    let inside = gone["deleted"]
+        .as_array()
+        .is_some_and(|ids| ids.contains(&tree["active"]));
+    if !inside {
+        run("component.activate", json!({"component": tree["active"]}))?;
+    }
+    Ok(summary)
+}
+
 /// Holds a cabinet that was placed against another to that one, with a rigid joint whose
 /// distance is an expression over the two cabinets' parameters: when either changes size the
 /// placed one keeps standing against its neighbour, and what is placed against it in turn
@@ -545,88 +710,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
             // Checked before anything is taken away.
             build(&entry, &params)?;
-            let tree = run("component.list", json!({}))?;
-            let (parent, matrix, grounded) = edit::placement(&tree, &name)?;
-            let materials = edit::materials(&measure, &select::parts(&measure, &name));
-            // The cabinets held to this one lose their link with it: found now, held again after.
-            let joints = run("joint.list", json!({}))?;
-            let hanging = edit::hanging(&tree, &joints, &name);
-            run("component.activate", json!({"component": parent}))?;
-            let gone = run("component.delete", json!({"component": name}))?;
-            let (mut summary, made) = make(&entry, &params, &design, run)?;
-            // Its panels, those whose boards were still there; they get their material back
-            // with the rest below.
-            let parts = select::parts(&measure, &name);
-            let panels = about["metadata"][edit::KEY]["panels"].as_array().cloned();
-            for p in panels.into_iter().flatten() {
-                if parts.contains(&panel::body(&name, &p)) {
-                    let bodies = panel(&name, &p, &Value::Null, run)?;
-                    if let Some(all) = summary["bodies"].as_array_mut() {
-                        all.extend(bodies.into_iter().map(Value::from));
-                    }
-                }
-            }
-            // Boards that had another material than the rest get it back.
-            for (material, bodies) in materials {
-                let still: Vec<&String> = (bodies.iter())
-                    .filter(|b| {
-                        summary["bodies"]
-                            .as_array()
-                            .is_some_and(|all| all.contains(&json!(b)))
-                    })
-                    .collect();
-                if !still.is_empty() {
-                    run(
-                        "material.assign",
-                        json!({"bodies": still, "material": material}),
-                    )?;
-                }
-            }
-            run(
-                "occurrence.move",
-                json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
-            )?;
-            // Held again to the cabinet it stood against, when that is still there; and the
-            // cabinets that were held to it, to the new one.
-            let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
-            let was = &about["metadata"][edit::KEY]["link"];
-            let measure = run("inspect.measure", json!({}))?;
-            let mut held = false;
-            if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
-                if let Ok(other) = select::named(&measure, to) {
-                    held = link(&other, place, &name, stands(&matrix), run)?;
-                }
-            }
-            if !held {
-                run(
-                    "occurrence.ground",
-                    json!({"occurrence": made["occurrence"], "grounded": grounded}),
-                )?;
-            }
-            // (read per cabinet: a frame has none, and no Side L to read)
-            for other in hanging {
-                let this = select::named(&measure, &name)?;
-                let about = run("component.metadata", json!({"component": other}))?;
-                let place = about["metadata"][edit::KEY]["link"]["place"].as_str();
-                let (_, matrix, _) = edit::placement(&tree, &other)?;
-                let held = match place {
-                    Some(place) => link(&this, place, &other, stands(&matrix), run)?,
-                    None => false,
-                };
-                if !held {
-                    run(
-                        "occurrence.ground",
-                        json!({"occurrence": format!("{other}:1"), "grounded": true}),
-                    )?;
-                }
-            }
-            // Back to where the user was working, unless that was inside the old cabinet.
-            let inside = gone["deleted"]
-                .as_array()
-                .is_some_and(|ids| ids.contains(&tree["active"]));
-            if !inside {
-                run("component.activate", json!({"component": tree["active"]}))?;
-            }
+            let mut summary = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
             summary["edited"] = json!(true);
             Ok(summary)
         }
@@ -1047,7 +1131,20 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let stored = run("storage.get", json!({}))?;
             // See-through boards: our materials made so, or solid again, now.
             let changed = material::see_through(run, material::opacity(&stored))?;
-            Ok(json!({"settings": stored["document"]["settings"], "see_through": changed}))
+            let mut reply =
+                json!({"settings": stored["document"]["settings"], "see_through": changed});
+            // Apply to selected: the cabinets picked in its field (not the design's selection,
+            // which a script may have left) built again with these settings.
+            if params["selection"]
+                .as_array()
+                .is_some_and(|picked| !picked.is_empty())
+            {
+                let applied = apply(params, &stored, run)?;
+                if let (Some(all), Some(more)) = (reply.as_object_mut(), applied.as_object()) {
+                    all.extend(more.clone());
+                }
+            }
+            Ok(reply)
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }

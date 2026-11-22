@@ -229,3 +229,35 @@ fn edit_plinth_yes_keeps_a_plinth_and_gives_one_from_the_settings() {
     );
     assert!(keep.get("plinth").is_none());
 }
+
+#[test]
+fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
+    let stored = json!({"document": {"settings": {"thickness": 19, "joints": "confirmat",
+        "plinth": 120, "plinth_type": "legs"}}});
+    let mut built = json!({"units": "mm", "thickness": 18.0, "plinth": 0.0});
+    design("cabinet", &mut built, &json!({}));
+    let p = apply("cabinet", &built, &stored).unwrap();
+    assert_eq!(
+        (&p["thickness"], &p["joints"]),
+        (&json!(19.0), &json!("confirmat"))
+    );
+    // no plinth: it keeps none
+    assert_eq!(p["plinth"], 0.0);
+    assert_eq!(apply("cabinet", &p, &stored), None);
+    // with one: the settings' height and type
+    let mut on = built.clone();
+    on["plinth"] = json!(100.0);
+    let p = apply("cabinet", &on, &stored).unwrap();
+    assert_eq!(
+        (&p["plinth"], &p["plinth_type"]),
+        (&json!(120.0), &json!("legs"))
+    );
+    // a corner takes no drawers' or inside settings
+    let mut corner = json!({"units": "mm", "plinth": 0.0});
+    design("corner", &mut corner, &json!({}));
+    let p = apply("corner", &corner, &stored).unwrap();
+    assert!(
+        p.get("slide_type").is_none() && p.get("joints_inner").is_none(),
+        "{p}"
+    );
+}

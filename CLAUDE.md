@@ -145,6 +145,16 @@ materials, joinery and cut lists.
   Settings back to the defaults) that `build.cli` runs as one step (`flat`), and gives a cabinet
   without a plinth Plinth No; it sends Settings only `units`, `material`, `handles`, `camera`
   (the hook fills the rest).
+  **Apply to** (`settings`' `selection`, several bodies; only the field, not the design's
+  selection, which tests and scripts leave behind): `lib.rs` `apply` reads the picked cabinets
+  (`select::owner`, box and corner only), takes each one's `edit::merge` with no changes (sizes
+  from Parameters) and `settings::apply` (what the settings give it now: the design-wide ones
+  stored or default, the hook's four only stored, the plinth's only on a cabinet with one, and
+  only what its entry takes; `None` when it has them all), then `rebuild` (Edit's path, shared:
+  delete, `make`, panels, materials, place, links) while `drawing::fits` (20 s by `clock.now`,
+  the commands counted, the next one's `hardware::cost` + 40), at least one. The reply adds
+  `applied`, `remaining` and `message`. The preview runs it too, so a dialog with cabinets
+  picked previews every change slowly.
   **See-through boards** (`see_through`, in `CHOICES` but no cabinet's: `design` skips it): each
   Settings run gives our design materials (`material.list`'s `user: true`, of `BOARDS`) the
   stored opacity, `SEE_THROUGH` 0.35 or 1, by `material.edit` of each that differs. It takes

@@ -488,6 +488,17 @@ carcass method (dowels for a dado). A script cannot give them to `woodwork.cabin
 choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `back`,
 `plinth_setback` with `plinth_type`).
 
+- **Apply to** (pick cabinets in the field): changing the settings does not change the
+  cabinets already made. Pick a board of each cabinet to bring up to date and run: the settings
+  are stored and each picked cabinet is built again with them, where it stands (the same name,
+  links, panels and the materials of single parts you changed), taking only what that cabinet
+  uses: a cabinet without a plinth keeps none, a corner cabinet takes no drawer or inside
+  settings. Material, thickness, reveal and handles count only when they are stored. A cabinet
+  that already has the settings is skipped. One run builds as many as fit in SolidCraft's 30 s
+  and 256 commands (at least one); the result says how many are left, and running it again with
+  the same cabinets picked does the rest. Leave the field empty to only store the settings (the
+  dialog fills it with what is selected when it opens). A script passes them in `selection`
+  (the design's selection is not used).
 - The settings are kept in the design (SolidCraft 0.46, `storage@0.1`), not for you as a user:
   a new design starts with none.
 - **Camera after a run**: Fit (the default) frames the result after a cabinet, corner, edit or

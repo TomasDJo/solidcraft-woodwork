@@ -248,7 +248,7 @@
         "slots": [{ "kind": "menu", "name": "Woodwork settings" }, { "kind": "ribbon", "name": "Woodwork settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
-          "required": ["units", "material", "handles", "plinth", "plinth_type", "joints", "joints_inner", "joint_spacing", "joint_edge", "dowel_d", "dowel_length", "dado_depth", "biscuit", "cam_d", "cam_bolt", "pocket_face", "hardware_models", "hinge_angle", "slide_type", "fastener_models", "back", "back_thickness", "fronts", "handle_position", "plinth_setback", "labels", "cleat_height", "cleat_thickness", "banding", "cut_sizes", "sheet", "kerf", "trim", "worktop_material", "worktop_thickness", "see_through", "camera"],
+          "required": ["units", "material", "handles", "plinth", "plinth_type", "joints", "joints_inner", "joint_spacing", "joint_edge", "dowel_d", "dowel_length", "dado_depth", "biscuit", "cam_d", "cam_bolt", "pocket_face", "hardware_models", "hinge_angle", "slide_type", "fastener_models", "back", "back_thickness", "fronts", "handle_position", "plinth_setback", "labels", "cleat_height", "cleat_thickness", "banding", "cut_sizes", "sheet", "kerf", "trim", "worktop_material", "worktop_thickness", "see_through", "camera", "selection"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below; kept in mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "material": { "type": "string", "title": "Material", "description": "New cabinets' material; Keep leaves it.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
@@ -288,7 +288,8 @@
             "worktop_material": { "type": "string", "title": "Worktop material", "description": "What a new worktop is made of.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
             "worktop_thickness": { "type": "number", "title": "Worktop thickness", "description": "A new worktop's thickness; 38 mm is usual in a kitchen.", "default": 38, "minimum": 0.125, "maximum": 200 },
             "see_through": { "type": "string", "title": "See-through boards", "description": "Boards you can see through, to look at the joints and fittings inside; Oak stays solid.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "off", "title": "Off"}, {"const": "on", "title": "On"}] },
-            "camera": { "type": "string", "title": "Camera after a run", "description": "Whether a run frames what it built; Keep leaves it.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "fit", "title": "Fit: frame the result"}, {"const": "leave", "title": "Leave as it is"}] }
+            "camera": { "type": "string", "title": "Camera after a run", "description": "Whether a run frames what it built; Keep leaves it.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "fit", "title": "Fit: frame the result"}, {"const": "leave", "title": "Leave as it is"}] },
+            "selection": { "type": "array", "title": "Apply to", "description": "Cabinets to build again with these settings now; leave it empty to only store them for new cabinets." }
           }
         }
       }
