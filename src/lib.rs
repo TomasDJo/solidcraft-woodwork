@@ -78,14 +78,69 @@ fn component(
 ) -> Result<(Value, Value), String> {
     // Which copy of the active component the user is working in: a component can stand in
     // the design several times, and its id alone would bring back the first copy.
-    let path = run("component.list", json!({"compact": true}))?["active_path"].clone();
+    let tree = run("component.list", json!({"compact": true}))?;
+    let path = tree["active_path"].clone();
+    // The hardware models' definitions, at the root, the first time a cabinet copies them.
+    if commands.iter().any(|c| c.0 == "occurrence.copy") {
+        let definitions = hardware::definitions(&tree, &hardware::wanted(&commands));
+        if !definitions.is_empty() {
+            for (command, args) in definitions {
+                run(command, args)?;
+            }
+            let mut back = json!({"component": tree["active"]});
+            if let Some(copy) = path.as_array().and_then(|path| path.last()) {
+                back["occurrence"] = copy.clone();
+                back["path"] = path.clone();
+            }
+            run("component.activate", back)?;
+        }
+    }
     let made = run(
         "component.create",
         json!({"name": summary["name"], "grounded": false}),
     )?;
     summary["occurrence"] = made["occurrence"].clone();
-    for (command, args) in commands {
-        run(command, args)?;
+    // A model's copy is moved into place (`hardware::copy`); one that cuts does so at the end.
+    let mut cuts = Vec::new();
+    for (command, mut args) in commands {
+        if command != "occurrence.copy" {
+            run(command, args)?;
+            continue;
+        }
+        let matrix = args["_matrix"].take();
+        let cut = args["_cut"].take();
+        if let Some(args) = args.as_object_mut() {
+            args.retain(|key, _| !key.starts_with('_'));
+        }
+        let (parent, model) = (args["parent"].clone(), args["component"].clone());
+        let copy = run(command, args)?;
+        run(
+            "occurrence.move",
+            json!({"occurrence": copy["occurrence"], "matrix": matrix}),
+        )?;
+        if !cut.is_null() {
+            cuts.push((copy["occurrence"].clone(), parent, cut, model));
+        }
+    }
+    if !cuts.is_empty() {
+        let tree = run("component.list", json!({"compact": true}))?;
+        let mut active = Value::Null;
+        for (occurrence, door, name, model) in cuts {
+            let body = model.as_str().unwrap_or_default();
+            let tool = hardware::world_name(&tree, &occurrence, body)
+                .ok_or("a hinge model's copy was not found")?;
+            if active != door {
+                run("component.activate", json!({"component": door}))?;
+                active = door.clone();
+            }
+            run(
+                "solid.combine",
+                json!({
+                    "target": door, "tools": [tool], "operation": "cut",
+                    "keep_tools": true, "name": name,
+                }),
+            )?;
+        }
     }
     let board = params["material"].as_str().unwrap_or(default);
     if board != "none" {
@@ -356,6 +411,15 @@ fn now() -> u64 {
 }
 
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
+    // The hardware models are not boards nor part of a footprint: no function sees them.
+    let mut run = |command: &str, args: Value| {
+        let mut reply = run(command, args)?;
+        if command == "inspect.measure" {
+            hardware::hide(&mut reply);
+        }
+        Ok(reply)
+    };
+    let run: Run = &mut run;
     let summary = entries(entry, params, run)?;
     // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
     // preview's dry runs leave the camera alone). Fit frames the selection when there is one,

@@ -25,6 +25,8 @@ It uses every function of the plugin:
 - Worktop: oak over the base units and the corner cabinet, butt-jointed in the corner, with a
   sink cut-out over the sink base
 - Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
+- Hardware models: every hinge and drawer slide is shown (the default), moving with its door
+  or drawer; the definitions sit under the floor in the Woodwork hardware component
 - Cut list: written out as CSV (boards with grain and banded edges, and the banding to buy); the sheets from the cutting layouts and the hardware are printed
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door

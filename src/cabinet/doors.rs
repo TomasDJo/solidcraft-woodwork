@@ -78,15 +78,27 @@ pub fn build(cabinet: &Cabinet) {
             false => format!("{x0} + {door_w} - HW_cup_inset"),
         };
         let at = |z: &str| kit.at(&cup_x, eback, z);
-        hardware::cup_holes(kit, &part, at, [0, -1, 0], &cups);
+        let toward = [if left { -1 } else { 1 }, 0, 0];
+        // The hinge's arm: straight to a side, cranked 9.5 mm to a divider (half overlay), or
+        // 18 mm for an inset door.
+        let on_side = matches!(
+            (left, i == 0, i + 1 == count),
+            (true, true, _) | (false, _, true)
+        );
+        let crank = match (inset, on_side) {
+            (true, _) => 18.0,
+            (false, true) => 0.0,
+            (false, false) => 9.5,
+        };
+        hardware::cup_holes(kit, &part, at, [[0, -1, 0], toward], crank, &cups);
         // The handle is on the side away from the hinges.
         let handle_x = match (i + first) % 2 {
             0 => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),
             _ => format!("{x0} + {}", mm(HANDLE_EDGE)),
         };
         cabinet.handle(&part, &handle_x, &handle_z, 2);
-        // The hinge: turning outwards up to 110 degrees about the front edge on the door's hinge
-        // side. A cup hinge carries the door out and round so that its edge clears the door of
+        // The hinge: turning outwards up to `hinge_angle` (110 degrees by default) about the
+        // front edge on the door's hinge side. A cup hinge carries the door out and round so that its edge clears the door of
         // the next cabinet; about the back edge it would swing a panel thickness into it. An
         // inset door's back edge then moves away from the side as it opens.
         let (x, turn) = match (i + first) % 2 {
@@ -95,7 +107,7 @@ pub fn build(cabinet: &Cabinet) {
         };
         let line = kit.at(&x, efront, z0);
         let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
-        kit.hinge(&part, None, "hinge", line, None, turn, 110.0);
+        kit.hinge(&part, None, "hinge", line, None, turn, kit.hinge_angle);
         // The plates' screw holes in the side the door hangs on: `HW_pitch` apart about each
         // cup's height, `HW_setback` behind the front of the opening (the shelf pins' line).
         // ponytail: a hinge edge in the middle of the cabinet (three doors or more) gets no

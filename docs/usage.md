@@ -41,12 +41,15 @@ component can hold its cabinets.
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
 | **Drawer front height** | With doors: the height of each drawer front, 0 for 150 mm. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below); 0 makes them all alike. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with Edit cabinet, not by setting the parameter to 0. |
 | **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
+| **Slide length** | The drawer slides' length: Auto (the longest standard one that fits the boxes) or a standard length; see [Hinges and slides](#hinges-and-slides). |
+| **Slide type** | Partial extension (2-section: the drawer comes out three quarters of the slide's length), Full extension (3-section, the default: all of it) or Over-travel (25 mm more). The drawer's joint stops there. |
 | **Plinth height** | 0 for none. |
 | **Plinth type** | Shown with a plinth. **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
 | **Plinth set-back** | Shown with a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. Off, the shelves are fixed and joined by Joinery inside (a cabinet made before 0.2.0 keeps them unjoined, as it has no method). |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
+| **Hinge opening** | 95, 110 (the default) or 165 degrees: how far the doors open, where their joints stop. |
 | **Fronts** | Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment. |
 | **Reveal** | The gap around and between the fronts, 0.5 to 6 mm (2 by default), always in mm, also on an inch cabinet. Overlay: also how far the fronts stop short of the carcass's outside edges. Inset: the gap all round inside the opening. On a cabinet with doors or drawers it is the design parameter `Name_reveal`: change it in Parameters and the fronts follow. |
 | **Handle holes** | Drills the doors and drawer fronts for a knob (one 5 mm hole) or a pull (two, 128 mm apart). |
@@ -59,7 +62,8 @@ component can hold its cabinets.
 ### Doors and drawers move
 
 Every door and every drawer is a component of its own inside the cabinet, held by a joint:
-doors hinge open to 110 degrees, drawers slide out. Drive the joints to open them. A door
+doors hinge open as far as their hinges (**Hinge opening**, 110 degrees unless chosen),
+drawers slide out as far as their slides (**Slide type**). Drive the joints to open them. A door
 turns about its front edge, as on a cup hinge, so it clears the door of the next cabinet; an
 inset door swings out of the opening clear of the side.
 
@@ -78,16 +82,47 @@ needs them. Change one in Parameters and every cabinet's holes follow:
 | `HW_cup_inset` | 22.5 mm | The cup's middle, in from the door's hinge edge |
 | `HW_screw_d`, `HW_screw_depth` | 5 mm, 10 mm | Screw holes in the sides, for hinge plates and slides |
 | `HW_setback` | 37 mm | Those screw holes behind the front of the opening (the shelf pins' line); on a drawer box, behind the box's front |
-| `HW_pitch` | 32 mm | A hinge plate's two holes are this far apart, about the cup's height, and the cups go on this grid; a slide's two holes 6 x this |
+| `HW_pitch` | 32 mm | A hinge plate's two holes are this far apart, about the cup's height, and the cups go on this grid; a slide's two holes are whole pitches apart |
 | `HW_slide_t` | 12.7 mm | A slide's thickness: each drawer box is twice this narrower than the opening |
 | `HW_box_screw_d`, `HW_box_screw_depth` | 3 mm, 8 mm | A slide's screw holes in a drawer box's sides |
 
-- Each door gets its cups (two, three on a door over 1000 mm) and the side it hangs on a
+- Each door gets its cups (two up to 900 mm high, three up to 1600, four up to 2000, five
+  above: about 100 mm from the ends and the rest evenly between) and the side it hangs on a
   plate's two holes beside each cup. With three doors or more, a door hinged in the middle of
   the cabinet gets its cups only: its plate would go on a divider, which is not drilled.
 - Each drawer box gets two holes in each side, in the middle of its height, and the carcass
-  side beside it two more at the same height. A sink base's false front has none. A drawer box
-  must be at least 250 mm deep, for the shortest slide.
+  side beside it two more at the same height: `HW_setback` behind the front, and as many whole
+  `HW_pitch` further as the slide's length leaves before `HW_setback` from its end. A sink
+  base's false front has none. A drawer box must be at least 250 mm deep, for the shortest
+  slide.
+- **Slide length** (Cabinet and Edit cabinet, shown with drawers): the standard side-mount
+  ball-bearing lengths, 250, 270 and 300 to 650 mm in steps of 50, or 10 to 28 in in steps of
+  2. **Auto**, the default,
+  takes the longest one in the cabinet's unit that fits the drawer boxes with 3 mm behind it
+  (a 560 mm deep cabinet: 500 mm, or 20 in); a length that does not fit is refused. The cut
+  list's hardware names it with the type ("Drawer slide, full extension, 500 mm, pair");
+  drawers made before have the plain "Drawer slide, pair". Undermount slides are not offered
+  yet.
+- **Hardware models** (Cabinet, Corner cabinet and Edit cabinet; shown when there are doors
+  or drawers): with **Shown**, the default, each hinge is a simple model: a cup in its hole and
+  an arm behind the door, which swing with it, and a mounting plate (8.5 mm thick, 40 deep) on
+  the side over the plate's two holes, which stays; the arm lies on the plate. Its arm is
+  cranked 18 mm on an inset door and 9.5 mm on a door hung on a divider (half overlay). Each
+  slide is bars as long as the slide: one on the drawer box, which slides out with it, one on
+  the carcass side, and on a 3-section slide a middle one between them (it moves with the
+  drawer, not half as far as a real one). They follow the
+  cabinet's and the `HW_` parameters. They only show: the holes are cut as before,
+  and the cut list, drawings' board lists, Worktop, Place and Joinery leave them out. Every
+  model is a copy of a component in `Woodwork hardware` at the root (`HW hinge`, `HW hinge
+  crank 18`, `HW hinge plate`, and `HW slide cabinet 500 mm`, `HW slide middle 500 mm` and
+  `HW slide drawer 500 mm` for each slide length used), made by the first cabinet that needs it and kept when cabinets are edited or deleted.
+  SolidCraft cannot keep a plugin's parts hidden, so those stand just under the floor at the
+  origin, under the first cabinet;
+  delete `Woodwork hardware` and every model goes with it (the next cabinet makes them again).
+  **None** leaves them out. **Shown,
+  cutting the cups** lets the hinge models cut the cups themselves; it needs SolidCraft 0.47 or
+  later, as before that every later run in the design gets much slower. A cabinet too big for
+  one run with its models (very many doors) is made without them, and says so in its result.
 - The holes show in the DXF files (a layer per diameter and depth) and the cut list counts the
   hinges and the pairs of slides. A corner cabinet's doors get the same cups on the same grid,
   and the plates' holes in the end the pair hangs on; the diagonal door's ends stand at 45
@@ -209,8 +244,8 @@ that run the same way with the same count share one (`Name joint Side L Bottom d
 - **Steel rail**: nothing is modelled. The cut list's hardware lists `Steel wall rail, <width>
   mm` (one per cabinet, bought to the cabinet's width, grouped by length) and two `Cabinet
   hanger` per cabinet. The cabinet has the parameter `Name_wall_rail` (its width) while it
-  hangs on one, 0 after an Edit that takes it away. Hanger models and their holes come with
-  the hardware models (#70).
+  hangs on one, 0 after an Edit that takes it away. Hanger models and their holes are not made
+  yet.
 
 With a cleat or a hanging rail the back stands in front of it: in a groove, the groove is the
 board's thickness from the rear instead of 12 mm; with no back, the shelves stop in front of

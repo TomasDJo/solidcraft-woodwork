@@ -40,7 +40,6 @@ pub fn build(cabinet: &Cabinet) {
         d,
         t,
         drawers,
-        shelf_d,
         front_h: front_mm,
         inset,
         reveal,
@@ -77,12 +76,9 @@ pub fn build(cabinet: &Cabinet) {
     let box_w = format!("({eiw} - 2*HW_slide_t)");
     // ponytail: a sink base's boxes stop at half depth, before the trap; a U-cut round it
     // for deeper boxes is left to the user.
-    let (box_d, box_mm) = match sink {
-        true => (format!("({eshelf_d}/2)"), shelf_d / 2.0),
-        false => (
-            format!("({eshelf_d} - {})", mm(BOX_BEHIND)),
-            shelf_d - BOX_BEHIND,
-        ),
+    let box_d = match sink {
+        true => format!("({eshelf_d}/2)"),
+        false => format!("({eshelf_d} - {})", mm(BOX_BEHIND)),
     };
     // An overlay front laps the carcass by a panel; an inset one is already inside it, but
     // beside doors it clears the rail as an overlay one does.
@@ -155,20 +151,24 @@ pub fn build(cabinet: &Cabinet) {
             [&inner_w, &inner_d, &mm(BOX_BOTTOM)],
         );
         // The slides' screw holes, in the middle of the box side's height: into each box side
-        // from outside, `HW_setback` and `6*HW_pitch` further behind the box's front; and into
-        // the carcass side beside it, as far behind the front of the opening.
+        // from outside, `HW_setback` behind the box's front and the last whole `HW_pitch`
+        // before `HW_setback` from the slide's back end; and into the carcass side beside it,
+        // as far behind the front of the opening. The box's are named with the slide's
+        // length, which the cut list's hardware reads.
         let slide_z = format!("{z} + {box_h}/2");
         let right_x = format!("{right} + {bt}");
         let halves = [
             ("Left", &x, 1, "Side L", et.clone(), -1),
             ("Right", &right_x, -1, "Side R", format!("{ew} - {et}"), 1),
         ];
-        let along = ["", " + 6*HW_pitch"];
+        let (label, (kind, travel)) = (cabinet.input.slide.1, cabinet.input.slide_type);
+        let back = format!(" + floor(({label} - 2*HW_setback) / HW_pitch) * HW_pitch");
+        let along = ["", back.as_str()];
         for (part, outer, into, ..) in &halves {
             for (k, along) in along.iter().enumerate() {
                 let position = kit.at(outer, &format!("{y} + HW_setback{along}"), &slide_z);
                 let (d, depth) = ("HW_box_screw_d", "HW_box_screw_depth");
-                let what = format!("slide {}", k + 1);
+                let what = format!("slide {} ({label}, {kind})", k + 1);
                 fittings::hole(
                     kit,
                     &format!("{drawer} {part}"),
@@ -180,14 +180,55 @@ pub fn build(cabinet: &Cabinet) {
                 );
             }
         }
-        // The slide: straight out of the front, as far as four fifths of the box.
+        // The slides' models (`hardware::MEMBERS`): the cabinet member against each carcass
+        // side, in the cabinet's component; the drawer member against each box side, in the
+        // drawer's, so it moves with the drawer; and on a 3-section slide the middle member
+        // half way between, also in the drawer's.
+        // ponytail: the middle member moves as far as the drawer, not half as far: that would
+        // take a joint driven by the slide's, which the app does not have.
+        let [(_, cabinet_t, _), _, (_, drawer_t, _)] = hardware::MEMBERS;
+        let (half_c, half_d) = (mm(cabinet_t / 2.0), mm(drawer_t / 2.0));
+        let middle = format!("HW_slide_t/2 + {}", mm((cabinet_t - drawer_t) / 2.0));
+        let sides = [
+            (et.to_string(), x.to_string(), 1),
+            (format!("{ew} - {et}"), right_x.clone(), -1),
+        ];
+        let component = format!("{} {drawer}", kit.name);
+        let upright = hardware::upright([0, -1, 0]);
+        for (carcass, box_face, out) in &sides {
+            let sign = if *out > 0 { "+" } else { "-" };
+            let (back, to) = (if *out > 0 { "-" } else { "+" }, kit.name.as_str());
+            let models = [
+                (
+                    hardware::SLIDE_CABINET,
+                    format!("{carcass} {sign} {half_c}"),
+                    to,
+                ),
+                (
+                    hardware::SLIDE_DRAWER,
+                    format!("{box_face} {back} {half_d}"),
+                    &component,
+                ),
+                (
+                    hardware::SLIDE_MIDDLE,
+                    format!("{carcass} {sign} ({middle})"),
+                    &component,
+                ),
+            ];
+            let two = kind == "partial extension";
+            for (model, along_x, parent) in models.iter().take(if two { 2 } else { 3 }) {
+                let at = kit.at(along_x, &y, &slide_z);
+                let model = format!("{model} {label}");
+                hardware::copy(kit, &model, parent, at, upright, None);
+            }
+        }
+        // The slide: straight out of the front, as far as its type travels.
         let back_mm = if inset { t } else { -reveal };
         let at = [
             0.0,
             -d / 2.0 + back_mm,
             drawer_z + (front_mm + reveal) * i as f64,
         ];
-        let travel = (box_mm * 0.8).round();
         kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
         for (_, _, _, side, inner, out) in &halves {
             for (k, along) in along.iter().enumerate() {

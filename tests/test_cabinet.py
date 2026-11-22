@@ -12,7 +12,7 @@ def test_carcass_pins_and_doors(approval):
     measure, cutlist = results[1], results[2]
     # the plugin's own result may be wrapped by plugin.run
     cutlist = cutlist.get("result", cutlist)
-    bodies = {b["name"]: b for b in measure["bodies"]}
+    bodies = {b["name"]: b for b in boards(measure)}
     # 2 sides, bottom, top, 2 shelves, plinth, back, 2 doors
     assert len(bodies) == 10, sorted(bodies)
     side = bodies["Cabinet Side L"]

@@ -67,14 +67,17 @@ pub fn build(corner: &Corner, on_return: bool) {
     );
     let screws = fittings::screw_heights(handles, &handle_z);
     // Holes from a door's back face: hinge cups at `cup`, and on the second door the handle
-    // screws at `pull`. Both are x and y; `into` is the way into the door.
-    let holes = |part: &str, cup: [&str; 2], pull: [&str; 2], second: bool, into: [i32; 3]| {
+    // screws at `pull`. Both are x and y; `into` is the way into the door, and from the cups
+    // towards its hinge edge.
+    let holes = |part: &str, cup: [&str; 2], pull: [&str; 2], second: bool, into: [[i32; 3]; 2]| {
         let hole = |at: [&str; 2], z: &str, d: f64, depth: &str, what: String| {
             let position = kit.at(&corner.point(at[0]), at[1], z);
-            fittings::hole(kit, part, position, into, &mm(d), depth, &what);
+            fittings::hole(kit, part, position, into[0], &mm(d), depth, &what);
         };
         let cup_x = corner.point(cup[0]);
-        hardware::cup_holes(kit, part, |z| kit.at(&cup_x, cup[1], z), into, &cups);
+        // inset, the first door's arms are cranked; the second hangs on the first
+        let crank = if corner.inset && !second { 18.0 } else { 0.0 };
+        hardware::cup_holes(kit, part, |z| kit.at(&cup_x, cup[1], z), into, crank, &cups);
         for (j, z) in screws.iter().enumerate().filter(|_| second) {
             hole(pull, z, HANDLE_D, et, format!("handle {}", j + 1));
         }
@@ -101,7 +104,8 @@ pub fn build(corner: &Corner, on_return: bool) {
             [&cup_x, face_y],
             [&pull_x, face_y],
             on_return,
-            [0, -1, 0],
+            // towards the hinge edge: the end of the leg, or the fold
+            [[0, -1, 0], [if on_return { -flip } else { flip }, 0, 0]],
         );
     };
     // On the return, facing across.
@@ -125,7 +129,7 @@ pub fn build(corner: &Corner, on_return: bool) {
             [face_x, &cup_y],
             [face_x, &pull_y],
             !on_return,
-            [flip, 0, 0],
+            [[flip, 0, 0], [0, if on_return { -1 } else { 1 }, 0]],
         );
     };
     // A hinge is about the door's front edge at the end of its leg, like the box cabinet's,
@@ -133,7 +137,8 @@ pub fn build(corner: &Corner, on_return: bool) {
     // degrees lays the second door on the face of the first, out of the cabinet, so it
     // opens on its own too.
     let close = |part: &str, on: Option<&str>, joint: &str, [x, y]: [&str; 2], turn: i32| {
-        let limit = if on.is_some() { 90.0 } else { 110.0 };
+        // The fold lays the second door flat on the first, whatever the hinge.
+        let limit = if on.is_some() { 90.0 } else { kit.hinge_angle };
         let line = kit.at(&corner.point(x), y, &z0);
         let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
         kit.hinge(part, on, joint, line, None, turn, limit)

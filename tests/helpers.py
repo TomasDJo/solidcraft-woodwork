@@ -46,9 +46,16 @@ def drive(joint, value):
     return {"command": "joint.drive", "params": {"joint": joint, "value": value}}
 
 
-def boxes(measure):
-    """Each body's box: x0, y0, z0, x1, y1, z1 in mm."""
-    return {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in measure["bodies"]}
+def boards(measure):
+    """The bodies of a measure through the CLI but the hardware models (`HW hinge`, ...: their
+    definitions and copies), which the plugin's own measures leave out."""
+    return [b for b in measure["bodies"] if not b["name"].startswith("HW ")]
+
+
+def boxes(measure, models=False):
+    """Each body's box: x0, y0, z0, x1, y1, z1 in mm; the hardware models' too with `models`."""
+    bodies = measure["bodies"] if models else boards(measure)
+    return {b["name"]: [round(v, 3) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in bodies}
 
 
 def cylinders(measure, name):

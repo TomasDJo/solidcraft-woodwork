@@ -95,9 +95,13 @@ pub struct Kit {
     link: Value,     // `_match`, or null
     existing: Value, // `_existing`: the parameters an edited cabinet already has, in mm
     labels: bool,    // write each board's name and size on it
+    /// `hardware_models`: on, off or cut (`crate::hardware::model`)
+    pub models: &'static str,
+    /// `hinge_angle`: how far a door opens, in degrees, the hinge joint's limit
+    pub hinge_angle: f64,
     pub name: String,
     pub prefix: String,
-    unit: &'static str,
+    pub unit: &'static str,
     scale: f64, // mm per unit
     centre: RefCell<[String; 2]>,
     commands: RefCell<Commands>,
@@ -120,6 +124,18 @@ impl Kit {
             !name.is_empty() && name.len() <= 40,
             "name must be 1 to 40 characters",
         )?;
+        let models = match p.get("hardware_models").and_then(Value::as_str) {
+            None | Some("on") => "on",
+            Some("off") => "off",
+            Some("cut") => "cut",
+            _ => return Err("hardware_models must be on, off or cut".into()),
+        };
+        let hinge_angle = match p.get("hinge_angle").and_then(Value::as_str) {
+            None | Some("110") => 110.0,
+            Some("95") => 95.0,
+            Some("165") => 165.0,
+            _ => return Err("hinge_angle must be 95, 110 or 165".into()),
+        };
         Ok(Kit {
             name: name.into(),
             prefix: prefix(name),
@@ -128,6 +144,8 @@ impl Kit {
             link: p.get("_match").cloned().unwrap_or_default(),
             existing: p.get("_existing").cloned().unwrap_or_default(),
             labels: p.get("labels").and_then(Value::as_bool).unwrap_or(false),
+            models,
+            hinge_angle,
             centre: RefCell::new([mm(0.0), mm(0.0)]),
             commands: RefCell::default(),
             bodies: RefCell::default(),

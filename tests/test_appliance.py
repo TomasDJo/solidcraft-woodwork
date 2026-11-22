@@ -53,7 +53,7 @@ def test_a_sink_base_with_drawers(approval):
     moved = boxes(results[5])
     assert moved["S Drawer 1 Front"][1] == -500 and moved["S False front"] == box["S False front"], moved["S Drawer 1 Front"]
     hardware = {h["item"]: h["qty"] for h in results[6]["result"]["hardware"]}
-    assert hardware["Drawer slide, pair"] == 2, hardware
+    assert hardware["Drawer slide, full extension, 250 mm, pair"] == 2, hardware
     box = boxes(results[9])
     assert "S Top" in box and "S Drawer 3 Front" in box and "S False front" not in box, sorted(box)
     assert box["S Drawer 1 Left"][4] == 250 and box["S End panel R"][1] == -300, box["S Drawer 1 Left"]
