@@ -332,8 +332,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
   sheet is only reported (`oversize`), not split.
 - A board is a worktop, bought to length and not laid out on sheets, when its name contains
-  `Worktop` (`cutlist::cutlist`), at its world box (`cutlist::turned` leaves it out, so a
-  mitred or cut-out piece is not measured by mesh). A worktop named otherwise is a board.
+  `Worktop` (`cutlist::worktop`), at its world box (`cutlist::turned` leaves it out, so a
+  mitred or cut-out piece is not measured by mesh). A worktop named otherwise is a board, and
+  so is a name with ` Tool ` in it (the tool station's shelf and battens).
 - A worktop (`worktop`) is numeric: measured from the cabinets' Side L, Side R, Back and Back
   return world boxes, made at world coordinates in a component in the active component, which
   must stand on the origin, unturned. It does not follow a cabinet; running Worktop again with
@@ -346,6 +347,16 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   facing each other only with a run across (a U). In a butt corner the longer run passes through
   (equal: the first found). End panels and fillers are not part of the footprint: give an end
   overhang. Dog holes (one cylinder and a pattern) and the cut-out go into piece 1 only.
+  Tool station (`tool: benchtop`, `worktop::under`): an opening in piece 1 and, in the one
+  selected cabinet whose two sides (each square to the run) stand either side of it with its
+  middle within their depth, `<Name> Tool shelf` (18 mm) on `Tool batten L`/`R` (18 x 40),
+  numeric like the rest, Birch plywood (`lib.rs` assigns it after the worktop's material). The
+  cabinet's `Top` or `Rail front`/`Rail back` crossing the tool's space get the opening too
+  (`worktop::crossing`; `lib.rs` cuts them in the cabinet's component with `inside`, the box
+  taken into its frame by `worktop::local`); any other body of the cabinet in that space, or in
+  the shelf and battens' box, is refused, and so is an opening past the back's front face. That cut is not remembered: Edit cabinet drops it, and a tool moved on a run again
+  leaves the old one. `piece_of` counts the three tool parts as the worktop's, so a run again
+  replaces them and picking one makes the worktop again.
 - Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no
   per-part override (that would need `storage@0.1`). A cabinet's width axis is across its
   `Side L` in the world, or X for a board measured in its own component, so a cabinet turned

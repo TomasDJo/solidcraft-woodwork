@@ -123,6 +123,7 @@ Cabinets:
       (today: turn the component afterwards)
 - [x] Worktop over the selected cabinets: runs and corners (butt or mitre), gaps spanned, made again by running it again (#62)
 - [x] Worktop dog holes (96 mm grid, all over or in a zone) and a plain or rebated cut-out (#79)
+- [x] Worktop tool station: a benchtop tool in an opening, flush, on a shelf and battens in the cabinet below
 - [ ] Plinth run over the selected cabinets: one long board across a run of cabinets with notched sides or on legs (Plinth type gives them no board of their own)
 - [x] End panels and fillers on a cabinet's end, kept by Edit cabinet (#57 part 2)
 - [ ] Plinth return: for cabinets on legs, later

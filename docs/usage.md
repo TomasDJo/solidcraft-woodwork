@@ -343,6 +343,7 @@ piece. Every cabinet must have its top at the same height and stand square to th
 | **Left end overhang**, **Right end overhang** | Past a free end of a run, left and right as seen from its front. In an L that is the left run's left end and the right run's right end. |
 | **Dog holes** | 20 mm holes through the first piece on a 96 mm grid, for bench dogs: **All over** (centred, at least 60 mm from the edges) or **In a zone** (Zone from left, Zone from front, Zone length, Zone width, measured from the piece's left end and front edge; the grid is centred in it). |
 | **Cut-out** | An opening through the first piece: **Plain**, or **Rebated** with a shallow ledge all round at the top (Ledge width and Ledge depth), so a router plate or a sink rim sits flush. Opening length and width, and its middle from the piece's left end and front edge. |
+| **Tool** | **Benchtop tool, flush**: an opening in the first piece for a table saw, mitre saw, planer or router table, which stands on a shelf inside the cabinet below so its table is flush with the top. Tool width (along the piece) and Tool depth are the tool's outline where it passes through the top (its table if that is wider than its base); Tool height is from where it stands to its table; Tool from left and Tool from front put its middle, as for the cut-out; Tool clearance is the gap all round in the opening (3 mm). |
 | **Material** | Oak by default. |
 | **Name** | One piece is named `Worktop`; more are `Worktop 1`, `Worktop 2`, the longest first. |
 
@@ -358,6 +359,30 @@ walls, or facing each other, are two worktops: make each with its own name.
 
 A name with `Worktop` in it is bought to length in the cut list. Named otherwise, such as `Bench
 top` in birch plywood, it is a board laid out on the sheets like any other.
+
+### Tool station
+
+With **Tool** on Benchtop, the first piece gets an opening the tool's size plus the clearance all
+round (`Worktop tool opening`), and the cabinet under it a shelf, `Worktop Tool shelf`, 18 mm birch
+plywood between the sides' inner faces, from the back's front face to the sides' front edge, its
+top the tool's height under the worktop's surface. It rests on two 18 x 40 mm battens, `Worktop
+Tool batten L` and `R`, screwed to the sides under it. The opening must lie between the two sides
+of one cabinet (a corner cabinet does not count); a tool shorter than the worktop is thick, or so
+tall that the battens would be below the cabinet's bottom, is refused. The shelf and battens are
+boards in the cut list (laid out on the sheets, not bought to length), and are made again with
+the worktop.
+
+![A tool station: the opening in the worktop and the tool's shelf on its battens in the cabinet below](tool-station.png)
+
+The cabinet's top, or a sink base's rails, gets the same opening, so the tool drops through.
+Anything else of the cabinet between the tool's shelf and the worktop, or where the shelf and
+its battens go, such as a shelf, a divider, a drawer or a door the opening reaches over, is
+refused by name: make the cabinet without it (with 20 mm doors and a 40 mm front overhang, keep
+the opening's front edge at least 40 mm from the worktop's front). So is an opening that
+reaches over the cabinet's back. The opening in the cabinet's top is a cut the cabinet does not
+remember: Edit cabinet makes its top whole again (run Worktop again afterwards), and a tool
+moved on a run again leaves the old opening in the top. The tool's bolt holes in the shelf and
+an outfeed table or side wing are not made.
 
 ## Cut list
 

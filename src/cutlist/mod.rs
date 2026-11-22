@@ -39,8 +39,14 @@ pub fn turned(measure: &Value) -> Vec<String> {
     bodies
         .filter(loose)
         .filter_map(|body| body["name"].as_str().map(String::from))
-        .filter(|name| !crate::fittings::is_foot(name) && !name.contains("Worktop"))
+        .filter(|name| !crate::fittings::is_foot(name) && !worktop(name))
         .collect()
+}
+
+/// Whether a board is a worktop, bought to length: its name has `Worktop` in it, unless it is
+/// one of a worktop's tool parts (`Worktop Tool shelf`), an ordinary board.
+pub fn worktop(name: &str) -> bool {
+    name.contains("Worktop") && !name.contains(" Tool ")
 }
 
 /// The size of a body from `model.mesh`'s reply: along its own component's axes, in X, Y, Z
@@ -559,7 +565,7 @@ pub fn cutlist(
         let (row, one_m2) = (parts.len(), mm(*l) * mm(*w) / 1e6);
         for name in names {
             // A board named so: a worktop, bought to length.
-            if name.contains("Worktop") {
+            if worktop(name) {
                 worktops.push(
                     json!({"part": name, "material": material, "thickness": shown(*t),
                                      "length": shown(cl), "width": shown(cw)}),

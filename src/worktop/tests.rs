@@ -426,6 +426,10 @@ fn pieces_of_a_worktop() {
     assert!(!piece_of("Worktop return", "Worktop"));
     assert!(!piece_of("Worktop ", "Worktop"));
     assert!(!piece_of("Worktops", "Worktop"));
+    // its tool's parts go with it, so a run again does not take them for a name clash
+    assert!(piece_of("Worktop Tool shelf", "Worktop"));
+    assert!(piece_of("Worktop Tool batten R", "Worktop"));
+    assert!(!piece_of("Worktop Tool", "Worktop"));
 }
 
 #[test]
@@ -434,4 +438,231 @@ fn a_piece_belongs_to_the_longest_name_first() {
     assert_eq!(owners("Worktop 2", &components), ["Worktop 2", "Worktop"]);
     assert_eq!(owners("Worktop 1", &components), ["Worktop"]);
     assert!(owners("Base 1 Top", &components).is_empty());
+}
+
+const TOOL: &str = r#"{"tool": "benchtop", "tool_width": 640, "tool_depth": 540, "tool_height": 300, "tool_x": 600, "tool_y": 320, "tool_clearance": 3}"#;
+
+fn tool(more: Value) -> Value {
+    let mut p: Value = serde_json::from_str(TOOL).unwrap();
+    for (k, v) in more.as_object().unwrap() {
+        p[k] = v.clone();
+    }
+    p
+}
+
+#[test]
+fn a_benchtop_tool_on_a_shelf_in_the_cabinet_below() {
+    // A from x 0 to 1000, sides 18, back 6 thick at the wall, no bottom: the floor is z 0
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let (commands, summary) = build(&tool(json!({})), &names(&["A"]), &m).unwrap();
+    // the opening: 646 x 546 through the top, its middle 600 in and 320 from the front edge,
+    // behind the door
+    let opening = named(&commands, "Worktop tool opening");
+    assert_eq!(opening["corner"], json!([277.0, -553.0, 720.0]));
+    assert_eq!(
+        [&opening["length"], &opening["width"], &opening["height"]],
+        [&json!("646 mm"), &json!("546 mm"), &json!("38 mm")]
+    );
+    assert_eq!(opening["targets"], json!(["Worktop"]));
+    // the shelf between the sides' inner faces, from the back to the sides' front, its top
+    // 300 under the top surface (758)
+    let shelf = named(&commands, "Worktop Tool shelf");
+    assert_eq!(shelf["corner"], json!([18.0, -560.0, 440.0]));
+    assert_eq!(
+        [&shelf["length"], &shelf["width"], &shelf["height"]],
+        [&json!("964 mm"), &json!("554 mm"), &json!("18 mm")]
+    );
+    assert_eq!(shelf["body_name"], "Worktop Tool shelf");
+    // a batten under it against each side
+    let l = named(&commands, "Worktop Tool batten L");
+    let r = named(&commands, "Worktop Tool batten R");
+    assert_eq!(l["corner"], json!([18.0, -560.0, 400.0]));
+    assert_eq!(r["corner"], json!([964.0, -560.0, 400.0]));
+    assert_eq!(
+        [&r["length"], &r["width"], &r["height"]],
+        [&json!("18 mm"), &json!("554 mm"), &json!("40 mm")]
+    );
+    assert_eq!(
+        summary["bodies"],
+        json!([
+            "Worktop",
+            "Worktop Tool shelf",
+            "Worktop Tool batten L",
+            "Worktop Tool batten R"
+        ])
+    );
+    assert_eq!(summary["tool"]["cabinet"], "A");
+    assert_eq!(summary["tool"]["shelf_z"], 458.0);
+    // no top in the test cabinet: nothing of it to cut; the tool's space for lib.rs
+    assert_eq!(summary["tool"]["cut"]["targets"], json!([]));
+    assert_eq!(summary["tool"]["cut"]["min"], json!([277.0, -553.0, 458.0]));
+    assert_eq!(summary["tool"]["cut"]["max"], json!([923.0, -7.0, 720.0]));
+    // in its history folder
+    let group = &commands.last().unwrap().1;
+    assert!(group["features"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("Worktop Tool shelf")));
+    // none asked for: no tool
+    let (commands, summary) = build(&json!({}), &names(&["A"]), &m).unwrap();
+    assert!(!commands.iter().any(|c| c.1["name"] == "Worktop Tool shelf"));
+    assert!(summary.get("tool").is_none());
+}
+
+#[test]
+fn the_tool_shelf_stops_at_a_grooved_back_or_the_wall() {
+    // a back set in between the sides, 18 from the wall; a tool shallow enough to clear it
+    let mut a = base("A", 0.0, 1000.0, 720.0);
+    a[2]["bbox"] = json!({"min": [18.0, -24.0, 0.0], "max": [982.0, -18.0, 720.0]});
+    let p = tool(json!({"tool_depth": 500}));
+    let (commands, _) = build(&p, &names(&["A"]), &measure(vec![a])).unwrap();
+    assert_eq!(named(&commands, "Worktop Tool shelf")["width"], "536 mm");
+    // no back: to the sides' back edge
+    let mut a = base("A", 0.0, 1000.0, 720.0);
+    a.remove(2);
+    let (commands, _) = build(&tool(json!({})), &names(&["A"]), &measure(vec![a])).unwrap();
+    assert_eq!(named(&commands, "Worktop Tool shelf")["width"], "560 mm");
+}
+
+#[test]
+fn what_a_tool_refuses() {
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let why = refused(tool(json!({"tool_height": 20})), &["A"], &m);
+    assert!(why.contains("above the worktop's underside"), "{why}");
+    // as thick as the worktop is still fine: the shelf right under it
+    assert!(build(&tool(json!({"tool_height": 38})), &names(&["A"]), &m).is_ok());
+    // 758 - 750 - 18 - 40 is under the floor
+    let why = refused(tool(json!({"tool_height": 750})), &["A"], &m);
+    assert!(why.contains("below the cabinet's bottom"), "{why}");
+    assert!(build(&tool(json!({"tool_height": 700})), &names(&["A"]), &m).is_ok());
+    // with a bottom board whose top is at 100, the floor is there
+    let mut a = base("A", 0.0, 1000.0, 720.0);
+    a.push(body("A Bottom", [18.0, -560.0, 82.0], [982.0, 0.0, 100.0]));
+    let why = refused(tool(json!({"tool_height": 650})), &["A"], &measure(vec![a]));
+    assert!(why.contains("below the cabinet's bottom"), "{why}");
+    // off the piece
+    let why = refused(tool(json!({"tool_x": 100})), &["A"], &m);
+    assert!(why.contains("the tool's opening does not fit"), "{why}");
+    let why = refused(tool(json!({"tool_width": 0})), &["A"], &m);
+    assert!(why.contains("more than 0"), "{why}");
+    // across the joint of two cabinets
+    let two = measure(vec![
+        base("A", 0.0, 600.0, 720.0),
+        base("B", 600.0, 600.0, 720.0),
+    ]);
+    let between = "the tool's opening must lie between the sides of one cabinet";
+    assert_eq!(refused(tool(json!({})), &["A", "B"], &two), between);
+    // in B alone it is fine
+    let p = tool(json!({"tool_x": 900, "tool_width": 400}));
+    let (_, summary) = build(&p, &names(&["A", "B"]), &two).unwrap();
+    assert_eq!(summary["tool"]["cabinet"], "B");
+    // in the front overhang, not over the carcass
+    let p = tool(json!({"tool_depth": 20, "tool_y": 15}));
+    assert_eq!(refused(p, &["A"], &m), between);
+    // a corner cabinet's return side does not count as a side across the run
+    let p = tool(json!({"tool_x": 750, "tool_width": 200, "tool_depth": 200}));
+    let k = measure(vec![corner("K", 1000.0, 560.0)]);
+    assert_eq!(refused(p, &["K"], &k), between);
+}
+
+#[test]
+fn the_cabinets_top_and_rails_get_the_opening_and_a_shelf_is_in_the_way() {
+    let mut a = base("A", 0.0, 1000.0, 720.0);
+    a.push(body("A Top", [18.0, -560.0, 702.0], [982.0, 0.0, 720.0]));
+    a.push(body(
+        "A Rail front",
+        [18.0, -560.0, 702.0],
+        [982.0, -460.0, 720.0],
+    ));
+    a.push(body("A Bottom", [18.0, -560.0, 0.0], [982.0, 0.0, 18.0]));
+    // a shelf under the tool's shelf is not in its way
+    a.push(body(
+        "A Shelf 2",
+        [18.0, -560.0, 200.0],
+        [982.0, -6.0, 218.0],
+    ));
+    let m = measure(vec![a.clone()]);
+    let (_, summary) = build(&tool(json!({})), &names(&["A"]), &m).unwrap();
+    assert_eq!(
+        summary["tool"]["cut"]["targets"],
+        json!(["A Top", "A Rail front"])
+    );
+    // a shelf between the tool's shelf and the worktop is
+    a.push(body(
+        "A Shelf 1",
+        [18.0, -560.0, 500.0],
+        [982.0, -6.0, 518.0],
+    ));
+    let why = refused(tool(json!({})), &["A"], &measure(vec![a]));
+    assert_eq!(
+        why,
+        "`A Shelf 1` is in the tool's way: make the cabinet without it"
+    );
+    // the door in front, if the opening reaches over it
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let p = tool(json!({"tool_y": 290, "tool_depth": 570}));
+    assert!(refused(p, &["A"], &m).contains("`A Door` is in the tool's way"));
+}
+
+#[test]
+fn a_world_box_in_a_cabinets_own_frame() {
+    let world = [[100.0, -500.0, 700.0], [300.0, -100.0, 720.0]];
+    // on the origin, square: as it is
+    let square = json!([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]]);
+    assert_eq!(
+        local(world, &square),
+        ([100.0, -500.0, 700.0], [200.0, 400.0, 20.0])
+    );
+    // moved 1000 along X and turned a quarter (its X along the world's Y)
+    let turned = json!([[0, -1, 0, 1000], [1, 0, 0, 0], [0, 0, 1, 0]]);
+    assert_eq!(
+        local(world, &turned),
+        ([-500.0, 700.0, 700.0], [400.0, 200.0, 20.0])
+    );
+}
+
+#[test]
+fn nothing_of_the_cabinet_where_the_shelf_and_battens_go() {
+    let a = base("A", 0.0, 1000.0, 720.0);
+    // a shelf of the cabinet at batten height (the tool's shelf from 440 to 458, battens 400 up)
+    let mut shelf = a.clone();
+    shelf.push(body(
+        "A Shelf 1",
+        [18.0, -560.0, 410.0],
+        [982.0, -6.0, 428.0],
+    ));
+    let why = refused(tool(json!({})), &["A"], &measure(vec![shelf]));
+    assert_eq!(
+        why,
+        "`A Shelf 1` is in the tool's way: make the cabinet without it"
+    );
+    // a divider beside the opening, in the shelf's way
+    let mut divider = a.clone();
+    divider.push(body(
+        "A Divider 1",
+        [100.0, -560.0, 18.0],
+        [118.0, -6.0, 702.0],
+    ));
+    let why = refused(tool(json!({})), &["A"], &measure(vec![divider]));
+    assert_eq!(
+        why,
+        "`A Divider 1` is in the tool's way: make the cabinet without it"
+    );
+    // just under the battens is fine
+    let mut low = a;
+    low.push(body(
+        "A Shelf 1",
+        [18.0, -560.0, 382.0],
+        [982.0, -6.0, 400.0],
+    ));
+    assert!(build(&tool(json!({})), &names(&["A"]), &measure(vec![low])).is_ok());
+}
+
+#[test]
+fn the_tools_opening_must_stop_at_the_cabinets_back() {
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    // the back's front face is 594 from the worktop's front edge: the opening to 594 is fine
+    assert!(build(&tool(json!({"tool_y": 321})), &names(&["A"]), &m).is_ok());
+    let why = refused(tool(json!({"tool_y": 322})), &["A"], &m);
+    assert_eq!(why, "the tool's opening reaches over the cabinet's back");
 }

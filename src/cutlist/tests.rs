@@ -501,6 +501,8 @@ fn sheets_from_cutting_layouts() {
     let big = json!({"bodies": [
         body("Long", "MDF", [3000.0, 600.0, 18.0]),
         body("Kitchen Worktop", "Oak", [3300.0, 600.0, 38.0]),
+        // a worktop's tool shelf is a board, laid out on a sheet
+        body("Kitchen Worktop Tool shelf", "MDF", [700.0, 500.0, 18.0]),
     ]});
     let list = cutlist(&big, &BTreeMap::new(), false, &json!({})).unwrap();
     assert_eq!(
@@ -516,7 +518,10 @@ fn sheets_from_cutting_layouts() {
     );
     let sheets = list["sheets"].as_array().unwrap();
     assert_eq!(sheets.len(), 1, "no sheets for the worktop's 38 mm oak");
-    assert!(sheets.iter().all(|s| s["sheets"] == 0) && list["layouts"] == json!([]));
+    assert_eq!(sheets[0]["material"], "MDF");
+    let laid = &list["layouts"][0]["parts"];
+    assert_eq!(laid.as_array().unwrap().len(), 1);
+    assert_eq!(laid[0]["part"], "Kitchen Worktop Tool shelf");
     // an oak door 400 high and 1300 wide fits the sheet only with its grain across it
     let door = json!({"bodies": [
         body("A Side L", "Oak", [18.0, 560.0, 400.0]),
