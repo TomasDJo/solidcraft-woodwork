@@ -201,8 +201,9 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         bodies.iter().filter(shelf).count() as u64 // a split shelf is one shelf
     };
     let pulls = ending(" handle 2");
-    // A frame's joints: `<Frame> dowel <n>`, `bolt <n>`, `barrel nut <n>`, of a frame that is
-    // there (a split corner shelf's `return dowel <n>` is not one).
+    // A frame's joints, made before they were on the shared joinery: `<Frame> dowel <n>`, `bolt
+    // <n>`, `barrel nut <n>`, of a frame that is there (a split corner shelf's `return dowel <n>`
+    // is not one). A newer frame counts them in its parameters, as a cabinet does.
     let numbered = |word: &str| {
         let ends = features.iter().filter_map(|f| f.rsplit_once(word));
         let frame = |stem: &str| bodies.contains(&format!("{stem}{}", crate::frame::MARK));
@@ -270,7 +271,10 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         .collect();
     // The joinery chosen when a cabinet was built counts its fasteners in its parameters
     // (`joint::hardware`); an old Joinery's line of the same item takes them in.
-    let cabinets = (bodies.iter()).filter_map(|b| b.strip_suffix(" Side L"));
+    let cabinets = (bodies.iter()).filter_map(|b| {
+        b.strip_suffix(" Side L")
+            .or(b.strip_suffix(crate::frame::MARK))
+    });
     for cabinet in cabinets {
         for (item, qty) in crate::joint::hardware(&crate::kit::prefix(cabinet), &design["params"]) {
             match list.iter_mut().find(|line| line["item"] == item.as_str()) {

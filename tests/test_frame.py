@@ -6,7 +6,7 @@ import subprocess
 from build import CLI
 from helpers import *
 
-DOWEL = math.pi * 4 ** 2 * 20  # an 8 mm dowel's hole, 20 mm into a part
+DOWEL = math.pi * 4 ** 2 * 21  # an 8 x 40 mm dowel's hole, 21 mm into a part (1 mm to spare)
 BOLT = math.pi * 5 ** 2 * 70  # a 10 mm bolt's hole through a 70 mm leg
 
 

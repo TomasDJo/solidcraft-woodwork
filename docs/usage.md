@@ -294,17 +294,19 @@ a cabinet, see Place below), made of solid timber, oak unless you choose another
 | **Stretchers** | None, Ends (one at each end, front leg to back leg) or All round (the front and back too). |
 | **Stretcher height** | Shown with stretchers: from the floor to their underside. Their top must stay 50 mm under the aprons. |
 | **Legs** | 4, or 6: a middle pair at the middle of the width, the long aprons (and stretchers) split there, and a middle apron (and with stretchers a middle stretcher) across between them. |
-| **Joint** | With bolts, depth (and with 4 legs width) must leave 160 mm between the legs, so the bolts from both ends of a rail do not meet. **Dowels**: two 8 x 40 mm dowel holes at each rail end, 20 mm into the leg and 20 mm into the rail, along the rail, centred on its thickness, at a quarter and three quarters of its height. **Bolts**: a 10 mm bed bolt hole from the leg's outer face through the leg and 80 mm into the rail's end, and a 10 mm barrel nut hole from the rail's inner face, 60 mm from its end, across to past the bolt. The rails along the width are bolted higher than those along the depth, so the two bolts in a corner leg do not meet. Rails that meet at a middle leg are doweled, as a bolt cannot come from both sides. |
+| **Joint** | With bolts, depth (and with 4 legs width) must leave 160 mm between the legs, so the bolts from both ends of a rail do not meet. **Dowels**: two 8 x 40 mm dowel holes at each rail end, 21 mm into the leg and 21 mm into the rail (1 mm to spare at each end, as on a cabinet), along the rail, centred on its thickness, at a quarter and three quarters of its height. **Bolts**: a 10 mm bed bolt hole from the leg's outer face through the leg and 80 mm into the rail's end, and a 10 mm barrel nut hole from the rail's inner face, 60 mm from its end, across to past the bolt. The rails along the width are bolted higher than those along the depth, so the two bolts in a corner leg do not meet. Rails that meet at a middle leg are doweled, as a bolt cannot come from both sides. |
 | **Material, Place, Selected cabinet, Name** | As for a cabinet. Place: Auto, the origin, or right or left of the selected cabinet, against its side with the backs flush and held to it as a cabinet is (the frame has seats at its back corners). Auto on a cabinet's top puts it at the origin. |
 
 The parts are `Name Leg front left`, `Leg front right`, `Leg back left`, `Leg back right`
 (`Leg middle front`, `Leg middle back`), `Name Apron front`, `Apron back`, `Apron L`, `Apron R`
 (with six legs `Apron front L`, `Apron front R`, `Apron back L`, `Apron back R` and
-`Apron middle`) and the stretchers named the same way (`Stretcher L`, ...). The holes are
-features `Name dowel 1`, `Name bolt 1`, `Name barrel nut 1` and so on. The sizes are the
-parameters `Name_width`, `Name_depth`, `Name_height`, `Name_leg`, `Name_apron_height`,
-`Name_apron_thickness`, `Name_inset` and, with stretchers, `Name_stretcher_height`: change one
-in Parameters and the frame and its holes follow.
+`Apron middle`) and the stretchers named the same way (`Stretcher L`, ...). The joints are
+made by the same joinery as a cabinet's ([Joinery at build](#joinery-at-build)): a cut at each
+rail end (`Name joint Leg front left Apron L dowels`, `... bolts` and `... bolts nut`) and one
+pattern repeating the dowels up the rails. The sizes are the parameters `Name_width`,
+`Name_depth`, `Name_height`, `Name_leg`, `Name_apron_height`, `Name_apron_thickness`,
+`Name_inset`, `Name_dowel_d`, `Name_dowel_length` and, with stretchers,
+`Name_stretcher_height`: change one in Parameters and the frame and its holes follow.
 
 The cut list lists the legs, aprons and stretchers as solid timber bought to length (length x
 width x thickness), not laid out on sheets, and counts the dowels, bed bolts and barrel nuts.

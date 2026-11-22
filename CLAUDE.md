@@ -339,8 +339,12 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   Material find it, and `select::cabinet` refuses it (Joinery, Panel, Drawing, Place against it).
   Its legs are `Leg front left` and so on, never `Leg <n>` (`fittings::is_leg`, hardware). Its
   parts (`frame::is_timber`: `Leg <words>`, `Apron ...`, `Stretcher ...`) are the cut list's
-  `timber`, bought to length, not on sheets; its holes `<Name> dowel <n>`, `bolt <n>`, `barrel
-  nut <n>` are counted as hardware. A stretcher has the apron's section. With bolts, rails that
+  `timber`, bought to length, not on sheets; its joints are the shared joinery's (`Joinery::fixed`: dowels
+  with `joint_edge` a quarter of the rail and the spacing its height, so a row of two, and bolts
+  by `joint_by("bolts")`, `single`, the nut from the face opposite `Joint::out` (the rail's
+  inner), `face_t` the leg), counted from `<Name>_dowels` and `_bolts` (a frame is found by
+  `MARK` in `cutlist::hardware`); a frame made before keeps its `<Name> dowel <n>`, `bolt <n>`,
+  `barrel nut <n>`, counted by name. A stretcher has the apron's section. With bolts, rails that
   meet at a middle leg are doweled. It has seats, so Place right or left of a cabinet links it;
   on Auto a cabinet's top gives the origin. Edit's frame fields are `stretchers`, `frame_legs`
   (the frame's `legs`) and `joint` (`edit::FRAME_ONLY`; the Edit hook hides them for a cabinet,

@@ -44,7 +44,7 @@ const SIZES: [(&str, f64); 7] = [
 
 /// The parameters that count the fasteners for the cut list, `<Prefix>_<key>`: 0 once an edit
 /// took them away. `edit::merge` passes the ones a cabinet has to `Kit`.
-pub const COUNTS: [&str; 9] = [
+pub const COUNTS: [&str; 10] = [
     "dowels",
     "confirmats",
     "screws",
@@ -54,6 +54,7 @@ pub const COUNTS: [&str; 9] = [
     "dominos",
     "cams",
     "pocket_screws",
+    "bolts",
 ];
 
 // A screw from the face board's outside into the other's end: clearance, pilot, length.
@@ -222,6 +223,22 @@ impl<'a> Joinery<'a> {
         })
     }
 
+    /// Joinery with one method and its sizes given as expressions, not read from a dialog: a
+    /// frame's dowels (and its bolts, `joint_by`). `t` is the end boards' thickness.
+    pub fn fixed(kit: &'a Kit, t: &str, method: &str, sizes: Vec<(&'static str, String)>) -> Self {
+        Joinery {
+            kit,
+            t: t.to_string(),
+            methods: [method.to_string(), "none".into()],
+            sizes,
+            counts: RefCell::default(),
+            cuts: RefCell::default(),
+            rows: RefCell::default(),
+            slot: 0,
+            pocket_inside: false,
+        }
+    }
+
     /// The method for the carcass (`CARCASS`) or the boards inside (`INNER`).
     pub fn method(&self, scope: usize) -> &str {
         &self.methods[scope]
@@ -251,7 +268,13 @@ impl<'a> Joinery<'a> {
 
     /// The cuts of one joint, by the method of `scope`; run once the boards are there.
     pub fn joint(&self, scope: usize, j: &Joint) {
-        let method = self.method(scope).to_string();
+        self.joint_by(self.method(scope), j)
+    }
+
+    /// The cuts of one joint by `method`, whatever the cabinet's: a frame's bolts beside its
+    /// dowels.
+    pub fn joint_by(&self, method: &str, j: &Joint) {
+        let method = method.to_string();
         let (spacing, edge) = (self.size("joint_spacing"), self.size("joint_edge"));
         let count = format!("max(2, ceil(({} - 2*{edge}) / {spacing}) + 1)", j.run);
         let pitch = format!("({} - 2*{edge}) / ({count} - 1)", j.run);
@@ -269,7 +292,7 @@ impl<'a> Joinery<'a> {
                 _ => format!("{name} {method} {what}"),
             };
             let targets = match what {
-                "" if method == "dowels" => vec![face.clone(), end.clone()],
+                "" if method == "dowels" || method == "bolts" => vec![face.clone(), end.clone()],
                 "" => vec![face.clone()],
                 _ => vec![end.clone()],
             };
@@ -281,7 +304,12 @@ impl<'a> Joinery<'a> {
                 // Blind in the face, 5 mm short of coming through; the rest in the end, with
                 // 1 mm to spare at each end.
                 let (d, l) = (self.size("dowel_d"), self.size("dowel_length"));
-                let into_face = format!("min({t} - 5 mm, ({l} + 2 mm) / 2)");
+                // the face board's thickness: a frame's leg is thicker than its rails
+                let ft = match self.size("face_t") {
+                    "" => t.as_str(),
+                    leg => leg,
+                };
+                let into_face = format!("min({ft} - 5 mm, ({l} + 2 mm) / 2)");
                 let base = shift(&start, neg(j.into), &into_face);
                 cut("", base, j.into, d.into(), format!("{l} + 2 mm"));
                 "dowels"
@@ -340,6 +368,21 @@ impl<'a> Joinery<'a> {
                 self.cylinder(&pilot, at("10 mm"), json!(axis), "3.5 mm", &height, targets);
                 features.extend([feature, pilot]);
                 "pocket_screws"
+            }
+            "bolts" => {
+                // A frame's: a bed bolt through the face board (`face_t` thick) from its
+                // outside and on into the end, and a barrel nut's hole across the end board
+                // from the face opposite `out` to past the bolt.
+                use crate::frame::{BOLT_D, BOLT_PAST, NUT_FROM_END};
+                let through = self.size("face_t");
+                let base = shift(&start, neg(j.into), through);
+                let long = format!("{through} + {}", mm(BOLT_PAST));
+                cut("", base, j.into, mm(BOLT_D), long);
+                let nut = shift(&start, j.into, &mm(NUT_FROM_END));
+                let nut = shift(&nut, neg(j.out), &format!("{t}/2"));
+                let deep = format!("{t}/2 + {}", mm(BOLT_D / 2.0));
+                cut("nut", nut, j.out, mm(BOLT_D), deep);
+                "bolts"
             }
             "cam" => {
                 // The bolt's thread in the face board, its shank along the end board's middle
@@ -551,6 +594,10 @@ pub fn hardware(prefix: &str, params: &Value) -> Vec<(String, u64)> {
             "screws" => "Screw, 4 x 50 mm".to_string(),
             "cams" => format!("Cam lock and bolt, {} mm", size("cam_d")),
             "pocket_screws" => "Pocket screw, 32 mm".to_string(),
+            "bolts" => {
+                items.push(("Bed bolt, 10 mm".to_string(), qty));
+                "Barrel nut, 10 mm".to_string()
+            }
             slot if slot.starts_with("biscuits") || slot == "dominos" => {
                 let found = SLOTS.iter().find(|s| s.2 == slot);
                 found.map(|s| s.3).unwrap_or_default().to_string()

@@ -5,9 +5,10 @@
 //! The sizes are design parameters (`Frame_width`, ...) and every part and hole an expression
 //! over them. The parts are solid timber: the cut list lists them bought to length (`is_timber`).
 
+use crate::joint::{Joinery, Joint, CARCASS};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
-use serde_json::{json, Value};
+use serde_json::Value;
 
 pub const DOWEL_D: f64 = 8.0;
 pub const DOWEL_INTO: f64 = 20.0; // into each part: an 8 x 40 mm dowel
@@ -268,30 +269,29 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         kit.panel(&r.part, [&r.at[0], &r.at[1], &r.at[2]], size, None);
     }
 
-    // The joints, each a cylinder cut out of the leg and the rail at once.
-    let mut n = [0; 3]; // dowels, bolts, barrel nuts
-    let mut cut = |what: usize,
-                   base: [String; 3],
-                   axis: [i32; 3],
-                   dia: f64,
-                   depth: String,
-                   targets: Vec<String>| {
-        n[what] += 1;
-        let called = ["dowel", "bolt", "barrel nut"][what];
-        kit.push((
-            "solid.cylinder",
-            json!({
-                "base": kit.at(&base[0], &base[1], &base[2]), "axis": axis,
-                "diameter": mm(dia), "height": depth, "operation": "cut",
-                "targets": targets, "name": format!("{name} {called} {}", n[what]),
-            }),
-        ));
-    };
+    // The joints, on the shared joinery (`joint`): each a cut through the leg and the rail at
+    // once. Two dowels at a quarter and three quarters of the rail's height (a row of two:
+    // `joint_edge` a quarter, the spacing the whole height), or a bolt and its barrel nut.
+    let sizes = vec![
+        ("joint_spacing", eah.clone()),
+        ("joint_edge", format!("{eah}/4")),
+        (
+            "dowel_d",
+            kit.parameter("dowel_d", DOWEL_D, "dowel diameter"),
+        ),
+        (
+            "dowel_length",
+            kit.parameter("dowel_length", 2.0 * DOWEL_INTO, "dowel length"),
+        ),
+        ("face_t", el.clone()),
+    ];
+    let joinery = Joinery::fixed(&kit, &eat, "dowels", sizes);
     for r in &all {
         let a = r.along;
         let across = 1 - a;
-        let body = format!("{name} {}", r.part);
         let middle = format!("{} + {eat}/2", r.at[across]);
+        let mut inner = [0; 3];
+        inner[across] = r.inner;
         for end in 0..2 {
             // the joint's plane, and the way into the rail from it
             let (plane, into) = match end {
@@ -300,65 +300,39 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
             };
             let mut dir = [0; 3];
             dir[a] = into;
-            let targets = vec![r.legs[end].clone(), body.clone()];
-            let point = |along: String, cross: String, z: String| {
+            let point = |z: String| {
                 let mut p = [String::new(), String::new(), z];
-                p[a] = along;
-                p[across] = cross;
+                p[a] = plane.clone();
+                p[across] = middle.clone();
                 p
             };
+            let leg = r.legs[end]
+                .strip_prefix(&format!("{name} "))
+                .unwrap_or_default();
+            let joint = |at: [String; 3], run: String, single: bool| Joint {
+                face: leg.to_string(),
+                end: r.part.clone(),
+                at,
+                into: dir,
+                out: inner,
+                along: [0, 0, 1],
+                run,
+                single,
+            };
             if bolts && r.bolted[end] {
-                // through the leg from its outer face; X and Y rails at two heights so the
-                // bolts in a corner leg do not meet
+                // X and Y rails at two heights, so the bolts in a corner leg do not meet
                 let z = match a {
                     0 => format!("{} + {eah}*2/3", r.at[2]),
                     _ => format!("{} + {eah}/3", r.at[2]),
                 };
-                let outer = format!("{plane} - ({into})*{el}");
-                let depth = format!("{el} + {}", mm(BOLT_PAST));
-                cut(
-                    1,
-                    point(outer, middle.clone(), z.clone()),
-                    dir,
-                    BOLT_D,
-                    depth,
-                    targets,
-                );
-                // the barrel nut from the rail's inner face, across it to past the bolt
-                let along = format!("{plane} + ({into})*{}", mm(NUT_FROM_END));
-                let face = match r.inner {
-                    -1 => format!("{} + {eat}", r.at[across]),
-                    _ => r.at[across].clone(),
-                };
-                let mut way = [0; 3];
-                way[across] = r.inner;
-                let depth = format!("{eat}/2 + {}", mm(BOLT_D / 2.0));
-                cut(
-                    2,
-                    point(along, face, z),
-                    way,
-                    BOLT_D,
-                    depth,
-                    vec![body.clone()],
-                );
+                joinery.joint_by("bolts", &joint(point(z), mm(0.0), true));
             } else {
-                for k in [1, 3] {
-                    let z = format!("{} + {eah}*{k}/4", r.at[2]);
-                    let base = format!("{plane} - ({into})*{}", mm(DOWEL_INTO));
-                    let depth = mm(2.0 * DOWEL_INTO);
-                    cut(
-                        0,
-                        point(base, middle.clone(), z),
-                        dir,
-                        DOWEL_D,
-                        depth,
-                        targets.clone(),
-                    );
-                }
+                joinery.joint(CARCASS, &joint(point(r.at[2].clone()), eah.clone(), false));
             }
         }
     }
-    Ok(kit.finish(Vec::new(), [w, h, d]))
+    let cuts = joinery.finish();
+    Ok(kit.finish(cuts, [w, h, d]))
 }
 
 #[cfg(test)]
