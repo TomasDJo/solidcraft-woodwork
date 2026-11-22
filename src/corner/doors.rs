@@ -1,7 +1,8 @@
 //! The corner cabinet's doors: a bi-fold pair, the second hung on the first.
 
 use super::Corner;
-use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, HANDLE_D, HANDLE_EDGE};
+use crate::hardware;
 use crate::kit::mm;
 
 /// A bi-fold pair of doors, one on each front. The first hinges on the end of its leg
@@ -51,7 +52,9 @@ pub fn build(corner: &Corner, on_return: bool) {
     let (long_y, short_y) = (back_y.clone(), format!("{back_y} - {et} - {gap}"));
     let (z0, z1) = (format!("{epl} + {o}"), format!("{eh} - {o}"));
     let door_h = format!("{eh} - {epl} - 2*{o}");
-    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * o_mm);
+    // On the pins' grid over the bottom panel, as on the box cabinet.
+    let base = format!("{epl} + {et}");
+    let cups = hardware::cups(&z0, &z1, h - plinth - 2.0 * o_mm, &base);
     // The second door, the one that folds, carries the handle: upright at its free end, away
     // from the fold, at the height the box cabinet would put it.
     let handle_z = fittings::handle_height(
@@ -70,20 +73,13 @@ pub fn build(corner: &Corner, on_return: bool) {
             let position = kit.at(&corner.point(at[0]), at[1], z);
             fittings::hole(kit, part, position, into, &mm(d), depth, &what);
         };
-        for (j, z) in cups.iter().enumerate() {
-            hole(
-                cup,
-                z,
-                CUP_D,
-                &mm(CUP_DEPTH),
-                format!("hinge cup {}", j + 1),
-            );
-        }
+        let cup_x = corner.point(cup[0]);
+        hardware::cup_holes(kit, part, |z| kit.at(&cup_x, cup[1], z), into, &cups);
         for (j, z) in screws.iter().enumerate().filter(|_| second) {
             hole(pull, z, HANDLE_D, et, format!("handle {}", j + 1));
         }
     };
-    let (cup_c, edge) = (mm(CUP_CENTRE), mm(HANDLE_EDGE));
+    let (cup_c, edge) = ("HW_cup_inset", mm(HANDLE_EDGE));
     // On the back leg, facing the front.
     let face_y = &long_y; // the back leg door's back face
     let door_x = if on_return { &short_x } else { &long_x };
@@ -142,16 +138,44 @@ pub fn build(corner: &Corner, on_return: bool) {
         let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
         kit.hinge(part, on, joint, line, None, turn, limit)
     };
+    // The plates' screw holes in the end the pair hangs on, `HW_setback` behind the front of
+    // the opening (the pin rows' line), as on the box cabinet: cut after the hinge, with the
+    // cabinet active again.
+    let (back_end, return_end) = corner.ends();
+    let (open_x, open_y) = match corner.inset {
+        false => (ed.to_string(), format!("{eb} - {ed}")),
+        true => (format!("{ed} - {et}"), format!("{eb} - {ed} + {et}")),
+    };
+    let plates = |on_return: bool| {
+        let (board, x, y, into) = match on_return {
+            false => (
+                back_end,
+                format!("{ea} - {et}"),
+                format!("{open_y} + HW_setback"),
+                [flip, 0, 0],
+            ),
+            true => (
+                return_end,
+                format!("{open_x} - HW_setback"),
+                et.to_string(),
+                [0, -1, 0],
+            ),
+        };
+        let x = corner.point(&x);
+        hardware::plate_holes(kit, board, |z| kit.at(&x, &y, z), into, &cups, et);
+    };
     let fold = [meet_x.as_str(), front_y.as_str()];
     if on_return {
         door_return();
         close("Door return", None, "hinge", [&meet_x, &o], -flip);
+        plates(true);
         door();
         close("Door", Some("Door return"), "fold", fold, -flip);
     } else {
         door();
         let end = format!("{ea} - {o}");
         close("Door", None, "hinge", [&end, &front_y], flip);
+        plates(false);
         door_return();
         close("Door return", Some("Door"), "fold", fold, flip);
     }

@@ -34,11 +34,12 @@ pub fn turned(measure: &Value) -> Vec<String> {
         let sides = (0..3).filter_map(side).map(|(max, min)| max - min);
         (body["volume_mm3"].as_f64()).is_some_and(|volume| volume < 0.97 * sides.product::<f64>())
     };
-    // A leg is round: not a board, so never measured.
+    // A leg or a caster is not a board, so never measured. A worktop is bought at its box, also
+    // when it is mitred or has a cut-out, and it stands square in a component on the origin.
     bodies
         .filter(loose)
         .filter_map(|body| body["name"].as_str().map(String::from))
-        .filter(|name| !crate::fittings::is_leg(name))
+        .filter(|name| !crate::fittings::is_foot(name) && !name.contains("Worktop"))
         .collect()
 }
 
@@ -236,13 +237,47 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             "Adjustable leg",
             bodies.iter().filter(|b| crate::fittings::is_leg(b)).count() as u64,
         ),
+        (
+            "Caster, locking",
+            bodies
+                .iter()
+                .filter(|b| crate::fittings::is_caster(b))
+                .count() as u64,
+        ),
         ("Knob", (ending(" handle 1") - pulls) as u64),
         ("Pull, 128 mm", pulls as u64),
     ];
     let bought = counts.iter().filter(|(_, qty)| *qty > 0);
-    bought
+    let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
-        .collect()
+        .collect();
+    // A cabinet on a steel rail has `<Prefix>_wall_rail`, its width (0 once an edit took the
+    // rail away), and a corner cabinet `_wall_rail_return` too: a rail bought to that length
+    // and two hangers each. Only for a cabinet that is
+    // still there, as a deleted cabinet's parameters stay.
+    let standing: Vec<String> = (bodies.iter())
+        .filter_map(|b| b.strip_suffix(" Side L"))
+        .map(crate::kit::prefix)
+        .collect();
+    let mut rails: BTreeMap<i64, u64> = BTreeMap::new();
+    for p in design["params"].as_array().into_iter().flatten() {
+        let (Some(name), Some(mm)) = (p["name"].as_str(), p["value"].as_f64()) else {
+            continue;
+        };
+        // a corner cabinet has one on each wall
+        let cabinet = (name.strip_suffix("_wall_rail")).or(name.strip_suffix("_wall_rail_return"));
+        if mm > 0.0 && cabinet.is_some_and(|c| standing.iter().any(|s| s == c)) {
+            *rails.entry(mm.round() as i64).or_default() += 1;
+        }
+    }
+    for (length, qty) in &rails {
+        list.push(json!({"item": format!("Steel wall rail, {length} mm"), "qty": qty}));
+    }
+    let hangers: u64 = rails.values().sum::<u64>() * 2;
+    if hangers > 0 {
+        list.push(json!({"item": "Cabinet hanger", "qty": hangers}));
+    }
+    Value::from(list)
 }
 
 /// The sides cut with a toe-kick notch, from the features that cut them (`<Side> notch`) in
@@ -399,7 +434,7 @@ pub fn cutlist(
     let bodies: Vec<&Value> = (measure["bodies"].as_array())
         .ok_or("inspect.measure returned no bodies")?
         .iter()
-        .filter(|b| !crate::fittings::is_leg(b["name"].as_str().unwrap_or("")))
+        .filter(|b| !crate::fittings::is_foot(b["name"].as_str().unwrap_or("")))
         .collect();
     let notched = |name: &str| {
         let all = params["_notched"].as_array().into_iter().flatten();

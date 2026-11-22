@@ -38,7 +38,7 @@ def test_agent_tools(approval):
         measure = ("measure", {})
         tools, (few, built, measured) = mcp(("woodwork.cabinet", TYPICAL), ("woodwork.cabinet", everything), measure)
         listed = {t["name"]: t for t in tools if t["name"].startswith("woodwork.")}
-        names = ("cabinet", "corner", "edit", "joinery", "material", "panel", "cutlist", "drawing", "settings")
+        names = ("cabinet", "corner", "edit", "joinery", "material", "panel", "worktop", "cutlist", "drawing", "settings")
         assert sorted(listed) == sorted(f"woodwork.{n}" for n in names), sorted(listed)
         # With the dialog hook (0.46) the tool's schema leaves `required` out, for the hook to
         # fill in what is missing; the fields are checked after it, so `few` is still refused.

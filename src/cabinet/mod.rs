@@ -35,6 +35,8 @@ struct Cabinet<'a> {
     // behind inset fronts).
     eside_d: String,
     eshelf_d: String,
+    // The board the cabinet hangs by (a cleat or a hanging rail): its thickness and height.
+    emount: Option<[String; 2]>,
     // The reveal around the fronts; how far the fronts' opening is inside the carcass's
     // outside (a panel when inset, which is also where the shelves start); and the y of the
     // fronts' front and back faces.
@@ -78,9 +80,14 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         true => parameter("plinth", input.plinth, "plinth height"),
         false => mm(0.0),
     };
-    let (eside_d, eshelf_d) = match back {
-        "overlay" => (format!("({ed} - {ebt})"), format!("({ed} - {ebt})")),
-        "groove" => (ed.clone(), format!("({ed} - {} - {ebt})", mm(GROOVE_INSET))),
+    let emount = fittings::mount_sizes(&kit, input.wall_mount, input.mount_t, input.mount_h, &et);
+    fittings::steel_rail(&kit, "wall_rail", input.wall_mount == "steel", w, &ew);
+    // The back stands in front of a mount board, in its groove or with no back.
+    let inset = emount.as_ref().map_or(mm(GROOVE_INSET), |m| m[0].clone());
+    let (eside_d, eshelf_d) = match (back, &emount) {
+        ("overlay", _) => (format!("({ed} - {ebt})"), format!("({ed} - {ebt})")),
+        ("groove", _) => (ed.clone(), format!("({ed} - {inset} - {ebt})")),
+        (_, Some([tm, _])) => (ed.clone(), format!("({ed} - {tm})")),
         _ => (ed.clone(), ed.clone()),
     };
     // Only with fronts, or when an edit took them off: the next edit that puts them back
@@ -156,6 +163,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         epl,
         eside_d,
         eshelf_d,
+        emount,
         er,
         ein,
         efront,
@@ -204,6 +212,7 @@ impl Cabinet<'_> {
             ein,
             ecell,
             erail,
+            emount,
             ..
         } = self;
         let name = kit.name.as_str();
@@ -232,9 +241,9 @@ impl Cabinet<'_> {
             true => input.plinth_type,
             false => "none",
         };
-        // On legs the whole carcass stands on them; else the sides reach the floor.
+        // On legs or casters the whole carcass stands on them; else the sides reach the floor.
         let (side_z, side_h) = match plinth {
-            "legs" => (epl.clone(), format!("{eh} - {epl}")),
+            "legs" | "casters" => (epl.clone(), format!("{eh} - {epl}")),
             _ => (zero.clone(), eh.clone()),
         };
         let right_x = format!("{ew} - {et}");
@@ -257,6 +266,15 @@ impl Cabinet<'_> {
                 );
             }
             false => panel("Top", [et, &zero, &top_z], [eiw, eside_d, et], false),
+        }
+        // The mount board across the back under the top, its rear face flush with the sides'.
+        // Box edges: front bottom 9, back top 3.
+        if let Some([tm, mh]) = emount {
+            let y = format!("{ed} - {tm}");
+            let z = format!("{top_z} - {mh}");
+            let board = |part: &str, at: [&str; 3], size: [&str; 3]| panel(part, at, size, false);
+            let at = [[et.as_str(), &y, &z], [eiw.as_str(), tm, mh]];
+            fittings::mount_board(kit, input.wall_mount, tm, board, at, "", [9, 3]);
         }
         // Left face of each divider. They stand between bottom and top, as deep as the shelves.
         let divider_x: Vec<String> = (1..=n).map(|k| format!("({ecell} + {et}) * {k}")).collect();
@@ -300,17 +318,22 @@ impl Cabinet<'_> {
                     kit.panel(&part, [x, &zero, &zero], [et, &kick, epl], Some(&target));
                 }
             }
-            "legs" => {
-                let inset = mm(LEG_INSET);
+            "legs" | "casters" => {
+                // A caster's plate stays under the bottom panel, clear of the sides.
+                let inset = match plinth {
+                    "legs" => mm(LEG_INSET),
+                    _ => format!("({et} + {})", mm(LEG_INSET)),
+                };
                 let mut xs = vec![inset.clone(), format!("{ew} - {inset}")];
                 // ponytail: the count is fixed when it is built, as the shelves' is.
                 if input.w > 900.0 {
                     xs.push(format!("{ew}/2"));
                 }
+                let inset = mm(LEG_INSET);
                 let ys = [inset.clone(), format!("{eside_d} - {inset}")];
                 let at = xs.iter().flat_map(|x| ys.iter().map(move |y| (x, y)));
                 for (n, (x, y)) in at.enumerate() {
-                    fittings::leg(kit, n + 1, kit.at(x, y, &zero), epl);
+                    fittings::foot(kit, plinth, n + 1, [x, y], epl, [et, "Bottom"]);
                 }
             }
             _ => {}
@@ -327,11 +350,12 @@ impl Cabinet<'_> {
             }
             "groove" => {
                 // Cut the back panel's own volume out of the carcass first: stopped grooves
-                // that fit exactly.
+                // that fit exactly. In front of a mount board, by its thickness.
+                let inset = emount.as_ref().map_or(mm(GROOVE_INSET), |m| m[0].clone());
                 let g = format!("min({et}/2, {})", mm(10.0)); // groove depth
                 let corner = [
                     format!("{et} - {g}"),
-                    format!("{ed} - {} - {ebt}", mm(GROOVE_INSET)),
+                    format!("{ed} - {inset} - {ebt}"),
                     format!("{bottom_top} - {g}"),
                 ];
                 let corner = [corner[0].as_str(), &corner[1], &corner[2]];

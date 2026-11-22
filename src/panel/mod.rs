@@ -138,11 +138,15 @@ pub fn build(
     // y from the carcass front, z from the floor.
     let mut boards = Vec::new();
     match kind {
+        // To the floor, or beside a cabinet on casters from its bottom up: it rolls.
         "end" => boards.push((
             part.clone(),
             [mm(0.0), et.clone()],
             [yf.clone(), format!("{ed} - {yf}")],
-            [mm(0.0), eh.clone()],
+            match plinth && made["plinth_type"] == "casters" {
+                true => [epl.clone(), format!("{eh} - {epl}")],
+                false => [mm(0.0), eh.clone()],
+            },
         )),
         _ => {
             check(

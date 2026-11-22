@@ -108,6 +108,10 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 - [x] Drawers over or under doors, and a graduated drawer stack (the top drawer's height given, the rest equal) (#57 part 1)
 - [x] Inset doors on corner cabinets: the L's bi-fold pair and the diagonal door inside the opening (#58)
 - [x] Plinth types: a set-back board, notched sides (no board, for one long plinth across a run) or adjustable legs, on box and corner cabinets
+- [x] Wall mount on box cabinets: French cleat with its wall cleat, hanging rail, or a steel rail listed with its hangers (#78; hanger models later, #70)
+- [x] Wall mount on corner cabinets: cleats, hanging rails or steel rails along both walls, through the box cabinet's shared code (`fittings::wall_mount`, `mount_sizes`, `steel_rail`, `mount_board`)
+- [x] Casters as a plinth type on box cabinets: locking casters with pilot holes for their plates, counted as hardware (#79)
+- [x] Casters on corner cabinets, at the legs' places through the shared `fittings::foot`; the casters' post is joined before the wheel, so no timeline warning
 
 ## Open
 
@@ -116,17 +120,18 @@ Cabinets:
 - [ ] Joinery for dividers and fixed shelves
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
-- [ ] Worktop over a straight run of the selected cabinets: postponed until it handles corners and joints (#62)
+- [x] Worktop over the selected cabinets: runs and corners (butt or mitre), gaps spanned, made again by running it again (#62)
+- [x] Worktop dog holes (96 mm grid, all over or in a zone) and a plain or rebated cut-out (#79)
 - [ ] Plinth run over the selected cabinets: one long board across a run of cabinets with notched sides or on legs (Plinth type gives them no board of their own)
 - [x] End panels and fillers on a cabinet's end, kept by Edit cabinet (#57 part 2)
 - [ ] Plinth return: for cabinets on legs, later
 - [x] Drawer slides drilled: screw holes in the box sides and the carcass sides, the box width from the slide thickness, all from shared `HW_` parameters (#59 part 1)
 - [ ] Drawer slides in the model: slide length in the hardware list, undermount slides (#59)
 - [x] Hinge plates drilled: the plates' screw holes in the sides, cups and plates from shared `HW_` parameters (#60 part 1)
+- [x] Corner doors on the shared hinge holes: `HW_` cups on the pins' grid and plate holes in the end the pair hangs on (`hardware::cups`, `cup_holes`, `plate_holes`, also used by the box cabinet); the diagonal door gets cups only
 - [ ] Hinges in the model, with hinge types (#60); shared hardware models that drill their own holes (#70) wait for cheaper evaluation of `occurrence.copy` and `solid.combine` in SolidCraft
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
-- Sink and hob cutouts in a worktop dropped
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
 
 Cut list and shop output:

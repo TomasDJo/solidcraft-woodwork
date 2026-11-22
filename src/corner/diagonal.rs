@@ -6,7 +6,8 @@
 //! in a right one, and its -Y faces the room.
 
 use super::Corner;
-use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, HANDLE_D, HANDLE_EDGE};
+use crate::hardware;
 use crate::kit::mm;
 use serde_json::{json, Value};
 
@@ -76,11 +77,11 @@ pub fn door(corner: &Corner, on_return: bool) {
     let (x0, x1) = (inset.clone(), format!("{inset} + {len}"));
     let (cup_x, pull_x) = match at_end {
         true => (
-            format!("{x1} - {}", mm(CUP_CENTRE)),
+            format!("{x1} - HW_cup_inset"),
             format!("{x0} + {}", mm(HANDLE_EDGE)),
         ),
         false => (
-            format!("{x0} + {}", mm(CUP_CENTRE)),
+            format!("{x0} + HW_cup_inset"),
             format!("{x1} - {}", mm(HANDLE_EDGE)),
         ),
     };
@@ -97,11 +98,12 @@ pub fn door(corner: &Corner, on_return: bool) {
             &what,
         );
     };
-    let cups = fittings::cup_heights(&z0, &z1, h - plinth - 2.0 * o_mm);
-    for (j, z) in cups.iter().enumerate() {
-        let what = format!("hinge cup {}", j + 1);
-        hole(&cup_x, z, CUP_D, &mm(CUP_DEPTH), what);
-    }
+    // ponytail: no plate holes: the ends stand at 45 degrees to the door, which takes a
+    // hinge for that angle.
+    let base = format!("{epl} + {et}");
+    let cups = hardware::cups(&z0, &z1, h - plinth - 2.0 * o_mm, &base);
+    let at = |z: &str| json!([cup_x, back, z]);
+    hardware::cup_holes(kit, "Door", at, [0, -1, 0], &cups);
     let handle_z = fittings::handle_height(
         handles,
         handle_at,

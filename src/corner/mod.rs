@@ -42,7 +42,7 @@ struct Corner<'a> {
     h: f64,
     t: f64,
     plinth: f64,
-    plinth_type: &'a str, // board, notch or legs: see `fittings::plinth_type`
+    plinth_type: &'a str, // board, notch, legs or casters: see `fittings::plinth_type`
     dr: f64,              // depth at the return's end: `d` on the L
     g: f64,               // the reveal around the doors, and its parameter
     inset: bool,          // the doors inside the opening, the shelves a panel back behind them
@@ -55,6 +55,9 @@ struct Corner<'a> {
     et: String,
     epl: String,
     ekick: String, // the plinth board's or the notch's set-back
+    wall_mount: &'a str,
+    // The mount board's thickness and height: the backs stand that much off the walls.
+    emount: Option<[String; 2]>,
 }
 
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
@@ -79,6 +82,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         split,
         reveal,
         inset,
+        wall_mount,
+        mount_t,
+        mount_h,
     } = input::read(&kit, p)?;
 
     let ea = kit.parameter("width", a, "along the back wall");
@@ -91,7 +97,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         false => mm(0.0),
     };
     // As on the box cabinet.
-    let ekick = match plinth > 0.0 && plinth_type != "legs" || kit.has("plinth_setback") {
+    let on_feet = matches!(plinth_type, "legs" | "casters");
+    let ekick = match plinth > 0.0 && !on_feet || kit.has("plinth_setback") {
         true => kit.parameter("plinth_setback", plinth_setback, "plinth set-back"),
         false => mm(plinth_setback),
     };
@@ -100,6 +107,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         true => kit.parameter_as("reveal", reveal, "gap around the doors", mm(reveal)),
         false => mm(reveal),
     };
+    let emount = fittings::mount_sizes(&kit, wall_mount, mount_t, mount_h, &et);
+    // A rail on each wall.
+    let steel = wall_mount == "steel";
+    fittings::steel_rail(&kit, "wall_rail", steel, a, &ea);
+    fittings::steel_rail(&kit, "wall_rail_return", steel, b, &eb);
     kit.centre(&ea, &eb);
     let edr = match diagonal {
         true => format!("({ea} - {eb} + {ed})"),
@@ -131,6 +143,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         et,
         epl,
         ekick,
+        wall_mount,
+        emount,
     };
     let drill = corner.carcass(shelves, pins); // holes, run after the panels exist
     match on_return {
@@ -201,32 +215,71 @@ impl Corner<'_> {
         let side = |end: &'static str| &end[end.len() - 1..];
         (self.kit).seat(side(back_end), false, &self.point(ea), eb);
         (self.kit).seat(side(return_end), true, &self.point(&zero), &zero);
-        // On legs the whole carcass stands on them; else the ends and backs reach the floor.
+        // On legs or casters the whole carcass stands on them; else the ends and backs reach
+        // the floor.
         let (z, high) = match self.plinth_type {
-            "legs" => (epl.clone(), format!("{eh} - {epl}")),
+            "legs" | "casters" => (epl.clone(), format!("{eh} - {epl}")),
             _ => (zero.clone(), eh.to_string()),
         };
         let back_end_x = format!("{ea} - {et}");
         let front_y = format!("{eb} - {ed}");
         panel(back_end, [&back_end_x, &front_y, &z], [et, ed, &high], None);
         panel(return_end, [&zero, &zero, &z], [edr, et, &high], None);
-        // Full panels against both walls, standing on the floor like the sides.
+        // Full panels against both walls, standing on the floor like the sides. With a mount
+        // board they stand that far off the walls, between the bottom and the top, which
+        // reach the walls over the boards.
+        let ech = format!("({eh} - {epl} - 2*{et})"); // clear height
+        let (tm, back_z, back_h) = match &self.emount {
+            Some([tm, _]) => (tm.clone(), format!("{epl} + {et}"), ech.clone()),
+            None => (zero.clone(), z.clone(), high.clone()),
+        };
+        let off = |e: String| match self.emount {
+            Some(_) => format!("{e} - {tm}"),
+            None => e,
+        };
+        let back_x = match self.emount {
+            Some(_) => format!("{et} + {tm}"),
+            None => et.clone(),
+        };
         panel(
             "Back",
-            [et, &format!("{eb} - {et}"), &z],
-            [&format!("{ea} - 2*{et}"), et, &high],
+            [&back_x, &off(format!("{eb} - {et}")), &back_z],
+            [&off(format!("{ea} - 2*{et}")), et, &back_h],
             None,
         );
         panel(
             "Back return",
-            [&zero, et, &z],
-            [et, &format!("{eb} - {et}"), &high],
+            [&tm, et, &back_z],
+            [et, &off(format!("{eb} - {et}")), &back_h],
             None,
         );
+        // The mount boards under the top: along the back wall from the side wall to the back
+        // leg's end, and along the side wall from behind the return's end. Box edges (see
+        // `fittings::mount_board`): the back wall's as on the box cabinet (front bottom 9,
+        // back top 3); along the side wall the inner face is +x (bottom 11, wall top 0), or
+        // -x for a right corner (7, 2).
+        if let Some([tm, mh]) = &self.emount {
+            let z = format!("{eh} - {et} - {mh}");
+            let mount = |at: [&str; 3], size: [&str; 3], suffix: &str, edges: [u32; 2]| {
+                let board =
+                    |part: &str, at: [&str; 3], size: [&str; 3]| panel(part, at, size, None);
+                let wall_mount = self.wall_mount;
+                fittings::mount_board(self.kit, wall_mount, tm, board, [at, size], suffix, edges)
+            };
+            let y = format!("{eb} - {tm}");
+            mount(
+                [&zero, &y, &z],
+                [&format!("{ea} - {et}"), tm, mh],
+                "",
+                [9, 3],
+            );
+            let length = format!("{eb} - {et} - {tm}");
+            let edges = if self.right { [7, 2] } else { [11, 0] };
+            mount([&zero, et, &z], [tm, &length, mh], " return", edges);
+        }
         // Bottom, top and shelves are L-shaped: a board over the whole inside, with the open
         // corner cut out of it, square or (diagonal) at 45 degrees. The cut list gives the
         // board before the cut. Each board's height is also kept in mm, for picking its edge.
-        let ech = format!("({eh} - {epl} - 2*{et})"); // clear height
         let egap = format!("(({ech} - {s}*{et}) / {})", s + 1); // between shelves
         let (t, clear_h) = (self.t, self.h - self.plinth - 2.0 * self.t);
         let gap = (clear_h - s as f64 * t) / (s + 1) as f64;
@@ -252,6 +305,18 @@ impl Corner<'_> {
         for (part, z, z_mm) in &boards {
             // Behind inset doors a shelf's front edges are a panel further back.
             let back = self.inset && part.starts_with("Shelf");
+            // Where the board starts from either wall: inside the backs; with a mount board
+            // the bottom and top reach the walls and the shelves stop at the backs.
+            let w0 = match (&self.emount, part.starts_with("Shelf")) {
+                (None, _) => et.clone(),
+                (Some(_), false) => zero.clone(),
+                (Some([tm, _]), true) => format!("({et} + {tm})"),
+            };
+            // From there to inside the other end: the whole inside without a mount board.
+            let inner = |e: &str| match self.emount {
+                None => format!("{e} - 2*{et}"),
+                Some(_) => format!("{e} - {et} - {w0}"),
+            };
             // The open corner: x from, its width, and its depth from y = t.
             let notch = match back {
                 true => [
@@ -268,15 +333,15 @@ impl Corner<'_> {
             if self.split {
                 // Two rectangles, joined along the back leg's front edge: the back leg's
                 // board over the whole width, and the return's in front of it.
-                let leg = format!("{} - {et}", notch[0]); // inside depth of both legs
+                let leg = format!("{} - {w0}", notch[0]); // inside depth of both legs
                 let joint = format!("{et} + {}", notch[2]);
-                let wide = format!("{ea} - 2*{et}");
-                panel(part, [et, &joint, z], [&wide, &leg, et], None);
+                let wide = inner(ea);
+                panel(part, [&w0, &joint, z], [&wide, &leg, et], None);
                 let piece = format!("{part} return");
-                panel(&piece, [et, et, z], [&leg, &notch[2], et], None);
+                panel(&piece, [&w0, et, z], [&leg, &notch[2], et], None);
                 let targets = [format!("{name} {part}"), format!("{name} {piece}")];
                 let ends = [
-                    format!("{et} + {}", mm(DOWEL_INSET)),
+                    format!("{w0} + {}", mm(DOWEL_INSET)),
                     format!("{} - {}", notch[0], mm(DOWEL_INSET)),
                 ];
                 for (n, x) in ends.iter().enumerate() {
@@ -295,12 +360,7 @@ impl Corner<'_> {
                 }
                 continue;
             }
-            panel(
-                part,
-                [et, et, z],
-                [&format!("{ea} - 2*{et}"), &format!("{eb} - 2*{et}"), et],
-                None,
-            );
+            panel(part, [&w0, et, z], [&inner(ea), &inner(eb), et], None);
             if self.diagonal {
                 // The board's upright edge at the open corner, cut back to the front.
                 let edge = [
@@ -347,27 +407,41 @@ impl Corner<'_> {
                     Some(&target),
                 );
             }
-        } else if self.plinth_type == "legs" {
-            // Under each corner of the footprint, and the L's inner corner.
+        } else if matches!(self.plinth_type, "legs" | "casters") {
+            // Under each corner of the footprint, and the L's inner corner. A caster's plate
+            // stays under the bottom panel, clear of the ends and backs (as on the box cabinet).
             let inset = mm(LEG_INSET);
-            let (near, wall_x, wall_y) = (
-                inset.clone(),
-                format!("{ea} - {inset}"),
-                format!("{eb} - {inset}"),
-            );
+            let near = match self.plinth_type {
+                "legs" => inset.clone(),
+                _ => format!("({et} + {inset})"),
+            };
+            let (wall_x, wall_y) = (format!("{ea} - {near}"), format!("{eb} - {near}"));
+            let front = format!("{front_y} + {inset}");
             let mut at = vec![
-                (wall_x.clone(), format!("{front_y} + {inset}")),
+                (wall_x.clone(), front.clone()),
                 (wall_x, wall_y.clone()),
                 (near.clone(), wall_y),
                 (near.clone(), near.clone()),
                 (format!("{edr} - {inset}"), near),
             ];
             if !self.diagonal {
-                at.push((format!("{ed} - {inset}"), format!("{front_y} + {inset}")));
+                at.push((format!("{ed} - {inset}"), front));
             }
             for (n, (x, y)) in at.iter().enumerate() {
-                let at = self.kit.at(&self.point(x), y, &zero);
-                fittings::leg(self.kit, n + 1, at, epl);
+                // Split, the two at the return's end are under the return's board.
+                let bottom = match self.split && (n == 3 || n == 4) {
+                    true => "Bottom return",
+                    false => "Bottom",
+                };
+                let x = self.point(x);
+                fittings::foot(
+                    self.kit,
+                    self.plinth_type,
+                    n + 1,
+                    [&x, y],
+                    epl,
+                    [et, bottom],
+                );
             }
         } else if self.plinth_type == "board" && self.diagonal {
             diagonal::plinth(self);
@@ -414,17 +488,27 @@ impl Corner<'_> {
             true => (format!("{eb} - {ed} + {et}"), format!(" - {et}")),
             false => (format!("{eb} - {ed}"), String::new()),
         };
+        // With a mount board the backs, so their rows, stand off the walls by its thickness
+        // and the rows are that much shorter.
+        let (o, back_x, back_y) = match &self.emount {
+            Some([tm, _]) => (
+                format!("{o} - {tm}"),
+                format!("{et} + {tm}"),
+                format!("{eb} - {et} - {tm}"),
+            ),
+            None => (o, et.clone(), format!("{eb} - {et}")),
+        };
         let (near, far) = (
-            format!("{et} + {}", mm(PIN_SETBACK)),
+            format!("{back_x} + {}", mm(PIN_SETBACK)),
             format!("{front} + {}", mm(PIN_SETBACK)),
         );
-        let (wall_x, wall_y) = (format!("{ea} - {et}"), format!("{eb} - {et}"));
+        let wall_x = format!("{ea} - {et}");
         // (panel, the first hole on its inner face, the way in, the way to the second row)
         let rows = [
             (back_end, [&wall_x, &far], [flip, 0, 0], [0, 1, 0]),
             (return_end, [&near, et], [0, -1, 0], [flip, 0, 0]),
-            ("Back", [&near, &wall_y], [0, 1, 0], [flip, 0, 0]),
-            ("Back return", [et, &far], [-flip, 0, 0], [0, 1, 0]),
+            ("Back", [&near, &back_y], [0, 1, 0], [flip, 0, 0]),
+            ("Back return", [&back_x, &far], [-flip, 0, 0], [0, 1, 0]),
         ];
         let z = format!("{epl} + {et} + {}", mm(2.0 * PITCH));
         let (run, return_run) = (format!("{ed} - {et}{o}"), format!("{} - {et}{o}", self.edr));

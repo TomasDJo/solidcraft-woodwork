@@ -312,11 +312,11 @@ pub fn sheet(
     };
     let neg = |d: [f64; 2]| d.map(|v| -v);
     let parts = select::parts(measure, name);
-    // The views take in its end panels, fillers and legs too.
+    // The views take in its end panels, fillers, legs and casters too.
     let panels = (parts.iter())
         .filter(|p| {
             p.get(name.len() + 1..).is_some_and(crate::panel::is_panel)
-                || crate::fittings::is_leg(p)
+                || crate::fittings::is_foot(p)
         })
         .map(|p| bbox(measure, p));
     let all: Vec<Option<Box3>> = [Some(l), Some(r), back].into_iter().chain(panels).collect();

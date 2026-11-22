@@ -68,6 +68,22 @@ def test_a_corner_cabinet_and_what_cannot_be_edited(approval):
         raise AssertionError("an edit that should be refused went through")
 
 
+def test_the_dialog_hook_leaves_the_edit_as_it_was(approval):
+    # The hook hides the other kind's fields (`edit::hidden`): `plugin.run` calls it first with
+    # the picked board, as the dialog does, and the edit must run as without it. Picked in the
+    # field, not selected, and a face as the dialog sends it.
+    face = lambda body: [{"type": "face", "body": body, "index": 0}]
+    results = cli([plugin(approval, "corner", {"name": "C"}),
+                   plugin(approval, "cabinet", {"name": "B", "place": "origin", "doors": 1}),
+                   plugin(approval, "edit", {"selection": face("C Top"), "shelves": 2}),
+                   plugin(approval, "edit", {"selection": face("B Door"), "shelves": 3}),
+                   MEASURE])
+    assert results[2]["result"]["edited"] and results[3]["result"]["edited"], results[2:4]
+    box = boxes(results[4])
+    assert "C Shelf 2" in box and "C Door" not in box, sorted(box)
+    assert "B Shelf 3" in box and "B Door" in box, sorted(box)
+
+
 def test_a_corner_that_followed_its_place_stays_that_corner(approval):
     # Placed right of a cabinet a corner cabinet becomes a right corner by itself. Edit builds
     # it again without knowing where it was placed: it must still be a right corner, there.

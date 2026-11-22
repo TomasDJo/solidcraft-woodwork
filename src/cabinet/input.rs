@@ -21,7 +21,7 @@ pub struct Input<'a> {
     pub t: f64,
     pub bt: f64,
     pub plinth: f64,
-    /// board, notch or legs (`fittings::plinth_type`).
+    /// board, notch, legs or casters (`fittings::plinth_type`).
     pub plinth_type: &'a str,
     /// How far the plinth board or the sides' notch is back from the front.
     pub plinth_setback: f64,
@@ -31,6 +31,11 @@ pub struct Input<'a> {
     pub drawers: f64,
     pub pins: bool,
     pub back: &'a str,
+    /// none, cleat (French cleat), rail (a hanging rail) or steel (bought rail and hangers).
+    pub wall_mount: &'a str,
+    /// The mount board's thickness and height (a cleat's on its rear face): 0 without one.
+    pub mount_t: f64,
+    pub mount_h: f64,
     pub handles: &'a str,
     pub handle_at: &'a str,
     pub hinge_right: bool, // the first door is hinged on its right
@@ -71,7 +76,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let t = size("thickness", 18.0)?;
     let bt = size("back_thickness", 6.0)?;
     let plinth = size("plinth", 0.0)?;
-    let plinth_type = crate::fittings::plinth_type(p)?;
+    let plinth_type = crate::fittings::plinth_type(p, plinth)?;
     let plinth_setback = size("plinth_setback", crate::fittings::KICK_RECESS)?;
     let shelves = num(p, "shelves", 1.0)?;
     let doors = num(p, "doors", 0.0)?;
@@ -128,7 +133,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     check(plinth >= 0.0, "plinth cannot be negative")?;
     check(
-        plinth == 0.0 || plinth_type == "legs" || (0.0..d - t).contains(&plinth_setback),
+        plinth == 0.0
+            || matches!(plinth_type, "legs" | "casters")
+            || (0.0..d - t).contains(&plinth_setback),
         "the plinth set-back must be 0 up to the depth less a panel thickness",
     )?;
     check(
@@ -138,6 +145,14 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         w <= 5000.0 && h <= 5000.0 && d <= 5000.0,
         "sizes are limited to 5000 mm",
+    )?;
+
+    let between = h - plinth - 2.0 * t; // between the bottom and the top
+    let (wall_mount, mount_t, mount_h) = crate::fittings::wall_mount(kit, p, t, between)?;
+    // An overlaid back would hold the cabinet off the wall by its thickness.
+    check(
+        mount_t == 0.0 || back != "overlay",
+        "a wall mount board needs a back in a groove or none",
     )?;
 
     let inner_w = w - 2.0 * t;
@@ -262,8 +277,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     let shelf_d = match back {
         "overlay" => d - bt,
+        // in front of a mount board, the back moves forward by its thickness
+        "groove" if mount_t > 0.0 => d - mount_t - bt,
         "groove" => d - GROOVE_INSET - bt,
-        _ => d,
+        _ => d - mount_t,
     } - o;
     // A sink base's two rails run from the front and from where the shelves' depth ends.
     check(
@@ -296,6 +313,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawers,
         pins,
         back,
+        wall_mount,
+        mount_t,
+        mount_h,
         handles,
         handle_at,
         hinge_right,

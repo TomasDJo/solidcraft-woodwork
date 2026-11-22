@@ -151,17 +151,43 @@ pub fn handle_position(p: &Value) -> Result<&str, String> {
 pub const KICK_RECESS: f64 = 50.0; // `plinth_setback`'s default: the board or notch, back from the front
 pub const LEG_D: f64 = 40.0; // an adjustable leg
 pub const LEG_INSET: f64 = 50.0; // a leg's middle, in from the carcass's outside edges
+pub const CASTER_MIN: f64 = 50.0; // the lowest plinth a caster fits under
+pub const CASTER_PLATE: f64 = 80.0; // a caster's square mounting plate
+pub const CASTER_SCREWS: f64 = 60.0; // between the plate's screw holes, both ways
+pub const CASTER_SCREW_D: f64 = 4.0; // a pilot hole for one of them
 
 /// The `plinth_type` field: `board` (one set back, the default), `notch` (the sides notched
-/// at the front, no board: for one long board across a run) or `legs` (the carcass on legs).
-pub fn plinth_type(p: &Value) -> Result<&str, String> {
-    match p
+/// at the front, no board: for one long board across a run), `legs` (the carcass on legs) or
+/// `casters` (on casters, under a `plinth` of `CASTER_MIN` or more; 0 is no plinth).
+pub fn plinth_type(p: &Value, plinth: f64) -> Result<&str, String> {
+    let kind = match p
         .get("plinth_type")
         .and_then(Value::as_str)
         .unwrap_or("board")
     {
-        kind @ ("board" | "notch" | "legs") => Ok(kind),
-        _ => Err("plinth_type must be board, notch or legs".into()),
+        kind @ ("board" | "notch" | "legs" | "casters") => kind,
+        _ => return Err("plinth_type must be board, notch, legs or casters".into()),
+    };
+    crate::kit::check(
+        plinth == 0.0 || kind != "casters" || plinth >= CASTER_MIN,
+        "casters need a plinth of at least 50 mm",
+    )?;
+    Ok(kind)
+}
+
+/// A leg or (`kind` casters) a caster, number `n`, under `(x, y)` from the carcass's front
+/// left corner at the floor, `height` high; a caster's screws go into the board `bottom`.
+pub fn foot(
+    kit: &Kit,
+    kind: &str,
+    n: usize,
+    [x, y]: [&str; 2],
+    height: &str,
+    [t, bottom]: [&str; 2],
+) {
+    match kind {
+        "legs" => leg(kit, n, kit.at(x, y, &mm(0.0)), height),
+        _ => caster(kit, n, x, y, height, t, bottom),
     }
 }
 
@@ -179,9 +205,200 @@ pub fn leg(kit: &Kit, n: usize, at: Value, height: &str) {
     ));
 }
 
+/// A locking caster, `<Name> Caster <n>`, one body `height` high under `(x, y)` (from the
+/// carcass's front left corner, at the floor): a square plate under the bottom panel, a post
+/// and a wheel on the floor. The plate's four screws get pilot holes in the bottom panel, from
+/// its underside: one cut and a 2 x 2 pattern, at most half the panel deep so they stay clear
+/// of a back groove in its top. `bottom` is that panel's part name.
+pub fn caster(kit: &Kit, n: usize, x: &str, y: &str, height: &str, thickness: &str, bottom: &str) {
+    let name = &kit.name;
+    let body = format!("{name} Caster {n}");
+    let (plate, plate_t, wheel_w) = (mm(CASTER_PLATE), mm(5.0), mm(25.0));
+    let half = |v: f64| mm(v / 2.0);
+    let plate_at = kit.at(
+        &format!("{x} - {}", half(CASTER_PLATE)),
+        &format!("{y} - {}", half(CASTER_PLATE)),
+        &format!("{height} - {plate_t}"),
+    );
+    // A wheel of at most 75 mm on the floor, so it stays under the carcass on a high plinth,
+    // and a post from its middle 2 mm into the 5 mm plate: one solid.
+    let wheel_d = format!("min({}, {height} - {})", mm(75.0), mm(2.0));
+    let wheel_at = kit.at(&format!("{x} - {wheel_w}/2"), y, &format!("{wheel_d}/2"));
+    let post_h = format!("{height} - {} - {wheel_d}/2", mm(3.0));
+    let screw = |v: &str| format!("{v} - {}", half(CASTER_SCREWS));
+    let feature = format!("{name} {bottom} caster {n}");
+    kit.push((
+        "solid.box",
+        json!({
+            "length": plate, "width": plate, "height": plate_t, "corner": plate_at,
+            "name": body, "body_name": body,
+        }),
+    ));
+    // The post first: joined before it, the wheel would not touch the plate yet.
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": kit.at(x, y, &format!("{wheel_d}/2")), "axis": [0, 0, 1],
+            "diameter": mm(20.0), "height": post_h,
+            "operation": "join", "targets": [body], "name": format!("{body} post"),
+        }),
+    ));
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": wheel_at, "axis": [1, 0, 0], "diameter": wheel_d, "height": wheel_w,
+            "operation": "join", "targets": [body], "name": format!("{body} wheel"),
+        }),
+    ));
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": kit.at(&screw(x), &screw(y), height), "axis": [0, 0, 1],
+            "diameter": mm(CASTER_SCREW_D),
+            "height": format!("min({}, {thickness}/2 - {})", mm(10.0), mm(1.0)),
+            "operation": "cut", "targets": [format!("{name} {bottom}")], "name": feature,
+        }),
+    ));
+    kit.push((
+        "solid.pattern.rectangular",
+        json!({
+            "features": [feature], "name": format!("{feature} screws"),
+            "dir1": [1, 0, 0], "count1": 2, "spacing1": mm(CASTER_SCREWS),
+            "dir2": [0, 1, 0], "count2": 2, "spacing2": mm(CASTER_SCREWS),
+        }),
+    ));
+}
+
+pub const NAILER_H: f64 = 90.0; // ponytail: a hanging rail is always this high, no field for it
+
+/// The `wall_mount` field and its board's thickness and height in mm (0 without one): none,
+/// cleat (a French cleat, sized by its fields), rail (a hanging rail, a panel thick) or steel
+/// (a bought rail and hangers, no board). `between` is the height between bottom and top.
+pub fn wall_mount<'a>(
+    kit: &Kit,
+    p: &'a Value,
+    t: f64,
+    between: f64,
+) -> Result<(&'a str, f64, f64), String> {
+    let mount = match p
+        .get("wall_mount")
+        .and_then(Value::as_str)
+        .unwrap_or("none")
+    {
+        m @ ("none" | "cleat" | "rail" | "steel") => m,
+        _ => return Err("wall_mount must be none, cleat, rail or steel".into()),
+    };
+    let (mount_t, mount_h) = match mount {
+        "cleat" => {
+            let ct = kit.size(p, "cleat_thickness", 18.0)?;
+            let ch = kit.size(p, "cleat_height", 90.0)?;
+            crate::kit::check(
+                (6.0..=50.0).contains(&ct),
+                "cleat thickness must be 6 to 50 mm",
+            )?;
+            crate::kit::check(ch > ct, "the cleat must be taller than it is thick")?;
+            // the wall cleat hangs below the cabinet's, overlapping it by the bevel
+            crate::kit::check(
+                2.0 * ch - ct <= between,
+                "the cleats do not fit: twice the cleat height less its thickness must fit between the bottom and the top",
+            )?;
+            (ct, ch)
+        }
+        "rail" => {
+            crate::kit::check(NAILER_H <= between, "too low for a hanging rail")?;
+            (t, NAILER_H)
+        }
+        _ => (0.0, 0.0),
+    };
+    Ok((mount, mount_t, mount_h))
+}
+
+/// The mount board's thickness and height as expressions (a cleat's are parameters), or
+/// `None` for no board. `et` is the panel thickness.
+pub fn mount_sizes(
+    kit: &Kit,
+    mount: &str,
+    mount_t: f64,
+    mount_h: f64,
+    et: &str,
+) -> Option<[String; 2]> {
+    match mount {
+        "cleat" => Some([
+            kit.parameter("cleat_thickness", mount_t, "French cleat thickness"),
+            kit.parameter("cleat_height", mount_h, "French cleat height"),
+        ]),
+        "rail" => Some([et.to_string(), mm(NAILER_H)]),
+        _ => None,
+    }
+}
+
+// ponytail: steel is not modelled (hanger models and their holes come with #70); the cut
+// list buys a rail to this length and two hangers. Kept at 0 once an edit stops using it.
+/// A steel wall rail, the parameter `<Prefix>_<key>`, `length` long (mm and expression).
+pub fn steel_rail(kit: &Kit, key: &str, steel: bool, length: f64, expression: &str) {
+    if steel || kit.has(key) {
+        let (value, length) = match steel {
+            true => (length, expression.to_string()),
+            false => (0.0, mm(0.0)),
+        };
+        kit.parameter_as(key, value, "steel wall rail, bought to length", length);
+    }
+}
+
+/// The board a cabinet hangs by, along one wall under its top: a hanging rail (`mount` rail),
+/// or a French cleat and the wall's cleat nested below it (cleat). `panel` makes a board from
+/// its corner and size; `board` is the cabinet's (corner and size, its height the mount's),
+/// `tm` the mount's thickness, `suffix` follows each part's name. `edges` are the box edges to
+/// bevel by `tm`: the cabinet cleat's under its inner face, the wall cleat's on top at the
+/// wall. Box edges by index, so they follow a resize.
+pub fn mount_board(
+    kit: &Kit,
+    mount: &str,
+    tm: &str,
+    panel: impl Fn(&str, [&str; 3], [&str; 3]),
+    [at, size]: [[&str; 3]; 2],
+    suffix: &str,
+    edges: [u32; 2],
+) {
+    if mount == "rail" {
+        return panel(&format!("Hanging rail{suffix}"), at, size);
+    }
+    let wall_z = format!("{} + {tm} - {}", at[2], size[2]);
+    let parts = [
+        ("Cleat", at[2], edges[0]),
+        ("Wall cleat", &wall_z, edges[1]),
+    ];
+    for (part, z, edge) in parts {
+        let part = format!("{part}{suffix}");
+        panel(&part, [at[0], at[1], z], size);
+        let body = format!("{} {part}", kit.name);
+        kit.push((
+            "solid.chamfer",
+            json!({
+                "edges": [{"body": body, "index": edge}], "distance": tm,
+                "body": body, "name": format!("{body} bevel"),
+            }),
+        ));
+    }
+}
+
 /// Whether a body is one of the legs `leg` makes.
 pub fn is_leg(body: &str) -> bool {
-    body.rsplit_once(" Leg ")
+    numbered(body, " Leg ")
+}
+
+/// Whether a body is one of the casters `caster` makes.
+pub fn is_caster(body: &str) -> bool {
+    numbered(body, " Caster ")
+}
+
+/// A leg or a caster: hardware the carcass stands on, not a board.
+pub fn is_foot(body: &str) -> bool {
+    is_leg(body) || is_caster(body)
+}
+
+fn numbered(body: &str, part: &str) -> bool {
+    body.rsplit_once(part)
         .is_some_and(|(_, n)| n.parse::<u32>().is_ok())
 }
 

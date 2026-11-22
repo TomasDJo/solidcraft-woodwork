@@ -126,6 +126,20 @@ fn filler_and_its_return() {
 }
 
 #[test]
+fn an_end_panel_beside_casters_stops_at_the_carcass() {
+    // the cabinet rolls: the panel starts at the plinth; on legs it reaches the floor
+    let rolls = made(json!({"plinth": 100, "plinth_type": "casters"}));
+    let p = json!({"kind": "end", "side": "left"});
+    let end = boxes(p.clone(), rolls, true).unwrap();
+    assert_eq!(end[0].1[2], "A_height - A_plinth");
+    assert_eq!(end[0].1[3][2], "A_plinth");
+    let legs = made(json!({"plinth": 100, "plinth_type": "legs"}));
+    let end = boxes(p, legs, true).unwrap();
+    assert_eq!(end[0].1[2], "A_height");
+    assert_eq!(end[0].1[3][2], "0 mm");
+}
+
+#[test]
 fn an_end_panel_ignores_the_filler_width() {
     // inches, and the dialog's 50 would be a 1270 mm filler
     let p = json!({"kind": "end", "side": "right", "units": "in", "width": 50, "thickness": 0.75});

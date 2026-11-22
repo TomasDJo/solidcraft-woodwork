@@ -267,3 +267,25 @@ fn settings_patch_then_show_and_the_hook_names_our_data() {
     assert_eq!(asked, json!(["storage.get", {"plugin": "woodwork"}]));
     assert_eq!(reply["material"]["default"], "MDF");
 }
+
+#[test]
+fn the_edit_hook_reads_body_names_once_and_never_fails() {
+    let mut asked = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        asked.push(json!([command, args]));
+        Ok(
+            json!({"bodies": ["C Side L"], "params": [{"name": "C_return"}],
+                  "selection": [{"type": "body", "name": "C Side L"}]}),
+        )
+    };
+    let reply = dialog("edit", &json!({}), &mut run).unwrap();
+    assert_eq!(
+        asked,
+        [json!(["document.inspect", {"bodies": "names", "timeline": false}])]
+    );
+    assert_eq!(reply["doors"], json!({"visible": false}));
+    // no default anywhere: in Edit an empty field means unchanged
+    assert!(!reply.to_string().contains("default"), "{reply}");
+    let mut failing = |_: &str, _: Value| -> Result<Value, String> { Err("busy".into()) };
+    assert_eq!(dialog("edit", &json!({}), &mut failing).unwrap(), json!({}));
+}

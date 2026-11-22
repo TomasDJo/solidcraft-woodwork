@@ -32,6 +32,11 @@ pub struct Input<'a> {
     pub reveal: f64,
     /// The doors sit inside the opening, not in front of it (only with doors).
     pub inset: bool,
+    /// How it hangs on the wall, and the mount board's thickness and height
+    /// (`fittings::wall_mount`).
+    pub wall_mount: &'a str,
+    pub mount_t: f64,
+    pub mount_h: f64,
 }
 
 pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
@@ -44,7 +49,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     );
     let t = size("thickness", 18.0)?;
     let plinth = size("plinth", 0.0)?;
-    let plinth_type = crate::fittings::plinth_type(p)?;
+    let plinth_type = crate::fittings::plinth_type(p, plinth)?;
     let plinth_setback = size("plinth_setback", crate::fittings::KICK_RECESS)?;
     let shelves = num(p, "shelves", 1.0)?;
     let pins = p
@@ -98,14 +103,18 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     check(plinth >= 0.0, "plinth cannot be negative")?;
     check(
-        plinth == 0.0 || plinth_type == "legs" || (0.0..d - t).contains(&plinth_setback),
+        plinth == 0.0
+            || matches!(plinth_type, "legs" | "casters")
+            || (0.0..d - t).contains(&plinth_setback),
         "the plinth set-back must be 0 up to the depth less a panel thickness",
     )?;
     check(
         a <= 5000.0 && b <= 5000.0 && h <= 5000.0,
         "sizes are limited to 5000 mm",
     )?;
-    check(d >= 150.0 + t, "depth is too small")?;
+    let (wall_mount, mount_t, mount_h) =
+        crate::fittings::wall_mount(kit, p, t, h - plinth - 2.0 * t)?;
+    check(d >= 150.0 + t + mount_t, "depth is too small")?;
     check(
         a >= d + 200.0 && b >= d + 200.0,
         "width and return must each be 200 mm more than the depth",
@@ -162,6 +171,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         split,
         reveal,
         inset,
+        wall_mount,
+        mount_t,
+        mount_h,
     })
 }
 

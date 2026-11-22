@@ -453,6 +453,40 @@ fn plinth_types() {
     let (commands, _) = build(&p).unwrap();
     assert_eq!(count(&commands, "solid.cylinder"), 5);
     assert_eq!(count(&commands, "component.create"), 0);
+
+    // casters: at the legs' places, but clear of the ends and backs, screwed into the bottom
+    let p = json!({"width": 1000, "return": 900, "plinth": 100, "plinth_type": "casters"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(!has(&commands, "Cabinet Plinth") && !has(&commands, "Cabinet Leg 1"));
+    let wall = named(&commands, "Cabinet Caster 3");
+    assert_eq!(
+        wall["corner"][0],
+        "(Cabinet_thickness + 50 mm) - 40 mm - Cabinet_width/2"
+    );
+    named(&commands, "Cabinet Caster 6");
+    let screws = named(&commands, "Cabinet Bottom caster 4");
+    assert_eq!(screws["targets"], json!(["Cabinet Bottom"]));
+    assert_eq!(
+        board(&commands, "Cabinet Back")["corner"][2],
+        "Cabinet_plinth"
+    );
+    // split: the two at the return's end go into the return's board
+    let p = json!({"plinth": 100, "plinth_type": "casters", "boards": "split"});
+    let (commands, _) = build(&p).unwrap();
+    let screws = named(&commands, "Cabinet Bottom return caster 4");
+    assert_eq!(screws["targets"], json!(["Cabinet Bottom return"]));
+    named(&commands, "Cabinet Bottom caster 6");
+    // the diagonal: five
+    let p = json!({"shape": "diagonal", "plinth": 100, "plinth_type": "casters"});
+    let (commands, _) = build(&p).unwrap();
+    named(&commands, "Cabinet Caster 5");
+    assert!(!has(&commands, "Cabinet Caster 6"));
+    // too low a plinth is refused, as on the box cabinet
+    let p = json!({"plinth": 40, "plinth_type": "casters"});
+    assert_eq!(
+        build(&p).unwrap_err(),
+        "casters need a plinth of at least 50 mm"
+    );
 }
 
 #[test]
@@ -526,4 +560,169 @@ fn split_shelves_behind_inset_doors_start_a_panel_back() {
     // the bottom does not
     let bottom = board(&commands, "Cabinet Bottom return");
     assert_eq!(bottom["length"], "Cabinet_depth - Cabinet_thickness");
+}
+
+#[test]
+fn a_french_cleat_along_both_walls() {
+    let (commands, summary) = build(&json!({"wall_mount": "cleat"})).unwrap();
+    let (tm, h) = ("Cabinet_cleat_thickness", "Cabinet_cleat_height");
+    assert_eq!(named(&commands, h)["expression"], "90 mm");
+    let z = format!("Cabinet_height - Cabinet_thickness - {h}");
+    // along the back wall, its rear face on the wall, under the top, to the back leg's end
+    let cleat = board(&commands, "Cabinet Cleat");
+    assert_eq!(
+        cleat["corner"][1],
+        format!("Cabinet_return - {tm} - Cabinet_return/2")
+    );
+    assert_eq!(cleat["corner"][2], z);
+    assert_eq!(cleat["length"], "Cabinet_width - Cabinet_thickness");
+    let wall = board(&commands, "Cabinet Wall cleat");
+    assert_eq!(wall["corner"][2], format!("{z} + {tm} - {h}"));
+    // along the side wall, from behind the return's end to the back wall's cleat
+    let cleat = board(&commands, "Cabinet Cleat return");
+    assert_eq!(cleat["corner"][0], "0 mm - Cabinet_width/2");
+    assert_eq!(
+        [&cleat["length"], &cleat["width"]],
+        [
+            tm,
+            "Cabinet_return - Cabinet_thickness - Cabinet_cleat_thickness"
+        ]
+    );
+    // bevelled under the inner face, and the wall's on top at the wall
+    let edge = |n: &str, c: &Commands| {
+        named(c, &format!("Cabinet {n} bevel"))["edges"][0]["index"].clone()
+    };
+    assert_eq!(edge("Cleat", &commands), 9);
+    assert_eq!(edge("Wall cleat", &commands), 3);
+    assert_eq!(edge("Cleat return", &commands), 11);
+    assert_eq!(edge("Wall cleat return", &commands), 0);
+    assert!(summary["bodies"]
+        .to_string()
+        .contains("Cabinet Wall cleat return"));
+    // the backs stand off the walls by the cleat, between bottom and top, which reach the walls
+    let back = board(&commands, "Cabinet Back");
+    assert_eq!(
+        back["corner"][1],
+        format!("Cabinet_return - Cabinet_thickness - {tm} - Cabinet_return/2")
+    );
+    assert_eq!(back["corner"][2], "0 mm + Cabinet_thickness");
+    let back = board(&commands, "Cabinet Back return");
+    assert_eq!(back["corner"][0], format!("{tm} - Cabinet_width/2"));
+    let top = board(&commands, "Cabinet Top");
+    assert_eq!(top["corner"][0], "0 mm - Cabinet_width/2");
+    assert_eq!(top["width"], "Cabinet_return - Cabinet_thickness - 0 mm");
+    let shelf = board(&commands, "Cabinet Shelf 1");
+    assert_eq!(
+        shelf["corner"][0],
+        format!("(Cabinet_thickness + {tm}) - Cabinet_width/2")
+    );
+    // inside the back return and the back leg's end
+    assert_eq!(
+        shelf["length"],
+        format!("Cabinet_width - Cabinet_thickness - (Cabinet_thickness + {tm})")
+    );
+    // a right corner's bevels are mirrored
+    let (right, _) = build(&json!({"wall_mount": "cleat", "corner": "right"})).unwrap();
+    assert_eq!(edge("Cleat return", &right), 7);
+    assert_eq!(edge("Wall cleat return", &right), 2);
+}
+
+#[test]
+fn a_hanging_rail_or_steel_rails_on_a_corner() {
+    let (commands, _) = build(&json!({"wall_mount": "rail", "shape": "diagonal"})).unwrap();
+    let rail = board(&commands, "Cabinet Hanging rail return");
+    assert_eq!(
+        [&rail["length"], &rail["height"]],
+        ["Cabinet_thickness", "90 mm"]
+    );
+    assert!(!commands
+        .iter()
+        .any(|c| c.0 == "solid.chamfer" && c.1["name"].as_str().unwrap().contains("bevel")));
+    // steel: a rail on each wall, no board
+    let (commands, _) = build(&json!({"wall_mount": "steel"})).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_wall_rail")["expression"],
+        "Cabinet_width"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_wall_rail_return")["expression"],
+        "Cabinet_return"
+    );
+    assert_eq!(
+        board(&commands, "Cabinet Back")["corner"],
+        board(&build(&json!({})).unwrap().0, "Cabinet Back")["corner"]
+    );
+    // the cleats must fit, and the legs stay deep enough for them
+    assert!(build(&json!({"wall_mount": "cleat", "height": 190, "shelves": 0})).is_err());
+    assert!(
+        build(&json!({"wall_mount": "cleat", "depth": 180, "width": 400, "return": 400})).is_err()
+    );
+    assert!(build(&json!({"wall_mount": "screws"})).is_err());
+}
+
+#[test]
+fn hinges_on_the_shared_hardware_and_the_pins_grid() {
+    // hinged on the back leg's end, Side R in a left corner
+    let (commands, _) = build(&json!({"doors": "hinged right"})).unwrap();
+    assert!(crate::hardware::used(&commands));
+    let cup = named(&commands, "Cabinet Door hinge cup 1");
+    assert_eq!(
+        [&cup["diameter"], &cup["height"]],
+        ["HW_cup_d", "HW_cup_depth"]
+    );
+    assert!(cup["base"][2]
+        .as_str()
+        .unwrap()
+        .starts_with("0 mm + Cabinet_thickness + HW_pitch/2 + round("));
+    assert_eq!(
+        cup["base"][0],
+        "Cabinet_width - Cabinet_reveal - HW_cup_inset - Cabinet_width/2"
+    );
+    // the folding door keeps its cups
+    named(&commands, "Cabinet Door return hinge cup 2");
+    let plate = named(&commands, "Cabinet Side R hinge plate 1.1");
+    assert_eq!(plate["axis"], json!([1, 0, 0]));
+    assert_eq!(plate["diameter"], "HW_screw_d");
+    assert_eq!(
+        plate["base"][1],
+        "Cabinet_return - Cabinet_depth + HW_setback - Cabinet_return/2"
+    );
+    assert!(plate["base"][2]
+        .as_str()
+        .unwrap()
+        .ends_with(" - HW_pitch/2"));
+    named(&commands, "Cabinet Side R hinge plate 2.2");
+    // hinged on the return's end: Side L, from its inner face
+    let (commands, _) = build(&json!({"doors": "hinged left"})).unwrap();
+    let plate = named(&commands, "Cabinet Side L hinge plate 1.2");
+    assert_eq!(plate["axis"], json!([0, -1, 0]));
+    assert_eq!(
+        plate["base"][0],
+        "Cabinet_depth - HW_setback - Cabinet_width/2"
+    );
+    // inset: a panel further back
+    let p = json!({"doors": "hinged left", "fronts": "inset"});
+    let (commands, _) = build(&p).unwrap();
+    let plate = named(&commands, "Cabinet Side L hinge plate 1.1");
+    assert_eq!(
+        plate["base"][0],
+        "Cabinet_depth - Cabinet_thickness - HW_setback - Cabinet_width/2"
+    );
+    // mirrored
+    let p = json!({"doors": "hinged left", "corner": "right"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Side L hinge plate 1.1")["axis"],
+        json!([-1, 0, 0])
+    );
+    // the diagonal door: shared cups, no plates on its 45-degree ends
+    let p = json!({"shape": "diagonal", "doors": "hinged left"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Door hinge cup 1")["diameter"],
+        "HW_cup_d"
+    );
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"].to_string().contains("hinge plate")));
 }

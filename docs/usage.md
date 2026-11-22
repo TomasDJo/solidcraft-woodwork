@@ -16,6 +16,7 @@ without doors.
 - [Joinery](#joinery)
 - [Material](#material)
 - [Panel](#panel)
+- [Worktop](#worktop)
 - [Cut list](#cut-list)
 - [Drawing](#drawing)
 - [Good to know](#good-to-know)
@@ -33,13 +34,14 @@ component can hold its cabinets.
 | **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
+| **Wall mount**, **Cleat height**, **Cleat thickness** | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
 | **Drawer front height** | With doors: the height of each drawer front, 0 for 150 mm. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below); 0 makes them all alike. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with Edit cabinet, not by setting the parameter to 0. |
 | **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
 | **Plinth height** | 0 for none. |
-| **Plinth type** | Shown with a plinth. **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. |
+| **Plinth type** | Shown with a plinth. **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
 | **Plinth set-back** | Shown with a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
@@ -86,7 +88,9 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   side beside it two more at the same height. A sink base's false front has none. A drawer box
   must be at least 250 mm deep, for the shortest slide.
 - The holes show in the DXF files (a layer per diameter and depth) and the cut list counts the
-  hinges and the pairs of slides. Corner cabinets keep their own cup holes, sized by numbers.
+  hinges and the pairs of slides. A corner cabinet's doors get the same cups on the same grid,
+  and the plates' holes in the end the pair hangs on; the diagonal door's ends stand at 45
+  degrees to it, so it gets its cups only.
 - The cups sit about 100 mm from the door's ends, moved by up to 16 mm so that each plate's two
   holes are on the shelf pins' 32 mm grid: with shelf pins, a plate screw goes into a pin hole,
   or its hole is clear of the rows. The pins keep 32 mm and 37 mm, so a changed `HW_pitch` or
@@ -114,6 +118,39 @@ first hole of a row goes into the front rail, the last into the back one.
 
 There is no oven housing: size a tall cabinet for your oven yourself.
 
+### Wall mount
+
+**Wall mount** hangs a box or corner cabinet on the wall (for a corner cabinet see
+[Corner cabinet](#corner-cabinet)). Legs and wall mount are independent: a cabinet can have both.
+
+- **None**: as before, nothing to hang it by.
+- **French cleat**: `Name Cleat`, a board across the back between the sides, right under the
+  top (on a sink base under the rails), its rear face flush with the sides' rear edges. Its
+  lower edge is bevelled at 45 degrees: the rear face reaches lowest, the front face stops a
+  cleat thickness higher. `Name Wall cleat` is the cleat you screw to the wall: the same length
+  and thickness, nested under the cabinet's, its top bevelled to match (low at the wall, high in
+  front), its long front face a cleat height tall. The cabinet's weight pulls it into the wall.
+  The wall cleat is a body in the cabinet's component, so it moves with the cabinet, is built
+  again by Edit cabinet and Match selected, is deleted with the cabinet, and is in the cut list
+  as `Name Wall cleat`. **Cleat height** (on the long face, 90 mm or 3.5 in) and **Cleat
+  thickness** (18 mm or 3/4 in) are the design parameters `Name_cleat_height` and
+  `Name_cleat_thickness`: change them in Parameters and both cleats follow. Twice the height
+  less the thickness must fit between the bottom and the top, and a cleat must be taller than
+  it is thick. The cut list gives each cleat as a square board thickness x height x length: saw the
+  45° bevel along it after cutting (or rip one board twice the height at 45° into both cleats).
+- **Hanging rail**: `Name Hanging rail`, a plain board as thick as the panels and 90 mm high,
+  in the same place, to screw through into the wall.
+- **Steel rail**: nothing is modelled. The cut list's hardware lists `Steel wall rail, <width>
+  mm` (one per cabinet, bought to the cabinet's width, grouped by length) and two `Cabinet
+  hanger` per cabinet. The cabinet has the parameter `Name_wall_rail` (its width) while it
+  hangs on one, 0 after an Edit that takes it away. Hanger models and their holes come with
+  the hardware models (#70).
+
+With a cleat or a hanging rail the back stands in front of it: in a groove, the groove is the
+board's thickness from the rear instead of 12 mm; with no back, the shelves stop in front of
+it. Shelves, dividers and drawer boxes follow. An overlaid back would hold the cabinet off the
+wall, so a cleat or a hanging rail needs a back in a groove or none; a steel rail takes any back.
+
 ## Corner cabinet
 
 Builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
@@ -121,6 +158,9 @@ optional plinth, shelf pin holes, and doors hinged at the end you choose, with h
 **Plinth type** and **Plinth set-back** work as on the box cabinet: a board set back from the fronts, the two end panels
 notched at their front bottom corners, or legs under the corners of the footprint (six under the
 L, the sixth in its inner corner; five under the diagonal) with the ends and backs standing on them.
+**Casters** stand it on locking casters at the legs' places, but 50 mm in from the inside of
+the ends and backs, each plate screwed into the bottom (with split boards the two at the
+return's end into `Name Bottom return`).
 It is parametric, takes a material, and can be placed, named and matched like the box cabinet.
 Its doors have a **Reveal** (`Name_reveal`) as on the box cabinet, and **Fronts** (shown when
 there are doors): Overlay, in front of the cabinet, or Inset, inside the opening with their faces
@@ -132,6 +172,16 @@ about the carcass's inner front corner. The diagonal door fills the opening betw
 ends; as the ends stand at 45 degrees to it, its edges stay the reveal clear of their inner
 corners, which leaves a slanted strip of each end showing beside it. An inset front changes
 nothing about where neighbouring cabinets stand.
+
+**Wall mount**, **Cleat height** and **Cleat thickness** work as on the box cabinet (see
+[Wall mount](#wall-mount)), along both walls: `Name Cleat` and `Name Wall cleat` along the back
+wall, from the side wall to the back leg's end, and `Name Cleat return` and `Name Wall cleat
+return` along the side wall behind the return's end, each bevelled towards the room; a hanging
+rail is `Name Hanging rail` and `Name Hanging rail return`. With a cleat or a rail both backs
+stand its thickness off the walls, between the bottom and the top, which reach the walls over
+the boards; the shelves and the pin rows stop at the backs. A steel rail is one rail on each
+wall (`Name_wall_rail`, the width, and `Name_wall_rail_return`, the return), two hangers each.
+L-shaped and diagonal alike.
 
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the
@@ -199,7 +249,7 @@ Changes a cabinet after it is made. Select any part of it, fill in only what sho
 leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
-plinth type, plinth set-back, the kind (standard or sink base), a corner cabinet's doors and shape. The reveal, the plinth set-back and the drawer
+plinth type, plinth set-back, the kind (standard or sink base), the wall mount, a corner cabinet's doors and shape. The reveal, the plinth set-back and the drawer
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
 with doors go at the top unless Drawers at says Bottom; an edit that takes the doors away from
 a cabinet with drawers makes the drawers all alike again unless it gives a drawer front height.
@@ -207,6 +257,11 @@ Kind Sink base hides shelves, dividers, shelf pins and where the drawers go (a s
 doors needs Doors 0 for drawers); Kind Standard or Sink base
 hides the corner cabinet's fields; Doors 0 hides the hinge side, Handle holes None the handle
 position.
+
+The dialog shows only the fields of the cabinet that is picked: a corner cabinet's doors and
+shape for a box cabinet are hidden, and for a corner cabinet the kind, dividers, doors, the
+hinge side, drawers, drawer front height, Drawers at and back. With nothing picked, or a
+board that is no cabinet's, it shows them all.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
@@ -269,6 +324,38 @@ drawing's width is over all, the panels included; its views take the panels in. 
 corner cabinet's return) a panel is not tested yet: check it lands at the side, or add it
 before turning the cabinet.
 
+## Worktop
+
+Lays a worktop over the selected cabinets. Pick a board of each cabinet (the **Selected cabinets**
+field takes several): one straight run, or runs that meet in corners, such as an L or a U round
+corner cabinets. A gap between cabinets, for a dishwasher or an oven, is covered by the same
+piece. Every cabinet must have its top at the same height and stand square to the walls.
+
+| Field | What it does |
+|---|---|
+| **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
+| **Corner joint** | **Butt**: the longer run's piece goes through to the wall, the other stops against its front edge. **Mitre**: both go to the walls and are cut on the line from the inside corner to the outside one (45 degrees when both are equally deep). |
+| **Thickness** | Of the worktop, 38 mm by default. |
+| **Front overhang** | Past the front of the deepest cabinet of the run (doors stand about 20 mm proud). The back is flush with the wall. |
+| **Left end overhang**, **Right end overhang** | Past a free end of a run, left and right as seen from its front. In an L that is the left run's left end and the right run's right end. |
+| **Dog holes** | 20 mm holes through the first piece on a 96 mm grid, for bench dogs: **All over** (centred, at least 60 mm from the edges) or **In a zone** (Zone from left, Zone from front, Zone length, Zone width, measured from the piece's left end and front edge; the grid is centred in it). |
+| **Cut-out** | An opening through the first piece: **Plain**, or **Rebated** with a shallow ledge all round at the top (Ledge width and Ledge depth), so a router plate or a sink rim sits flush. Opening length and width, and its middle from the piece's left end and front edge. |
+| **Material** | Oak by default. |
+| **Name** | One piece is named `Worktop`; more are `Worktop 1`, `Worktop 2`, the longest first. |
+
+The worktop is a component of its own on the origin, grounded, with no parameters: it is measured
+from the cabinets as they stand. It does not follow when a cabinet changes; **run Worktop again**
+(with only a piece of it picked, or with nothing picked and its name) and it is made again as it
+was, over the same cabinets, with its name and options kept, replacing the old one. To change its
+options, pick its cabinets (a worktop piece too, if you like) and give its name: it is made again
+with the dialog's values. A diagonal corner cabinet
+gets the same square L as an L-shaped one. Dog holes and the cut-out go into the first piece, the
+longest; one that does not fit on it is refused. Two runs facing the same way along different
+walls, or facing each other, are two worktops: make each with its own name.
+
+A name with `Worktop` in it is bought to length in the cut list. Named otherwise, such as `Bench
+top` in birch plywood, it is a board laid out on the sheets like any other.
+
 ## Cut list
 
 Returns every board as length x width x thickness with quantities, and as CSV. In a design
@@ -276,7 +363,8 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
 
 - lays the parts out on sheets per material and thickness, and counts the sheets to buy from
   those layouts (see [Cutting layouts](#cutting-layouts));
-- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, adjustable legs, handles;
+- counts the hardware: hinges, drawer slides, shelf pins, screws or dowels, adjustable legs, casters, handles,
+  steel wall rails (to length) and cabinet hangers;
 - gives a notched side (Plinth type Notched sides) its size over the notch, on a line of its own
   marked `notched for the toe kick; size over the notch` (in the PDF too, and `notched` on its
   label); the cutting layouts and DXF give it as that rectangle, so saw the notch yourself;
@@ -320,9 +408,9 @@ reply lists it under `oversize` with the reason, and the PDF names it under the 
 Sheet sizes, kerf and trim are metric mm: a 4 x 8 ft sheet is 2438.4 x 1219.2 mm, so pick
 2440 x 1220 and leave the trim on.
 
-A board whose name contains `Worktop` (a worktop you drew yourself) is not sheet stock: it
+A board whose name contains `Worktop` (made by Worktop, or drawn yourself) is not sheet stock: it
 is left out of the layouts and the sheets, and listed as bought to length (the reply's `worktops`, and a table "Worktops,
-bought to length" in the PDF). It still appears in the cut list's rows.
+bought to length" in the PDF), at its bounding box, also when mitred or cut out. It still appears in the cut list's rows.
 
 The layouts are a quick greedy fit, not an optimiser: a few orders and two ways of choosing
 the free piece are tried and the one with the fewest sheets kept. A cutting program may well

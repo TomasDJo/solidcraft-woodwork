@@ -57,9 +57,11 @@ fn a_cabinet_on_legs_stands_on_the_floor_under_them() {
     let measure = json!({"bodies": [
         body("A Side L", 100.0), body("A Side R", 100.0), body("A Leg 1", 0.0),
         body("A 2 Side L", 300.0), body("A 2 Side R", 300.0), body("A 2 Leg 1", 200.0),
+        body("B Side L", 100.0), body("B Side R", 100.0), body("B Caster 1", 0.0),
     ]});
     assert_eq!(named(&measure, "A").unwrap().min[2], 0.0);
     assert_eq!(named(&measure, "A 2").unwrap().min[2], 200.0);
+    assert_eq!(named(&measure, "B").unwrap().min[2], 0.0);
     let next = named(&measure, "A").unwrap().seat("right", 600.0, 560.0).0;
     assert_eq!(next[2], 0.0);
 }

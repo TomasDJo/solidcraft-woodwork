@@ -353,6 +353,10 @@ fn draws_a_sheet_per_cabinet() {
     legs["bodies"].as_array_mut().unwrap().push(leg);
     let steps = sheet(&legs, &Local::new(), &tree(), &joints(), "Base").unwrap();
     assert!(steps[4].1["line_through_mm"][1].as_f64().unwrap() < 106.0);
+    let mut casters = legs.clone();
+    casters["bodies"][3]["name"] = json!("Base Caster 1");
+    let steps = sheet(&casters, &Local::new(), &tree(), &joints(), "Base").unwrap();
+    assert!(steps[4].1["line_through_mm"][1].as_f64().unwrap() < 106.0);
     assert_eq!(
         steps[5].1["kind"]["linear"]["a"]["point"],
         json!([-300.0, 280.0, 0.0])

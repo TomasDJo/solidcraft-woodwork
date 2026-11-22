@@ -134,7 +134,8 @@ fn names(measure: &Value) -> impl Iterator<Item = &str> {
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|b| b["name"].as_str())
+        // `document.inspect` with `bodies: "names"` gives plain names
+        .filter_map(|b| b.as_str().or(b["name"].as_str()))
 }
 
 /// The cabinet a body belongs to. Every cabinet has a body called "<name> Side L"; of the
@@ -225,8 +226,8 @@ pub fn named(measure: &Value, name: &str) -> Result<Cabinet, String> {
         }
         sides[n] = plan(body);
     }
-    // On legs the sides stand on them: the floor is under the legs.
-    let ours = |n: &str| crate::fittings::is_leg(n) && owner(measure, n) == Some(name);
+    // On legs or casters the sides stand on them: the floor is under those.
+    let ours = |n: &str| crate::fittings::is_foot(n) && owner(measure, n) == Some(name);
     let bodies = measure["bodies"].as_array().into_iter().flatten();
     for leg in bodies.filter(|b| b["name"].as_str().is_some_and(ours)) {
         min[2] = min[2].min(leg["bbox"]["min"][2].as_f64().unwrap_or(min[2]));

@@ -43,6 +43,9 @@ fn an_open_door_is_measured_in_its_own_component() {
         body("Open", [296.0, 355.0, 716.0], board),
         // a leg is round, so fills pi/4 of its box: not a board, never measured
         body("A Leg 1", [40.0, 40.0, 100.0], 125_664.0),
+        body("A Caster 1", [80.0, 80.0, 100.0], 100_000.0),
+        // a worktop is bought at its box, mitred or cut out, so not measured either
+        body("Worktop 1", [2800.0, 600.0, 38.0], 2800.0 * 600.0 * 38.0 * 0.9),
     ]});
     assert_eq!(turned(&measured), ["Ajar", "Open"]);
 
@@ -139,6 +142,8 @@ fn hardware_is_counted_from_names() {
         "A Leg 2",
         "A 2 Leg 1",
         "Table Leg rail", // not a leg: no number
+        "A 3 Caster 1",
+        "A 3 Caster 2",
     ]);
     bodies.push(json!({"name": "A Bottom", "face_types": {"cylinder": 6}}));
     bodies.push(json!({"name": "A Top", "face_types": {"cylinder": 6}}));
@@ -148,7 +153,33 @@ fn hardware_is_counted_from_names() {
         {"item": "Hinge, cup", "qty": 2}, {"item": "Drawer slide, pair", "qty": 1},
         {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
         {"item": "Dowel, 8 x 60 mm", "qty": 2}, {"item": "Adjustable leg", "qty": 3},
+        {"item": "Caster, locking", "qty": 2},
         {"item": "Knob", "qty": 1}, {"item": "Pull, 128 mm", "qty": 1},
+    ]);
+    assert_eq!(list, expected);
+}
+
+#[test]
+fn steel_wall_rails_are_bought_to_length() {
+    let design = json!({"params": [
+        {"name": "A_wall_rail", "value": 600.0}, {"name": "B_wall_rail", "value": 600.0},
+        {"name": "C_2_wall_rail", "value": 800.4},
+        {"name": "D_wall_rail", "value": 0.0}, // an edit took its rail away
+        {"name": "E_wall_rail", "value": 500.0}, // a deleted cabinet's
+        {"name": "A_width", "value": 600.0},
+        // a corner cabinet: one on each wall
+        {"name": "F_wall_rail", "value": 900.0}, {"name": "F_wall_rail_return", "value": 800.0},
+    ]});
+    let bodies: Vec<Value> = ["A Side L", "B Side L", "C 2 Side L", "D Side L", "F Side L"]
+        .iter()
+        .map(|n| json!({"name": n}))
+        .collect();
+    let list = hardware(&json!({"bodies": bodies}), &design);
+    let expected = json!([
+        {"item": "Steel wall rail, 600 mm", "qty": 2},
+        {"item": "Steel wall rail, 800 mm", "qty": 2},
+        {"item": "Steel wall rail, 900 mm", "qty": 1},
+        {"item": "Cabinet hanger", "qty": 10},
     ]);
     assert_eq!(list, expected);
 }
@@ -159,6 +190,9 @@ fn notched_sides_are_noted_and_legs_are_not_boards() {
     let leg = json!({"name": "A Leg 1", "material": "Default",
                      "bbox": {"min": [0, 0, 0], "max": [40, 40, 100]}});
     m["bodies"].as_array_mut().unwrap().push(leg);
+    let caster = json!({"name": "A Caster 1", "material": "Default",
+                        "bbox": {"min": [0, 0, 0], "max": [80, 80, 100]}});
+    m["bodies"].as_array_mut().unwrap().push(caster);
     let mut m2 = m.clone();
     m2["bodies"][0]["name"] = json!("A Side L");
     m2["bodies"][1]["name"] = json!("A Side R");
@@ -172,7 +206,7 @@ fn notched_sides_are_noted_and_legs_are_not_boards() {
         &json!({"_notched": notched(&design)}),
     );
     let list = list.unwrap();
-    assert_eq!(list["boards"], 3); // the leg is hardware
+    assert_eq!(list["boards"], 3); // the leg and the caster are hardware
     assert_eq!(list["parts"][1]["note"], NOTCHED);
     assert!(list["parts"][0].get("note").is_none());
     let csv = list["csv"].as_str().unwrap();

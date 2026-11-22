@@ -14,9 +14,9 @@ The picture opens a one minute introduction on YouTube. Three how-tos follow it 
 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
-- **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides or legs); doors, drawers, or
+- **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides, legs or casters); doors, drawers, or
   drawers above or below doors, that open on their joints, overlay or inset; shelf pin, handle, hinge and drawer slide holes, sized by shared parameters. Also as a sink base
-  (rails instead of a top), with doors or drawers.
+  (rails instead of a top), with doors or drawers. Hangs on a French cleat, a hanging rail or a steel rail.
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door, overlay
   or inset.
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
@@ -26,6 +26,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
 - **Woodwork settings**: the material, thickness, reveal, handles and plinth new cabinets start with, kept in the design.
 - **Panel**: an end panel or a filler on one end of a cabinet, following its sizes.
+- **Worktop**: over the selected cabinets, straight or round corners (butt or mitre), with dog holes and a sink or router plate cut-out.
 - **Drawing**: a shop drawing sheet per cabinet, A3, with front, right and iso views, its width, height and depth, and its boards.
 - **Cut list**: every board with its size and quantity, hardware, edge banding per edge and grain direction, and the sheets to buy from cutting layouts (kerf, trim, grain), as CSV or a printable PDF with a cutting diagram per sheet, part labels to print on A4 sticker sheets, and a DXF per sheet with the parts and their holes for a CNC.
 
@@ -78,7 +79,7 @@ The kitchen in the picture is in the repo:
   the plugin: an L-shaped kitchen with corner cabinets, cabinets placed against each other and
   linked in size (change `Base_1_height` and the whole floor run follows), an L-shaped and a
   diagonal corner cabinet, a sink base, an inset door, handle holes,
-  melamine carcasses with oak fronts, end panels, screws and dowels, a shelf added with Edit cabinet, a shop
+  melamine carcasses with oak fronts, end panels, an oak worktop with a sink cut-out, screws and dowels, a shelf added with Edit cabinet, a shop
   drawing of every cabinet, doors and a drawer left open on their joints.
 
 To rebuild it, run `python build.py` and then `python examples/kitchen.py`.
@@ -92,7 +93,7 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
 
 - `plugin.json`: manifest. Entries, their input forms, and the app commands used.
 - `src/lib.rs`: entry dispatch and the wasm guest.
-- `src/cabinet/`, `src/corner/`, `src/edit/`, `src/joinery/`, `src/panel/`, `src/material.rs`, `src/cutlist/`,
+- `src/cabinet/`, `src/corner/`, `src/edit/`, `src/joinery/`, `src/panel/`, `src/worktop/`, `src/material.rs`, `src/cutlist/`,
   `src/drawing/`: one module per function, plain Rust. The cut list's files are written by
   `src/pdf/` and `src/dxf/`, its cutting layouts by `src/nesting/`. A folder holds the code in `mod.rs` (the box cabinet also has
   `input.rs`, `doors.rs` and `drawers.rs`, the corner cabinet `input.rs`, `doors.rs` and `diagonal.rs`) and its unit tests

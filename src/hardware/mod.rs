@@ -10,8 +10,8 @@
 //! the carcass side beside it (as far behind the front of the opening), in the middle of the
 //! box side's height. The box is `2*HW_slide_t` narrower than the opening.
 
-use crate::fittings::{CUP_CENTRE, CUP_D, CUP_DEPTH, PITCH};
-use crate::kit::mm;
+use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, PITCH};
+use crate::kit::{mm, Kit};
 use crate::Commands;
 use serde_json::{json, Value};
 
@@ -70,6 +70,55 @@ pub fn parameters(design: &Value) -> Commands {
 /// bottom panel's top face (or the rail's, under doors over drawers). At most half a pitch.
 pub fn on_grid(z: &str, base: &str) -> String {
     format!("{base} + HW_pitch/2 + round(({z} - ({base}) - HW_pitch/2) / HW_pitch) * HW_pitch")
+}
+
+/// The hinge cups' heights on a door from `z0` up to `z1`, `door_h` mm high
+/// (`fittings::cup_heights`), each moved onto the pins' grid over `base` (`on_grid`).
+pub fn cups(z0: &str, z1: &str, door_h: f64, base: &str) -> Vec<String> {
+    let cups = fittings::cup_heights(z0, z1, door_h);
+    cups.iter().map(|z| on_grid(z, base)).collect()
+}
+
+/// A door's hinge cups (`<Door> hinge cup n`), `HW_cup_d` wide and `HW_cup_depth` deep, at
+/// `at(z)` on its back face for each height in `cups`, `into` the door.
+pub fn cup_holes(
+    kit: &Kit,
+    door: &str,
+    at: impl Fn(&str) -> Value,
+    into: [i32; 3],
+    cups: &[String],
+) {
+    for (j, z) in cups.iter().enumerate() {
+        let what = format!("hinge cup {}", j + 1);
+        fittings::hole(kit, door, at(z), into, "HW_cup_d", "HW_cup_depth", &what);
+    }
+}
+
+/// The plates' two screw holes for each cup in `cups` (`<Board> hinge plate n.k`), `HW_pitch`
+/// apart about its height, at `at(z)` on the inner face of `board`, `t` thick, `into` it.
+pub fn plate_holes(
+    kit: &Kit,
+    board: &str,
+    at: impl Fn(&str) -> Value,
+    into: [i32; 3],
+    cups: &[String],
+    t: &str,
+) {
+    for (j, z) in cups.iter().enumerate() {
+        for (k, half) in ["-", "+"].iter().enumerate() {
+            let position = at(&format!("{z} {half} HW_pitch/2"));
+            let what = format!("hinge plate {}.{}", j + 1, k + 1);
+            fittings::hole(
+                kit,
+                board,
+                position,
+                into,
+                "HW_screw_d",
+                &screw_depth(t),
+                &what,
+            );
+        }
+    }
 }
 
 /// How deep a screw hole goes into a carcass side `thickness` thick: `HW_screw_depth`, but

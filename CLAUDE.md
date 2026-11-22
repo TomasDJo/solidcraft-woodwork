@@ -108,6 +108,15 @@ materials, joinery and cut lists.
   the hook too: its three numbers start at the stored value or the Cabinet default, so the app
   draws them as drag fields kept within their bounds, and `settings::patch` leaves out a number
   equal to the stored one (or that default), as the hook fills omitted keys for scripts too.
+  `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
+  the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
+  kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
+  refuses it there): its one command is
+  `document.inspect {bodies: "names", timeline: false}`; the picked board (the `selection`
+  value, else the design's selection) names the cabinet (`select::owner`), a corner one has
+  `<Prefix>_return`. Nothing picked or no cabinet: no reply. It gives no `default` (in Edit an
+  empty field is unchanged), and a failed read answers `{}`, as an error from the hook fails
+  `plugin.run`. A field the hook hides is still sent (`sends_field`), so the run is the same.
 
 ## Layout
 
@@ -117,13 +126,14 @@ materials, joinery and cut lists.
 | `src/lib.rs` | Entry dispatch (`execute`) and the wasm guest. The only place that runs commands |
 | `src/<module>/mod.rs`, `tests.rs` | Each module below that has unit tests is a folder: the code in `mod.rs`, its tests in `tests.rs` beside it |
 | `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
-| `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
+| `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes, legs and casters, and the wall mount (cleats, hanging rail, steel rail) |
 | `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joinery/` | Screw and dowel holes for an existing cabinet |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin, as Joinery: `inside`), remembers them for Edit, and refuses Place against a side that has one |
+| `src/worktop/` | Worktop over the selected cabinets: measures their feet (a corner cabinet's two legs), groups them into runs by the way they face, joins runs in corners (butt or mitre) and makes each piece a box or an extruded outline at world coordinates; dog holes and a cut-out in piece 1. `lib.rs` finds the cabinets (a picked worktop's remembered ones), replaces a worktop of that name, makes the component and grounds it |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
@@ -144,7 +154,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -308,7 +318,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
   its return's end there, not a back corner: it gets the older link.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
-  `joint`, `Drawer n Front`, `Leg n`), so renaming those breaks it. Screws and dowels are the round
+  `joint`, `Drawer n Front`, `Leg n`, `Caster n`), so renaming those breaks it. Screws and dowels are the round
   holes in the boards Joinery drills into: `Bottom`, `Top`, `Rail front`, `Rail back`.
 - The cutting layouts (`nesting::nest`) are greedy guillotine packing into the free pieces of
   all open sheets: eight tries (four orders, best area or best short side fit, each piece split
@@ -317,7 +327,20 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
   sheet is only reported (`oversize`), not split.
 - A board is a worktop, bought to length and not laid out on sheets, when its name contains
-  `Worktop` (drawn by hand; the Worktop function is postponed, #62) (`cutlist::cutlist`).
+  `Worktop` (`cutlist::cutlist`), at its world box (`cutlist::turned` leaves it out, so a
+  mitred or cut-out piece is not measured by mesh). A worktop named otherwise is a board.
+- A worktop (`worktop`) is numeric: measured from the cabinets' Side L, Side R, Back and Back
+  return world boxes, made at world coordinates in a component in the active component, which
+  must stand on the origin, unturned. It does not follow a cabinet; running Worktop again with
+  its name (or a piece picked) deletes its component and makes it again over the cabinets it
+  remembers (`cabinets` in its metadata, entry `worktop`), with its remembered values when no
+  cabinet is picked, the dialog's when one is. A picked piece belongs to the longest worktop
+  name it fits (`worktop::owners`). Quarter turns only (a side that does
+  not fill 80 % of its box is refused). A corner cabinet's leg is as deep as its end panel is
+  long. Runs are grouped by the way they face; two facing the same way must share a wall, and
+  facing each other only with a run across (a U). In a butt corner the longer run passes through
+  (equal: the first found). End panels and fillers are not part of the footprint: give an end
+  overhang. Dog holes (one cylinder and a pattern) and the cut-out go into piece 1 only.
 - Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no
   per-part override (that would need `storage@0.1`). A cabinet's width axis is across its
   `Side L` in the world, or X for a board measured in its own component, so a cabinet turned
@@ -419,7 +442,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - `cabinet::build` refuses a cabinet of more than 230 commands (the run itself takes the rest
   of the app's 256), counting the shared hardware parameters it may have to make: a wide tall
   cabinet with many doors, shelves, pins and labels can reach it.
-- **Hinges and slides** (box cabinets; `src/hardware/`, holes in `cabinet::doors` and
+- **Hinges and slides** (box cabinets, corner doors' hinges too; `src/hardware/`, holes in `cabinet::doors` and
   `cabinet::drawers`): every hole is a cylinder cut (`fittings::hole`) whose size and place
   are expressions over the shared `HW_` parameters, made once per design (`hardware::parameters`,
   run by `make` when the builder's commands mention `HW_`). A door's cups (`<Door> hinge cup n`,
@@ -433,7 +456,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (`hardware::on_grid`, from `Cabinet::shelf_zone`'s base, the rail's top under doors over
   drawers): a plate's two holes are pin holes or clear of the rows, never half into one. The
   grid is `HW_pitch` and the pin rows' `PITCH`, which part if `HW_pitch` is changed. Corner
-  cabinets keep their numeric cups.
+  doors use the same (`hardware::cups`, `cup_holes`, `plate_holes`, which the box cabinet's
+  doors call too): the grid over the bottom panel, the first door's plate holes in the end it
+  hangs on (`corner::doors`, after its hinge), none for the fold (it hangs on a door) nor the
+  diagonal door (its ends stand at 45 degrees).
   Shared hardware *models* (#70: definitions under a `Hardware` component, an `occurrence.copy`
   per hinge or slide on an axis joint, one `solid.combine` cut per board) worked in a plugin
   run but are too slow on 0.46.1: each copy re-evaluates every combine in the design, and once
@@ -493,7 +519,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   and its dimensions go to an end panel's or a filler's outer corners (with inset fronts the
   side's corners are the panel's too), so the width is over all; a filler's two boards count as
   one box. Corner cabinets are refused. No plinth return (an end panel reaches the
-  floor, also beside a cabinet on legs), no label on a panel. The filler width and a given
+  floor, also beside a cabinet on legs; beside one on casters it starts at the plinth), no label on a panel. The filler width and a given
   thickness are plain lengths, not parameters. `inside` puts a moved or turned cabinet at the
   origin, square (`to_matrix`), and back: in a plugin run a box in a turned component landed
   shifted (`tests/test_panel.py`). An Edit with panels runs about a dozen commands
@@ -519,4 +545,31 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   on legs stands on the floor, and a drawing's views take them in (its height dimension is the
   carcass's). The drawing's dimensions are on the sides' top front corners and Side L's rear
   bottom one, as a notched side has no front bottom corner. One long plinth board across a run
-  is not made (PLAN.md).
+  is not made (PLAN.md). `casters` (box and corner cabinets; `fittings::plinth_type` refuses a plinth over 0
+  and under `CASTER_MIN` 50 mm, 0 is no plinth; `fittings::foot` places a leg or a caster) stands the sides on the plinth as legs
+  do and makes `<Name> Caster <n>` (`fittings::caster`: an 80 mm plate box under the bottom, a 20 mm
+  post and a wheel of `min(75 mm, plinth - 2 mm)` on the floor joined, one body, plinth high) at the legs' places by the same loop, but 50 mm in
+  from the inside of the sides, so the plate's four 4 mm pilot holes (`<Name> Bottom caster <n>`,
+  one cut and a 2 x 2 pattern, 60 mm apart, `min(10 mm, t/2 - 1 mm)` deep from below, clear of a
+  back groove) land in the bottom panel. Five commands a caster. `fittings::is_foot` (leg or
+  caster) is what the cut list, `cutlist::turned`, `select::named` and the drawing use; the
+  hardware line is "Caster, locking". An end panel beside a cabinet on casters starts at the
+  plinth (it rolls), read from the remembered `plinth_type`. A corner cabinet's casters stand
+  at its legs' places, `t + 50 mm` in from the ends and backs; split, the two at the return's
+  end screw into `Bottom return` (`<Name> Bottom return caster <n>`). The post is joined before
+  the wheel, which on its own would not touch the plate (a timeline warning).
+- `wall_mount` (box and corner cabinets and Edit; `fittings::wall_mount`, `mount_sizes`, `steel_rail`, `mount_board`, shared): `cleat` makes `<Name> Cleat` and
+  `<Name> Wall cleat` (a body in the cabinet's component, so it moves and is rebuilt with it),
+  bevelled by `solid.chamfer` on a box edge picked by index, sizes the parameters
+  `<Prefix>_cleat_height` and `_cleat_thickness`; `rail` makes `<Name> Hanging rail` (panel
+  thickness, 90 mm fixed). Either sits under the top, flush with the sides' rear, and the back
+  groove moves forward by its thickness (an overlaid back is refused). `steel` is only hardware:
+  the parameter `<Prefix>_wall_rail` (the width, 0 after an Edit takes it away) gives the cut
+  list a rail bought to length and two hangers; hanger models come with #70. The cut list gives
+  the cleats as square boards (the bevel is sawn after).
+  A corner cabinet gets them along both walls (`Cleat`, `Cleat return`, and the same for the
+  wall cleats and rails; the return's bevel edges are the box's +x or -x ones, 11 and 0 or 7
+  and 2): the backs stand the mount's thickness off the walls between bottom and top (`ech`
+  high), bottom and top reach the walls (`w0` 0), the shelves and pin rows stop at the backs.
+  Steel gives it `_wall_rail` and `_wall_rail_return` (`edit::SIZES` has both); the cut list reads
+  either.

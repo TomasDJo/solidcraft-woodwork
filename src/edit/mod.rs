@@ -10,7 +10,8 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
-const SIZES: [&str; 10] = [
+/// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
+const SIZES: [&str; 14] = [
     "width",
     "height",
     "depth",
@@ -21,7 +22,48 @@ const SIZES: [&str; 10] = [
     "return",
     "reveal",
     "drawer_height",
+    "cleat_height",
+    "cleat_thickness",
+    "wall_rail",
+    "wall_rail_return",
 ];
+
+/// The Edit fields only a box cabinet takes, and only a corner cabinet: `merge` refuses them
+/// for the other kind and the dialog hook hides them. Shrink them as the two kinds catch up.
+const BOX_ONLY: [&str; 8] = [
+    "kind",
+    "dividers",
+    "doors",
+    "drawers",
+    "drawer_height",
+    "drawers_at",
+    "door_hinge",
+    "back",
+];
+const CORNER_ONLY: [&str; 2] = ["corner_doors", "shape"];
+
+/// The dialog hook's reply for Edit: the fields the selected cabinet does not take, hidden.
+/// A corner cabinet has a `<Prefix>_return` parameter (as Joinery tells it). Nothing picked, or
+/// not a cabinet: everything shown. Hidden only from view, so a run is the same.
+/// `design` is `document.inspect`'s reply with body names.
+pub fn hidden(values: &Value, design: &Value) -> Value {
+    let picked = crate::select::picked(values, design);
+    let Some(cabinet) = picked.first().and_then(|b| crate::select::owner(design, b)) else {
+        return json!({});
+    };
+    let id = format!("{}_return", kit::prefix(cabinet));
+    let all = design["params"].as_array().into_iter().flatten();
+    let corner = all.into_iter().any(|p| p["name"] == id.as_str());
+    let hide = if corner {
+        &BOX_ONLY[..]
+    } else {
+        &CORNER_ONLY[..]
+    };
+    let reply: Map<String, Value> = (hide.iter())
+        .map(|key| (key.to_string(), json!({"visible": false})))
+        .collect();
+    Value::Object(reply)
+}
 
 /// What a cabinet's component remembers, as `component.metadata.set` takes it: the entry that
 /// made it and the values it was made with. Where it was placed and what it was matched to
@@ -86,20 +128,17 @@ pub fn merge(
         };
         let (to, value) = match key.as_str() {
             "shelves" | "handles" | "handle_position" | "plinth" | "plinth_type"
-            | "plinth_setback" | "reveal" | "fronts" => (key.as_str(), value.clone()),
+            | "plinth_setback" | "reveal" | "fronts" | "wall_mount" => {
+                (key.as_str(), value.clone())
+            }
             "shelf_pins" | "labels" => (key.as_str(), json!(value == "yes")),
-            "doors" | "dividers" | "drawers" | "drawer_height" | "drawers_at" | "back"
-            | "door_hinge" | "kind" => {
+            k if BOX_ONLY.contains(&k) => {
                 only(false, "box cabinet")?;
-                (key.as_str(), value.clone())
+                (k, value.clone())
             }
-            "shape" => {
+            "shape" | "corner_doors" => {
                 only(true, "corner cabinet")?;
-                (key.as_str(), value.clone())
-            }
-            "corner_doors" => {
-                only(true, "corner cabinet")?;
-                ("doors", value.clone())
+                (key.strip_prefix("corner_").unwrap_or(key), value.clone())
             }
             _ => return Err(format!("`{key}` cannot be edited")),
         };
