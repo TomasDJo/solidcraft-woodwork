@@ -92,7 +92,7 @@ def test_inset_doors(approval):
     inset = {**CORNER, "fronts": "inset", "shelf_pins": True}
     results = cli([{"command": "document.units", "params": {"units": "in"}},
                    plugin(approval, "corner", inset), MEASURE,
-                   select("C Top"), plugin(approval, "cabinet", {"joints": "none", "name": "N", "place": "right"}),
+                   select("C Top"), plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "N", "place": "right"}),
                    drive("C Door return fold", 90), MEASURE,
                    drive("C Door hinge", 90), MEASURE,
                    plugin(approval, "cutlist"),

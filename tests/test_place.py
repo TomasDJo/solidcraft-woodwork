@@ -43,8 +43,8 @@ def test_auto_goes_by_the_selected_board(approval):
     # or another board selected. The board comes from the dialog's field here (SolidCraft 0.44 sends what was
     # picked in it as selection references: a body, or a face or an edge of one), which goes
     # before the selection: Edit, Joinery and Material read it the same way.
-    auto = {"width": 400, "place": "auto", "joints": "none"}
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "A", "width": 600}),
+    auto = {"width": 400, "place": "auto", "joints": "none", "joints_inner": "none"}
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "A", "width": 600}),
                    select("A Side R"),
                    plugin(approval, "cabinet", {**auto, "name": "L", "selection": [{"type": "face", "body": "A Side L", "index": 0}]}),
                    select("A Side R"),  # a run lets the selection go
@@ -65,7 +65,7 @@ def test_auto_goes_by_the_selected_board(approval):
     assert material["R Bottom"] == "Oak" and material["R Side L"] != "Oak", material
     assert "R Shelf 3" in box and "L Shelf 3" not in box, sorted(box)
     # any other board does not say which side: at the origin, as with nothing selected
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "A"}),
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "A"}),
                    plugin(approval, "cabinet", {**auto, "name": "B", "selection": ["A Shelf 1"]}),
                    MEASURE])
     assert boxes(results[2])["B Side L"][0] == -200, boxes(results[2])["B Side L"]

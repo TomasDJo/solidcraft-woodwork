@@ -14,11 +14,11 @@ def change(name, expression):
 
 
 def test_shelves_and_handles_on_a_cabinet_that_was_moved_and_resized(approval):
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "A", "doors": 2, "plinth": 100}),
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "A", "doors": 2, "plinth": 100}),
                    pick("A Door L", "A Door R"),
                    plugin(approval, "material", {"material": "Oak", "scope": "parts"}),
                    select("A Top"),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "B", "place": "right", "match": "selected"}),
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "B", "place": "right", "match": "selected"}),
                    select("A Top"),
                    plugin(approval, "joinery", {"type": "dowel"}),
                    MEASURE,

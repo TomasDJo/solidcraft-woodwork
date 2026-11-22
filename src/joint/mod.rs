@@ -88,6 +88,9 @@ pub struct Joint {
     pub run: String,
     /// One fastener in the middle, not a row: a sink base's rails, 100 mm deep.
     pub single: bool,
+    /// The row half a pitch along, one fewer: a fixed shelf right of a divider, whose holes in
+    /// the divider fall between those of the shelf on its left.
+    pub between: bool,
 }
 
 /// A cabinet's joinery: a method for the carcass (sides to bottom and top) and one for the
@@ -278,9 +281,14 @@ impl<'a> Joinery<'a> {
         let (spacing, edge) = (self.size("joint_spacing"), self.size("joint_edge"));
         let count = format!("max(2, ceil(({} - 2*{edge}) / {spacing}) + 1)", j.run);
         let pitch = format!("({} - 2*{edge}) / ({count} - 1)", j.run);
-        let start = match j.single {
-            true => shift(&j.at, j.along, &format!("{} / 2", j.run)),
-            false => shift(&j.at, j.along, edge),
+        let start = match (j.single, j.between) {
+            (true, _) => shift(&j.at, j.along, &format!("{} / 2", j.run)),
+            (_, true) => shift(&j.at, j.along, &format!("{edge} + {pitch} / 2")),
+            _ => shift(&j.at, j.along, edge),
+        };
+        let count = match j.between {
+            true => format!("({count} - 1)"),
+            false => count,
         };
         let name = format!("{} joint {} {}", self.kit.name, j.face, j.end);
         let (face, end) = (self.board(&j.face), self.board(&j.end));

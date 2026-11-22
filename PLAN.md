@@ -122,6 +122,7 @@ Cabinets:
 - [x] Corner cabinet: joinery at build (L-shaped and diagonal, split boards, with a wall mount)
 - [ ] Corner cabinet: a thin back
 - [x] Joinery for dividers and the rail between drawers and doors (`joints_inner`, the second method)
+- [x] Fixed shelves: without shelf pins, joined to the sides and dividers by the inside's method (box cabinets)
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
 - [x] Worktop over the selected cabinets: runs and corners (butt or mitre), gaps spanned, made again by running it again (#62)

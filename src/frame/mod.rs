@@ -318,6 +318,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
                 along: [0, 0, 1],
                 run,
                 single,
+                between: false,
             };
             if bolts && r.bolted[end] {
                 // X and Y rails at two heights, so the bolts in a corner leg do not meet

@@ -538,6 +538,7 @@ impl Corner<'_> {
                 along: [along[0] * f, along[1], along[2]],
                 run,
                 single: false,
+                between: false,
             };
             self.joinery.joint(CARCASS, &joint);
         };

@@ -66,8 +66,8 @@ def test_plate_holes_go_into_the_pin_holes_or_clear_of_them(approval):
 def test_three_doors_and_a_right_hung_one(approval):
     # Three doors hinge left, right, left: plate holes in Side L only (the other hinge edges are
     # on dividers, which get none). A single door hinged right: the plate on Side R. Inches.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "T", "width": 900, "dividers": 2, "doors": 3}),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "T", "width": 900, "dividers": 2, "doors": 3}),
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
                                                 "thickness": 0.75, "back_thickness": 0.25, "doors": 1, "door_hinge": "right"}),
                    MEASURE, faces("R Door"), faces("R Side R")])
     measure = results[2]
@@ -83,12 +83,12 @@ def test_slides_drill_the_sides_and_the_boxes(approval):
     # 8 deep from outside, 37 and 229 mm behind the box's front, in the middle of the box side's
     # height), and the carcass sides beside them (5 mm, 37 and 229 behind their front edge). A
     # sink base's false front has no slide. A thinner slide in Parameters makes every box wider.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "drawers": 2}), MEASURE,
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "drawers": 2}), MEASURE,
                    faces("Cabinet Drawer 1 Left"), faces("Cabinet Side L"),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "S", "kind": "sink", "drawers": 2}), MEASURE,
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "S", "kind": "sink", "drawers": 2}), MEASURE,
                    drive("Cabinet Drawer 1 slide", 200), faces("Cabinet Drawer 1 Left"), faces("Cabinet Side L"),
                    change("HW_slide_t", "10 mm"), MEASURE,
-                   plugin(approval, "cabinet", {"joints": "none", "name": "N", "drawers": 1, "thickness": 9}), faces("N Side L")],
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "N", "drawers": 1, "thickness": 9}), faces("N Side L")],
                   "--save", str(ROOT / "dist" / "slides.sc"))
     box = boxes(results[1])
     assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7 and box["Cabinet Drawer 1 Right"][3] == 300 - 18 - 12.7

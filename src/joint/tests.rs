@@ -190,7 +190,7 @@ fn the_cut_list_reads_the_counts_and_sizes_from_the_parameters() {
 
 #[test]
 fn dividers_and_the_rail_take_the_second_method() {
-    let p = json!({"name": "K", "width": 1200, "dividers": 2, "joints": "dowels",
+    let p = json!({"name": "K", "width": 1200, "dividers": 2, "shelves": 0, "joints": "dowels",
         "joints_inner": "confirmat"});
     let (commands, _) = crate::cabinet::build(&p).unwrap();
     // a divider's end into the bottom's face: from under the bottom, up into the divider
@@ -224,8 +224,9 @@ fn dividers_and_the_rail_take_the_second_method() {
     let y = dowel["base"][1].as_str().unwrap();
     assert!(y.starts_with("M_thickness + (M_joint_edge)"), "{y}");
     assert_eq!(named(&commands, " row"), 1);
-    // no dividers and no rail: the second method is not read
-    let (plain, _) = crate::cabinet::build(&json!({"name": "K", "joints_inner": "glue"})).unwrap();
+    // no dividers, rail or shelves: the second method is not read
+    let (plain, _) =
+        crate::cabinet::build(&json!({"name": "K", "shelves": 0, "joints_inner": "glue"})).unwrap();
     assert_eq!(named(&plain, " joint "), 0);
 }
 
@@ -457,4 +458,57 @@ fn a_pocket_screw_goes_in_at_15_degrees_from_the_end_boards_outside_face() {
         hardware("K", &params),
         vec![("Pocket screw, 32 mm".to_string(), 12)]
     );
+}
+
+#[test]
+fn without_pins_the_shelves_are_fixed_and_joined_to_the_sides_and_dividers() {
+    let p = json!({"name": "K", "width": 1200, "dividers": 1, "shelves": 2,
+        "joints": "none", "joints_inner": "dowels"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    assert_eq!(named(&commands, " pins"), 0);
+    // shelf 2.1: its left end into the divider's right face, between the holes of shelf 1.1
+    let left = find(&commands, "K joint Divider 1 Shelf 2.1 dowels");
+    assert_eq!(left["axis"], json!([1, 0, 0]));
+    let y = left["base"][1].as_str().unwrap();
+    assert!(y.contains("K_joint_edge + ("), "{y}");
+    let other = find(&commands, "K joint Divider 1 Shelf 1.1 dowels");
+    assert_eq!(other["axis"], json!([-1, 0, 0]));
+    assert!(
+        find(&commands, "K joint Side R Shelf 2.2 dowels")["targets"]
+            == json!(["K Side R", "K Shelf 2.2"])
+    );
+    let between = row(&commands, "K joint Divider 1 Shelf 2.1 dowels");
+    assert!(between["count1"].as_str().unwrap().ends_with("- 1)"));
+    // dividers (2 ends) and shelves (2 ends each of 4)
+    let dowels = (commands.iter())
+        .find(|c| c.1["name"] == "K_dowels")
+        .unwrap();
+    assert_eq!(
+        dowels.1["expression"]
+            .as_str()
+            .unwrap()
+            .matches("max(2")
+            .count(),
+        2 + 8
+    );
+    // a dado: the shelf as long again as the grooves
+    let p = json!({"name": "K", "shelves": 1, "joints_inner": "dado"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let shelf = find(&commands, "K Shelf 1");
+    assert!(shelf["length"]
+        .as_str()
+        .unwrap()
+        .ends_with("+ 2*K_dado_depth"));
+    assert_eq!(
+        find(&commands, "K joint Side L Shelf 1 dado")["targets"],
+        json!(["K Side L"])
+    );
+    let deep = json!({"dividers": 1, "joints_inner": "dado", "dado_depth": 8});
+    assert!(crate::cabinet::build(&deep)
+        .unwrap_err()
+        .contains("dado_depth"));
+    // on pins: adjustable, no joints
+    let p = json!({"name": "K", "shelf_pins": true, "joints_inner": "dowels"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    assert!(named(&commands, " pins") > 0 && named(&commands, " joint ") == 0);
 }

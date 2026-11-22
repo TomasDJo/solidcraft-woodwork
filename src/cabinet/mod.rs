@@ -74,12 +74,18 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let eh = parameter("height", h, "outside height, plinth included");
     let ed = parameter("depth", d, "outside depth, back included");
     let et = parameter("thickness", input.t, "panel thickness");
-    // Dividers and the rail between drawers and doors take the second method.
-    let inner = input.dividers > 0.0 || input.mixed;
+    // Dividers, the rail between drawers and doors and fixed shelves take the second method.
+    let inner = input.dividers > 0.0 || input.mixed || (input.fixed && input.shelves > 0.0);
     let joinery = Joinery::new(&kit, p, (input.t, &et), inner)?;
     let side_mm = if back == "overlay" { d - input.bt } else { d };
     joinery.fits(CARCASS, side_mm, p, "the sides")?;
     joinery.fits(INNER, input.shelf_d, p, "the dividers and the rail")?;
+    // a divider between fixed shelves in dados is grooved from both sides at the same height
+    let both = input.fixed && input.shelves > 0.0 && input.dividers > 0.0;
+    check(
+        !both || joinery.method(INNER) != "dado" || 2.0 * kit.size(p, "dado_depth", 6.0)? <= input.t - 3.0,
+        "`dado_depth`: fixed shelves on both sides of a divider would groove it through; at most (thickness - 3 mm) / 2",
+    )?;
     let ebt = match back {
         "none" => mm(0.0),
         _ => parameter("back_thickness", input.bt, "back panel thickness"),
@@ -325,6 +331,7 @@ impl Cabinet<'_> {
                     along: [0, 1, 0],
                     run: eshelf_d.clone(),
                     single: false,
+                    between: false,
                 };
                 self.joinery.joint(INNER, &joint);
             }
@@ -343,7 +350,39 @@ impl Cabinet<'_> {
                 };
                 let x = self.cell_x(cell);
                 let z = format!("{ebase} + {over}");
-                panel(&part, [&x, ein, &z], [ecell, eshelf_d, et], false);
+                if !input.fixed {
+                    panel(&part, [&x, ein, &z], [ecell, eshelf_d, et], false);
+                    continue;
+                }
+                // Fixed: joined at both ends, to a side or a divider, by the inside's method;
+                // in a dado as long again as the grooves.
+                let (x0, wide) = match self.joinery.extension(INNER) {
+                    Some(g) => (format!("{x} - {g}"), format!("{ecell} + 2*{g}")),
+                    None => (x.clone(), ecell.clone()),
+                };
+                panel(&part, [&x0, ein, &z], [&wide, eshelf_d, et], false);
+                let face = |k: u32| match k {
+                    0 => "Side L".to_string(),
+                    k if k > n => "Side R".to_string(),
+                    k => format!("Divider {k}"),
+                };
+                let mid = format!("{z} + {et}/2");
+                let right = format!("{x} + {ecell}");
+                for (face, plane, into) in [(face(cell), &x, 1), (face(cell + 1), &right, -1)] {
+                    let joint = Joint {
+                        face,
+                        end: part.clone(),
+                        at: [plane.clone(), ein.clone(), mid.clone()],
+                        into: [into, 0, 0],
+                        out: [0, 0, -1],
+                        along: [0, 1, 0],
+                        run: eshelf_d.clone(),
+                        single: false,
+                        // right of a divider: between the holes from the shelf on its left
+                        between: into == 1 && cell > 0,
+                    };
+                    self.joinery.joint(INNER, &joint);
+                }
             }
         }
         if let Some(rail) = erail {
@@ -362,6 +401,7 @@ impl Cabinet<'_> {
                     along: [0, 1, 0],
                     run: eshelf_d.clone(),
                     single: false,
+                    between: false,
                 };
                 self.joinery.joint(INNER, &joint);
             }
@@ -481,6 +521,7 @@ impl Cabinet<'_> {
                         false => eside_d.clone(),
                     },
                     single,
+                    between: false,
                 };
                 self.joinery.joint(CARCASS, &joint);
             }

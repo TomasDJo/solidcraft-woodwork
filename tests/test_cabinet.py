@@ -109,10 +109,10 @@ def test_plinth_setback(approval):
 def test_casters(approval):
     # A on casters (1000 wide: six) with an end panel on its left, B beside it on a board; the
     # cut list.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "A", "width": 1000, "plinth": 100, "plinth_type": "casters"}),
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "A", "width": 1000, "plinth": 100, "plinth_type": "casters"}),
                    select("A Side L"), plugin(approval, "panel", {"kind": "end"}),
                    select("A Side R"),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "B", "width": 1000, "plinth": 100, "place": "right"}),
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "B", "width": 1000, "plinth": 100, "place": "right"}),
                    MEASURE,
                    plugin(approval, "cutlist")],
                   "--save", str(ROOT / "dist" / "casters.sc"))
@@ -186,13 +186,13 @@ def test_plinth_types(approval):
 def test_wall_mounts(approval):
     # A on a French cleat, B on a hanging rail without a back, C on a steel rail, D none; the cut
     # list, Joinery and a drawing of A, and E matched to D on a cleat.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "name": "A", "wall_mount": "cleat"}),
+    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "A", "wall_mount": "cleat"}),
                    select("A Side R"),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "B", "wall_mount": "rail", "back": "none", "place": "right"}),
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "B", "wall_mount": "rail", "back": "none", "place": "right"}),
                    select("B Side R"),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "C", "wall_mount": "steel", "back": "overlay", "place": "right"}),
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "C", "wall_mount": "steel", "back": "overlay", "place": "right"}),
                    select("C Side R"),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "D", "place": "right"}),
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "D", "place": "right"}),
                    MEASURE,
                    plugin(approval, "cutlist"),
                    select("A Side L"),
@@ -201,7 +201,7 @@ def test_wall_mounts(approval):
                    plugin(approval, "drawing", {"scope": "selected"}),
                    MEASURE,
                    select("D Side R"),
-                   plugin(approval, "cabinet", {"joints": "none", "name": "E", "wall_mount": "cleat", "match": "selected", "place": "right"}),
+                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "E", "wall_mount": "cleat", "match": "selected", "place": "right"}),
                    MEASURE],
                   "--save", str(ROOT / "dist" / "wall_mount.sc"))
     box, measure = boxes(results[7]), results[7]

@@ -52,7 +52,7 @@ def test_a_sink_base_and_an_old_cabinet(approval):
     # A sink base: one dowel in the middle of each rail. An old cabinet (no method remembered)
     # drilled by the Joinery entry keeps its holes through an Edit, and gets none of its own.
     results = cli([plugin(approval, "cabinet", {"name": "S", "kind": "sink", "doors": 2, "place": "origin"}),
-                   plugin(approval, "cabinet", {"name": "O", "shelves": 0, "joints": "none", "place": "origin"}),
+                   plugin(approval, "cabinet", {"name": "O", "shelves": 0, "joints": "none", "joints_inner": "none", "place": "origin"}),
                    select("O Top"), plugin(approval, "joinery", {"type": "dowel"}),
                    select("O Top"), plugin(approval, "edit", {"shelves": 1}), MEASURE, plugin(approval, "cutlist")])
     measure = results[6]
@@ -65,9 +65,9 @@ def test_a_sink_base_and_an_old_cabinet(approval):
 def test_dividers_and_the_rail(approval):
     # W: 1200 wide, two dividers doweled into the bottom and the top (the inside's method), the
     # sides with confirmat. M: a drawer over a door, the rail screwed to the sides.
-    results = cli([plugin(approval, "cabinet", {"name": "W", "width": 1200, "dividers": 2, "shelves": 1,
+    results = cli([plugin(approval, "cabinet", {"name": "W", "width": 1200, "dividers": 2, "shelves": 0,
                                                 "joints": "confirmat", "joints_inner": "dowels", "place": "origin"}),
-                   plugin(approval, "cabinet", {"name": "M", "doors": 1, "drawers": 1, "joints": "none",
+                   plugin(approval, "cabinet", {"name": "M", "doors": 1, "drawers": 1, "shelves": 0, "joints": "none",
                                                 "joints_inner": "confirmat", "place": "origin"}),
                    MEASURE, faces("W Divider 1"), plugin(approval, "cutlist")])
     measure = results[2]
@@ -169,3 +169,27 @@ def test_cam_locks_and_pocket_screws(approval):
     listed = hardware(results[5])
     assert listed == {"Cam lock and bolt, 15 mm": 12, "Pocket screw, 32 mm": 12}, listed
     assert not [f["name"] for f in results[6]["timeline"] if f["warning"] or f["error"]]
+
+
+def test_without_pins_the_shelves_are_fixed_and_joined(approval):
+    # F: no shelf pins, so two compartments of two fixed shelves, doweled (the inside's method)
+    # to the sides and the divider: 3 a joint, the shelves right of the divider 2, between the
+    # others' holes. G: a fixed shelf in a dado, 6 mm longer at each end.
+    results = cli([plugin(approval, "cabinet", {"name": "F", "width": 1200, "dividers": 1, "shelves": 2,
+                                                "joints": "none", "place": "origin"}),
+                   plugin(approval, "cabinet", {"name": "G", "shelves": 1,
+                                                "joints": "dado", "joints_inner": "dado", "place": "origin"}),
+                   MEASURE, faces("F Divider 1"), plugin(approval, "cutlist"),
+                   select("F Top"), plugin(approval, "edit", {"shelf_pins": "yes"}), MEASURE])
+    measure = results[2]
+    assert cylinders(measure, "F Side L") == 6 and cylinders(measure, "F Side R") == 6, cylinders(measure, "F Side L")
+    assert cylinders(measure, "F Divider 1") == 6 + 6 + 4, cylinders(measure, "F Divider 1")
+    assert cylinders(measure, "F Shelf 2.1") == 5 and cylinders(measure, "F Shelf 1.2") == 6
+    # in the divider, the two sides' holes at a shelf do not meet: different depths along it
+    ys = sorted({h[1] for h in holes(results[3], 4) if 100 < h[2] < 700})
+    assert len(ys) == 5, ys
+    assert hardware(results[4]) == {"Dowel, 8 x 35 mm": 6 + 12 + 10}, hardware(results[4])
+    box = boxes(measure)
+    assert box["G Shelf 1"][0] == -288 and box["G Shelf 1"][3] == 288, box["G Shelf 1"]
+    # Edit to shelf pins: adjustable, no joints, pin rows
+    assert cylinders(results[7], "F Shelf 1.1") == 0 and cylinders(results[7], "F Side L") > 6, (cylinders(results[7], "F Shelf 1.1"), cylinders(results[7], "F Side L"))

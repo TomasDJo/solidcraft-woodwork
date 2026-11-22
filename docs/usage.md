@@ -45,7 +45,7 @@ component can hold its cabinets.
 | **Plinth height** | 0 for none. |
 | **Plinth type** | Shown with a plinth. **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
 | **Plinth set-back** | Shown with a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
-| **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
+| **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. Off, the shelves are fixed and joined by Joinery inside (a cabinet made before 0.2.0 keeps them unjoined, as it has no method). |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
 | **Fronts** | Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment. |
@@ -159,7 +159,13 @@ bottom and its two rails), and the holes are drilled as the cabinet is made:
   A corner cabinet refuses it.
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
-**Joinery inside** does the same for the dividers (each end into the bottom's top face and the
+**Joinery inside** does the same for fixed shelves (without **Shelf pin holes** the shelves are
+fixed: each
+compartment's shelf runs between its side and divider, or two dividers, and is joined at both
+ends; a shelf right of a divider has one fewer, half a pitch along, so its holes fall between
+those of the shelf on the other side; in a dado the shelf is longer by the two grooves, and
+grooves from both sides of a divider must leave 3 mm, so the depth is at most half of the
+thickness less 3 mm), for the dividers (each end into the bottom's top face and the
 top's underside: a confirmat screw goes in from under the bottom and over the top) and for
 the rail between drawers and doors (into the sides, like the bottom). Their rows run along
 the shelves' depth, from behind inset fronts to the back.

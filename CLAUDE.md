@@ -456,7 +456,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   all have to grow); absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
-  rail into the sides, rows along the shelves' depth from `ein`.
+  rail into the sides, rows along the shelves' depth from `ein`; and without shelf pins (`input.fixed`)
+  each shelf, per compartment, into the
+  side or divider at each end. A shelf right of a divider is `Joint::between`: half a pitch
+  along, one fewer, so the two shelves' holes in a divider do not meet; two dados opposite in a
+  divider are refused past `(t - 3 mm)/2`. So a cabinet made with this branch's joinery and
+  no pins gets joined shelves on its next Edit; one with no remembered method has `none` and
+  stays as it was.
   `Joinery::new` reads it, checks the sizes and makes the parameters they need, once each
   (`<Prefix>_joint_spacing`, `_joint_edge`, `_dowel_d`, `_dowel_length`: dialog fields in the
   dialog's unit, `edit::SIZES`, so Edit takes them from Parameters and only changes the
@@ -483,7 +489,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   and the bottom and top into the four uprights; with a wall mount the backs stand on the bottom
   and under the top (joints along Z). Split, each piece is joined to what it meets and the two
   keep their fixed `return dowel` pair (an edge joint; the cut list's `Dowel, 8 x 60 mm`).
-  Fixed shelves do not exist (they rest on pins, or are the rail). The older Joinery entry covers the four
+  A corner cabinet's shelves stay on pins (fixed only on a box cabinet). The older Joinery entry covers the four
   carcass corners only, and tells an overlaid back from a grooved one by comparing the side
   depth with the depth parameter.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
