@@ -429,7 +429,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   placed right of the selected cabinet, else left. `lib.rs` settles it before building, so
   the cabinet remembers left or right and Edit keeps it.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
-  see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). Place
+  see its whole footprint. The older Joinery entry refuses it (it has a `<Prefix>_return` parameter). Place
   puts a new cabinet against the selected one's Side R (right) or Side L (left), whichever
   way that panel faces (`select::Cabinet::seat`, read from the boxes of the two sides and the
   back): so one continues a corner cabinet's return turned a quarter, and a turned run carries
@@ -450,8 +450,14 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   method). `Joinery::joint` gives a joint's cuts: one cylinder (a dowel's through both boards,
   `targets` two; confirmat a clearance in the face board and a pilot in the end) and a
   `solid.pattern.rectangular` along the row, count `max(2, ceil((run - 2*edge)/spacing) + 1)`,
-  an expression, so the number follows a resize. They are cut in the builder's last commands,
-  with the cabinet on its component's origin, where a pattern keeps its copies. `finish` adds
+  an expression, so the number follows a resize; joints that run the same way with the same
+  count share one pattern (`Row`). They are cut in the builder's last commands, before the pin
+  rows (a cut into a board full of pin holes is slow), with the cabinet on its component's
+  origin, where a pattern keeps its copies. A 2D pattern (bottom and top rows in one) made new
+  bodies of the copies that missed the targets: not used. Time goes by the hole, about 70 ms
+  each on this machine (each copy is a boolean), more in a big design: the default spacing is
+  250 mm. Measured in the sample kitchen: a box cabinet 3-7 s, the corner cabinets 7-8 s (about
+  4 without joinery). `finish` adds
   the parameters the cut list counts from, `<Prefix>_dowels` and `_confirmats` (the rows'
   counts summed; `parameters.change` on an edit, `0` when no longer used: `joint::COUNTS` go
   into `_existing` only), and `joint::hardware` names the items from them (the dowel's size from
@@ -459,8 +465,12 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   <face> <end> <method>`, `... pilot`, `... row`, in the cabinet's folder; the old Joinery entry
   refuses such a cabinet ("already has joinery"), and Edit with a method of its own drops the
   old entry's remembered `joinery`. A dowel's depth in the face is `min(t - 5 mm, (L + 2 mm)/2)`.
-  Corner cabinets get none yet; fixed shelves are not a thing (they rest on pins or are the
-  rail). The older Joinery entry covers the four
+  A corner cabinet (`corner::Corner::joints`, `joints` only) joins the backs' upright ends (into
+  the back leg's end and the back return), the back return's front end (into the return's end)
+  and the bottom and top into the four uprights; with a wall mount the backs stand on the bottom
+  and under the top (joints along Z). Split, each piece is joined to what it meets and the two
+  keep their fixed `return dowel` pair (an edge joint; the cut list's `Dowel, 8 x 60 mm`).
+  Fixed shelves do not exist (they rest on pins, or are the rail). The older Joinery entry covers the four
   carcass corners only, and tells an overlaid back from a grooved one by comparing the side
   depth with the depth parameter.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.

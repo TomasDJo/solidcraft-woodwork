@@ -92,8 +92,8 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     }
     let scale = if values["units"] == "in" { 25.4 } else { 1.0 };
     for (key, value) in &settings {
-        // both dialogs have every field Settings keeps, but Corner no joinery yet
-        if !FIELDS.contains(&key.as_str()) || (entry == "corner" && key.starts_with("joints")) {
+        // both dialogs have every field Settings keeps, but Corner has nothing inside to join
+        if !FIELDS.contains(&key.as_str()) || (entry == "corner" && key == "joints_inner") {
             continue;
         }
         let value = match (bounds(key), value.as_f64()) {

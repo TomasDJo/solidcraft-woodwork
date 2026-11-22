@@ -141,16 +141,19 @@ the rail between drawers and doors (into the sides, like the bottom). Their rows
 the shelves' depth, from behind inset fronts to the back.
 
 Along each joint the first and last are **Joint edge distance** (50 mm) from the front and
-back edges, and the rest are spread evenly, at most **Joint spacing** (150 mm) apart: a
-560 mm deep cabinet gets 5 a joint, 115 mm apart. A sink base's rails get one each, in their
+back edges, and the rest are spread evenly, at most **Joint spacing** (250 mm, 10 in) apart: a
+560 mm deep cabinet gets 3 a joint, 230 mm apart. Each hole costs time when the cabinet is
+made (about a tenth of a second here, more in a big design), so a closer spacing makes slower
+runs. A sink base's rails get one each, in their
 middle. The sizes are the cabinet's design parameters (`Name_joint_spacing`,
 `Name_joint_edge`, `Name_dowel_d`, `Name_dowel_length`): change one in Parameters, or change
 the depth, and the holes follow, their number too. The cut list counts what to buy from the
 parameters `Name_dowels` and `Name_confirmats` (the sum of the joints' counts, so they follow
 as well), as "Dowel, 8 x 35 mm" or "Confirmat screw, 7 x 50 mm". Edit cabinet changes either
 method (its sizes stay as they are in Parameters); Woodwork settings keeps the two methods new
-cabinets start with. Each joint is a cut and a pattern in the cabinet's history folder,
-named `Name joint Side L Bottom dowels` and `... dowels row`.
+cabinets start with. Each joint is a cut in the cabinet's history folder (`Name joint Side L Bottom
+dowels`, `... confirmat` and `... confirmat pilot`), repeated along it by a pattern; the joints
+that run the same way with the same count share one (`Name joint Side L Bottom dowels row`).
 
 ### Wall mount
 
@@ -216,6 +219,16 @@ stand its thickness off the walls, between the bottom and the top, which reach t
 the boards; the shelves and the pin rows stop at the backs. A steel rail is one rail on each
 wall (`Name_wall_rail`, the width, and `Name_wall_rail_return`, the return), two hangers each.
 L-shaped and diagonal alike.
+
+**Joinery** (dowels by default, confirmat screws or none), with **Joint spacing**, **Joint edge
+distance**, **Dowel diameter** and **Dowel length**, works as on the box cabinet (see
+[Joinery at build](#joinery-at-build)) on every joint of the carcass: the back's two ends into
+the back leg's end and the back return, the back return's front end into the return's end,
+and the bottom and top into the four upright boards round them. With a cleat or a hanging rail
+the backs stand on the bottom and under the top, so those joints go up into the backs instead.
+Split boards keep their two dowels at the joint between the two pieces (an edge joint the
+other methods cannot make); each piece is joined to the boards it meets. L-shaped and
+diagonal alike; Edit cabinet changes the method.
 
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the
@@ -328,7 +341,7 @@ leave the rest empty or on Keep: shelves, dividers, doors, the side the first do
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
 plinth type, plinth set-back, the kind (standard or sink base), the wall mount, the
-[joinery](#joinery-at-build) (box cabinets; its sizes stay as they are in Parameters), a corner cabinet's doors and shape, and a
+[joinery](#joinery-at-build) (Joinery inside on box cabinets only; the sizes stay as they are in Parameters), a corner cabinet's doors and shape, and a
 [frame](#frame)'s stretchers, legs and joint (a cabinet's fields are refused on a frame, and
 the frame's on a cabinet). The reveal, the plinth set-back and the drawer
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
@@ -370,7 +383,7 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 ## Woodwork settings
 
 The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
-holes, plinth height, plinth type and the two joinery methods (the Cabinet dialog's for now). Set the ones you want and run it; Keep or an empty field
+holes, plinth height, plinth type and the two joinery methods (Corner cabinet takes the first). Set the ones you want and run it; Keep or an empty field
 leaves what is stored, and the result shows everything stored now. The Cabinet and Corner
 cabinet dialogs then open with these values (the hint says "From Woodwork settings"), in the
 dialog's own unit: a 19.05 mm thickness shows as 0.75 in when Units is Inches. You can still

@@ -119,7 +119,8 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 ## Open
 
 Cabinets:
-- [ ] Corner cabinet: joinery, a thin back
+- [x] Corner cabinet: joinery at build (L-shaped and diagonal, split boards, with a wall mount)
+- [ ] Corner cabinet: a thin back
 - [x] Joinery for dividers and the rail between drawers and doors (`joints_inner`, the second method)
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)

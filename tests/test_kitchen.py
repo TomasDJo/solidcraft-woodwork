@@ -14,8 +14,8 @@ def test_the_kitchen_builds_and_survives_a_rebuild(approval):
     results = cli([{"command": "component.delete", "params": {"component": "Base 2"}}, MEASURE], "--in", str(out))
     box = boxes(results[1])
     assert "Base 2 Top" not in box and len([n for n in box if n.startswith("Wall 4 Shelf")]) == 3, sorted(box)
-    # the dowel holes are still in the wall units' boards: 3 at each end of a top (a row: a cut
-    # and a pattern), 3 more for each of Wall 3's two dividers, and 2 from the Joinery function at
+    # the dowel holes are still in the wall units' boards: 2 at each end of a top (a row: a cut
+    # and a pattern), 2 more for each of Wall 3's two dividers, and 2 from the Joinery function at
     # each end of Wall 4's
-    assert cylinders(results[1], "Wall 2 Top") == 6 and cylinders(results[1], "Wall 3 Top") == 12
+    assert cylinders(results[1], "Wall 2 Top") == 4 and cylinders(results[1], "Wall 3 Top") == 8
     assert cylinders(results[1], "Wall 4 Top") == 4

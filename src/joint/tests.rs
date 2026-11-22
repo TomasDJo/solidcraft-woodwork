@@ -5,6 +5,19 @@ fn find<'a>(commands: &'a Commands, name: &str) -> &'a Value {
     &found.unwrap_or_else(|| panic!("no {name}")).1
 }
 
+/// The pattern that repeats `feature`.
+fn row<'a>(commands: &'a Commands, feature: &str) -> &'a Value {
+    let found = (commands.iter())
+        .filter(|c| c.0 == "solid.pattern.rectangular")
+        .find(|c| {
+            c.1["features"]
+                .as_array()
+                .unwrap()
+                .contains(&json!(feature))
+        });
+    &found.unwrap_or_else(|| panic!("no row of {feature}")).1
+}
+
 fn named(commands: &Commands, part: &str) -> usize {
     (commands.iter())
         .filter(|c| c.1["name"].as_str().is_some_and(|n| n.contains(part)))
@@ -27,8 +40,10 @@ fn dowels_are_one_cut_through_both_boards_and_a_row_that_follows_the_depth() {
     );
     let y = dowel["base"][1].as_str().unwrap();
     assert!(y.starts_with("0 mm + (K_joint_edge)"), "{y}");
-    let row = find(&commands, "K joint Side R Top dowels row");
-    assert_eq!(row["features"], json!(["K joint Side R Top dowels"]));
+    // one pattern for the four joints: the same way, the same count
+    let row = row(&commands, "K joint Side R Top dowels");
+    assert_eq!(row["name"], "K joint Side L Bottom dowels row");
+    assert_eq!(row["features"].as_array().unwrap().len(), 4);
     assert_eq!(row["dir1"], json!([0, 1, 0]));
     let count = "max(2, ceil((K_depth - 2*K_joint_edge) / K_joint_spacing) + 1)";
     assert_eq!(row["count1"], count);
@@ -36,7 +51,7 @@ fn dowels_are_one_cut_through_both_boards_and_a_row_that_follows_the_depth() {
         row["spacing1"],
         format!("(K_depth - 2*K_joint_edge) / ({count} - 1)")
     );
-    assert_eq!(named(&commands, " row"), 4);
+    assert_eq!(named(&commands, " row"), 1);
     // the sizes are parameters, and the dowels to buy are counted in one
     let added = |name: &str| {
         (commands.iter())
@@ -44,7 +59,7 @@ fn dowels_are_one_cut_through_both_boards_and_a_row_that_follows_the_depth() {
             .map(|c| c.1["expression"].as_str().unwrap_or_default().to_string())
     };
     assert_eq!(added("K_dowel_d").as_deref(), Some("8 mm"));
-    assert_eq!(added("K_joint_spacing").as_deref(), Some("150 mm"));
+    assert_eq!(added("K_joint_spacing").as_deref(), Some("250 mm"));
     assert_eq!(added("K_dowels"), Some([count; 4].join(" + ")));
     assert_eq!(added("K_confirmats"), None);
     // the holes come after every board
@@ -72,14 +87,8 @@ fn confirmat_is_a_clearance_hole_through_the_side_and_a_pilot_in_the_end() {
     let pilot = find(&commands, "K joint Side R Bottom confirmat pilot");
     assert_eq!(pilot["targets"], json!(["K Bottom"]));
     assert_eq!(pilot["height"], "50 mm - K_thickness + 2 mm");
-    let row = find(&commands, "K joint Side R Bottom confirmat row");
-    assert_eq!(
-        row["features"],
-        json!([
-            "K joint Side R Bottom confirmat",
-            "K joint Side R Bottom confirmat pilot"
-        ])
-    );
+    let row = row(&commands, "K joint Side R Bottom confirmat pilot");
+    assert_eq!(row["features"].as_array().unwrap().len(), 8);
     // an overlaid back: the sides stop in front of it
     let count = row["count1"].as_str().unwrap();
     assert!(count.contains("(K_depth - K_back_thickness)"), "{count}");
@@ -104,8 +113,8 @@ fn a_sink_base_gets_one_fastener_in_the_middle_of_each_rail() {
         y.contains("S_back_thickness) - 100 mm + (100 mm / 2)"),
         "{y}"
     );
-    // the bottom's two rows as on any cabinet
-    assert_eq!(named(&commands, " row"), 2);
+    // the bottom's two joints as on any cabinet, in one pattern
+    assert_eq!(named(&commands, " row"), 1);
     let dowels = (commands.iter())
         .find(|c| c.1["name"] == "S_dowels")
         .unwrap();
@@ -121,7 +130,7 @@ fn no_method_makes_nothing_and_an_edit_that_drops_one_zeroes_its_count() {
     let (none, _) = crate::cabinet::build(&json!({"name": "K", "joints": "none"})).unwrap();
     assert_eq!(plain, none);
     let edited = json!({"name": "K", "joints": "confirmat",
-        "_existing": {"dowels": 16, "joint_spacing": 150, "joint_edge": 50}});
+        "_existing": {"dowels": 16, "joint_spacing": 250, "joint_edge": 50}});
     let (commands, _) = crate::cabinet::build(&edited).unwrap();
     let change = (commands.iter())
         .find(|c| c.0 == "parameters.change" && c.1["name"] == "K_dowels")
@@ -192,13 +201,14 @@ fn dividers_and_the_rail_take_the_second_method() {
     let pilot = find(&commands, "K joint Top Divider 1 confirmat pilot");
     assert_eq!(pilot["targets"], json!(["K Divider 1"]));
     assert_eq!(pilot["axis"], json!([0, 0, -1]));
-    let row = find(&commands, "K joint Top Divider 1 confirmat row");
+    let row = row(&commands, "K joint Top Divider 1 confirmat");
     let count = row["count1"].as_str().unwrap();
     assert!(
         count.contains("(K_depth - 12 mm - K_back_thickness)"),
         "{count}"
     );
-    assert_eq!(named(&commands, " row"), 4 + 4);
+    // sides and dividers: two depths, two patterns
+    assert_eq!(named(&commands, " row"), 2);
     let added = |name: &str| {
         commands
             .iter()
@@ -213,8 +223,62 @@ fn dividers_and_the_rail_take_the_second_method() {
     assert_eq!(dowel["targets"], json!(["M Side R", "M Rail"]));
     let y = dowel["base"][1].as_str().unwrap();
     assert!(y.starts_with("M_thickness + (M_joint_edge)"), "{y}");
-    assert_eq!(named(&commands, " row"), 2);
+    assert_eq!(named(&commands, " row"), 1);
     // no dividers and no rail: the second method is not read
     let (plain, _) = crate::cabinet::build(&json!({"name": "K", "joints_inner": "glue"})).unwrap();
     assert_eq!(named(&plain, " joint "), 0);
+}
+
+#[test]
+fn a_corner_cabinet_joins_its_backs_ends_bottom_and_top() {
+    let names = |p: Value| -> Vec<String> {
+        let (commands, _) = crate::corner::build(&p).unwrap();
+        (commands.iter())
+            .filter(|c| c.0 == "solid.cylinder")
+            .filter_map(|c| c.1["name"].as_str().map(String::from))
+            .filter(|n| n.contains(" joint "))
+            .collect()
+    };
+    let l = names(json!({"name": "C", "joints": "dowels"}));
+    // three upright joints, and four for each of the bottom and the top
+    assert_eq!(l.len(), 3 + 8, "{l:?}");
+    assert!(
+        l.contains(&"C joint Side R Back dowels".to_string()),
+        "{l:?}"
+    );
+    assert!(
+        l.contains(&"C joint Back return Back dowels".to_string()),
+        "{l:?}"
+    );
+    assert!(
+        l.contains(&"C joint Side L Back return dowels".to_string()),
+        "{l:?}"
+    );
+    assert!(l.contains(&"C joint Back Top dowels".to_string()), "{l:?}");
+    // split: the return's piece meets the return's end and the back return
+    let split = names(json!({"name": "C", "joints": "dowels", "boards": "split"}));
+    assert_eq!(split.len(), 3 + 10, "{split:?}");
+    assert!(split.contains(&"C joint Side L Bottom return dowels".to_string()));
+    assert!(split.contains(&"C joint Back return Bottom return dowels".to_string()));
+    // with a wall mount the backs stand on the bottom
+    let mount = names(json!({"name": "C", "joints": "dowels", "wall_mount": "rail"}));
+    assert!(
+        mount.contains(&"C joint Bottom Back dowels".to_string()),
+        "{mount:?}"
+    );
+    assert!(
+        mount.contains(&"C joint Top Back return dowels".to_string()),
+        "{mount:?}"
+    );
+    assert_eq!(mount.len(), 3 + 8);
+    // a right corner: the same, mirrored
+    let (commands, _) =
+        crate::corner::build(&json!({"name": "C", "joints": "dowels", "corner": "right"})).unwrap();
+    let back = find(&commands, "C joint Side L Back dowels");
+    assert_eq!(back["axis"], json!([1, 0, 0]));
+    let row = row(&commands, "C joint Back Bottom dowels");
+    assert_eq!(row["dir1"], json!([-1, 0, 0]));
+    assert!(names(json!({"name": "C"})).is_empty());
+    let diagonal = names(json!({"name": "C", "joints": "confirmat", "shape": "diagonal"}));
+    assert_eq!(diagonal.len(), 2 * (3 + 8));
 }

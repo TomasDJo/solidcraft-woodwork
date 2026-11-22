@@ -22,7 +22,7 @@ pub const METHODS: [&str; 3] = ["none", "dowels", "confirmat"];
 /// The sizes a method can take: dialog field, which is also the parameter `<Prefix>_<key>`,
 /// and its default in mm.
 const SIZES: [(&str, f64); 4] = [
-    ("joint_spacing", 150.0),
+    ("joint_spacing", 250.0),
     ("joint_edge", 50.0),
     ("dowel_d", 8.0),
     ("dowel_length", 35.0),
@@ -60,6 +60,17 @@ pub struct Joinery<'a> {
     sizes: Vec<(&'static str, String)>,
     counts: RefCell<Vec<(&'static str, String)>>,
     cuts: RefCell<Commands>,
+    rows: RefCell<Vec<Row>>,
+}
+
+/// One pattern for every joint's first cuts that run the same way with the same count: each
+/// feature costs time, the more the bigger the design.
+struct Row {
+    name: String,
+    along: [i32; 3],
+    count: String,
+    pitch: String,
+    features: Vec<String>,
 }
 
 /// Which of a cabinet's two methods a joint takes: the carcass's, or the inside's.
@@ -134,6 +145,7 @@ impl<'a> Joinery<'a> {
             sizes,
             counts: RefCell::default(),
             cuts: RefCell::default(),
+            rows: RefCell::default(),
         })
     }
 
@@ -211,14 +223,21 @@ impl<'a> Joinery<'a> {
             self.counts.borrow_mut().push((item, "1".into()));
             return;
         }
-        self.cuts.borrow_mut().push((
-            "solid.pattern.rectangular",
-            json!({
-                "features": features, "name": format!("{name} {method} row"),
-                "dir1": j.along, "count1": count, "spacing1": pitch,
+        self.counts.borrow_mut().push((item, count.clone()));
+        let mut rows = self.rows.borrow_mut();
+        match rows
+            .iter_mut()
+            .find(|r| r.along == j.along && r.count == count)
+        {
+            Some(row) => row.features.extend(features),
+            None => rows.push(Row {
+                name: format!("{name} {method} row"),
+                along: j.along,
+                count,
+                pitch,
+                features,
             }),
-        ));
-        self.counts.borrow_mut().push((item, count));
+        }
     }
 
     fn board(&self, part: &str) -> String {
@@ -274,7 +293,17 @@ impl<'a> Joinery<'a> {
                 )),
             }
         }
-        self.cuts.take()
+        let mut cuts = self.cuts.take();
+        for row in self.rows.take() {
+            cuts.push((
+                "solid.pattern.rectangular",
+                json!({
+                    "features": row.features, "name": row.name,
+                    "dir1": row.along, "count1": row.count, "spacing1": row.pitch,
+                }),
+            ));
+        }
+        cuts
     }
 }
 

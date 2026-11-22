@@ -182,10 +182,12 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         edh,
         erail,
     };
-    let mut drill = cabinet.carcass(); // holes, run after the panels exist
+    let pins = cabinet.carcass(); // holes, run after the panels exist
     doors::build(&cabinet);
     drawers::build(&cabinet);
-    drill.extend(cabinet.joinery.finish());
+    // the joints before the pin rows: a cut into a board full of pin holes is slow
+    let mut drill = cabinet.joinery.finish();
+    drill.extend(pins);
     let (commands, mut summary) = kit.finish(drill, [w, h, d]);
     // The app runs at most 256 commands in one run, and the run itself takes some: also the
     // shared hardware parameters, the first time.

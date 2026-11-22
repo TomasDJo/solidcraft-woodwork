@@ -99,11 +99,16 @@ fn camera_is_stored_and_only_leave_skips_the_fit() {
 }
 
 #[test]
-fn joinery_is_a_default_for_the_cabinet_dialog_only() {
+fn joinery_is_a_default_and_corner_cabinets_have_nothing_inside() {
     let stored = json!({"document": {"settings": {"joints": "confirmat"}}});
     let reply = fields("cabinet", &json!({}), &stored);
     assert_eq!(reply["joints"]["default"], "confirmat");
-    assert_eq!(fields("corner", &json!({}), &stored), json!({}));
+    let stored = json!({"document": {"settings": {"joints": "none", "joints_inner": "none"}}});
+    let corner = fields("corner", &json!({}), &stored);
+    assert_eq!(
+        corner,
+        json!({"joints": {"default": "none", "hint": "From Woodwork settings"}})
+    );
     let patched = patch(&json!({"joints": "none"}), &Value::Null).unwrap();
     assert_eq!(patched, json!({"settings": {"joints": "none"}}));
 }
