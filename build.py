@@ -4,6 +4,8 @@
     python build.py --install  also install the zip into SolidCraft
     python build.py corner     only the end-to-end tests with "corner" in their file or name
 
+The end-to-end tests run in parallel, min(4, CPUs) at a time; WOODWORK_TEST_JOBS=1 runs them one by one.
+
 The end-to-end tests are in tests/, one file per function of the plugin.
 
 Needs: cargo (with the wasm32-unknown-unknown target), wasm-tools, solidcraft-cli (or the path to it
@@ -14,13 +16,23 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import threading
+import traceback
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).parent
 PKG = ROOT / "dist" / "woodwork"
 os.environ["PATH"] += os.pathsep + str(Path.home() / ".cargo" / "bin")
 CLI = os.environ.get("SOLIDCRAFT_CLI") or shutil.which("solidcraft-cli") or r"C:\Program Files\SolidCraft\solidcraft-cli.exe"
+# Per test thread: the environment its solidcraft-cli runs get (helpers.own_profile sets it).
+LOCAL = threading.local()
+
+
+def env():
+    return getattr(LOCAL, "env", None)
 
 
 def sh(*args):
@@ -29,11 +41,12 @@ def sh(*args):
 
 def cli(script, *extra):
     """Run a command script through solidcraft-cli and return the results."""
-    path = ROOT / "dist" / "script.json"
-    path.write_text(json.dumps(script), encoding="utf-8")
-    out = ROOT / "dist" / "results.json"
-    sh(CLI, "run", str(path), "--results", "--quiet", "--json-out", str(out), *extra)
-    return json.loads(out.read_text(encoding="utf-8"))
+    with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
+        path, out = Path(folder) / "script.json", Path(folder) / "results.json"
+        path.write_text(json.dumps(script), encoding="utf-8")
+        subprocess.run([CLI, "run", str(path), "--results", "--quiet", "--json-out", str(out), *extra],
+                       cwd=ROOT, check=True, env=env())
+        return json.loads(out.read_text(encoding="utf-8"))
 
 
 def plugin(approval, entry, params=None):
@@ -86,17 +99,35 @@ def test(only=()):
     import importlib
     sys.path[:0] = [str(ROOT), str(ROOT / "tests")]
     approval = cli([{"command": "plugin.inspect", "params": {"path": str(PKG)}}])[0]["approval"]
-    ran = 0
+    tests = {}
     for path in sorted((ROOT / "tests").glob("test_*.py")):
         module = importlib.import_module(path.stem)
         for name, function in vars(module).items():
             label = f"{path.stem}.{name}"
             if name.startswith("test_") and (not only or any(word in label for word in only)):
-                function(approval)
+                tests[label] = function
+    assert tests, f"no test matches {only}"
+
+    def run(function):
+        try:
+            function(approval)
+        except BaseException:
+            return traceback.format_exc()
+
+    jobs = int(os.environ.get("WOODWORK_TEST_JOBS") or min(4, os.cpu_count() or 1))
+    failed = []
+    with ThreadPoolExecutor(jobs) as pool:
+        futures = {pool.submit(run, function): label for label, function in tests.items()}
+        for future in as_completed(futures):
+            label, error = futures[future], future.result()
+            if error:
+                failed.append(label)
+                print(f"FAIL {label}\n{error}", flush=True)
+            else:
                 print("ok  ", label, flush=True)
-                ran += 1
-    assert ran, f"no test matches {only}"
-    print("PASS" if not only else f"PASS ({ran} of the tests)")
+    if failed:
+        sys.exit(f"FAIL: {len(failed)} of {len(tests)} tests: {', '.join(sorted(failed))}")
+    print("PASS" if not only else f"PASS ({len(tests)} of the tests)")
 
 
 if __name__ == "__main__":

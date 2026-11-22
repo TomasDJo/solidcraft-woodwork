@@ -1,6 +1,8 @@
 """Panel: an end panel or a filler on one end of a cabinet, following its sizes."""
 import json
 import subprocess
+import tempfile
+from pathlib import Path
 
 from build import CLI
 from helpers import *
@@ -12,9 +14,10 @@ def change(name, mm):
 
 def refused(steps):
     """The reason a script fails, or None when it runs."""
-    script = ROOT / "dist" / "refused.json"
-    script.write_text(json.dumps(steps), encoding="utf-8")
-    done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
+    with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
+        script = Path(folder) / "refused.json"
+        script.write_text(json.dumps(steps), encoding="utf-8")
+        done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
     return done.stderr if done.returncode else None
 
 

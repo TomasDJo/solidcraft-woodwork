@@ -144,6 +144,9 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   which is not on PATH in a fresh shell; `build.py` adds it).
 - The end-to-end tests in `tests/` run the built plugin through `solidcraft-cli` and check
   real geometry (bounding boxes, hole counts, joint moves). A new feature gets a case there.
+- They run in parallel, `min(4, CPUs)` at a time (`WOODWORK_TEST_JOBS=1` for one by one), so
+  a test saves under a file name of its own in `dist/`, and a profile test holds
+  `helpers.own_profile`'s lock (its environment reaches only its own thread's runs).
 - `solidcraft-cli snapshot --in file.sc --out shot.png` renders a result; look at it before
   calling a geometry change done.
 - Output goes to `dist/` (ignored by git).
