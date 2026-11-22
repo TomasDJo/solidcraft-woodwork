@@ -37,6 +37,12 @@ materials, joinery and cut lists.
   and `x-solidcraft-when` exist but are not used.
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
+  **Field order:** the most used first, and a conditional field right after the field that
+  controls it (drawer height and Drawers at after Drawers, a joinery method's sizes after it,
+  the filler width after the panel's kind, the cut list's diagrams after its format). A field
+  that may be left empty cannot be required, so it comes last whatever it controls: Edit's
+  numbers (shelves, doors, drawers...) and the cut list's Save as. Settings' numbers have
+  defaults (and are required) so they keep their place; the hook starts them at the stored value.
 - **Tools for agents (0.45).** Every entry is also the tool `woodwork.<entry>` (`plugin.tools`,
   MCP `tools/list`), with its schema as the arguments. Over MCP the arguments are checked
   strictly first: a field `required` names must be there even when it has a default, and

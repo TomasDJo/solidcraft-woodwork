@@ -147,6 +147,7 @@ Cabinets:
 - [x] More design-wide settings: back, fronts, handle position, the plinth (Cabinet keeps Yes or No), labels, cleat sizes, the cut list's banding, sizes, sheet, kerf and trim, a worktop's material and thickness
 - [x] Woodwork settings: Apply to the picked cabinets, built again with the settings (as many as fit in a run, the rest the next run)
 - [x] One Cabinet dialog for box and corner cabinets (Shape); the Corner cabinet entry is gone
+- [x] Every dialog reviewed: field order (controllers before what they show), tooltips and placement
 - [ ] Corner chamfers and cleat bevels without picked edges (a cut by a sketched profile), so a design past 400 features survives deleting an early cabinet
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
