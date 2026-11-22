@@ -14,7 +14,7 @@ The picture opens a one minute introduction on YouTube. Three how-tos follow it 
 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
-- **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides or legs); doors, drawers, or
+- **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides, legs or casters); doors, drawers, or
   drawers above or below doors, that open on their joints, overlay or inset; shelf pin, handle, hinge and drawer slide holes, sized by shared parameters. Also as a sink base
   (rails instead of a top), with doors or drawers. Hangs on a French cleat, a hanging rail or a steel rail.
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door, overlay

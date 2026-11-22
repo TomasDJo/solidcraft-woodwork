@@ -109,6 +109,7 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 - [x] Inset doors on corner cabinets: the L's bi-fold pair and the diagonal door inside the opening (#58)
 - [x] Plinth types: a set-back board, notched sides (no board, for one long plinth across a run) or adjustable legs, on box and corner cabinets
 - [x] Wall mount on box cabinets: French cleat with its wall cleat, hanging rail, or a steel rail listed with its hangers (#78; corner cabinets and hanger models later, #70)
+- [x] Casters as a plinth type on box cabinets: locking casters with pilot holes for their plates, counted as hardware (#79)
 
 ## Open
 

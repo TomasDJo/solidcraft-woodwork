@@ -151,17 +151,22 @@ pub fn handle_position(p: &Value) -> Result<&str, String> {
 pub const KICK_RECESS: f64 = 50.0; // `plinth_setback`'s default: the board or notch, back from the front
 pub const LEG_D: f64 = 40.0; // an adjustable leg
 pub const LEG_INSET: f64 = 50.0; // a leg's middle, in from the carcass's outside edges
+pub const CASTER_MIN: f64 = 50.0; // the lowest plinth a caster fits under
+pub const CASTER_PLATE: f64 = 80.0; // a caster's square mounting plate
+pub const CASTER_SCREWS: f64 = 60.0; // between the plate's screw holes, both ways
+pub const CASTER_SCREW_D: f64 = 4.0; // a pilot hole for one of them
 
 /// The `plinth_type` field: `board` (one set back, the default), `notch` (the sides notched
-/// at the front, no board: for one long board across a run) or `legs` (the carcass on legs).
+/// at the front, no board: for one long board across a run), `legs` (the carcass on legs) or
+/// `casters` (on casters: box cabinets only, `corner::input` refuses it).
 pub fn plinth_type(p: &Value) -> Result<&str, String> {
     match p
         .get("plinth_type")
         .and_then(Value::as_str)
         .unwrap_or("board")
     {
-        kind @ ("board" | "notch" | "legs") => Ok(kind),
-        _ => Err("plinth_type must be board, notch or legs".into()),
+        kind @ ("board" | "notch" | "legs" | "casters") => Ok(kind),
+        _ => Err("plinth_type must be board, notch, legs or casters".into()),
     }
 }
 
@@ -179,9 +184,86 @@ pub fn leg(kit: &Kit, n: usize, at: Value, height: &str) {
     ));
 }
 
+/// A locking caster, `<Name> Caster <n>`, one body `height` high under `(x, y)` (from the
+/// carcass's front left corner, at the floor): a square plate under the bottom panel, a post
+/// and a wheel on the floor. The plate's four screws get pilot holes in the bottom panel, from
+/// its underside: one cut and a 2 x 2 pattern, at most half the panel deep so they stay clear
+/// of a back groove in its top.
+pub fn caster(kit: &Kit, n: usize, x: &str, y: &str, height: &str, thickness: &str) {
+    let name = &kit.name;
+    let body = format!("{name} Caster {n}");
+    let (plate, plate_t, wheel_w) = (mm(CASTER_PLATE), mm(5.0), mm(25.0));
+    let half = |v: f64| mm(v / 2.0);
+    let plate_at = kit.at(
+        &format!("{x} - {}", half(CASTER_PLATE)),
+        &format!("{y} - {}", half(CASTER_PLATE)),
+        &format!("{height} - {plate_t}"),
+    );
+    // A wheel of at most 75 mm on the floor, so it stays under the carcass on a high plinth,
+    // and a post from its middle 2 mm into the 5 mm plate: one solid.
+    let wheel_d = format!("min({}, {height} - {})", mm(75.0), mm(2.0));
+    let wheel_at = kit.at(&format!("{x} - {wheel_w}/2"), y, &format!("{wheel_d}/2"));
+    let post_h = format!("{height} - {} - {wheel_d}/2", mm(3.0));
+    let screw = |v: &str| format!("{v} - {}", half(CASTER_SCREWS));
+    let feature = format!("{name} Bottom caster {n}");
+    kit.push((
+        "solid.box",
+        json!({
+            "length": plate, "width": plate, "height": plate_t, "corner": plate_at,
+            "name": body, "body_name": body,
+        }),
+    ));
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": wheel_at, "axis": [1, 0, 0], "diameter": wheel_d, "height": wheel_w,
+            "operation": "join", "targets": [body], "name": format!("{body} wheel"),
+        }),
+    ));
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": kit.at(x, y, &format!("{wheel_d}/2")), "axis": [0, 0, 1],
+            "diameter": mm(20.0), "height": post_h,
+            "operation": "join", "targets": [body], "name": format!("{body} post"),
+        }),
+    ));
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": kit.at(&screw(x), &screw(y), height), "axis": [0, 0, 1],
+            "diameter": mm(CASTER_SCREW_D),
+            "height": format!("min({}, {thickness}/2 - {})", mm(10.0), mm(1.0)),
+            "operation": "cut", "targets": [format!("{name} Bottom")], "name": feature,
+        }),
+    ));
+    kit.push((
+        "solid.pattern.rectangular",
+        json!({
+            "features": [feature], "name": format!("{feature} screws"),
+            "dir1": [1, 0, 0], "count1": 2, "spacing1": mm(CASTER_SCREWS),
+            "dir2": [0, 1, 0], "count2": 2, "spacing2": mm(CASTER_SCREWS),
+        }),
+    ));
+}
+
 /// Whether a body is one of the legs `leg` makes.
 pub fn is_leg(body: &str) -> bool {
-    body.rsplit_once(" Leg ")
+    numbered(body, " Leg ")
+}
+
+/// Whether a body is one of the casters `caster` makes.
+pub fn is_caster(body: &str) -> bool {
+    numbered(body, " Caster ")
+}
+
+/// A leg or a caster: hardware the carcass stands on, not a board.
+pub fn is_foot(body: &str) -> bool {
+    is_leg(body) || is_caster(body)
+}
+
+fn numbered(body: &str, part: &str) -> bool {
+    body.rsplit_once(part)
         .is_some_and(|(_, n)| n.parse::<u32>().is_ok())
 }
 

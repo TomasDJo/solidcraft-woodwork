@@ -136,6 +136,59 @@ fn plinth_types() {
     let wide = json!({"plinth": 100, "plinth_type": "legs", "width": 1000});
     assert_eq!(count(&build(&wide).unwrap().0, "solid.cylinder"), 6);
 
+    // casters: one body each (a plate and a wheel joined), at the legs' places but clear of
+    // the sides, four screw holes each in the bottom panel; six when wide
+    let p = json!({"plinth": 100, "plinth_type": "casters"});
+    let (commands, summary) = build(&p).unwrap();
+    assert!(named(&commands, "Cabinet Plinth").is_null());
+    let plate = named(&commands, "Cabinet Caster 4");
+    assert_eq!(plate["body_name"], "Cabinet Caster 4");
+    assert_eq!(plate["height"], "5 mm");
+    assert_eq!(plate["corner"][2], "Cabinet_plinth - 5 mm");
+    assert_eq!(
+        plate["corner"][0],
+        "Cabinet_width - (Cabinet_thickness + 50 mm) - 40 mm - Cabinet_width/2"
+    );
+    let wheel = named(&commands, "Cabinet Caster 4 wheel");
+    assert_eq!(wheel["operation"], "join");
+    assert_eq!(wheel["targets"], json!(["Cabinet Caster 4"]));
+    let wheel_d = "min(75 mm, Cabinet_plinth - 2 mm)"; // stays under the carcass
+    assert_eq!(wheel["diameter"], wheel_d);
+    assert_eq!(wheel["base"][2], format!("{wheel_d}/2")); // touches the floor
+    let post = named(&commands, "Cabinet Caster 4 post");
+    assert_eq!(post["operation"], "join");
+    assert_eq!(post["targets"], json!(["Cabinet Caster 4"]));
+    assert_eq!(post["base"][2], format!("{wheel_d}/2"));
+    assert_eq!(
+        post["height"],
+        format!("Cabinet_plinth - 3 mm - {wheel_d}/2")
+    ); // into the plate
+    let holes = named(&commands, "Cabinet Bottom caster 1");
+    assert_eq!(holes["operation"], "cut");
+    assert_eq!(holes["targets"], json!(["Cabinet Bottom"]));
+    assert_eq!(holes["base"][2], "Cabinet_plinth");
+    assert_eq!(holes["height"], "min(10 mm, Cabinet_thickness/2 - 1 mm)");
+    let screws = named(&commands, "Cabinet Bottom caster 1 screws");
+    assert_eq!([&screws["count1"], &screws["count2"]], [2, 2]);
+    assert_eq!(count(&commands, "solid.pattern.rectangular"), 4);
+    assert!(!summary["bodies"].to_string().contains("Caster")); // not a board
+    let side = named(&commands, "Cabinet Side R");
+    assert_eq!(side["corner"][2], "Cabinet_plinth");
+    let wide = json!({"plinth": 100, "plinth_type": "casters", "width": 1000});
+    assert_eq!(
+        count(&build(&wide).unwrap().0, "solid.pattern.rectangular"),
+        6
+    );
+    let low = json!({"plinth": 40, "plinth_type": "casters"});
+    let err = build(&low).unwrap_err();
+    assert_eq!(err, "casters need a plinth of at least 50 mm");
+    assert!(build(&json!({"plinth": 50, "plinth_type": "casters"})).is_ok());
+    let none = json!({"plinth_type": "casters"}); // no plinth: nothing to refuse
+    assert_eq!(
+        count(&build(&none).unwrap().0, "solid.pattern.rectangular"),
+        0
+    );
+
     // no plinth: the type does nothing; a board is the default
     let none = json!({"plinth_type": "legs"});
     assert_eq!(count(&build(&none).unwrap().0, "solid.cylinder"), 0);

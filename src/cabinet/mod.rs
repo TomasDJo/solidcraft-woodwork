@@ -263,9 +263,9 @@ impl Cabinet<'_> {
             true => input.plinth_type,
             false => "none",
         };
-        // On legs the whole carcass stands on them; else the sides reach the floor.
+        // On legs or casters the whole carcass stands on them; else the sides reach the floor.
         let (side_z, side_h) = match plinth {
-            "legs" => (epl.clone(), format!("{eh} - {epl}")),
+            "legs" | "casters" => (epl.clone(), format!("{eh} - {epl}")),
             _ => (zero.clone(), eh.clone()),
         };
         let right_x = format!("{ew} - {et}");
@@ -356,17 +356,25 @@ impl Cabinet<'_> {
                     kit.panel(&part, [x, &zero, &zero], [et, &kick, epl], Some(&target));
                 }
             }
-            "legs" => {
-                let inset = mm(LEG_INSET);
+            "legs" | "casters" => {
+                // A caster's plate stays under the bottom panel, clear of the sides.
+                let inset = match plinth {
+                    "legs" => mm(LEG_INSET),
+                    _ => format!("({et} + {})", mm(LEG_INSET)),
+                };
                 let mut xs = vec![inset.clone(), format!("{ew} - {inset}")];
                 // ponytail: the count is fixed when it is built, as the shelves' is.
                 if input.w > 900.0 {
                     xs.push(format!("{ew}/2"));
                 }
+                let inset = mm(LEG_INSET);
                 let ys = [inset.clone(), format!("{eside_d} - {inset}")];
                 let at = xs.iter().flat_map(|x| ys.iter().map(move |y| (x, y)));
                 for (n, (x, y)) in at.enumerate() {
-                    fittings::leg(kit, n + 1, kit.at(x, y, &zero), epl);
+                    match plinth {
+                        "legs" => fittings::leg(kit, n + 1, kit.at(x, y, &zero), epl),
+                        _ => fittings::caster(kit, n + 1, x, y, epl, et),
+                    }
                 }
             }
             _ => {}

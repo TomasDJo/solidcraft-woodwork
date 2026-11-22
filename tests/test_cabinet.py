@@ -105,6 +105,37 @@ def test_plinth_setback(approval):
     box = boxes(results[10])
     assert box["A Plinth"][1] == box["A Side L"][1] + 30, (box["A Plinth"], box["A Side L"])
 
+
+def test_casters(approval):
+    # A on casters (1000 wide: six) with an end panel on its left, B beside it on a board; the
+    # cut list.
+    results = cli([plugin(approval, "cabinet", {"name": "A", "width": 1000, "plinth": 100, "plinth_type": "casters"}),
+                   select("A Side L"), plugin(approval, "panel", {"kind": "end"}),
+                   select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "width": 1000, "plinth": 100, "place": "right"}),
+                   MEASURE,
+                   plugin(approval, "cutlist")],
+                  "--save", str(ROOT / "dist" / "casters.sc"))
+    box, measure = boxes(results[5]), results[5]
+    casters = sorted(n for n in box if n.startswith("A Caster "))
+    assert casters == [f"A Caster {n}" for n in range(1, 7)] and "A Plinth" not in box, sorted(box)
+    # floor to the bottom panel: an 80 mm plate under it, clear of the side, its 75 mm wheel under it
+    x0 = box["A Side L"][0]
+    assert box["A Caster 1"] == [x0 + 28, -270, 0, x0 + 108, -190, 100], box["A Caster 1"]
+    assert box["A Caster 3"] == [x0 + 892, -270, 0, x0 + 972, -190, 100], box["A Caster 3"]
+    assert box["A Bottom"][2] == 100 and box["A Side L"][2] == 100, box["A Side L"]
+    # four 4 mm pilot holes a caster, 8 mm deep in the 18 mm bottom
+    assert cylinders(measure, "A Bottom") == 24, cylinders(measure, "A Bottom")
+    drop = volume(measure, "B Bottom") - volume(measure, "A Bottom")
+    assert abs(drop - 24 * 3.14159 * 2 * 2 * 8) < 60, drop
+    # it rolls: the end panel stops at the carcass's bottom
+    assert box["A End panel L"][2] == 100 and box["A End panel L"][5] == 720, box["A End panel L"]
+    # the cut list: casters are hardware, not boards
+    cutlist = results[6]["result"]
+    assert {"item": "Caster, locking", "qty": 6} in cutlist["hardware"], cutlist["hardware"]
+    assert "Caster" not in str(cutlist["parts"]), cutlist["parts"]
+
+
 def test_plinth_types(approval):
     # A on a set-back board, B with notched sides beside it, C on legs (1000 wide: six) beside
     # that; the cut list, a drawing of B, and an Edit that puts A on legs.

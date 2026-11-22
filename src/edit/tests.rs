@@ -220,6 +220,13 @@ fn the_plinth_type_survives_an_edit() {
         let (_, params) = merge(&made[KEY], &json!({"plinth_type": "notch"}), &design()).unwrap();
         assert_eq!(params["plinth_type"], "notch");
     }
+    let made = remember(
+        "cabinet",
+        &json!({"plinth": 100, "plinth_type": "casters"}),
+        "A",
+    );
+    let (_, params) = merge(&made[KEY], &json!({"plinth_type": "keep"}), &design()).unwrap();
+    assert_eq!(params["plinth_type"], "casters");
 }
 
 #[test]

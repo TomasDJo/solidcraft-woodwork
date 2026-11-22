@@ -308,7 +308,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 - A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
   its return's end there, not a back corner: it gets the older link.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
-  `joint`, `Drawer n Front`, `Leg n`), so renaming those breaks it. Screws and dowels are the round
+  `joint`, `Drawer n Front`, `Leg n`, `Caster n`), so renaming those breaks it. Screws and dowels are the round
   holes in the boards Joinery drills into: `Bottom`, `Top`, `Rail front`, `Rail back`.
 - The cutting layouts (`nesting::nest`) are greedy guillotine packing into the free pieces of
   all open sheets: eight tries (four orders, best area or best short side fit, each piece split
@@ -493,7 +493,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   and its dimensions go to an end panel's or a filler's outer corners (with inset fronts the
   side's corners are the panel's too), so the width is over all; a filler's two boards count as
   one box. Corner cabinets are refused. No plinth return (an end panel reaches the
-  floor, also beside a cabinet on legs), no label on a panel. The filler width and a given
+  floor, also beside a cabinet on legs; beside one on casters it starts at the plinth), no label on a panel. The filler width and a given
   thickness are plain lengths, not parameters. `inside` puts a moved or turned cabinet at the
   origin, square (`to_matrix`), and back: in a plugin run a box in a turned component landed
   shifted (`tests/test_panel.py`). An Edit with panels runs about a dozen commands
@@ -519,7 +519,16 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   on legs stands on the floor, and a drawing's views take them in (its height dimension is the
   carcass's). The drawing's dimensions are on the sides' top front corners and Side L's rear
   bottom one, as a notched side has no front bottom corner. One long plinth board across a run
-  is not made (PLAN.md).
+  is not made (PLAN.md). `casters` (box cabinet only: `corner::input` refuses it; a plinth over 0
+  and under `CASTER_MIN` 50 mm is refused, 0 is no plinth) stands the sides on the plinth as legs
+  do and makes `<Name> Caster <n>` (`fittings::caster`: an 80 mm plate box under the bottom, a 20 mm
+  post and a wheel of `min(75 mm, plinth - 2 mm)` on the floor joined, one body, plinth high) at the legs' places by the same loop, but 50 mm in
+  from the inside of the sides, so the plate's four 4 mm pilot holes (`<Name> Bottom caster <n>`,
+  one cut and a 2 x 2 pattern, 60 mm apart, `min(10 mm, t/2 - 1 mm)` deep from below, clear of a
+  back groove) land in the bottom panel. Five commands a caster. `fittings::is_foot` (leg or
+  caster) is what the cut list, `cutlist::turned`, `select::named` and the drawing use; the
+  hardware line is "Caster, locking". An end panel beside a cabinet on casters starts at the
+  plinth (it rolls), read from the remembered `plinth_type`.
 - `wall_mount` (box cabinet and Edit; corner deferred): `cleat` makes `<Name> Cleat` and
   `<Name> Wall cleat` (a body in the cabinet's component, so it moves and is rebuilt with it),
   bevelled by `solid.chamfer` on a box edge picked by index, sizes the parameters

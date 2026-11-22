@@ -453,6 +453,10 @@ fn plinth_types() {
     let (commands, _) = build(&p).unwrap();
     assert_eq!(count(&commands, "solid.cylinder"), 5);
     assert_eq!(count(&commands, "component.create"), 0);
+
+    // casters are for box cabinets
+    let p = json!({"plinth": 100, "plinth_type": "casters"});
+    assert_eq!(build(&p).unwrap_err(), "casters are for box cabinets");
 }
 
 #[test]

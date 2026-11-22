@@ -21,7 +21,7 @@ pub struct Input<'a> {
     pub t: f64,
     pub bt: f64,
     pub plinth: f64,
-    /// board, notch or legs (`fittings::plinth_type`).
+    /// board, notch, legs or casters (`fittings::plinth_type`).
     pub plinth_type: &'a str,
     /// How far the plinth board or the sides' notch is back from the front.
     pub plinth_setback: f64,
@@ -133,8 +133,14 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     check(plinth >= 0.0, "plinth cannot be negative")?;
     check(
-        plinth == 0.0 || plinth_type == "legs" || (0.0..d - t).contains(&plinth_setback),
+        plinth == 0.0
+            || matches!(plinth_type, "legs" | "casters")
+            || (0.0..d - t).contains(&plinth_setback),
         "the plinth set-back must be 0 up to the depth less a panel thickness",
+    )?;
+    check(
+        plinth == 0.0 || plinth_type != "casters" || plinth >= crate::fittings::CASTER_MIN,
+        "casters need a plinth of at least 50 mm",
     )?;
     check(
         matches!(back, "none" | "overlay" | "groove"),

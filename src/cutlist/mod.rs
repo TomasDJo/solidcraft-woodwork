@@ -34,11 +34,11 @@ pub fn turned(measure: &Value) -> Vec<String> {
         let sides = (0..3).filter_map(side).map(|(max, min)| max - min);
         (body["volume_mm3"].as_f64()).is_some_and(|volume| volume < 0.97 * sides.product::<f64>())
     };
-    // A leg is round: not a board, so never measured.
+    // A leg or a caster is not a board, so never measured.
     bodies
         .filter(loose)
         .filter_map(|body| body["name"].as_str().map(String::from))
-        .filter(|name| !crate::fittings::is_leg(name))
+        .filter(|name| !crate::fittings::is_foot(name))
         .collect()
 }
 
@@ -236,6 +236,13 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             "Adjustable leg",
             bodies.iter().filter(|b| crate::fittings::is_leg(b)).count() as u64,
         ),
+        (
+            "Caster, locking",
+            bodies
+                .iter()
+                .filter(|b| crate::fittings::is_caster(b))
+                .count() as u64,
+        ),
         ("Knob", (ending(" handle 1") - pulls) as u64),
         ("Pull, 128 mm", pulls as u64),
     ];
@@ -424,7 +431,7 @@ pub fn cutlist(
     let bodies: Vec<&Value> = (measure["bodies"].as_array())
         .ok_or("inspect.measure returned no bodies")?
         .iter()
-        .filter(|b| !crate::fittings::is_leg(b["name"].as_str().unwrap_or("")))
+        .filter(|b| !crate::fittings::is_foot(b["name"].as_str().unwrap_or("")))
         .collect();
     let notched = |name: &str| {
         let all = params["_notched"].as_array().into_iter().flatten();
