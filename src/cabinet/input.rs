@@ -67,6 +67,9 @@ pub struct Input<'a> {
     pub slide_type: (&'a str, f64),
 }
 
+/// The lowest drawer front height but 0 (Auto), in mm: the smallest a drawer box fits behind.
+pub const MIN_DRAWER_FRONT: f64 = 100.0;
+
 pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let size = |key: &str, default_mm: f64| kit.size(p, key, default_mm);
     let kind = p.get("kind").and_then(Value::as_str).unwrap_or("standard");
@@ -232,6 +235,17 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         true => 2.0 * BOX_CLEAR + 50.0,
         false => 2.0 * (t + BOX_CLEAR) + 50.0,
     };
+    // A drawer front height is 0 (Auto) or at least 100 mm, more where thick boards leave
+    // no room for a box, rounded up to a whole mm or 1/8 in. The dialog's minimum stays 0.
+    let step = if kit.unit == "in" { 25.4 / 8.0 } else { 1.0 };
+    let floor = (lowest.max(MIN_DRAWER_FRONT) / step - 1e-6).ceil() * step;
+    check(
+        dh == 0.0 || drawer_h == 0.0 || drawer_h >= floor - 1e-6,
+        &format!(
+            "the drawer front height must be 0 (Auto) or at least {}",
+            kit.length(floor)
+        ),
+    )?;
     check(
         drawers == 0.0 || front_h >= lowest,
         "too low for that many drawers",

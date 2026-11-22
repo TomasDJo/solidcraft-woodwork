@@ -1,4 +1,6 @@
 """Drawers, handle holes, and the joints doors and drawers move on."""
+import subprocess
+
 from helpers import *
 
 
@@ -276,3 +278,16 @@ def test_overlay_fronts_with_a_reveal(approval):
     # Overlay doors with a 3 mm reveal: 3 mm in from the outside and between them, 3 mm proud.
     box = boxes(cli([plugin(approval, "cabinet", {"reveal": 3, "doors": 2}), MEASURE])[1])
     assert box["Cabinet Door L"] == [-297, -301, 3, -1.5, -283, 717], box["Cabinet Door L"]
+
+
+def test_the_lowest_drawer_front_height(approval):
+    # 0 is Auto, else 100 mm or more: 102 mm with 18 mm boards, the room for a box. The lowest
+    # builds, one below is refused (the message, naming the minimum, is a unit test's).
+    results = cli([plugin(approval, "cabinet", {"drawers": 3, "drawer_height": 102}), MEASURE])
+    heights = [round(b[5] - b[2], 3) for name, b in boxes(results[1]).items() if name.endswith("Front")]
+    assert 102 in heights, heights
+    try:
+        cli([plugin(approval, "cabinet", {"drawers": 3, "drawer_height": 101})])
+    except subprocess.CalledProcessError:
+        return
+    raise AssertionError("a drawer front under the minimum went through")

@@ -846,6 +846,33 @@ fn a_graduated_drawer_stack() {
 }
 
 #[test]
+fn a_drawer_front_height_is_auto_or_the_minimum_or_more() {
+    // inset drawers only: 100 mm is the lowest; beside doors 18 mm boards need 102 mm
+    let p = |dh: f64| build(&json!({"drawers": 3, "fronts": "inset", "drawer_height": dh}));
+    assert!(p(0.0).is_ok());
+    assert!(p(100.0).is_ok());
+    let low = p(99.0).unwrap_err();
+    assert!(low.contains("0 (Auto) or at least 100 mm"), "{low}");
+    let doors = json!({"drawers": 1, "doors": 1, "drawer_height": 102});
+    assert!(build(&doors).is_ok());
+    let low = build(&json!({"drawers": 1, "doors": 1, "drawer_height": 101})).unwrap_err();
+    assert!(low.contains("at least 102 mm"), "{low}");
+    // in inches 4 in, or 4 1/8 in with 3/4 in boards beside doors
+    let inch = |dh: f64, doors: u8| {
+        build(
+            &json!({"units": "in", "fronts": "inset", "drawers": 2, "doors": doors,
+                      "width": 24, "height": 30, "depth": 22, "thickness": 0.75, "drawer_height": dh}),
+        )
+    };
+    assert!(inch(4.0, 0).is_ok());
+    assert!(inch(3.9, 0).unwrap_err().contains("at least 4 in"));
+    assert!(inch(4.125, 2).is_ok());
+    assert!(inch(4.0, 2).unwrap_err().contains("at least 4.125 in"));
+    // one drawer alone has no front height to check
+    assert!(build(&json!({"drawers": 1, "drawer_height": 50})).is_ok());
+}
+
+#[test]
 fn drawer_slides_set_the_box_width_and_drill_both_sides() {
     let (commands, _) = build(&json!({"drawers": 2})).unwrap();
     let box_side = named(&commands, "Cabinet Drawer 1 Left");
