@@ -158,15 +158,36 @@ pub const CASTER_SCREW_D: f64 = 4.0; // a pilot hole for one of them
 
 /// The `plinth_type` field: `board` (one set back, the default), `notch` (the sides notched
 /// at the front, no board: for one long board across a run), `legs` (the carcass on legs) or
-/// `casters` (on casters: box cabinets only, `corner::input` refuses it).
-pub fn plinth_type(p: &Value) -> Result<&str, String> {
-    match p
+/// `casters` (on casters, under a `plinth` of `CASTER_MIN` or more; 0 is no plinth).
+pub fn plinth_type(p: &Value, plinth: f64) -> Result<&str, String> {
+    let kind = match p
         .get("plinth_type")
         .and_then(Value::as_str)
         .unwrap_or("board")
     {
-        kind @ ("board" | "notch" | "legs" | "casters") => Ok(kind),
-        _ => Err("plinth_type must be board, notch, legs or casters".into()),
+        kind @ ("board" | "notch" | "legs" | "casters") => kind,
+        _ => return Err("plinth_type must be board, notch, legs or casters".into()),
+    };
+    crate::kit::check(
+        plinth == 0.0 || kind != "casters" || plinth >= CASTER_MIN,
+        "casters need a plinth of at least 50 mm",
+    )?;
+    Ok(kind)
+}
+
+/// A leg or (`kind` casters) a caster, number `n`, under `(x, y)` from the carcass's front
+/// left corner at the floor, `height` high; a caster's screws go into the board `bottom`.
+pub fn foot(
+    kit: &Kit,
+    kind: &str,
+    n: usize,
+    [x, y]: [&str; 2],
+    height: &str,
+    [t, bottom]: [&str; 2],
+) {
+    match kind {
+        "legs" => leg(kit, n, kit.at(x, y, &mm(0.0)), height),
+        _ => caster(kit, n, x, y, height, t, bottom),
     }
 }
 
@@ -188,8 +209,8 @@ pub fn leg(kit: &Kit, n: usize, at: Value, height: &str) {
 /// carcass's front left corner, at the floor): a square plate under the bottom panel, a post
 /// and a wheel on the floor. The plate's four screws get pilot holes in the bottom panel, from
 /// its underside: one cut and a 2 x 2 pattern, at most half the panel deep so they stay clear
-/// of a back groove in its top.
-pub fn caster(kit: &Kit, n: usize, x: &str, y: &str, height: &str, thickness: &str) {
+/// of a back groove in its top. `bottom` is that panel's part name.
+pub fn caster(kit: &Kit, n: usize, x: &str, y: &str, height: &str, thickness: &str, bottom: &str) {
     let name = &kit.name;
     let body = format!("{name} Caster {n}");
     let (plate, plate_t, wheel_w) = (mm(CASTER_PLATE), mm(5.0), mm(25.0));
@@ -205,12 +226,21 @@ pub fn caster(kit: &Kit, n: usize, x: &str, y: &str, height: &str, thickness: &s
     let wheel_at = kit.at(&format!("{x} - {wheel_w}/2"), y, &format!("{wheel_d}/2"));
     let post_h = format!("{height} - {} - {wheel_d}/2", mm(3.0));
     let screw = |v: &str| format!("{v} - {}", half(CASTER_SCREWS));
-    let feature = format!("{name} Bottom caster {n}");
+    let feature = format!("{name} {bottom} caster {n}");
     kit.push((
         "solid.box",
         json!({
             "length": plate, "width": plate, "height": plate_t, "corner": plate_at,
             "name": body, "body_name": body,
+        }),
+    ));
+    // The post first: joined before it, the wheel would not touch the plate yet.
+    kit.push((
+        "solid.cylinder",
+        json!({
+            "base": kit.at(x, y, &format!("{wheel_d}/2")), "axis": [0, 0, 1],
+            "diameter": mm(20.0), "height": post_h,
+            "operation": "join", "targets": [body], "name": format!("{body} post"),
         }),
     ));
     kit.push((
@@ -223,18 +253,10 @@ pub fn caster(kit: &Kit, n: usize, x: &str, y: &str, height: &str, thickness: &s
     kit.push((
         "solid.cylinder",
         json!({
-            "base": kit.at(x, y, &format!("{wheel_d}/2")), "axis": [0, 0, 1],
-            "diameter": mm(20.0), "height": post_h,
-            "operation": "join", "targets": [body], "name": format!("{body} post"),
-        }),
-    ));
-    kit.push((
-        "solid.cylinder",
-        json!({
             "base": kit.at(&screw(x), &screw(y), height), "axis": [0, 0, 1],
             "diameter": mm(CASTER_SCREW_D),
             "height": format!("min({}, {thickness}/2 - {})", mm(10.0), mm(1.0)),
-            "operation": "cut", "targets": [format!("{name} Bottom")], "name": feature,
+            "operation": "cut", "targets": [format!("{name} {bottom}")], "name": feature,
         }),
     ));
     kit.push((

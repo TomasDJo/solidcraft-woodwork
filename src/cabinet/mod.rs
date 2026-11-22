@@ -333,10 +333,7 @@ impl Cabinet<'_> {
                 let ys = [inset.clone(), format!("{eside_d} - {inset}")];
                 let at = xs.iter().flat_map(|x| ys.iter().map(move |y| (x, y)));
                 for (n, (x, y)) in at.enumerate() {
-                    match plinth {
-                        "legs" => fittings::leg(kit, n + 1, kit.at(x, y, &zero), epl),
-                        _ => fittings::caster(kit, n + 1, x, y, epl, et),
-                    }
+                    fittings::foot(kit, plinth, n + 1, [x, y], epl, [et, "Bottom"]);
                 }
             }
             _ => {}

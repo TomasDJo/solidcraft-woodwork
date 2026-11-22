@@ -42,7 +42,7 @@ struct Corner<'a> {
     h: f64,
     t: f64,
     plinth: f64,
-    plinth_type: &'a str, // board, notch or legs: see `fittings::plinth_type`
+    plinth_type: &'a str, // board, notch, legs or casters: see `fittings::plinth_type`
     dr: f64,              // depth at the return's end: `d` on the L
     g: f64,               // the reveal around the doors, and its parameter
     inset: bool,          // the doors inside the opening, the shelves a panel back behind them
@@ -97,7 +97,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         false => mm(0.0),
     };
     // As on the box cabinet.
-    let ekick = match plinth > 0.0 && plinth_type != "legs" || kit.has("plinth_setback") {
+    let on_feet = matches!(plinth_type, "legs" | "casters");
+    let ekick = match plinth > 0.0 && !on_feet || kit.has("plinth_setback") {
         true => kit.parameter("plinth_setback", plinth_setback, "plinth set-back"),
         false => mm(plinth_setback),
     };
@@ -214,9 +215,10 @@ impl Corner<'_> {
         let side = |end: &'static str| &end[end.len() - 1..];
         (self.kit).seat(side(back_end), false, &self.point(ea), eb);
         (self.kit).seat(side(return_end), true, &self.point(&zero), &zero);
-        // On legs the whole carcass stands on them; else the ends and backs reach the floor.
+        // On legs or casters the whole carcass stands on them; else the ends and backs reach
+        // the floor.
         let (z, high) = match self.plinth_type {
-            "legs" => (epl.clone(), format!("{eh} - {epl}")),
+            "legs" | "casters" => (epl.clone(), format!("{eh} - {epl}")),
             _ => (zero.clone(), eh.to_string()),
         };
         let back_end_x = format!("{ea} - {et}");
@@ -405,27 +407,41 @@ impl Corner<'_> {
                     Some(&target),
                 );
             }
-        } else if self.plinth_type == "legs" {
-            // Under each corner of the footprint, and the L's inner corner.
+        } else if matches!(self.plinth_type, "legs" | "casters") {
+            // Under each corner of the footprint, and the L's inner corner. A caster's plate
+            // stays under the bottom panel, clear of the ends and backs (as on the box cabinet).
             let inset = mm(LEG_INSET);
-            let (near, wall_x, wall_y) = (
-                inset.clone(),
-                format!("{ea} - {inset}"),
-                format!("{eb} - {inset}"),
-            );
+            let near = match self.plinth_type {
+                "legs" => inset.clone(),
+                _ => format!("({et} + {inset})"),
+            };
+            let (wall_x, wall_y) = (format!("{ea} - {near}"), format!("{eb} - {near}"));
+            let front = format!("{front_y} + {inset}");
             let mut at = vec![
-                (wall_x.clone(), format!("{front_y} + {inset}")),
+                (wall_x.clone(), front.clone()),
                 (wall_x, wall_y.clone()),
                 (near.clone(), wall_y),
                 (near.clone(), near.clone()),
                 (format!("{edr} - {inset}"), near),
             ];
             if !self.diagonal {
-                at.push((format!("{ed} - {inset}"), format!("{front_y} + {inset}")));
+                at.push((format!("{ed} - {inset}"), front));
             }
             for (n, (x, y)) in at.iter().enumerate() {
-                let at = self.kit.at(&self.point(x), y, &zero);
-                fittings::leg(self.kit, n + 1, at, epl);
+                // Split, the two at the return's end are under the return's board.
+                let bottom = match self.split && (n == 3 || n == 4) {
+                    true => "Bottom return",
+                    false => "Bottom",
+                };
+                let x = self.point(x);
+                fittings::foot(
+                    self.kit,
+                    self.plinth_type,
+                    n + 1,
+                    [&x, y],
+                    epl,
+                    [et, bottom],
+                );
             }
         } else if self.plinth_type == "board" && self.diagonal {
             diagonal::plinth(self);

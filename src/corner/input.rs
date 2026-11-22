@@ -49,10 +49,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     );
     let t = size("thickness", 18.0)?;
     let plinth = size("plinth", 0.0)?;
-    let plinth_type = crate::fittings::plinth_type(p)?;
-    if plinth_type == "casters" {
-        return Err("casters are for box cabinets".into());
-    }
+    let plinth_type = crate::fittings::plinth_type(p, plinth)?;
     let plinth_setback = size("plinth_setback", crate::fittings::KICK_RECESS)?;
     let shelves = num(p, "shelves", 1.0)?;
     let pins = p
@@ -106,7 +103,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     check(plinth >= 0.0, "plinth cannot be negative")?;
     check(
-        plinth == 0.0 || plinth_type == "legs" || (0.0..d - t).contains(&plinth_setback),
+        plinth == 0.0
+            || matches!(plinth_type, "legs" | "casters")
+            || (0.0..d - t).contains(&plinth_setback),
         "the plinth set-back must be 0 up to the depth less a panel thickness",
     )?;
     check(

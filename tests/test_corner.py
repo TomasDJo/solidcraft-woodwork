@@ -237,3 +237,32 @@ def test_wall_mount(approval):
     assert mass["W Cleat return"][0] > 491, mass["W Cleat return"]
     box = boxes(results[3])
     assert box["D Hanging rail"][1:3] == [432, 612] and box["D Hanging rail return"][0:3] == [-450, -432, 612], (box["D Hanging rail"], box["D Hanging rail return"])
+
+
+def test_casters(approval):
+    # On casters: six under the L at the legs' places but clear of the ends and backs, their
+    # plates screwed into the bottom; split boards take the two at the return's end in the
+    # return's board; five under the diagonal.
+    corner = {**CORNER, "doors": "none", "plinth_type": "casters"}
+    results = cli([plugin(approval, "corner", {**corner, "name": "S"}),
+                   plugin(approval, "corner", {**corner, "name": "P", "boards": "split", "corner": "right"}),
+                   plugin(approval, "corner", {**corner, "name": "D", "shape": "diagonal"}),
+                   MEASURE, plugin(approval, "cutlist"),
+                   {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
+                  "--save", str(ROOT / "dist" / "corner_casters.sc"))
+    measure = results[3]
+    box = boxes(measure)
+    assert sorted(n for n in box if n.startswith("S Caster ")) == [f"S Caster {n}" for n in range(1, 7)], sorted(box)
+    assert len([n for n in box if n.startswith("D Caster ")]) == 5, sorted(box)
+    assert box["S Caster 1"] == [392, -100, 0, 472, -20, 100], box["S Caster 1"]
+    assert box["S Caster 3"] == [-472, 342, 0, -392, 422, 100], box["S Caster 3"]  # the wall corner
+    assert box["S Caster 6"] == [-30, -100, 0, 50, -20, 100], box["S Caster 6"]  # the L's inner corner
+    for part in ("S Side L", "S Back", "S Back return"):
+        assert box[part][2] == 100, (part, box[part])
+    assert not [n for n in box if "Plinth" in n or " Leg " in n], sorted(box)
+    # four pilot holes a caster, in the board above it
+    assert cylinders(measure, "S Bottom") == 24, cylinders(measure, "S Bottom")
+    # (and the two dowels through both)
+    assert cylinders(measure, "P Bottom") == 16 + 2 and cylinders(measure, "P Bottom return") == 8 + 2
+    assert {"item": "Caster, locking", "qty": 17} in results[4]["result"]["hardware"], results[4]["result"]["hardware"]
+    assert not [f["name"] for f in results[5]["timeline"] if f["warning"]]

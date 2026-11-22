@@ -454,9 +454,39 @@ fn plinth_types() {
     assert_eq!(count(&commands, "solid.cylinder"), 5);
     assert_eq!(count(&commands, "component.create"), 0);
 
-    // casters are for box cabinets
-    let p = json!({"plinth": 100, "plinth_type": "casters"});
-    assert_eq!(build(&p).unwrap_err(), "casters are for box cabinets");
+    // casters: at the legs' places, but clear of the ends and backs, screwed into the bottom
+    let p = json!({"width": 1000, "return": 900, "plinth": 100, "plinth_type": "casters"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(!has(&commands, "Cabinet Plinth") && !has(&commands, "Cabinet Leg 1"));
+    let wall = named(&commands, "Cabinet Caster 3");
+    assert_eq!(
+        wall["corner"][0],
+        "(Cabinet_thickness + 50 mm) - 40 mm - Cabinet_width/2"
+    );
+    named(&commands, "Cabinet Caster 6");
+    let screws = named(&commands, "Cabinet Bottom caster 4");
+    assert_eq!(screws["targets"], json!(["Cabinet Bottom"]));
+    assert_eq!(
+        board(&commands, "Cabinet Back")["corner"][2],
+        "Cabinet_plinth"
+    );
+    // split: the two at the return's end go into the return's board
+    let p = json!({"plinth": 100, "plinth_type": "casters", "boards": "split"});
+    let (commands, _) = build(&p).unwrap();
+    let screws = named(&commands, "Cabinet Bottom return caster 4");
+    assert_eq!(screws["targets"], json!(["Cabinet Bottom return"]));
+    named(&commands, "Cabinet Bottom caster 6");
+    // the diagonal: five
+    let p = json!({"shape": "diagonal", "plinth": 100, "plinth_type": "casters"});
+    let (commands, _) = build(&p).unwrap();
+    named(&commands, "Cabinet Caster 5");
+    assert!(!has(&commands, "Cabinet Caster 6"));
+    // too low a plinth is refused, as on the box cabinet
+    let p = json!({"plinth": 40, "plinth_type": "casters"});
+    assert_eq!(
+        build(&p).unwrap_err(),
+        "casters need a plinth of at least 50 mm"
+    );
 }
 
 #[test]

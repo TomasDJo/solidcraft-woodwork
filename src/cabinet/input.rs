@@ -76,7 +76,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let t = size("thickness", 18.0)?;
     let bt = size("back_thickness", 6.0)?;
     let plinth = size("plinth", 0.0)?;
-    let plinth_type = crate::fittings::plinth_type(p)?;
+    let plinth_type = crate::fittings::plinth_type(p, plinth)?;
     let plinth_setback = size("plinth_setback", crate::fittings::KICK_RECESS)?;
     let shelves = num(p, "shelves", 1.0)?;
     let doors = num(p, "doors", 0.0)?;
@@ -137,10 +137,6 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
             || matches!(plinth_type, "legs" | "casters")
             || (0.0..d - t).contains(&plinth_setback),
         "the plinth set-back must be 0 up to the depth less a panel thickness",
-    )?;
-    check(
-        plinth == 0.0 || plinth_type != "casters" || plinth >= crate::fittings::CASTER_MIN,
-        "casters need a plinth of at least 50 mm",
     )?;
     check(
         matches!(back, "none" | "overlay" | "groove"),

@@ -111,6 +111,7 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 - [x] Wall mount on box cabinets: French cleat with its wall cleat, hanging rail, or a steel rail listed with its hangers (#78; hanger models later, #70)
 - [x] Wall mount on corner cabinets: cleats, hanging rails or steel rails along both walls, through the box cabinet's shared code (`fittings::wall_mount`, `mount_sizes`, `steel_rail`, `mount_board`)
 - [x] Casters as a plinth type on box cabinets: locking casters with pilot holes for their plates, counted as hardware (#79)
+- [x] Casters on corner cabinets, at the legs' places through the shared `fittings::foot`; the casters' post is joined before the wheel, so no timeline warning
 
 ## Open
 

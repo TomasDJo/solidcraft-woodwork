@@ -533,8 +533,8 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   on legs stands on the floor, and a drawing's views take them in (its height dimension is the
   carcass's). The drawing's dimensions are on the sides' top front corners and Side L's rear
   bottom one, as a notched side has no front bottom corner. One long plinth board across a run
-  is not made (PLAN.md). `casters` (box cabinet only: `corner::input` refuses it; a plinth over 0
-  and under `CASTER_MIN` 50 mm is refused, 0 is no plinth) stands the sides on the plinth as legs
+  is not made (PLAN.md). `casters` (box and corner cabinets; `fittings::plinth_type` refuses a plinth over 0
+  and under `CASTER_MIN` 50 mm, 0 is no plinth; `fittings::foot` places a leg or a caster) stands the sides on the plinth as legs
   do and makes `<Name> Caster <n>` (`fittings::caster`: an 80 mm plate box under the bottom, a 20 mm
   post and a wheel of `min(75 mm, plinth - 2 mm)` on the floor joined, one body, plinth high) at the legs' places by the same loop, but 50 mm in
   from the inside of the sides, so the plate's four 4 mm pilot holes (`<Name> Bottom caster <n>`,
@@ -542,7 +542,10 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   back groove) land in the bottom panel. Five commands a caster. `fittings::is_foot` (leg or
   caster) is what the cut list, `cutlist::turned`, `select::named` and the drawing use; the
   hardware line is "Caster, locking". An end panel beside a cabinet on casters starts at the
-  plinth (it rolls), read from the remembered `plinth_type`.
+  plinth (it rolls), read from the remembered `plinth_type`. A corner cabinet's casters stand
+  at its legs' places, `t + 50 mm` in from the ends and backs; split, the two at the return's
+  end screw into `Bottom return` (`<Name> Bottom return caster <n>`). The post is joined before
+  the wheel, which on its own would not touch the plate (a timeline warning).
 - `wall_mount` (box and corner cabinets and Edit; `fittings::wall_mount`, `mount_sizes`, `steel_rail`, `mount_board`, shared): `cleat` makes `<Name> Cleat` and
   `<Name> Wall cleat` (a body in the cabinet's component, so it moves and is rebuilt with it),
   bevelled by `solid.chamfer` on a box edge picked by index, sizes the parameters
