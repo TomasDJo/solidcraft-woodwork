@@ -16,9 +16,9 @@ It uses every function of the plugin:
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
-- Joinery chosen in the Cabinet dialog: confirmat screws in most floor units (biscuits in the tall
-  one, cam locks in the drawer unit, pocket screws in the sink base), dowels in the wall units (a
-  dado in the first) and inside
+- Woodwork settings: the joinery is design wide, set there before the cabinets that take it:
+  confirmat screws in most floor units (biscuits in the tall one, cam locks in the drawer unit,
+  pocket screws in the sink base), dowels in the wall units (a dado in the first) and inside
 - Edit cabinet: the wall unit on the return gets a third shelf after it is made, hung, turned and drilled
 - Labels: the tall unit has each board's name written on it
 - Panel: an end panel on the tall unit's free side and one at the open end of the return run
@@ -91,6 +91,21 @@ def select(*bodies):
     return step("select.set", items=[{"type": "body", "name": body} for body in bodies])
 
 
+joinery = {}  # what Woodwork settings hold now
+
+
+def cabinet(entry, params):
+    """The steps for a cabinet: Woodwork settings first when its joinery differs from what they
+    hold (it is design wide, no Cabinet field), then the cabinet."""
+    params = dict(params)
+    wanted = {"joints": params.pop("joints", "dowels")}
+    steps = []
+    if wanted != {key: joinery.get(key) for key in wanted}:
+        joinery.update(wanted)
+        steps.append(build.plugin(approval, "settings", wanted))
+    return steps + [build.plugin(approval, entry, params)]
+
+
 approval = build.cli([step("plugin.inspect", path=str(build.PKG))])[0]["approval"]
 kitchen = step("component.activate", component="Kitchen")
 
@@ -99,7 +114,7 @@ steps = [step("component.create", name="Kitchen")]
 for i, (name, params) in enumerate(FLOOR):
     if i:
         steps.append(select(f"{FLOOR[i - 1][0]} Side R"))
-    steps.append(build.plugin(approval, "cabinet", {**params, "name": name}))
+    steps += cabinet("cabinet", {**params, "name": name})
     if name == "Tall":  # the run's visible end
         steps += [select("Tall Side L"), build.plugin(approval, "panel", {"kind": "end"})]
 for name, left, params in HANGING:
@@ -109,18 +124,18 @@ for name, left, params in HANGING:
     if name != HANGING[0][0]:
         steps.append(select(f"{HANGING[0][0]} Top"))
         params = {**params, **MATCH}
-    steps += [build.plugin(approval, "cabinet", {**params, "name": name}),
+    steps += [*cabinet("cabinet", {**params, "name": name}),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", translate=move),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
-steps += [select(f"{FLOOR[-1][0]} Side R"), build.plugin(approval, "corner", {**CORNER, "name": "Corner"}),
-          select(f"{HANGING[-1][0]} Top"), build.plugin(approval, "corner", {**WALL_CORNER, "name": "Wall corner"})]
+steps += [select(f"{FLOOR[-1][0]} Side R"), *cabinet("corner", {**CORNER, "name": "Corner"}),
+          select(f"{HANGING[-1][0]} Top"), *cabinet("corner", {**WALL_CORNER, "name": "Wall corner"})]
 # The units on the return are made on the origin, then turned a quarter and put at the end of
 # the corner cabinet's return.
 end = BACK - CORNER["return"]
 for name, params, z, like in (("Base 4", RETURN, 0, "Corner"), ("Wall 4", WALL_RETURN, WALL_Z, "Wall corner")):
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
-    steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name, "place": "origin"}),
+    steps += [select(f"{like} Top"), *cabinet("cabinet", {**params, "name": name, "place": "origin"}),
               *([select("Base 4 Side R"), build.plugin(approval, "panel", {"kind": "end"})] if name == "Base 4" else []),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),

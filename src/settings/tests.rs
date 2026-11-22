@@ -56,20 +56,59 @@ fn fields_are_defaults_in_the_dialogs_unit() {
 }
 
 #[test]
-fn settings_dialog_numbers_are_stored_or_cabinet_defaults() {
-    let stored = json!({"document": {"settings": {"material": "MDF", "reveal": 3}}});
+fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
+    let stored = json!({"document": {"settings": {"material": "MDF", "reveal": 3,
+        "joints": "cam", "dowel_d": 10, "hinge_angle": "165"}}});
     let mm = fields("settings", &json!({"units": "mm"}), &stored);
-    assert_eq!(
-        mm,
-        json!({"thickness": {"default": 18.0}, "reveal": {"default": 3},
-        "plinth": {"default": 0.0}})
-    );
+    assert_eq!(mm["thickness"], json!({"default": 18.0}));
+    assert_eq!(mm["reveal"], json!({"default": 3}));
+    assert_eq!(mm["joints"], json!({"default": "cam"}));
+    assert_eq!(mm["joints_inner"], json!({"default": "dowels"}));
+    assert_eq!(mm["dowel_d"], json!({"default": 10.0}));
+    assert_eq!(mm["joint_spacing"], json!({"default": 250.0}));
+    assert_eq!(mm["hinge_angle"], json!({"default": "165"}));
+    assert_eq!(mm["slide_type"], json!({"default": "full"}));
+    // material keeps its Keep
+    assert!(mm.get("material").is_none());
+    assert_eq!(mm.as_object().unwrap().len(), 17, "{mm}");
     let inch = fields(
         "settings",
         &json!({"units": "in"}),
         &json!({"document": null}),
     );
     assert_eq!(inch["thickness"]["default"], 0.708661);
+    assert_eq!(inch["joint_spacing"]["default"], 9.84252);
+}
+
+#[test]
+fn design_fills_new_cabinets_from_the_settings() {
+    let stored = json!({"document": {"settings": {"joints": "dado", "joints_inner": "none",
+        "dowel_d": 10, "joint_spacing": 254, "hardware_models": "off", "slide_type": "over"}}});
+    let mut p = json!({"units": "in"});
+    design("cabinet", &mut p, &stored);
+    assert_eq!(p["joints"], "dado");
+    assert_eq!(p["joints_inner"], "none");
+    assert_eq!(p["joint_spacing"], 10.0);
+    assert_eq!(p["dowel_d"], 0.393701);
+    assert_eq!(p["hardware_models"], "off");
+    assert_eq!(p["slide_type"], "over");
+    assert_eq!(p["hinge_angle"], "110");
+    assert_eq!(p["biscuit"], "20");
+    // a corner: no dado, nothing inside, no drawers
+    let mut p = json!({});
+    design("corner", &mut p, &stored);
+    assert_eq!(p["joints"], "dowels");
+    assert!(
+        p.get("joints_inner").is_none() && p.get("slide_type").is_none(),
+        "{p}"
+    );
+    assert_eq!(p["dowel_d"], 10.0);
+    // nothing stored: today's defaults; a given key is kept
+    let mut p = json!({"joints": "none"});
+    design("cabinet", &mut p, &json!({}));
+    assert_eq!(p["joints"], "none");
+    assert_eq!(p["joints_inner"], "dowels");
+    assert_eq!(p["cam_bolt"], 35.0);
 }
 
 #[test]
@@ -99,16 +138,20 @@ fn camera_is_stored_and_only_leave_skips_the_fit() {
 }
 
 #[test]
-fn joinery_is_a_default_and_corner_cabinets_have_nothing_inside() {
-    let stored = json!({"document": {"settings": {"joints": "confirmat"}}});
+fn joinery_is_design_wide_not_a_cabinet_default() {
+    let stored = json!({"document": {"settings": {"joints": "confirmat", "material": "MDF"}}});
     let reply = fields("cabinet", &json!({}), &stored);
-    assert_eq!(reply["joints"]["default"], "confirmat");
-    let stored = json!({"document": {"settings": {"joints": "none", "joints_inner": "none"}}});
-    let corner = fields("corner", &json!({}), &stored);
-    assert_eq!(
-        corner,
-        json!({"joints": {"default": "none", "hint": "From Woodwork settings"}})
-    );
+    assert_eq!(reply.as_object().unwrap().len(), 1, "{reply}");
     let patched = patch(&json!({"joints": "none"}), &Value::Null).unwrap();
     assert_eq!(patched, json!({"settings": {"joints": "none"}}));
+    // the default, or what is stored, is left out
+    let same = json!({"joints": "dowels", "dowel_d": 8, "hinge_angle": "keep"});
+    assert_eq!(patch(&same, &Value::Null).unwrap(), json!({"settings": {}}));
+    assert_eq!(
+        patch(&json!({"joints": "confirmat"}), &stored).unwrap(),
+        json!({"settings": {}})
+    );
+    let inch = patch(&json!({"units": "in", "dowel_d": 0.25}), &Value::Null).unwrap();
+    assert_eq!(inch, json!({"settings": {"dowel_d": 6.35}}));
+    assert!(patch(&json!({"dowel_d": 25}), &Value::Null).is_err());
 }

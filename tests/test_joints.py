@@ -15,9 +15,9 @@ def hardware(result):
 def test_dowels_and_confirmat_follow_a_resize_and_edit(approval):
     # D: 600 x 720 x 560 with dowels (the default): 460 mm between the first and last, at most
     # 250 apart: 3 a joint, 230 apart. C beside it with confirmat screws.
-    results = cli([plugin(approval, "cabinet", {"name": "D", "shelves": 0, "place": "origin"}),
-                   select("D Side R"),
-                   plugin(approval, "cabinet", {"name": "C", "shelves": 0, "joints": "confirmat", "place": "right"}),
+    results = designed(approval, {}, [plugin(approval, "cabinet", {"name": "D", "shelves": 0, "place": "origin"}),
+                   select("D Side R"), setting(approval, {"joints": "confirmat"}),
+                   plugin(approval, "cabinet", {"name": "C", "shelves": 0, "place": "right"}),
                    MEASURE, faces("D Bottom"), faces("C Side R"), plugin(approval, "cutlist"),
                    {"command": "parameters.change", "params": {"name": "D_depth", "expression": "900 mm"}},
                    MEASURE, plugin(approval, "cutlist"),
@@ -51,8 +51,8 @@ def test_dowels_and_confirmat_follow_a_resize_and_edit(approval):
 def test_a_sink_base_and_joinery_by_edit(approval):
     # A sink base: one dowel in the middle of each rail. A cabinet made without joinery gets it
     # by Edit, and keeps it through the next Edit (its shelf unjoined: none inside).
-    results = cli([plugin(approval, "cabinet", {"name": "S", "kind": "sink", "doors": 2, "place": "origin"}),
-                   plugin(approval, "cabinet", {"name": "O", "shelves": 0, "joints": "none", "joints_inner": "none", "place": "origin"}),
+    results = designed(approval, {}, [plugin(approval, "cabinet", {"name": "S", "kind": "sink", "doors": 2, "place": "origin"}),
+                   setting(approval, NONE), plugin(approval, "cabinet", {"name": "O", "shelves": 0, "place": "origin"}),
                    select("O Top"), plugin(approval, "edit", {"joints": "dowels"}),
                    select("O Top"), plugin(approval, "edit", {"shelves": 1}), MEASURE, plugin(approval, "cutlist")])
     measure = results[6]
@@ -65,10 +65,10 @@ def test_a_sink_base_and_joinery_by_edit(approval):
 def test_dividers_and_the_rail(approval):
     # W: 1200 wide, two dividers doweled into the bottom and the top (the inside's method), the
     # sides with confirmat. M: a drawer over a door, the rail screwed to the sides.
-    results = cli([plugin(approval, "cabinet", {"name": "W", "width": 1200, "dividers": 2, "shelves": 0,
-                                                "joints": "confirmat", "joints_inner": "dowels", "place": "origin"}),
-                   plugin(approval, "cabinet", {"name": "M", "doors": 1, "drawers": 1, "shelves": 0, "joints": "none",
-                                                "joints_inner": "confirmat", "place": "origin"}),
+    results = designed(approval, {"joints": "confirmat", "joints_inner": "dowels"},
+                       [plugin(approval, "cabinet", {"name": "W", "width": 1200, "dividers": 2, "shelves": 0, "place": "origin"}),
+                        setting(approval, {"joints": "none", "joints_inner": "confirmat"}),
+                        plugin(approval, "cabinet", {"name": "M", "doors": 1, "drawers": 1, "shelves": 0, "place": "origin"}),
                    MEASURE, faces("W Divider 1"), plugin(approval, "cutlist")])
     measure = results[2]
     # shelves 542 deep (back groove): 442 between the first and last, 3 a joint; 2 ends a divider
@@ -84,10 +84,11 @@ def test_dividers_and_the_rail(approval):
 def test_corner_cabinets(approval):
     # C: a left L, 900 x 900, 560 deep, 720 high, doweled. Upright joints 720 long: 4 dowels;
     # the ends' 542: 3; along the backs 864: 5.
-    results = cli([plugin(approval, "corner", {"name": "C", "shelves": 0, "place": "origin"}),
+    results = designed(approval, {}, [plugin(approval, "corner", {"name": "C", "shelves": 0, "place": "origin"}),
                    plugin(approval, "corner", {"name": "S", "shelves": 0, "boards": "split", "place": "origin"}),
+                   setting(approval, {"joints": "confirmat"}),
                    plugin(approval, "corner", {"name": "D", "shelves": 1, "shape": "diagonal", "corner": "right",
-                                               "joints": "confirmat", "wall_mount": "rail", "place": "origin"}),
+                                               "wall_mount": "rail", "place": "origin"}),
                    MEASURE, plugin(approval, "cutlist"),
                    {"command": "document.inspect", "params": {"bodies": False, "timeline": True}},
                    select("C Top"), plugin(approval, "edit", {"joints": "none"}), MEASURE])
@@ -107,7 +108,7 @@ def test_corner_cabinets(approval):
 
 def test_screws(approval):
     # 4.5 mm through the side, a 3 mm pilot into the end: 3 a joint at 560 deep
-    results = cli([plugin(approval, "cabinet", {"name": "P", "shelves": 0, "joints": "screws", "place": "origin"}),
+    results = designed(approval, {"joints": "screws"}, [plugin(approval, "cabinet", {"name": "P", "shelves": 0, "place": "origin"}),
                    MEASURE, faces("P Side L"), faces("P Bottom"), plugin(approval, "cutlist")])
     assert cylinders(results[1], "P Side L") == 6 and cylinders(results[1], "P Top") == 6
     clear = holes(results[2], 2.25)
@@ -119,8 +120,8 @@ def test_screws(approval):
 def test_dado(approval):
     # The bottom and top 6 mm longer at each end, in grooves in the sides; a divider into the
     # bottom and top. The cut list gives the longer boards and no hardware.
-    results = cli([plugin(approval, "cabinet", {"name": "G", "shelves": 0, "dividers": 1, "joints": "dado",
-                                                "joints_inner": "dado", "place": "origin"}),
+    results = designed(approval, {"joints": "dado", "joints_inner": "dado"},
+                       [plugin(approval, "cabinet", {"name": "G", "shelves": 0, "dividers": 1, "place": "origin"}),
                    MEASURE, plugin(approval, "cutlist")])
     box = boxes(results[1])
     assert box["G Bottom"][0] == -288 and box["G Bottom"][3] == 288, box["G Bottom"]
@@ -136,10 +137,11 @@ def test_dado(approval):
 def test_biscuits(approval):
     # #20 slots, 62 x 4 mm, 13 mm into each board: 3 a joint, 6 in each side; N without any.
     # A corner cabinet with Dominos.
-    results = cli([plugin(approval, "cabinet", {"name": "B", "shelves": 0, "joints": "biscuit", "place": "origin"}),
-                   plugin(approval, "cabinet", {"name": "N", "shelves": 0, "joints": "none", "place": "origin"}),
-                   plugin(approval, "corner", {"name": "C", "shelves": 0, "joints": "biscuit", "biscuit": "domino",
-                                               "place": "origin"}),
+    results = designed(approval, {"joints": "biscuit"}, [plugin(approval, "cabinet", {"name": "B", "shelves": 0, "place": "origin"}),
+                   setting(approval, {"joints": "none"}),
+                   plugin(approval, "cabinet", {"name": "N", "shelves": 0, "place": "origin"}),
+                   setting(approval, {"joints": "biscuit", "biscuit": "domino"}),
+                   plugin(approval, "corner", {"name": "C", "shelves": 0, "place": "origin"}),
                    MEASURE, plugin(approval, "cutlist")])
     slot = 62 * 4 * 13
     assert abs(volume(results[3], "N Side L") - volume(results[3], "B Side L") - 6 * slot) < 50
@@ -152,8 +154,9 @@ def test_cam_locks_and_pocket_screws(approval):
     # K: cam locks, 3 a joint: the bolt's thread in the side, its shank and the 15 mm cam in the
     # bottom, the cam from the bottom's top face. P: pocket screws from under the bottom, at 15
     # degrees, out of the middle of its end into the side.
-    results = cli([plugin(approval, "cabinet", {"name": "K", "shelves": 0, "joints": "cam", "place": "origin"}),
-                   plugin(approval, "cabinet", {"name": "P", "shelves": 0, "joints": "pocket", "place": "origin"}),
+    results = designed(approval, {"joints": "cam"}, [plugin(approval, "cabinet", {"name": "K", "shelves": 0, "place": "origin"}),
+                   setting(approval, {"joints": "pocket"}),
+                   plugin(approval, "cabinet", {"name": "P", "shelves": 0, "place": "origin"}),
                    MEASURE, faces("K Bottom"), faces("P Side L"), plugin(approval, "cutlist"),
                    {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
     measure = results[2]
@@ -175,10 +178,10 @@ def test_without_pins_the_shelves_are_fixed_and_joined(approval):
     # F: no shelf pins, so two compartments of two fixed shelves, doweled (the inside's method)
     # to the sides and the divider: 3 a joint, the shelves right of the divider 2, between the
     # others' holes. G: a fixed shelf in a dado, 6 mm longer at each end.
-    results = cli([plugin(approval, "cabinet", {"name": "F", "width": 1200, "dividers": 1, "shelves": 2,
-                                                "joints": "none", "place": "origin"}),
-                   plugin(approval, "cabinet", {"name": "G", "shelves": 1,
-                                                "joints": "dado", "joints_inner": "dado", "place": "origin"}),
+    results = designed(approval, {"joints": "none"},
+                       [plugin(approval, "cabinet", {"name": "F", "width": 1200, "dividers": 1, "shelves": 2, "place": "origin"}),
+                        setting(approval, {"joints": "dado", "joints_inner": "dado"}),
+                        plugin(approval, "cabinet", {"name": "G", "shelves": 1, "place": "origin"}),
                    MEASURE, faces("F Divider 1"), plugin(approval, "cutlist"),
                    select("F Top"), plugin(approval, "edit", {"shelf_pins": "yes"}), MEASURE])
     measure = results[2]

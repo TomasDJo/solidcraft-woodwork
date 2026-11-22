@@ -420,14 +420,19 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
         Ok(reply)
     };
     let run: Run = &mut run;
-    let summary = entries(entry, params, run)?;
+    // Woodwork settings: the design-wide joinery and hardware of a new cabinet, and the camera.
+    let ends = matches!(entry, "cabinet" | "corner" | "frame" | "edit" | "worktop");
+    let stored = match ends {
+        true => run("storage.get", json!({}))?,
+        false => Value::Null,
+    };
+    let summary = entries(entry, params, &stored, run)?;
     // A run that added or rebuilt a cabinet frames the model in the window (0.45; the
     // preview's dry runs leave the camera alone). Fit frames the selection when there is one,
     // such as the board a cabinet was placed against, so that is cleared first. Woodwork
     // settings' Camera `leave` leaves the view as it is; the selection is still cleared, so the
     // next run does not place against a board picked before this one.
-    if matches!(entry, "cabinet" | "corner" | "frame" | "edit" | "worktop") {
-        let stored = run("storage.get", json!({}))?;
+    if ends {
         run("select.clear", json!({}))?;
         if settings::fits(&stored) {
             run("view.fit", json!({}))?;
@@ -436,7 +441,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     Ok(summary)
 }
 
-fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
+fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
     match entry {
         "cabinet" | "corner" | "frame" => {
             // Where it goes: on the origin, or against the cabinet that is selected.
@@ -451,6 +456,9 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 _ => return Err("match must be no or selected".into()),
             };
             let mut params = params.clone();
+            if entry != "frame" {
+                settings::design(entry, &mut params, stored);
+            }
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),

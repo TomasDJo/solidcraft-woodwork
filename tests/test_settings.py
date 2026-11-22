@@ -1,4 +1,8 @@
 """Woodwork settings: defaults kept in the design, that Cabinet and Corner start from."""
+import json
+import subprocess
+
+from build import CLI
 from helpers import *
 
 
@@ -41,3 +45,36 @@ def test_camera_leave_skips_the_fit(approval):
                    plugin(approval, "cabinet", {"name": "B"})])
     assert results[0].get("result", results[0])["settings"] == {"camera": "leave"}, results[0]
     assert [results[i].get("view") for i in (1, 3)] == [None, {"kind": "fit"}], results
+
+
+def test_joinery_and_hardware_are_design_wide(approval):
+    # Stored: confirmat 500 apart, hinges to 165, no models. A new cabinet takes them and
+    # remembers them; Edit keeps them after the settings changed.
+    results = cli([setting(approval, {"joints": "confirmat", "joint_spacing": 500, "hinge_angle": "165",
+                                      "hardware_models": "off"}),
+                   plugin(approval, "cabinet", {"name": "A", "doors": 1, "shelves": 0}),
+                   setting(approval, {"joints": "none"}),
+                   select("A Side L"), plugin(approval, "edit", {"labels": "yes"}),
+                   MEASURE, {"command": "component.metadata", "params": {"component": "A"}},
+                   {"command": "joint.list", "params": {}}])
+    stored = results[0].get("result", results[0])["settings"]
+    assert stored == {"joints": "confirmat", "joint_spacing": 500, "hinge_angle": "165", "hardware_models": "off"}, stored
+    assert results[2].get("result", results[2])["settings"]["joints"] == "none"
+    kept = results[6]["metadata"]["io.github.tomasdjo.woodwork"]["params"]
+    assert (kept["joints"], kept["joint_spacing"], kept["hinge_angle"], kept["hardware_models"]) == ("confirmat", 500, "165", "off"), kept
+    # 460 mm between the first and last, at most 500 apart: 2 screws a joint
+    assert cylinders(results[5], "A Bottom") == 4, cylinders(results[5], "A Bottom")
+    assert not [b for b in results[5]["bodies"] if b["name"].startswith("HW hinge (")]
+    limits = {j["name"]: j["values"][0]["limits"] for j in results[7]["joints"]}
+    assert limits["A Door hinge"] == [0, 165], limits
+
+
+def test_a_cabinet_run_takes_no_joinery(approval):
+    # Settings only: Cabinet has conditions, so a key it does not declare is refused.
+    step = plugin(approval, "cabinet", {"name": "A"})
+    step["params"]["params"]["joints"] = "dowels"
+    script = ROOT / "dist" / "settings-refused.json"
+    script.write_text(json.dumps([step]), encoding="utf-8")
+    done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
+    # (the app names no field)
+    assert done.returncode and "is not an input of this entry" in done.stderr, done.stderr

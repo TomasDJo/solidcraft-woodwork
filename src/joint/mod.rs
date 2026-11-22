@@ -30,9 +30,9 @@ pub const METHODS: [&str; 8] = [
 /// The methods with fasteners in a row along the joint, spaced by `joint_spacing`.
 const SPACED: [&str; 6] = ["dowels", "confirmat", "screws", "biscuit", "cam", "pocket"];
 
-/// The sizes a method can take: dialog field, which is also the parameter `<Prefix>_<key>`,
-/// and its default in mm.
-const SIZES: [(&str, f64); 7] = [
+/// The sizes a method can take: Woodwork settings' field, which is also the parameter
+/// `<Prefix>_<key>`, and its default in mm.
+pub const SIZES: [(&str, f64); 7] = [
     ("joint_spacing", 250.0),
     ("joint_edge", 50.0),
     ("dowel_d", 8.0),
@@ -69,6 +69,19 @@ const SLOTS: [(&str, [f64; 3], &str, &str); 4] = [
     ("20", [62.0, 13.0, 4.0], "biscuits_20", "Biscuit, #20"),
     ("domino", [21.0, 15.0, 5.0], "dominos", "Domino, 5 x 30 mm"),
 ];
+
+/// The sizes' bounds in mm.
+pub fn range(key: &str) -> (f64, f64) {
+    match key {
+        "joint_spacing" => (20.0, 2000.0),
+        "joint_edge" => (5.0, 500.0),
+        "dowel_d" => (3.0, 20.0),
+        "dado_depth" => (0.5, 25.0),
+        "cam_d" => (10.0, 35.0),
+        "cam_bolt" => (20.0, 80.0),
+        _ => (10.0, 150.0),
+    }
+}
 
 /// Where the end of one board meets the face of another. Positions are counted from the
 /// cabinet's front left bottom corner, as a panel's (`Kit::at` shifts them).
@@ -152,15 +165,7 @@ impl<'a> Joinery<'a> {
                 continue;
             }
             let v = kit.size(p, key, default)?;
-            let (low, high) = match key {
-                "joint_spacing" => (20.0, 2000.0),
-                "joint_edge" => (5.0, 500.0),
-                "dowel_d" => (3.0, 20.0),
-                "dado_depth" => (0.5, 25.0),
-                "cam_d" => (10.0, 35.0),
-                "cam_bolt" => (20.0, 80.0),
-                _ => (10.0, 150.0),
-            };
+            let (low, high) = range(key);
             check(
                 (low..=high).contains(&v),
                 &format!("`{key}` must be {low} to {high} mm"),

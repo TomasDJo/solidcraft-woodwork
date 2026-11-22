@@ -92,8 +92,9 @@ materials, joinery and cut lists.
   camera alone. `execute` ends a cabinet, corner or edit run with `select.clear` and
   `view.fit`: Fit frames the selection when there is one, such as the board a cabinet was placed
   against. `plugin.run` through the CLI reports it as `view: {kind: fit}`. Woodwork settings'
-  `camera: leave` leaves `view.fit` out (`settings::fits`, one `storage.get` before
-  `select.clear`); `select.clear` stays, so the next run does not place against a board picked
+  `camera: leave` leaves `view.fit` out (`settings::fits`, from the one `storage.get` that
+  `execute` runs first for these entries, which also gives a new cabinet its design-wide
+  joinery and hardware); `select.clear` stays, so the next run does not place against a board picked
   before. The run takes one command more than before (three of the 26 `cabinet::build` leaves).
 - `build.py` runs `solidcraft-cli plugin check` on the package: an error fails the build.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
@@ -111,9 +112,23 @@ materials, joinery and cut lists.
   the last used values are not remembered; settings are per design, not per user. `camera`
   (`keep`, `fit`, `leave`) is stored like the choices but is no Cabinet field, so
   `settings::fields` skips it and the Settings dialog starts at Keep. `settings` has
-  the hook too: its three numbers start at the stored value or the Cabinet default, so the app
-  draws them as drag fields kept within their bounds, and `settings::patch` leaves out a number
-  equal to the stored one (or that default), as the hook fills omitted keys for scripts too.
+  the hook too: its numbers start at the stored value or the Cabinet default, so the app
+  draws them as drag fields kept within their bounds, and `settings::patch` leaves out a value
+  equal to the stored one (or the default), as the hook fills omitted keys for scripts too.
+  **Design-wide settings** (`settings::CHOICES` and `joint::SIZES`): `joints`, `joints_inner`,
+  the joint sizes, `biscuit`, `pocket_face`, `hardware_models`, `hinge_angle`, `slide_type`
+  are no Cabinet or Corner field. `lib.rs` fills a new cabinet's params with them
+  (`settings::design`: stored, else the default, lengths in its `units`; only keys absent, as
+  the unit tests give them; a corner skips `joints_inner` and `slide_type` and takes dowels for
+  a stored dado), so `make` remembers them and Edit rebuilds from those, not from the settings.
+  Over `plugin.run` and the tools they cannot be passed (undeclared, refused on an entry with
+  conditions): a script runs `settings` first. The Settings dialog's choices keep `keep` (the
+  test helper sends schema defaults) but the hook answers the stored value or the default, so
+  each size's `x-solidcraft-visible-when` on the method works; `build.plugin` sends Settings no
+  number (the hook fills them). Slide length stays per cabinet: Auto at build (it goes by the
+  depth), chosen in Edit. Edit keeps `joints`, `joints_inner`, `hardware_models`,
+  `hinge_angle`, `slide_type`, `slide_length`; the sizes are Parameters. Tests: `designed` and
+  `setting` in `tests/helpers.py` (settings results left out, so indices stay the cabinets').
   `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
   the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
   kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
@@ -454,9 +469,9 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
   parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the
   selected one has one. Material is not matched.
-- **Joinery at build** (`src/joint/`): the cabinet's `joints` field (carcass: sides to bottom and
-  top, a sink base's rails one fastener each, `Joint::single`) is `none`, `dowels` (the dialog's
-  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
+- **Joinery at build** (`src/joint/`): the cabinet's `joints` (a Woodwork setting, filled in by
+  `settings::design`; carcass: sides to bottom and top, a sink base's rails one fastener each,
+  `Joint::single`) is `none`, `dowels` (the default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
   away from `Joint::out`; `<Prefix>_cam_d`, `_cam_bolt`), `pocket` (a 9.5 mm pocket and a pilot,
   cylinders on an axis at 15 degrees, a fixed angle: plugin runs take a non-axis `axis`; the
   pocket in the end board's `out` face, or the other with `pocket_face: inside`), `biscuit` (a box cut through both boards
@@ -476,8 +491,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   no pins gets joined shelves on its next Edit; one with no remembered method has `none` and
   stays as it was.
   `Joinery::new` reads it, checks the sizes and makes the parameters they need, once each
-  (`<Prefix>_joint_spacing`, `_joint_edge`, `_dowel_d`, `_dowel_length`: dialog fields in the
-  dialog's unit, `edit::SIZES`, so Edit takes them from Parameters and only changes the
+  (`<Prefix>_joint_spacing`, `_joint_edge`, `_dowel_d`, `_dowel_length`: settings in mm, given
+  to the builder in the cabinet's unit, `edit::SIZES`, so Edit takes them from Parameters and only changes the
   method). `Joinery::joint` gives a joint's cuts: one cylinder (a dowel's through both boards,
   `targets` two; confirmat a clearance in the face board and a pilot in the end) and a
   `solid.pattern.rectangular` along the row, count `max(2, ceil((run - 2*edge)/spacing) + 1)`,
@@ -555,7 +570,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   doors call too): the grid over the bottom panel, the first door's plate holes in the end it
   hangs on (`corner::doors`, after its hinge), none for the fold (it hangs on a door) nor the
   diagonal door (its ends stand at 45 degrees).
-  **Models** (`hardware_models`: `on` by default, `off`, `cut`; cabinet, corner and Edit, kept by
+  **Models** (`hardware_models`: `on` by default, `off`, `cut`; Woodwork settings and Edit, kept by
   `Kit::models`): `hardware::copy` pushes an `occurrence.copy` of `HW hinge` or `HW hinge crank
   <c>` (cup and arm, in the door, from `cup_holes`, so corner doors too; `hardware::hinge`:
   the caller gives the crank, 18 for inset, 9.5 for a box cabinet's hinge edge on a divider,
@@ -594,7 +609,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   refused there. `cabinet::build` counts a copy as 2 commands, a cut as 2 more plus one
   `component.list`, and the definitions it copies (`hardware::cost`); over 230 it builds the
   cabinet again with `off` and says so (`hardware_models` in the summary).
-  **Slide length** (`slide_length`, cabinet and Edit, `edit::BOX_ONLY`): `hardware::SLIDES`,
+  **Slide length** (`slide_length`, Edit only, `edit::BOX_ONLY`; a new cabinet is always auto): `hardware::SLIDES`,
   250, 270, 300 to 650 mm and 10 to 28 in; `auto` is the longest of the cabinet's unit
   (`Kit::unit`) within the box depth less `SLIDE_CLEAR` (3 mm), and a chosen one that does not
   fit is refused (`hardware::slide_length`, read in `cabinet::input` as `Input::slide`, mm and
@@ -603,10 +618,10 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   HW_pitch`); the box side holes are named `<Drawer n Left> slide k (450 mm, full extension)`, and the
   cut list counts `Drawer slide, full extension, 450 mm, pair` from ` Left slide 1 (` (the
   rest of the drawer fronts, older drawers, as `Drawer slide, pair`). **Slide type**
-  (`slide_type`, cabinet and Edit, `BOX_ONLY`: `partial`, `full` by default, `over`;
+  (`slide_type`, Woodwork settings and Edit, `BOX_ONLY`: `partial`, `full` by default, `over`;
   `hardware::SLIDE_TYPES`, `travel`: 75 %, 100 %, +25 mm) is the drawer joint's limit
   (`Input::slide_type`), and 2-section slides have no middle member. **Hinge opening**
-  (`hinge_angle`, cabinet, corner and Edit: 95, 110 by default, 165; `Kit::hinge_angle`) is
+  (`hinge_angle`, Woodwork settings and Edit: 95, 110 by default, 165; `Kit::hinge_angle`) is
   every door hinge joint's limit, the box cabinet's, the corner's first door and the diagonal
   door; a corner's fold stays 90 (it lays the second door flat on the first). The hinge model
   is the same for every angle. Hinges a door: `fittings::cup_heights`, 2 up to 900 mm, 3 to

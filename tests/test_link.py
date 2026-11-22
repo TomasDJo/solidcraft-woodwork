@@ -90,10 +90,10 @@ def test_edit_and_joinery_keep_the_links(approval):
     # Edit builds a cabinet again, which takes its joints away: the one that holds it to its
     # neighbour, and the ones that hold others to it. Joinery moves a cabinet to drill it. After
     # either, in the middle of a run and at its start, the run still follows a change of width.
-    alone = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "B"}), select("B Top"), plugin(approval, "edit", {"joints": "dowels"}), MEASURE])
+    alone = designed(approval, NONE, [plugin(approval, "cabinet", {"name": "B"}), select("B Top"), plugin(approval, "edit", {"joints": "dowels"}), MEASURE])
     holes = cylinders(alone[3], "B Top")  # as many as a cabinet drilled on its own gets
     for edited in "BA":
-        results = cli([*run(approval, [(e, {**p, "joints": "none", "joints_inner": "none"}) for e, p in RUN]), select(f"{edited} Top"), plugin(approval, "edit", {"shelves": 2}),
+        results = designed(approval, NONE, [*run(approval), select(f"{edited} Top"), plugin(approval, "edit", {"shelves": 2}),
                        select("B Top"), plugin(approval, "edit", {"joints": "dowels"}),
                        select("A Top"), plugin(approval, "edit", {"joints": "dowels"}),
                        MEASURE, change(A_width=800, B_width=900), MEASURE,

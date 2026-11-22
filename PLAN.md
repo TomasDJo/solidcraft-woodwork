@@ -141,6 +141,7 @@ Cabinets:
 - [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
 - [ ] Hinges in the model with hinge types (#60); hinge models that cut their cups by default once SolidCraft 0.47 is out (upstream tangency-labs/solidcraft#20787)
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
+- [x] Joinery and hardware are design wide: the two methods, their sizes, hardware models, hinge opening and slide type are Woodwork settings, no longer Cabinet and Corner fields (a new cabinet takes them and remembers them; Edit changes the methods, models, opening and type of one cabinet; slide length is Auto at build, chosen in Edit); the manifest 6.5 KB smaller
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
 

@@ -66,8 +66,8 @@ def test_plate_holes_go_into_the_pin_holes_or_clear_of_them(approval):
 def test_three_doors_and_a_right_hung_one(approval):
     # Three doors hinge left, right, left: plate holes in Side L only (the other hinge edges are
     # on dividers, which get none). A single door hinged right: the plate on Side R. Inches.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "T", "width": 900, "dividers": 2, "doors": 3}),
-                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
+    results = designed(approval, NONE, [plugin(approval, "cabinet", {"name": "T", "width": 900, "dividers": 2, "doors": 3}),
+                   plugin(approval, "cabinet", {"name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
                                                 "thickness": 0.75, "back_thickness": 0.25, "doors": 1, "door_hinge": "right"}),
                    MEASURE, faces("R Door"), faces("R Side R")])
     measure = results[2]
@@ -84,12 +84,12 @@ def test_slides_drill_the_sides_and_the_boxes(approval):
     # mm behind the box's front, in the middle of the box side's
     # height), and the carcass sides beside them (5 mm, as far behind their front edge). A
     # sink base's false front has no slide. A thinner slide in Parameters makes every box wider.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "drawers": 2}), MEASURE,
+    results = designed(approval, NONE, [plugin(approval, "cabinet", {"drawers": 2}), MEASURE,
                    faces("Cabinet Drawer 1 Left"), faces("Cabinet Side L"),
-                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "S", "kind": "sink", "drawers": 2}), MEASURE,
+                   plugin(approval, "cabinet", {"name": "S", "kind": "sink", "drawers": 2}), MEASURE,
                    drive("Cabinet Drawer 1 slide", 200), faces("Cabinet Drawer 1 Left"), faces("Cabinet Side L"),
                    change("HW_slide_t", "10 mm"), MEASURE,
-                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "N", "drawers": 1, "thickness": 9}), faces("N Side L")],
+                   plugin(approval, "cabinet", {"name": "N", "drawers": 1, "thickness": 9}), faces("N Side L")],
                   "--save", str(ROOT / "dist" / "slides.sc"))
     box = boxes(results[1])
     assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7 and box["Cabinet Drawer 1 Right"][3] == 300 - 18 - 12.7
@@ -175,7 +175,7 @@ def test_models_off_is_the_same_cabinet_without_them(approval):
     # cut list counts no model, and its hardware is counted once.
     cabinet = {"doors": 2, "drawers": 1, "handles": "pull"}
     def made(mode):
-        results = cli([plugin(approval, "cabinet", cabinet | {"hardware_models": mode}), MEASURE, plugin(approval, "cutlist")])
+        results = designed(approval, {"hardware_models": mode}, [plugin(approval, "cabinet", cabinet), MEASURE, plugin(approval, "cutlist")])
         measure = {b["name"]: (b["bbox"], round(b["volume_mm3"]), b["face_types"]) for b in results[1]["bodies"]}
         return measure, results[2]["result"]
     (on, on_list), (off, off_list) = made("on"), made("off")
@@ -189,7 +189,7 @@ def test_models_can_cut_the_cups(approval):
     # `cut` (for SolidCraft 0.47): the hinge models cut the cups instead of cylinders. The
     # doors come out the same, the cut list counts the cups.
     def door(mode):
-        results = cli([plugin(approval, "cabinet", {"doors": 1, "hardware_models": mode}), MEASURE,
+        results = designed(approval, {"hardware_models": mode}, [plugin(approval, "cabinet", {"doors": 1}), MEASURE,
                        faces("Cabinet Door"), plugin(approval, "cutlist"),
                        {"command": "document.inspect", "params": {"bodies": False, "timeline": "summary"}}])
         features = [f["name"] for f in results[4]["timeline"]]
@@ -214,7 +214,7 @@ def test_edit_makes_the_models_again_and_keeps_the_definitions(approval):
 def test_slide_type_and_hinge_angle_set_the_joints_limits(approval):
     # A 165 degree hinge opens the door that far; a partial extension 500 mm slide pulls the
     # drawer out 375 mm and stops there, with no middle member; the cut list names the slide.
-    results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1, "hinge_angle": "165", "slide_type": "partial"}),
+    results = designed(approval, {"hinge_angle": "165", "slide_type": "partial"}, [plugin(approval, "cabinet", {"doors": 1, "drawers": 1}),
                    {"command": "joint.list", "params": {}}, MEASURE,
                    drive("Cabinet Drawer 1 slide", 600), drive("Cabinet Door hinge", 200), MEASURE,
                    plugin(approval, "cutlist")])

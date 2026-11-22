@@ -34,6 +34,22 @@ def own_profile(*folders):
             del LOCAL.env
 
 
+def designed(approval, settings, script, *extra):
+    """`cli` with Woodwork settings run first (the joinery and hardware of new cabinets are design
+    wide, no Cabinet field). The results of Settings, this one and any `setting` in the script,
+    are left out, so the indices are those of the other steps."""
+    script = [setting(approval, settings), *script]
+    results = cli(script, *extra)
+    return [r for step, r in zip(script, results) if step["params"].get("entry") != "settings"]
+
+
+def setting(approval, settings):
+    return plugin(approval, "settings", settings)
+
+
+NONE = {"joints": "none", "joints_inner": "none"}  # the quickest cabinets
+
+
 def select(name):
     return {"command": "select.set", "params": {"items": [{"type": "body", "name": name}]}}
 

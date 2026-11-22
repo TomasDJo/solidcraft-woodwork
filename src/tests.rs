@@ -30,7 +30,10 @@ fn a_run_that_builds_a_cabinet_frames_the_model() {
         Ok(json!({"document": {"settings": {"camera": "leave"}}}))
     };
     let _ = execute("cabinet", &json!({}), &mut run);
-    assert_eq!(called[called.len() - 2..], ["storage.get", "select.clear"]);
+    // read once, first: it also holds the design-wide joinery and hardware
+    assert_eq!(called[0], "storage.get");
+    assert_eq!(called.iter().filter(|c| *c == "storage.get").count(), 1);
+    assert_eq!(called.last().unwrap(), "select.clear");
     // Material and the cut list change nothing worth framing.
     assert!(!calls("material").contains(&"view.fit".to_string()));
     assert!(!calls("cutlist").contains(&"view.fit".to_string()));

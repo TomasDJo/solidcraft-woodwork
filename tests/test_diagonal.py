@@ -2,12 +2,11 @@
 from helpers import *
 
 
-def plugin(approval, entry, params=None, _plugin=plugin):
-    """These tests count the doors' and pins' holes: corner cabinets without joinery
+def cli(script, *extra):
+    """These tests count the doors' and pins' holes: cabinets without joinery
     (tests/test_joints.py has it)."""
-    if entry == "corner":
-        params = {"joints": "none", **(params or {})}
-    return _plugin(approval, entry, params)
+    approval = next(s["params"]["approval"] for s in script if s["command"] == "plugin.run")
+    return designed(approval, NONE, script, *extra)
 
 CORNER = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"}
 

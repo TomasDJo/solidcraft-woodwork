@@ -54,8 +54,10 @@ def plugin(approval, entry, params=None):
     entry with conditional fields is checked strictly, every visible required field present."""
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     schema = next(e["input_schema"] for e in manifest["runtime"]["entries"] if e["name"] == entry)
+    # Woodwork settings' hook starts its numbers at the stored values, as for plugin.run.
     defaults = {key: field.get("default", []) for key, field in schema["properties"].items()
-                if "default" in field or field["type"] == "array"}
+                if ("default" in field or field["type"] == "array")
+                and not (entry == "settings" and field["type"] == "number")}
     # Each field's conditional default when its rule holds, as the dialog does (sizes in inches).
     given = defaults | (params or {})
     for key, field in schema["properties"].items():
