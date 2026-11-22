@@ -158,3 +158,10 @@ fn a_board_gets_its_name_written_on_it() {
         .iter()
         .all(|c| c.0 != "sketch.text"));
 }
+
+#[test]
+fn a_cabinet_prefix_is_never_the_hardwares() {
+    assert_eq!(prefix("HW cup"), "c_HW_cup");
+    assert_eq!(prefix("HWB"), "HWB");
+    assert_eq!(prefix("1 Base"), "c_1_Base");
+}

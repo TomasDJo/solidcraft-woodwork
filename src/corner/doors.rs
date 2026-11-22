@@ -68,7 +68,7 @@ pub fn build(corner: &Corner, on_return: bool) {
     let holes = |part: &str, cup: [&str; 2], pull: [&str; 2], second: bool, into: [i32; 3]| {
         let hole = |at: [&str; 2], z: &str, d: f64, depth: &str, what: String| {
             let position = kit.at(&corner.point(at[0]), at[1], z);
-            fittings::hole(kit, part, position, into, d, depth, &what);
+            fittings::hole(kit, part, position, into, &mm(d), depth, &what);
         };
         for (j, z) in cups.iter().enumerate() {
             hole(

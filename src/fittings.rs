@@ -81,13 +81,13 @@ pub fn pin_rows(kit: &Kit, top_row: &str, rows: PinRows) -> [(&'static str, Valu
 // Every hole is a cylinder cut out of the one board it is for, not `solid.hole`: that keeps
 // the face it was picked on, and when the history is built again in a design with many
 // cabinets (after one is deleted, as Edit does) the face is not found and the hole fails.
-/// A hole in a door or a drawer front, from its back face.
+/// A hole of diameter `d` in a board of the cabinet, `into` it from `position`.
 pub fn hole(
     kit: &Kit,
     part: &str,
     position: Value,
     into: [i32; 3],
-    d: f64,
+    d: &str,
     depth: &str,
     what: &str,
 ) {
@@ -96,7 +96,7 @@ pub fn hole(
         "solid.cylinder",
         json!({
             "base": position, "axis": into,
-            "diameter": mm(d), "height": depth, "operation": "cut",
+            "diameter": d, "height": depth, "operation": "cut",
             "targets": [format!("{name} {part}")],
             "name": format!("{name} {part} {what}"),
         }),

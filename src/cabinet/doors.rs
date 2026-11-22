@@ -2,7 +2,8 @@
 
 use super::input::Input;
 use super::Cabinet;
-use crate::fittings::{self, CUP_CENTRE, CUP_D, CUP_DEPTH, HANDLE_EDGE};
+use crate::fittings::{self, HANDLE_EDGE};
+use crate::hardware;
 use crate::kit::mm;
 
 /// Equal doors across the front. They hinge left, right, left..., or right, left, right...
@@ -47,7 +48,11 @@ pub fn build(cabinet: &Cabinet) {
     };
     // From the plinth (or the bottom panel) up to the top (or under the top panel), or to
     // the drawers.
-    let cups = fittings::cup_heights(z0, z1, door_h_mm);
+    // On the pin rows' grid, so that each plate's two screw holes go into the system holes.
+    let (base, _) = cabinet.shelf_zone();
+    let cups: Vec<String> = (fittings::cup_heights(z0, z1, door_h_mm).iter())
+        .map(|z| hardware::on_grid(z, &base))
+        .collect();
     let handle_z = fittings::handle_height(
         handles,
         handle_at,
@@ -68,9 +73,11 @@ pub fn build(cabinet: &Cabinet) {
         };
         kit.open(&part);
         kit.panel(&part, [&x0, efront, z0], [&door_w, et, door_h], None);
-        let cup_x = match (i + first) % 2 {
-            0 => format!("{x0} + {}", mm(CUP_CENTRE)),
-            _ => format!("{x0} + {door_w} - {}", mm(CUP_CENTRE)),
+        // The hinge cups, from the door's back face, `HW_cup_inset` in from its hinge edge.
+        let left = (i + first) % 2 == 0;
+        let cup_x = match left {
+            true => format!("{x0} + HW_cup_inset"),
+            false => format!("{x0} + {door_w} - HW_cup_inset"),
         };
         for (j, z) in cups.iter().enumerate() {
             let position = kit.at(&cup_x, eback, z);
@@ -80,8 +87,8 @@ pub fn build(cabinet: &Cabinet) {
                 &part,
                 position,
                 [0, -1, 0],
-                CUP_D,
-                &mm(CUP_DEPTH),
+                "HW_cup_d",
+                "HW_cup_depth",
                 &what,
             );
         }
@@ -102,5 +109,32 @@ pub fn build(cabinet: &Cabinet) {
         let line = kit.at(&x, efront, z0);
         let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
         kit.hinge(&part, None, "hinge", line, None, turn, 110.0);
+        // The plates' screw holes in the side the door hangs on: `HW_pitch` apart about each
+        // cup's height, `HW_setback` behind the front of the opening (the shelf pins' line).
+        // ponytail: a hinge edge in the middle of the cabinet (three doors or more) gets no
+        // plate holes: they would go into a divider.
+        let side = match (left, i == 0, i + 1 == count) {
+            (true, true, _) => Some(("Side L", et.clone(), -1)),
+            (false, _, true) => Some(("Side R", format!("{ew} - {et}"), 1)),
+            _ => None,
+        };
+        if let Some((board, x, into)) = side {
+            let y = format!("{ein} + HW_setback");
+            for (j, z) in cups.iter().enumerate() {
+                for (k, half) in ["-", "+"].iter().enumerate() {
+                    let position = kit.at(&x, &y, &format!("{z} {half} HW_pitch/2"));
+                    let what = format!("hinge plate {}.{}", j + 1, k + 1);
+                    fittings::hole(
+                        kit,
+                        board,
+                        position,
+                        [into, 0, 0],
+                        "HW_screw_d",
+                        &hardware::screw_depth(et),
+                        &what,
+                    );
+                }
+            }
+        }
     }
 }

@@ -197,7 +197,7 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front");
     let counts = [
         (
-            "Hinge, 35 mm cup",
+            "Hinge, cup",
             features
                 .iter()
                 .filter(|f| f.contains(" hinge cup "))

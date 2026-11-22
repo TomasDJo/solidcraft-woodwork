@@ -145,7 +145,7 @@ fn hardware_is_counted_from_names() {
     bodies.push(json!({"name": "A 2 Top", "face_types": {"cylinder": 3}}));
     let list = hardware(&json!({"bodies": bodies}), &design);
     let expected = json!([
-        {"item": "Hinge, 35 mm cup", "qty": 2}, {"item": "Drawer slide, pair", "qty": 1},
+        {"item": "Hinge, cup", "qty": 2}, {"item": "Drawer slide, pair", "qty": 1},
         {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
         {"item": "Dowel, 8 x 60 mm", "qty": 2}, {"item": "Adjustable leg", "qty": 3},
         {"item": "Knob", "qty": 1}, {"item": "Pull, 128 mm", "qty": 1},

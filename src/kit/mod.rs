@@ -30,13 +30,15 @@ pub fn check(ok: bool, message: &str) -> Result<(), String> {
     }
 }
 
-/// What a cabinet's parameters start with: its name, made a valid identifier.
+/// What a cabinet's parameters start with: its name, made a valid identifier that is not the
+/// hardware's `HW_`.
 pub fn prefix(name: &str) -> String {
     let mut prefix: String = name
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
         .collect();
-    if !prefix.starts_with(|c: char| c.is_ascii_alphabetic()) {
+    // `HW_` is the shared hardware parameters' (`crate::hardware`).
+    if !prefix.starts_with(|c: char| c.is_ascii_alphabetic()) || prefix.starts_with("HW_") {
         prefix.insert_str(0, "c_");
     }
     prefix

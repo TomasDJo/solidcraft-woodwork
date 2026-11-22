@@ -35,14 +35,14 @@ component can hold its cabinets.
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
-| **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides. Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
+| **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
 | **Drawer front height** | With doors: the height of each drawer front, 0 for 150 mm. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below); 0 makes them all alike. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with Edit cabinet, not by setting the parameter to 0. |
 | **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
 | **Plinth height** | 0 for none. |
 | **Plinth type** | Shown with a plinth. **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. |
 | **Plinth set-back** | Shown with a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
-| **Doors** | Doors with 35 mm hinge cup holes: one, two, or one per compartment. |
+| **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
 | **Fronts** | Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment. |
 | **Reveal** | The gap around and between the fronts, 0.5 to 6 mm (2 by default), always in mm, also on an inch cabinet. Overlay: also how far the fronts stop short of the carcass's outside edges. Inset: the gap all round inside the opening. On a cabinet with doors or drawers it is the design parameter `Name_reveal`: change it in Parameters and the fronts follow. |
@@ -62,6 +62,37 @@ inset door swings out of the opening clear of the side.
 
 The cabinet is grounded so they have something fixed to open against; unground it to move
 it. A cabinet placed against another is held to that one instead.
+
+### Hinges and slides
+
+A box cabinet drills the holes its hinges and drawer slides need, every size and place an
+expression over design parameters that all cabinets share, made the first time a cabinet
+needs them. Change one in Parameters and every cabinet's holes follow:
+
+| Parameter | Default | What |
+|---|---|---|
+| `HW_cup_d`, `HW_cup_depth` | 35 mm, 13 mm | The hinge cup, from the door's back face |
+| `HW_cup_inset` | 22.5 mm | The cup's middle, in from the door's hinge edge |
+| `HW_screw_d`, `HW_screw_depth` | 5 mm, 10 mm | Screw holes in the sides, for hinge plates and slides |
+| `HW_setback` | 37 mm | Those screw holes behind the front of the opening (the shelf pins' line); on a drawer box, behind the box's front |
+| `HW_pitch` | 32 mm | A hinge plate's two holes are this far apart, about the cup's height, and the cups go on this grid; a slide's two holes 6 x this |
+| `HW_slide_t` | 12.7 mm | A slide's thickness: each drawer box is twice this narrower than the opening |
+| `HW_box_screw_d`, `HW_box_screw_depth` | 3 mm, 8 mm | A slide's screw holes in a drawer box's sides |
+
+- Each door gets its cups (two, three on a door over 1000 mm) and the side it hangs on a
+  plate's two holes beside each cup. With three doors or more, a door hinged in the middle of
+  the cabinet gets its cups only: its plate would go on a divider, which is not drilled.
+- Each drawer box gets two holes in each side, in the middle of its height, and the carcass
+  side beside it two more at the same height. A sink base's false front has none. A drawer box
+  must be at least 250 mm deep, for the shortest slide.
+- The holes show in the DXF files (a layer per diameter and depth) and the cut list counts the
+  hinges and the pairs of slides. Corner cabinets keep their own cup holes, sized by numbers.
+- The cups sit about 100 mm from the door's ends, moved by up to 16 mm so that each plate's two
+  holes are on the shelf pins' 32 mm grid: with shelf pins, a plate screw goes into a pin hole,
+  or its hole is clear of the rows. The pins keep 32 mm and 37 mm, so a changed `HW_pitch` or
+  `HW_setback` moves the plates off the pins' line.
+- The screw holes in the sides go `HW_screw_depth` deep, but never closer than 3 mm to the
+  outside: in a thin panel they stop short.
 
 ### Sink base
 

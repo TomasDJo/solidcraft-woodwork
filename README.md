@@ -15,7 +15,7 @@ The picture opens a one minute introduction on YouTube. Three how-tos follow it 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
 - **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides or legs); doors, drawers, or
-  drawers above or below doors, that open on their joints, overlay or inset; shelf pin and handle holes. Also as a sink base
+  drawers above or below doors, that open on their joints, overlay or inset; shelf pin, handle, hinge and drawer slide holes, sized by shared parameters. Also as a sink base
   (rails instead of a top), with doors or drawers.
 - **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door, overlay
   or inset.
@@ -99,6 +99,7 @@ MIT, see [LICENSE](LICENSE). `wit/plugin.wit` is SolidCraft's plugin interface, 
   in `tests.rs`.
 - `src/kit/` and `src/fittings.rs`: what the two cabinet builders share, the panels and
   parameters, and the hardware (shelf pins, hinge cups, handles).
+- `src/hardware/`: the hinges' and slides' shared sizes, as design parameters.
 - `src/select/`: finds the cabinet that is selected.
 - `build.py`: build, package and end-to-end test through `solidcraft-cli`.
 - `tests/`: the end-to-end tests, one file per function. Unit tests are in `tests.rs` beside

@@ -8,6 +8,7 @@ mod drawing;
 mod dxf;
 mod edit;
 mod fittings;
+mod hardware;
 mod joinery;
 mod kit;
 mod material;
@@ -30,11 +31,18 @@ pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
 /// moves as one piece and a room can hold its cabinets. Gives its boards their material, and
 /// leaves on the component how it was made, for Edit. Returns the summary and
 /// `component.create`'s reply.
-fn make(entry: &str, params: &Value, run: Run) -> Result<(Value, Value), String> {
+/// `design` is `document.inspect`'s reply.
+fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value, Value), String> {
     let built = match entry {
         "cabinet" => cabinet::build(params)?,
         _ => corner::build(params)?,
     };
+    // The hinges' and slides' shared sizes, the first time a cabinet needs them.
+    if hardware::used(&built.0) {
+        for (command, args) in hardware::parameters(design) {
+            run(command, args)?;
+        }
+    }
     let (summary, made) = component(built, params, "Birch plywood", run)?;
     let name = summary["name"].as_str().unwrap_or_default();
     run(
@@ -417,7 +425,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     beside = Some(found);
                 }
             }
-            let (mut summary, made) = make(entry, &params, run)?;
+            let (mut summary, made) = make(entry, &params, &design, run)?;
             let mut held = false;
             if let Some(other) = beside {
                 // Against that cabinet's side, or on top of it, turned the way it is turned.
@@ -472,7 +480,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             let hanging = edit::hanging(&tree, &joints, &name);
             run("component.activate", json!({"component": parent}))?;
             let gone = run("component.delete", json!({"component": name}))?;
-            let (mut summary, made) = make(&entry, &params, run)?;
+            let (mut summary, made) = make(&entry, &params, &design, run)?;
             // Its panels, those whose boards were still there; they get their material back
             // with the rest below.
             let parts = select::parts(&measure, &name);

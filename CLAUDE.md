@@ -118,6 +118,7 @@ materials, joinery and cut lists.
 | `src/<module>/mod.rs`, `tests.rs` | Each module below that has unit tests is a folder: the code in `mod.rs`, its tests in `tests.rs` beside it |
 | `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
 | `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes |
+| `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
@@ -416,7 +417,30 @@ ground), so a builder only returns its commands and `Kit`'s summary.
   (`ours["params"]["kind"]` in `drill`) and drills the top corners into the rails: only the
   first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.
 - `cabinet::build` refuses a cabinet of more than 230 commands (the run itself takes the rest
-  of the app's 256): a wide tall cabinet with many doors, shelves, pins and labels can reach it.
+  of the app's 256), counting the shared hardware parameters it may have to make: a wide tall
+  cabinet with many doors, shelves, pins and labels can reach it.
+- **Hinges and slides** (box cabinets; `src/hardware/`, holes in `cabinet::doors` and
+  `cabinet::drawers`): every hole is a cylinder cut (`fittings::hole`) whose size and place
+  are expressions over the shared `HW_` parameters, made once per design (`hardware::parameters`,
+  run by `make` when the builder's commands mention `HW_`). A door's cups (`<Door> hinge cup n`,
+  which the cut list counts) and the plate's two holes in the side it hangs on (`<Side> hinge
+  plate n.k`, cut after `Kit::hinge` so the cabinet is active), `HW_setback` behind the front
+  of the opening (`ein`, the shelf pins' line); a hinge edge on a divider gets no plate holes.
+  A drawer box's sides (`<Drawer n Left> slide k`, cut before `Kit::close` while the drawer is
+  active) and the carcass sides (`<Side> Drawer n slide k`, after), 6 pitches apart; the box is
+  `2*HW_slide_t` narrower than the opening, and one shallower than 250 mm is refused
+  (`input::MIN_SLIDE`, numbers only). The box cabinet's cups are moved to the pins' grid
+  (`hardware::on_grid`, from `Cabinet::shelf_zone`'s base, the rail's top under doors over
+  drawers): a plate's two holes are pin holes or clear of the rows, never half into one. The
+  grid is `HW_pitch` and the pin rows' `PITCH`, which part if `HW_pitch` is changed. Corner
+  cabinets keep their numeric cups.
+  Shared hardware *models* (#70: definitions under a `Hardware` component, an `occurrence.copy`
+  per hinge or slide on an axis joint, one `solid.combine` cut per board) worked in a plugin
+  run but are too slow on 0.46.1: each copy re-evaluates every combine in the design, and once
+  a design holds such cuts every `component.create` re-evaluates the whole design (the sample
+  kitchen's runs went from 1-4 s to 25-30 s and over the 30 s limit). `browser.visibility` is
+  still not kept after a plugin run, and a definition made inside a cabinet's component is
+  deleted with it (and every copy elsewhere).
 - Drawing (`drawing::sheet`): the drawing commands (0.45) run inside a plugin run; while a
   drawing is open the model's commands wait, so `lib.rs` reads everything first, then opens or
   makes `Woodwork`, draws, deletes the replaced sheets and closes it. The board list is four notes

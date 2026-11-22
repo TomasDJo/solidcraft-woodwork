@@ -17,7 +17,9 @@ def test_carcass_pins_and_doors(approval):
     assert len(bodies) == 10, sorted(bodies)
     side = bodies["Cabinet Side L"]
     # clear height 764: pin rows 2..21 of the 32 mm grid, front and rear
-    assert side["face_types"]["cylinder"] == 40, side["face_types"]
+    # and of the hinge plate's 4 screw holes on the pins' line, the 1 that is not a pin hole
+    # (822, over the top row; 182, 214 and 790 are pin holes)
+    assert side["face_types"]["cylinder"] == 40 + 1, side["face_types"]
     assert bodies["Cabinet Door L"]["face_types"]["cylinder"] == 2
     # centred on the origin, standing on Z = 0
     assert [round(v, 6) for v in side["bbox"]["min"]] == [-400, -200, 0], side["bbox"]
@@ -25,7 +27,7 @@ def test_carcass_pins_and_doors(approval):
     # the groove took material out of the side: 9 deep, 6 wide
     assert side["volume_mm3"] < 18 * 400 * 900 - 9 * 6 * 700, side["volume_mm3"]
     assert cutlist["boards"] == 10, cutlist
-    assert cutlist["hardware"] == [{"item": "Hinge, 35 mm cup", "qty": 4},
+    assert cutlist["hardware"] == [{"item": "Hinge, cup", "qty": 4},
                                    {"item": "Shelf pin, 5 mm", "qty": 8}], cutlist["hardware"]
 
 

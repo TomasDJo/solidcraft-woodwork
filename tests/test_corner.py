@@ -72,7 +72,7 @@ def test_hinged_on_the_return(approval):
     assert swung["C Door return"][3] > 300, swung["C Door return"]
     assert swung["C Door"] == [-6.603, -513.588, 102, 362.664, -290, 718], swung["C Door"]
     hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
-    assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
+    assert hardware == {"Hinge, cup": 4, "Shelf pin, 5 mm": 8, "Pull, 128 mm": 1}, hardware
     assert not [f["name"] for f in results[6]["timeline"] if f["warning"]]
 
 
@@ -102,7 +102,7 @@ def test_inset_doors(approval):
     assert box["C Door"] == [462, -548, 120, 480, -110, 700], box["C Door"]  # clear of the end panel
     assert box["C Door return"] == [480, -528, 120, 498, -210, 700], box["C Door return"]
     hardware = {h["item"]: h["qty"] for h in results[9]["result"]["hardware"]}
-    assert hardware == {"Hinge, 35 mm cup": 4, "Shelf pin, 5 mm": 8}, hardware
+    assert hardware == {"Hinge, cup": 4, "Shelf pin, 5 mm": 8}, hardware
     assert not [f["name"] for f in results[10]["timeline"] if f["warning"]]
     # Edit makes an overlay corner's doors inset
     results = cli([plugin(approval, "corner", CORNER), select("C Top"),

@@ -83,7 +83,8 @@ fn options_add_parts() {
     let p = json!({"shelf_pins": true, "doors": 2, "height": 1200});
     let (commands, summary) = build(&p).unwrap();
     assert_eq!(count(&commands, "solid.pattern.rectangular"), 2);
-    assert_eq!(count(&commands, "solid.cylinder"), 2 + 2 * 3); // pin seeds, 3 cups per tall door
+    // pin seeds, 3 cups per tall door and a plate's 2 screw holes beside each
+    assert_eq!(count(&commands, "solid.cylinder"), 2 + 2 * 3 * 3);
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 8);
 }
 
@@ -193,7 +194,7 @@ fn drawers_replace_shelves() {
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 6 + 3 * 6);
     // a pull is two holes across the middle of each front, 128 mm apart
     let (commands, _) = build(&json!({"drawers": 3, "handles": "pull"})).unwrap();
-    assert_eq!(count(&commands, "solid.cylinder"), 6);
+    assert_eq!(count(&commands, "solid.cylinder"), 6 + 3 * 8); // and 8 slide screw holes a drawer
     let hole = commands
         .iter()
         .find(|c| c.1["name"] == "Cabinet Drawer 1 Front handle 2");
@@ -319,7 +320,18 @@ fn a_door_hinges_on_its_outer_front_edge() {
     assert!(of("Cabinet Door hinge cup 1")["base"][0]
         .as_str()
         .unwrap()
-        .contains("- 22.5 mm"));
+        .contains("- HW_cup_inset"));
+    // the plate's screw holes on Side R, into it, about each cup's height
+    let plate = of("Cabinet Side R hinge plate 1.2");
+    assert_eq!(plate["axis"], json!([1, 0, 0]));
+    assert_eq!(plate["targets"], json!(["Cabinet Side R"]));
+    assert!(plate["base"][2]
+        .as_str()
+        .unwrap()
+        .ends_with("* HW_pitch + HW_pitch/2"));
+    assert!(right
+        .iter()
+        .all(|c| c.1["targets"] != json!(["Cabinet Side L"])));
     assert!(of("Cabinet Door handle 1")["base"][0]
         .as_str()
         .unwrap()
@@ -633,10 +645,14 @@ fn drawers_over_doors() {
         front["corner"][2],
         format!("{z1} + Cabinet_reveal + (Cabinet_drawer_height + Cabinet_reveal) * 0")
     );
-    // the upper hinge cup 100 mm under the doors' top edge, the shelf and pins below the rail
+    // the upper hinge cup about 100 mm under the doors' top edge, on the pins' grid from the
+    // bottom panel (the doors are below the rail); the shelf and pins below the rail
     assert_eq!(
         named(&commands, "Cabinet Door L hinge cup 2")["base"][2],
-        format!("{z1} - 100 mm")
+        crate::hardware::on_grid(
+            &format!("{z1} - 100 mm"),
+            "Cabinet_plinth + Cabinet_thickness"
+        )
     );
     let pins = named(&commands, "Cabinet Side L pin rows");
     assert!(pins["count1"].as_str().unwrap().contains(&rail));
@@ -680,6 +696,11 @@ fn doors_over_drawers() {
         named(&commands, "Cabinet Drawer 2 slide")["at"]["point"][2],
         294.0
     );
+    // the hinge cups on the pins' grid from the rail's top face
+    assert!(named(&commands, "Cabinet Door hinge cup 1")["base"][2]
+        .as_str()
+        .unwrap()
+        .starts_with(&format!("{rail} + Cabinet_thickness + HW_pitch/2 + round(")));
     // the shelf and the pins start on the rail
     let shelf = named(&commands, "Cabinet Shelf 1");
     assert!(shelf["corner"][2]
@@ -768,4 +789,36 @@ fn a_graduated_drawer_stack() {
     );
     assert!(build(&json!({"drawers": 3, "drawer_height": 600})).is_err());
     assert!(build(&json!({"drawers": 3, "drawer_height": -10})).is_err());
+}
+
+#[test]
+fn drawer_slides_set_the_box_width_and_drill_both_sides() {
+    let (commands, _) = build(&json!({"drawers": 2})).unwrap();
+    let box_side = named(&commands, "Cabinet Drawer 1 Left");
+    assert_eq!(
+        box_side["corner"][0],
+        "Cabinet_thickness + HW_slide_t - Cabinet_width/2"
+    );
+    // into the box side from outside, and into the carcass side beside it, 6 pitches apart
+    let hole = named(&commands, "Cabinet Drawer 1 Left slide 2");
+    assert_eq!(hole["axis"], json!([1, 0, 0]));
+    assert_eq!(hole["diameter"], "HW_box_screw_d");
+    assert!(hole["base"][1]
+        .as_str()
+        .unwrap()
+        .contains("HW_setback + 6*HW_pitch"));
+    let side = named(&commands, "Cabinet Side R Drawer 2 slide 1");
+    assert_eq!(side["axis"], json!([1, 0, 0]));
+    assert_eq!(side["targets"], json!(["Cabinet Side R"]));
+    assert_eq!(
+        side["base"][2],
+        hole["base"][2].as_str().unwrap().replace("* 0", "* 1")
+    );
+    // a sink base's false front has no box and no slide holes
+    let (sink, _) = build(&json!({"kind": "sink", "drawers": 2})).unwrap();
+    assert_eq!(count(&sink, "solid.cylinder"), 8);
+    // 8 drawers still fit in one run, and a box shorter than the slides is refused
+    assert!(build(&json!({"drawers": 8, "height": 1400})).is_ok());
+    assert!(build(&json!({"drawers": 1, "depth": 260})).is_err());
+    assert!(build(&json!({"drawers": 1, "depth": 300})).is_ok());
 }

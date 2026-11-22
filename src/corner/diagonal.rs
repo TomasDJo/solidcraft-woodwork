@@ -92,7 +92,7 @@ pub fn door(corner: &Corner, on_return: bool) {
             "Door",
             json!([x, back, z]),
             [0, -1, 0],
-            d,
+            &mm(d),
             depth,
             &what,
         );

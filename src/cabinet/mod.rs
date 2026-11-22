@@ -169,9 +169,14 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     doors::build(&cabinet);
     drawers::build(&cabinet);
     let (commands, mut summary) = kit.finish(drill, [w, h, d]);
-    // The app runs at most 256 commands in one run, and the run itself takes some.
+    // The app runs at most 256 commands in one run, and the run itself takes some: also the
+    // shared hardware parameters, the first time.
+    let shared = match crate::hardware::used(&commands) {
+        true => crate::hardware::PARAMETERS.len(),
+        false => 0,
+    };
     check(
-        commands.len() <= 230,
+        commands.len() + shared <= 230,
         "too many parts for one run: fewer doors, drawers or shelves, or no labels",
     )?;
     // one compartment
@@ -205,19 +210,8 @@ impl Cabinet<'_> {
         // Derived sizes, as expressions.
         let n = input.dividers as u32;
         let s = input.shelves as u32;
-        // The bottom panel's top face. Where the shelves' part starts, and its clear height:
-        // with doors and drawers, the doors' part on the other side of the rail.
         let bottom_top = format!("{epl} + {et}");
-        let (ebase, ezone) = match erail {
-            Some(rail) if input.drawers_top => {
-                (bottom_top.clone(), format!("({rail} - {epl} - {et})"))
-            }
-            Some(rail) => (
-                format!("{rail} + {et}"),
-                format!("({eh} - 2*{et} - ({rail}))"),
-            ),
-            None => (bottom_top.clone(), ech.clone()),
-        };
+        let (ebase, ezone) = self.shelf_zone();
         let egap = format!("(({ezone} - {s}*{et}) / {})", s + 1); // between shelves
         let elast = fittings::top_pin_row(&ezone);
 
@@ -388,6 +382,30 @@ impl Cabinet<'_> {
         drill
     }
 
+    /// Where the shelves' part starts (the bottom panel's top face, the base of the pin rows'
+    /// grid), and its clear height: with doors and drawers, the doors' part on the other side
+    /// of the rail.
+    fn shelf_zone(&self) -> (String, String) {
+        let Cabinet {
+            input,
+            eh,
+            et,
+            epl,
+            ech,
+            erail,
+            ..
+        } = self;
+        let bottom_top = format!("{epl} + {et}");
+        match erail {
+            Some(rail) if input.drawers_top => (bottom_top, format!("({rail} - {epl} - {et})")),
+            Some(rail) => (
+                format!("{rail} + {et}"),
+                format!("({eh} - 2*{et} - ({rail}))"),
+            ),
+            None => (bottom_top, ech.clone()),
+        }
+    }
+
     /// The left face of compartment `cell`.
     fn cell_x(&self, cell: u32) -> String {
         let Cabinet { et, ecell, .. } = self;
@@ -408,7 +426,7 @@ impl Cabinet<'_> {
                 body,
                 position,
                 [0, -1, 0],
-                HANDLE_D,
+                &mm(HANDLE_D),
                 &self.et,
                 &what,
             );
