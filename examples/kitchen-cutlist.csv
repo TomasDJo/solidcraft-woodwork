@@ -49,14 +49,20 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 1,864,560,18,"White melamine",,L1,"Base 3 Bottom"
 10,870,560,18,"White melamine",,L1,"Base 1 Side L, Base 1 Side R, Base 2 Side L, Base 2 Side R, Base 3 Side L, Base 3 Side R, Corner Side L, Corner Side R, Base 4 Side L, Base 4 Side R"
 1,870,580,18,"White melamine",,L1 W1,"Base 4 End panel R"
-1,964,700,18,"White melamine",,,"Wall corner Back"
+1,946,664,18,"White melamine",,,"Wall corner Back"
+2,946,946,18,"White melamine",,W1,"Wall corner Shelf 1, Wall corner Shelf 2"
+2,964,90,18,"White melamine",,,"Wall corner Cleat return, Wall corner Wall cleat return"
+1,964,664,18,"White melamine",,,"Wall corner Back return"
 1,964,870,18,"White melamine",,,"Corner Back"
-7,964,964,18,"White melamine",,W1,"Corner Bottom, Corner Top, Corner Shelf 1, Wall corner Bottom, Wall corner Top, Wall corner Shelf 1, Wall corner Shelf 2"
-1,982,700,18,"White melamine",,,"Wall corner Back return"
+3,964,964,18,"White melamine",,W1,"Corner Bottom, Corner Top, Corner Shelf 1"
+2,982,90,18,"White melamine",,,"Wall corner Cleat, Wall corner Wall cleat"
 1,982,870,18,"White melamine",,,"Corner Back return"
+2,982,982,18,"White melamine",,W1,"Wall corner Bottom, Wall corner Top"
 1,1910,560,18,"Oak",yes,L2 W2,"Tall Door"
 2,2100,560,18,"White melamine",,L1,"Tall Side L, Tall Side R"
 1,2100,560,18,"White melamine",,L1 W1,"Tall End panel L"
+1,1018,600,38,"Oak",yes,,"Worktop 2"
+1,3300,600,38,"Oak",yes,,"Worktop 1"
 
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
 "Oak",18,50.766
