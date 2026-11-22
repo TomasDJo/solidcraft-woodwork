@@ -251,3 +251,19 @@ fn a_panel_is_made_in_its_cabinet_and_kept() {
     );
     assert_eq!(moved["translate"][0], json!(318.0 + 300.0));
 }
+
+#[test]
+fn settings_patch_then_show_and_the_hook_names_our_data() {
+    assert_eq!(
+        calls("settings"),
+        ["storage.get", "storage.patch", "storage.get"]
+    );
+    let mut asked = Value::Null;
+    let mut run = |command: &str, args: Value| {
+        asked = json!([command, args]);
+        Ok(json!({"document": {"settings": {"material": "MDF"}}}))
+    };
+    let reply = dialog("cabinet", &json!({}), &mut run).unwrap();
+    assert_eq!(asked, json!(["storage.get", {"plugin": "woodwork"}]));
+    assert_eq!(reply["material"]["default"], "MDF");
+}

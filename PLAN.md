@@ -15,7 +15,7 @@ A SolidCraft plugin for designing cabinets and furniture in sheet goods and timb
   (0.43).
 - 0.44: the dialog previews an edit entry before Run, and the selection is a field in it.
 - 0.45: each entry is also a tool for agents (`woodwork.<entry>`), a `read` entry may not
-  write files, and `storage@0.1` can keep plugin data in a design (we do not use it yet).
+  write files, and `storage@0.1` can keep plugin data in a design (Woodwork settings, 0.46, with the dialog hook).
 - Limits that shape the design: 256 app commands per run, 30 s, 1 MiB result, a manifest of
   at most 64 KiB.
 - Install: zip of `plugin.json` + wasm, via Preferences > Plugins or `plugin.install`.
@@ -122,7 +122,7 @@ Cabinets:
 - [ ] Plinth return: for cabinets on legs, later
 - [ ] Drawer slides in the model (#59)
 - [ ] Hinges in the model, with hinge types (#60)
-- [ ] Settings page: hardware and defaults the other functions use (#61, needs upstream #19979)
+- [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
 - Sink and hob cutouts in a worktop dropped
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats

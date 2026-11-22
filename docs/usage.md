@@ -197,6 +197,21 @@ are fixed shelves and dividers): screw it by hand, and count those screws yourse
 Gives the selected cabinet, or only the selected parts (the doors, say), a board material:
 birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 
+## Woodwork settings
+
+The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
+holes, plinth height and plinth type. Set the ones you want and run it; Keep or an empty field
+leaves what is stored, and the result shows everything stored now. The Cabinet and Corner
+cabinet dialogs then open with these values (the hint says "From Woodwork settings"), in the
+dialog's own unit: a 19.05 mm thickness shows as 0.75 in when Units is Inches. You can still
+change any field before Run. A script's `plugin.run` that leaves a field out gets the stored
+value too.
+
+- The settings are kept in the design (SolidCraft 0.46, `storage@0.1`), not for you as a user:
+  a new design starts with none.
+- Nothing is cleared: to go back to a default, set it to that value.
+- The dialog does not remember the last values you used; only what Woodwork settings stored.
+
 ## Panel
 
 Adds an end panel or a filler to one end of the selected box cabinet. It is part of the cabinet: it
@@ -382,7 +397,9 @@ quarter turn) is drawn from its own front.
   with a default is required there, so the agent sends them all, the defaults with what it wants changed; a
   field the dialog would hide is left out. From SolidCraft 0.46 the same check applies to a
   script's `plugin.run` and `woodwork.<entry>` (except Joinery, Material and Drawing): pass
-  every field the dialog would show.
+  every field the dialog would show. Cabinet and Corner cabinet are the exception (0.46,
+  Woodwork settings): a field left out takes the stored setting, and only then must every
+  field be there.
 - **A cabinet made by 0.1.7 or earlier** in a run is held along the run only: its neighbours
   do not follow its depth.
 - **A design made with the plugin is ordinary bodies, joints and parameters.** It opens in

@@ -15,6 +15,7 @@ mod nesting;
 mod panel;
 mod pdf;
 mod select;
+mod settings;
 
 use kit::check;
 use serde_json::{json, Value};
@@ -823,8 +824,24 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                       "message": message}),
             )
         }
+        "settings" => {
+            let stored = run("storage.get", json!({}))?;
+            run(
+                "storage.patch",
+                json!({"patch": settings::patch(params, &stored)?}),
+            )?;
+            let stored = run("storage.get", json!({}))?;
+            Ok(json!({"settings": stored["document"]["settings"]}))
+        }
         _ => Err(format!("unknown entry `{entry}`")),
     }
+}
+
+/// The dialog hook (`dialog@0.1`): the Cabinet and Corner dialogs' defaults from Woodwork
+/// settings. It runs outside a plugin run, so `storage.get` names our plugin.
+pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
+    let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
+    Ok(settings::fields(entry, values, &stored))
 }
 
 #[cfg(test)]
@@ -832,30 +849,39 @@ mod tests;
 
 #[cfg(target_arch = "wasm32")]
 mod guest {
-    wit_bindgen::generate!({ path: "wit", world: "command-plugin" });
+    wit_bindgen::generate!({ path: "wit", world: "command-dialog-plugin" });
 
     use craft::plugin::types::{FieldFailure, PluginError};
 
     struct Woodwork;
 
+    fn invalid(reason: String) -> PluginError {
+        PluginError::InvalidInput(FieldFailure {
+            field: "params".into(),
+            reason,
+        })
+    }
+
+    fn run(command: &str, args: serde_json::Value) -> Result<serde_json::Value, String> {
+        let reply =
+            craft::plugin::commands::run(command, &args.to_string()).map_err(|e| match e {
+                PluginError::CommandFailed(f) => format!("{}: {}", f.command, f.reason),
+                other => format!("{command}: {other:?}"),
+            })?;
+        serde_json::from_str(&reply).map_err(|e| format!("{command}: bad reply: {e}"))
+    }
+
+    impl exports::craft::plugin::dialog_provider::Guest for Woodwork {
+        fn update_fields(entry: String, values: String) -> Result<String, PluginError> {
+            let values = serde_json::from_str(&values).map_err(|e| invalid(e.to_string()))?;
+            let reply = crate::dialog(&entry, &values, &mut run).map_err(invalid)?;
+            Ok(reply.to_string())
+        }
+    }
+
     impl exports::craft::plugin::entry::Guest for Woodwork {
         fn execute(entry: String, params: String) -> Result<String, PluginError> {
-            let invalid = |reason: String| {
-                PluginError::InvalidInput(FieldFailure {
-                    field: "params".into(),
-                    reason,
-                })
-            };
             let params = serde_json::from_str(&params).map_err(|e| invalid(e.to_string()))?;
-            let mut run = |command: &str, args: serde_json::Value| {
-                let reply = craft::plugin::commands::run(command, &args.to_string()).map_err(
-                    |e| match e {
-                        PluginError::CommandFailed(f) => format!("{}: {}", f.command, f.reason),
-                        other => format!("{command}: {other:?}"),
-                    },
-                )?;
-                serde_json::from_str(&reply).map_err(|e| format!("{command}: bad reply: {e}"))
-            };
             let mut result = crate::execute(&entry, &params, &mut run).map_err(invalid)?;
             let mut write = |folder: &str, name: &str, data: &[u8]| {
                 craft::plugin::files::write_file(folder, name, data).map_err(|e| format!("{e:?}"))

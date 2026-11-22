@@ -63,9 +63,9 @@ materials, joinery and cut lists.
   features, so a design opens without the plugin.
 - Limits per run: 256 app commands, 30 s (native command time included), 1 MiB result. The
   manifest asks for `runtime.permissions.clock` so that `clock.now` gives Unix seconds (0
-  without it), which Drawing uses to stop in time (`lib.rs` `now`). No network access; we keep no plugin
-  data in the design (`storage@0.1`, below) beyond component metadata and the drawing's
-  fingerprints.
+  without it), which Drawing uses to stop in time (`lib.rs` `now`). No network access. Plugin
+  data in the design (`storage@0.1`) holds only Woodwork settings; beyond that the design keeps
+  component metadata and the drawing's fingerprints.
   Files: only `files.write-file` into a folder the manifest asks for under
   `runtime.permissions.files` and the user approves when installing (0.43: the install
   screen asks for a path). The plugin names the grant and a relative path and never learns
@@ -93,9 +93,21 @@ materials, joinery and cut lists.
   against. `plugin.run` through the CLI reports it as `view: {kind: fit}`.
 - `build.py` runs `solidcraft-cli plugin check` on the package: an error fails the build.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
-  `tangency-labs/solidcraft`. A `ui` capability is planned there. `storage@0.1`, plugin data
-  kept in a design, exists from 0.45 ("Plugin data in a design" in `docs/plugins.md`); we do
-  not use it.
+  `tangency-labs/solidcraft`. A `ui` capability is planned there.
+- **Woodwork settings (0.46, `storage@0.1` and `dialog@0.1`).** `settings` writes its fields
+  into our data in the design (`storage.patch {patch: {settings: ...}}`, lengths in mm,
+  `data_format` 1; `settings::patch`). `cabinet` and `corner` have `dialog_hook`: the dialog
+  calls `update-fields` (world `command-dialog-plugin` in `wit/plugin.wit`, added to our 0.1
+  wit as upstream allows), `lib.rs`'s `dialog` reads `storage.get {plugin: "woodwork"}` (the
+  hook runs outside a run, so it must name us) and `settings::fields` answers each stored value
+  as the field's `default`, lengths in the dialog's `units`. The hook is a read entry on a copy
+  of the design, 250 ms and 10M fuel: one command. `plugin.run` and the tools call it once
+  before the entry, filling only keys left out; a hook entry's tool schema has no `required`
+  (checked after the hook, with "is required" and no field name). The hook cannot write, so
+  the last used values are not remembered; settings are per design, not per user. `settings` has
+  the hook too: its three numbers start at the stored value or the Cabinet default, so the app
+  draws them as drag fields kept within their bounds, and `settings::patch` leaves out a number
+  equal to the stored one (or that default), as the hook fills omitted keys for scripts too.
 
 ## Layout
 
@@ -118,6 +130,7 @@ materials, joinery and cut lists.
 | `src/dxf/` | The cutting layouts as DXF R12, a file per sheet, written by hand: sheet, part outlines and names, and holes (read with `model.faces`, mapped onto the part as it lies on the sheet) on a layer per diameter and depth |
 | `src/drawing/` | Shop drawings: a sheet per cabinet in the drawing `Woodwork`, as steps whose args name ids from earlier replies (`$sheet`, `$front`): scale, layout, the dimension corners and the board list as notes |
 | `src/select/` | Finds the selected cabinet and its parts by body name |
+| `src/settings/` | Woodwork settings: the storage patch from its dialog, and the Cabinet and Corner dialogs' defaults from what is stored |
 | `icons/*.svg` | One icon a function, named in its input schema (`x-solidcraft-icon`), shown on the ribbon, in the menu and in the dialog. In the app's icon subset: `viewBox="0 0 64 64"`, absolute `M L C Q A Z` paths, colours from its icon palette only (`crates/look/icons/design/palette.toml` in `tangency-labs/solidcraft`), strokes with round joins and caps. The app leaves out an icon that breaks a rule, without a message |
 | `build.py` | Unit tests, wasm build, package, runs the end-to-end tests, optional install |
 | `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
@@ -130,7 +143,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `cutlist` and `drawing`, all edit.
+Entries today: `cabinet`, `corner`, `edit`, `joinery`, `material`, `panel`, `cutlist`, `drawing` and `settings`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet` and `corner` through the same steps (component, material, place,
@@ -269,7 +282,7 @@ ground), so a builder only returns its commands and `Kit`'s summary.
 
 ## Known limits
 
-- The dialog cannot remember values. A size the user changed stays as typed when Units changes.
+- The dialog cannot remember the last values (only Woodwork settings' stored defaults). A size the user changed stays as typed when Units changes.
 - `select` and cabinet placement (`place`) read world bounding boxes, so they are wrong for
   a cabinet that is rotated off the axes.
 - The cut list measures a board by its world bounding box when the board fills that box, and
