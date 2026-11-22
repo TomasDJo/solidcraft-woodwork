@@ -178,3 +178,43 @@ fn the_cut_list_reads_the_counts_and_sizes_from_the_parameters() {
     );
     assert!(hardware("M", &params).is_empty());
 }
+
+#[test]
+fn dividers_and_the_rail_take_the_second_method() {
+    let p = json!({"name": "K", "width": 1200, "dividers": 2, "joints": "dowels",
+        "joints_inner": "confirmat"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    // a divider's end into the bottom's face: from under the bottom, up into the divider
+    let clear = find(&commands, "K joint Bottom Divider 2 confirmat");
+    assert_eq!(clear["targets"], json!(["K Bottom"]));
+    assert_eq!(clear["axis"], json!([0, 0, 1]));
+    assert_eq!(clear["base"][2], "0 mm + K_thickness - (K_thickness)");
+    let pilot = find(&commands, "K joint Top Divider 1 confirmat pilot");
+    assert_eq!(pilot["targets"], json!(["K Divider 1"]));
+    assert_eq!(pilot["axis"], json!([0, 0, -1]));
+    let row = find(&commands, "K joint Top Divider 1 confirmat row");
+    let count = row["count1"].as_str().unwrap();
+    assert!(
+        count.contains("(K_depth - 12 mm - K_back_thickness)"),
+        "{count}"
+    );
+    assert_eq!(named(&commands, " row"), 4 + 4);
+    let added = |name: &str| {
+        commands
+            .iter()
+            .any(|c| c.0 == "parameters.add" && c.1["name"] == name)
+    };
+    assert!(added("K_dowels") && added("K_confirmats") && added("K_dowel_d"));
+    // the rail between drawers and doors: like the bottom, behind the fronts' line
+    let p = json!({"name": "M", "doors": 1, "drawers": 1, "joints": "none",
+        "joints_inner": "dowels", "fronts": "inset"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    let dowel = find(&commands, "M joint Side R Rail dowels");
+    assert_eq!(dowel["targets"], json!(["M Side R", "M Rail"]));
+    let y = dowel["base"][1].as_str().unwrap();
+    assert!(y.starts_with("M_thickness + (M_joint_edge)"), "{y}");
+    assert_eq!(named(&commands, " row"), 2);
+    // no dividers and no rail: the second method is not read
+    let (plain, _) = crate::cabinet::build(&json!({"name": "K", "joints_inner": "glue"})).unwrap();
+    assert_eq!(named(&plain, " joint "), 0);
+}

@@ -41,9 +41,10 @@ const SIZES: [&str; 23] = [
 
 /// The Edit fields only a box cabinet takes, and only a corner cabinet: `merge` refuses them
 /// for the other kind and the dialog hook hides them. Shrink them as the two kinds catch up.
-const BOX_ONLY: [&str; 9] = [
+const BOX_ONLY: [&str; 10] = [
     "kind",
     "joints",
+    "joints_inner",
     "dividers",
     "doors",
     "drawers",

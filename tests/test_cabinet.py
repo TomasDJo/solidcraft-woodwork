@@ -34,7 +34,7 @@ def test_carcass_pins_and_doors(approval):
 
 def test_dividers_and_a_resize(approval):
     # Dividers: 3 compartments of 2 shelves, pin holes through the dividers.
-    wide = {"width": 1200, "dividers": 2, "shelves": 2, "shelf_pins": True, "joints": "none"}
+    wide = {"width": 1200, "dividers": 2, "shelves": 2, "shelf_pins": True, "joints": "none", "joints_inner": "none"}
     results = cli([plugin(approval, "cabinet", wide), {"command": "inspect.measure", "params": {}}],
                   "--save", str(ROOT / "dist" / "dividers.sc"))
     bodies = {b["name"]: b for b in results[1]["bodies"]}

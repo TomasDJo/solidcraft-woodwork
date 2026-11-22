@@ -120,7 +120,7 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 
 Cabinets:
 - [ ] Corner cabinet: joinery, a thin back
-- [ ] Joinery for dividers and fixed shelves
+- [x] Joinery for dividers and the rail between drawers and doors (`joints_inner`, the second method)
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
 - [x] Worktop over the selected cabinets: runs and corners (butt or mitre), gaps spanned, made again by running it again (#62)

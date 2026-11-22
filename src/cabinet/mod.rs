@@ -11,7 +11,7 @@ mod drawers;
 mod input;
 
 use crate::fittings::{self, PinRows, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH};
-use crate::joint::{Joinery, Joint, CARCASS};
+use crate::joint::{Joinery, Joint, CARCASS, INNER};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
 use input::Input;
@@ -74,9 +74,12 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let eh = parameter("height", h, "outside height, plinth included");
     let ed = parameter("depth", d, "outside depth, back included");
     let et = parameter("thickness", input.t, "panel thickness");
-    let joinery = Joinery::new(&kit, p, (input.t, &et), false)?;
+    // Dividers and the rail between drawers and doors take the second method.
+    let inner = input.dividers > 0.0 || input.mixed;
+    let joinery = Joinery::new(&kit, p, (input.t, &et), inner)?;
     let side_mm = if back == "overlay" { d - input.bt } else { d };
     joinery.fits(CARCASS, side_mm, p, "the sides")?;
+    joinery.fits(INNER, input.shelf_d, p, "the dividers and the rail")?;
     let ebt = match back {
         "none" => mm(0.0),
         _ => parameter("back_thickness", input.bt, "back panel thickness"),
@@ -289,6 +292,23 @@ impl Cabinet<'_> {
         for (k, x) in divider_x.iter().enumerate() {
             let part = format!("Divider {}", k + 1);
             panel(&part, [x, ein, &bottom_top], [et, eshelf_d, ech], false);
+            // its ends into the bottom's top face and the top's underside
+            let mid = format!("{x} + {et}/2");
+            for (face, z, up) in [
+                ("Bottom", bottom_top.clone(), 1),
+                ("Top", top_z.clone(), -1),
+            ] {
+                let joint = Joint {
+                    face: face.into(),
+                    end: part.clone(),
+                    at: [mid.clone(), ein.clone(), z],
+                    into: [0, 0, up],
+                    along: [0, 1, 0],
+                    run: eshelf_d.clone(),
+                    single: false,
+                };
+                self.joinery.joint(INNER, &joint);
+            }
         }
         // The same shelves in every compartment.
         for cell in 0..=n {
@@ -309,6 +329,18 @@ impl Cabinet<'_> {
         }
         if let Some(rail) = erail {
             panel("Rail", [et, ein, rail], [eiw, eshelf_d, et], false);
+            for (side, x, into) in [("Side L", et, 1), ("Side R", &right_x, -1)] {
+                let joint = Joint {
+                    face: side.into(),
+                    end: "Rail".into(),
+                    at: [x.clone(), ein.clone(), format!("{rail} + {et}/2")],
+                    into: [into, 0, 0],
+                    along: [0, 1, 0],
+                    run: eshelf_d.clone(),
+                    single: false,
+                };
+                self.joinery.joint(INNER, &joint);
+            }
         }
         // A parameter while it is used, or once made (as the reveal): an edit takes it up.
         let kick = match matches!(plinth, "board" | "notch") || kit.has("plinth_setback") {

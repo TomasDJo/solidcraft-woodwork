@@ -62,8 +62,9 @@ pub struct Joinery<'a> {
     cuts: RefCell<Commands>,
 }
 
-/// Which of a cabinet's two methods a joint takes: the carcass's (or `1`, the inside's).
+/// Which of a cabinet's two methods a joint takes: the carcass's, or the inside's.
 pub const CARCASS: usize = 0;
+pub const INNER: usize = 1;
 
 impl<'a> Joinery<'a> {
     /// Reads `joints` (the carcass) and `joints_inner` (dividers and the rail, when `inner`

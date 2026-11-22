@@ -407,7 +407,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   drawers at the top or the bottom (`drawers_at`, cabinet and Edit) and a fixed `<Name> Rail`
   between the sides, centred behind the reveal between drawers and doors (at y = t when
   inset, as the shelves); the shelves and pin rows are on the doors' side of it. The rail is
-  not drilled by Joinery. `drawer_height` (beside doors each front, 150 mm when 0; drawers
+  not drilled by the older Joinery entry (`joints_inner` does it). `drawer_height` (beside doors each front, 150 mm when 0; drawers
   only, the top one with the rest equal) is the parameter `<Prefix>_drawer_height` only while
   it is used; an edit that stops using it sets it to 0 (`Kit::has`), so the next Edit does not
   take the old value up again, and an Edit that takes the doors away sets it to 0 unless it
@@ -441,6 +441,9 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
 - **Joinery at build** (`src/joint/`): the cabinet's `joints` field (carcass: sides to bottom and
   top, a sink base's rails one fastener each, `Joint::single`) is `none`, `dowels` (the dialog's
   default) or `confirmat`; absent is `none`, so a cabinet made before rebuilds as it was.
+  `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
+  doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
+  rail into the sides, rows along the shelves' depth from `ein`.
   `Joinery::new` reads it, checks the sizes and makes the parameters they need, once each
   (`<Prefix>_joint_spacing`, `_joint_edge`, `_dowel_d`, `_dowel_length`: dialog fields in the
   dialog's unit, `edit::SIZES`, so Edit takes them from Parameters and only changes the
@@ -456,7 +459,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   <face> <end> <method>`, `... pilot`, `... row`, in the cabinet's folder; the old Joinery entry
   refuses such a cabinet ("already has joinery"), and Edit with a method of its own drops the
   old entry's remembered `joinery`. A dowel's depth in the face is `min(t - 5 mm, (L + 2 mm)/2)`.
-  Corner cabinets, dividers and the rail get none yet. The older Joinery entry covers the four
+  Corner cabinets get none yet; fixed shelves are not a thing (they rest on pins or are the
+  rail). The older Joinery entry covers the four
   carcass corners only, and tells an overlaid back from a grooved one by comparing the side
   depth with the depth parameter.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.

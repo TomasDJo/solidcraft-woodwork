@@ -60,3 +60,22 @@ def test_a_sink_base_and_an_old_cabinet(approval):
     assert cylinders(measure, "S Bottom") == 10
     assert cylinders(measure, "O Bottom") == 6 and cylinders(measure, "O Side L") == 6
     assert hardware(results[7]) == {"Hinge, cup": 4, "Dowel, 8 x 35 mm": 10 + 4 + 12}, hardware(results[7])
+
+
+def test_dividers_and_the_rail(approval):
+    # W: 1200 wide, two dividers doweled into the bottom and the top (the inside's method), the
+    # sides with confirmat. M: a drawer over a door, the rail screwed to the sides.
+    results = cli([plugin(approval, "cabinet", {"name": "W", "width": 1200, "dividers": 2, "shelves": 1,
+                                                "joints": "confirmat", "joints_inner": "dowels", "place": "origin"}),
+                   plugin(approval, "cabinet", {"name": "M", "doors": 1, "drawers": 1, "joints": "none",
+                                                "joints_inner": "confirmat", "place": "origin"}),
+                   MEASURE, faces("W Divider 1"), plugin(approval, "cutlist")])
+    measure = results[2]
+    # shelves 542 deep (back groove): 442 between the first and last, 4 a joint; 2 ends a divider
+    assert cylinders(measure, "W Divider 1") == 8, cylinders(measure, "W Divider 1")
+    assert cylinders(measure, "W Bottom") == 10 + 8 and cylinders(measure, "W Top") == 10 + 8
+    ends = holes(results[3], 4)
+    assert len(ends) == 8 and {e[2] for e in ends} == {18 + 12, 702 - 12}, ends
+    assert cylinders(measure, "M Rail") == 8 and cylinders(measure, "M Bottom") == 0
+    assert hardware(results[4]) == {"Hinge, cup": 2, "Drawer slide, pair": 1, "Dowel, 8 x 35 mm": 16,
+                                    "Confirmat screw, 7 x 50 mm": 20 + 8}, hardware(results[4])

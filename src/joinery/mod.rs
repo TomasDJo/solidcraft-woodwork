@@ -13,8 +13,7 @@ const MAX_SPACING: f64 = 250.0;
 /// `cabinet` is the box cabinet's kind. A `sink` base has no top: its two rails get the top
 /// holes, the first in the front one and the last in the back one.
 // ponytail: the `Rail` between drawers and doors is not drilled (its height depends on the
-// drawer fields, which Joinery does not read); it is screwed by hand like a fixed shelf, until
-// joinery for dividers and fixed shelves (PLAN.md).
+// drawer fields, which Joinery does not read): the cabinet's own `joints_inner` does it.
 /// The commands run with the cabinet's component active.
 pub fn build(
     found: &select::Cabinet,
