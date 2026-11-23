@@ -6,11 +6,16 @@ on:
     tags: ["v*"]
   pull_request:
 
+# A newer push to the same pull request or branch cancels the older run.
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: write # to attach the package to a release; pull requests from forks get read
 
 env:
-  SOLIDCRAFT: 0.46.1 # the app version the end-to-end tests run against
+  SOLIDCRAFT: 0.47.0 # the app version the end-to-end tests run against
 
 jobs:
   build:
