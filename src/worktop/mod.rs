@@ -16,6 +16,10 @@ const DOG: f64 = 20.0; // dog hole diameter, mm
 const GRID: f64 = 96.0; // between dog holes, mm: the MFT pattern
 const EDGE: f64 = 60.0; // least from a dog hole to the piece's edge, mm
 
+// ponytail: the tool's shelf is a fixed 18 mm board on 18 x 40 battens, not fields.
+const BOARD: f64 = 18.0; // the tool shelf's thickness, mm
+const BATTEN: [f64; 2] = [18.0, 40.0]; // a batten under it: thick against the side, high
+
 type V = [f64; 2];
 
 fn dot(a: V, b: V) -> f64 {
@@ -379,6 +383,109 @@ pub fn plan(
     Ok((pieces, top.map(|t| t.0).unwrap_or_default()))
 }
 
+/// The cabinet under a tool's opening on `piece` (a rectangle on it, as `fits` takes it): the
+/// one of `cabinets` whose two sides, each square to the run, stand either side of the opening
+/// with its middle within their depth. Its name, the tool shelf's rectangle on the piece
+/// (between the sides' inner faces, from the back's front face to the sides' front edge),
+/// and its floor: the top of its `Bottom`, or its lowest point without one.
+fn under(
+    measure: &Value,
+    cabinets: &[String],
+    piece: &Piece,
+    opening: [f64; 4],
+) -> Result<(String, [f64; 4], f64), String> {
+    let (s, y0) = (piece.start(), piece.wall - piece.depth);
+    let (u0, u1) = (s + opening[0], s + opening[2]);
+    let middle = y0 + (opening[1] + opening[3]) / 2.0;
+    let bbox = |name: String| {
+        let all = measure["bodies"].as_array().into_iter().flatten();
+        all.into_iter()
+            .find(|b| b["name"] == name.as_str())
+            .cloned()
+    };
+    for name in cabinets {
+        let c = select::named(measure, name)?;
+        let [l, r] = c
+            .sides
+            .map(|side| (span(side, piece.right), span(side, piece.back)));
+        let square = |(a, w): ((f64, f64), (f64, f64))| a.1 - a.0 < w.1 - w.0;
+        let (left, right) = match l.0 .0 <= r.0 .0 {
+            true => (l, r),
+            false => (r, l),
+        };
+        let front = left.1 .0.max(right.1 .0);
+        let back = left.1 .1.min(right.1 .1);
+        let fits = square(l) && square(r) && left.0 .1 <= u0 + 1e-6 && u1 <= right.0 .0 + 1e-6;
+        if !fits || !(front..=back).contains(&middle) {
+            continue;
+        }
+        // A grooved back stands between the sides, an overlaid one behind them.
+        let back = match c.back == Plan::default() {
+            true => back,
+            false => span(c.back, piece.back).0.min(back),
+        };
+        let floor = match bbox(format!("{name} Bottom")) {
+            Some(b) => b["bbox"]["max"][2].as_f64().unwrap_or(c.min[2]),
+            None => c.min[2],
+        };
+        let shelf = [left.0 .1 - s, front - y0, right.0 .0 - s, back - y0];
+        check(
+            opening[3] <= shelf[3] + 1e-6,
+            "the tool's opening reaches over the cabinet's back",
+        )?;
+        return Ok((name.clone(), shelf, floor));
+    }
+    Err("the tool's opening must lie between the sides of one cabinet".into())
+}
+
+/// The boards of `cabinet` that `space` (a world box: min, max) passes through and that may
+/// be cut (`cuttable`: the top and a sink base's rails, which get the tool's opening too). Any
+/// other body of the cabinet in it (a shelf, a divider, a door) is refused; its sides and back
+/// may touch it.
+fn crossing(
+    measure: &Value,
+    cabinet: &str,
+    space: [[f64; 3]; 2],
+    cuttable: &[&str],
+) -> Result<Vec<String>, String> {
+    let mut cut = vec![];
+    for body in measure["bodies"].as_array().into_iter().flatten() {
+        let name = body["name"].as_str().unwrap_or_default();
+        if select::owner(measure, name) != Some(cabinet) {
+            continue;
+        }
+        let at = |end: &str, i: usize| body["bbox"][end][i].as_f64().unwrap_or(f64::NAN);
+        let inside = (0..3).all(|i| {
+            at("min", i) < space[1][i] - TOLERANCE && at("max", i) > space[0][i] + TOLERANCE
+        });
+        let part = &name[cabinet.len() + 1..];
+        if !inside || ["Side L", "Side R", "Back"].contains(&part) {
+            continue;
+        }
+        check(
+            cuttable.contains(&part),
+            &format!("`{name}` is in the tool's way: make the cabinet without it"),
+        )?;
+        cut.push(name.to_string());
+    }
+    Ok(cut)
+}
+
+/// A world box (min, max) in the cabinet's own frame, where `placed` (`edit::placement`'s
+/// matrix: three rows of a turn and a shift) puts it: corner and size, as `solid.box` takes
+/// them. The cabinet's parent is taken to stand on the origin, as the worktop's does.
+pub fn local(world: [[f64; 3]; 2], placed: &Value) -> ([f64; 3], [f64; 3]) {
+    let m = |r: usize, c: usize| placed[r][c].as_f64().unwrap_or(0.0);
+    // the turn is square, so its inverse is its transpose
+    let back = |p: [f64; 3]| {
+        let d = [p[0] - m(0, 3), p[1] - m(1, 3), p[2] - m(2, 3)];
+        [0, 1, 2].map(|c| round((0..3).map(|r| m(r, c) * d[r]).sum()))
+    };
+    let (a, b) = (back(world[0]), back(world[1]));
+    let lo = [0, 1, 2].map(|i| a[i].min(b[i]));
+    (lo, [0, 1, 2].map(|i| round(a[i].max(b[i]) - lo[i])))
+}
+
 /// How many dog holes fit between `lo` and `hi`, their centres at least `margin` in, on the
 /// grid and centred, and where the first one's centre is. None when not even one fits.
 fn grid(lo: f64, hi: f64, margin: f64) -> Option<(usize, f64)> {
@@ -398,11 +505,13 @@ fn body(name: &str, n: usize, count: usize) -> String {
     }
 }
 
-/// Whether `body` is a piece of the worktop `name`: the name, or the name and a number.
+/// Whether `body` is a piece of the worktop `name`: the name, or the name and a number; or
+/// one of its tool's parts.
 pub fn piece_of(body: &str, name: &str) -> bool {
     let rest = body.strip_prefix(name);
     rest.is_some_and(|r| {
         r.is_empty()
+            || [" Tool shelf", " Tool batten L", " Tool batten R"].contains(&r)
             || r.strip_prefix(' ')
                 .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
     })
@@ -584,10 +693,102 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
         )?;
         cut("cut-out", opening, top, thickness);
     }
+    let mut parts = names.clone();
+    let mut tool = Value::Null;
+    if choice("tool", "none", &["none", "benchtop"])? == "benchtop" {
+        let (w, d, h) = (
+            size("tool_width", 640.0)?,
+            size("tool_depth", 540.0)?,
+            size("tool_height", 300.0)?,
+        );
+        check(
+            w > 0.0 && d > 0.0 && h > 0.0,
+            "the tool's width, depth and height must be more than 0",
+        )?;
+        let (tx, ty, gap) = (
+            size("tool_x", 600.0)?,
+            size("tool_y", 300.0)?,
+            size("tool_clearance", 3.0)?,
+        );
+        let (w, d) = (w / 2.0 + gap, d / 2.0 + gap);
+        let opening = [tx - w, ty - d, tx + w, ty + d];
+        check(
+            first.fits(opening),
+            &format!("the tool's opening does not fit on `{target}`"),
+        )?;
+        let (cabinet, shelf, floor) = under(measure, cabinets, first, opening)?;
+        let surface = top + thickness;
+        let shelf_top = surface - h;
+        check(
+            shelf_top <= top + 1e-6,
+            "tool height: the tool is shorter than the worktop is thick, so the shelf would be above the worktop's underside",
+        )?;
+        check(
+            shelf_top - BOARD - BATTEN[1] >= floor - 1e-6,
+            &format!("tool height: the tool is taller than `{cabinet}` is deep inside, so the shelf would be below the cabinet's bottom"),
+        )?;
+        // The tool's space, from its shelf up to the worktop: the cabinet's top and rails get
+        // the opening too, anything else of the cabinet there is in the way.
+        let (at, size) = first.world_box(opening);
+        let space = [
+            [at[0], at[1], shelf_top],
+            [at[0] + size[0], at[1] + size[1], top],
+        ];
+        let cut = crossing(
+            measure,
+            &cabinet,
+            space,
+            &["Top", "Rail front", "Rail back"],
+        )?;
+        // and nothing where the shelf and its battens go
+        let (at, size) = first.world_box(shelf);
+        let under = [
+            [at[0], at[1], shelf_top - BOARD - BATTEN[1]],
+            [at[0] + size[0], at[1] + size[1], shelf_top],
+        ];
+        crossing(measure, &cabinet, under, &[])?;
+        let piece = |key: &str, r: [f64; 4], z: f64, height: f64, operation: &str| {
+            let (at, size) = first.world_box(r);
+            let body = format!("{name} {key}");
+            let mut args = json!({
+                "length": mm(size[0]), "width": mm(size[1]), "height": mm(height),
+                "corner": [at[0], at[1], round(z)], "operation": operation, "name": body,
+            });
+            match operation {
+                "cut" => args["targets"] = json!([target]),
+                _ => args["body_name"] = json!(body),
+            }
+            kit.push(("solid.box", args));
+            body
+        };
+        piece("tool opening", opening, top, thickness, "cut");
+        let bodies = vec![
+            piece("Tool shelf", shelf, shelf_top - BOARD, BOARD, "new"),
+            piece(
+                "Tool batten L",
+                [shelf[0], shelf[1], shelf[0] + BATTEN[0], shelf[3]],
+                shelf_top - BOARD - BATTEN[1],
+                BATTEN[1],
+                "new",
+            ),
+            piece(
+                "Tool batten R",
+                [shelf[2] - BATTEN[0], shelf[1], shelf[2], shelf[3]],
+                shelf_top - BOARD - BATTEN[1],
+                BATTEN[1],
+                "new",
+            ),
+        ];
+        parts.extend(bodies.iter().cloned());
+        tool = json!({
+            "cabinet": cabinet, "shelf_z": round(shelf_top), "bodies": bodies,
+            "cut": {"targets": cut, "min": space[0], "max": space[1]},
+        });
+    }
     let (commands, _) = kit.finish(vec![], [0.0; 3]);
-    let summary = json!({
+    let mut summary = json!({
         "name": name,
-        "bodies": names,
+        "bodies": parts,
         "pieces": (pieces.iter().zip(&names))
             .map(|(piece, body)| json!({"name": body, "length": round(piece.length()), "depth": round(piece.depth)}))
             .collect::<Vec<_>>(),
@@ -596,6 +797,9 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
         "dog_holes": holes,
         "cabinets": cabinets,
     });
+    if !tool.is_null() {
+        summary["tool"] = tool;
+    }
     Ok((commands, summary))
 }
 

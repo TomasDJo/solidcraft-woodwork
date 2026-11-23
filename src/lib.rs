@@ -752,6 +752,36 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             // ponytail: made in the active component at world coordinates, so that component
             // must stand on the origin, unturned, as a room component normally does.
             let (mut summary, made) = component(built, &params, "Oak", run)?;
+            // The tool's shelf and battens are plywood boards, whatever the worktop is.
+            if let Some(parts) = summary["tool"]["bodies"].as_array() {
+                let parts: Vec<String> = parts
+                    .iter()
+                    .filter_map(|b| b.as_str())
+                    .map(String::from)
+                    .collect();
+                material::assign(run, "Birch plywood", &parts)?;
+            }
+            // The cabinet's top (or a sink base's rails) gets the opening too, in its own
+            // component, so the tool drops through.
+            // ponytail: a feature of the cabinet that it does not remember: Edit cabinet makes
+            // the top whole again (run Worktop again), and a tool moved on a run again leaves
+            // the old opening in the top.
+            let cut = &summary["tool"]["cut"];
+            if let (Some(cabinet), Some(targets)) = (
+                summary["tool"]["cabinet"].as_str(),
+                cut["targets"].as_array().filter(|t| !t.is_empty()),
+            ) {
+                let world = ["min", "max"]
+                    .map(|end| [0, 1, 2].map(|i| cut[end][i].as_f64().unwrap_or_default()));
+                let tree = run("component.list", json!({}))?;
+                let (corner, size) = worktop::local(world, &edit::placement(&tree, cabinet)?.1);
+                let args = json!({
+                    "length": kit::mm(size[0]), "width": kit::mm(size[1]), "height": kit::mm(size[2]),
+                    "corner": corner, "operation": "cut", "targets": targets,
+                    "name": format!("{name} tool opening in {cabinet}"),
+                });
+                inside(cabinet, vec![("solid.box", args)], run)?;
+            }
             run(
                 "occurrence.ground",
                 json!({"occurrence": made["occurrence"], "grounded": true}),

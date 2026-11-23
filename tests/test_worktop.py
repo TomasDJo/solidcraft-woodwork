@@ -130,3 +130,58 @@ def test_a_bench_top_with_dog_holes_and_a_rebated_cut_out(approval):
     assert cylinders(results[7], "Bench top") == 36 and volume(results[7], "Bench top") == volume(measure, "Bench top")
     names = [c["name"] for c in results[8]["components"]]
     assert names.count("Bench top") == 1 and "Worktop" not in names, names
+
+
+def test_a_tool_station_flush_with_the_top(approval):
+    # S is 900 wide and 650 deep, moved 1000 along X: x 550 to 1450, y -325 to 325, top at 720
+    tool = {"tool": "benchtop", "tool_width": 640, "tool_depth": 540, "tool_height": 300,
+            "tool_x": 450, "tool_y": 345, "tool_clearance": 3}
+    saved = ROOT / "dist" / "worktop-tool.sc"
+    results = cli([plugin(approval, "cabinet", {"name": "S", "width": 900, "depth": 650, "shelves": 0}),
+                   unground("S"), move("S", 1000), pick("S Top"), plugin(approval, "worktop", tool), MEASURE, plugin(approval, "cutlist"),
+                   # run again from its piece with the dialog's defaults: made as it was, tool and all
+                   pick("Worktop"), plugin(approval, "worktop"), MEASURE,
+                   # the cabinet as it was made, for its top's volume
+                   plugin(approval, "cabinet", {"name": "T", "width": 900, "depth": 650, "shelves": 0}), MEASURE],
+                  "--save", str(saved))
+    made, measure = results[4]["result"], results[5]
+    assert made["tool"]["cut"]["targets"] == ["S Top"], made
+    # the cabinet's top has the same opening, so the tool drops through
+    whole = volume(results[11], "T Top")
+    assert abs(volume(measure, "S Top") - (whole - 646 * 546 * 18)) < 1, (volume(measure, "S Top"), whole)
+    assert made["tool"]["cabinet"] == "S" and made["tool"]["shelf_z"] == 458, made
+    box = boxes(measure)
+    # the opening, 646 x 546, through the worktop
+    assert box["Worktop"] == [550, -365, 720, 1450, 325, 758], box["Worktop"]
+    assert volume(measure, "Worktop") == 900 * 690 * 38 - 646 * 546 * 38, volume(measure, "Worktop")
+    # the shelf between the sides' inner faces, from the back's front face to the sides' front
+    # edge, its top 300 under the surface (758)
+    back = box["S Back"][1]
+    assert box["Worktop Tool shelf"] == [568, -325, 440, 1432, back, 458], (box["Worktop Tool shelf"], back)
+    # a batten under it against each side
+    assert box["Worktop Tool batten L"] == [568, -325, 400, 586, back, 440], box["Worktop Tool batten L"]
+    assert box["Worktop Tool batten R"] == [1414, -325, 400, 1432, back, 440], box["Worktop Tool batten R"]
+    materials = {b["name"]: b["material"] for b in measure["bodies"]}
+    assert materials["Worktop"] == "Oak" and materials["Worktop Tool shelf"] == "Birch plywood", materials
+    # the shelf and battens are boards in the cut list, the worktop is bought to length
+    listed = results[6]["result"]
+    assert [w["part"] for w in listed["worktops"]] == ["Worktop"], listed["worktops"]
+    rows = [name for row in listed["parts"] for name in row["parts"]]
+    for part in ("Worktop Tool shelf", "Worktop Tool batten L", "Worktop Tool batten R"):
+        assert part in rows, rows
+    again = results[8]["result"]
+    assert again["replaced"] == ["Worktop"] and again["tool"]["shelf_z"] == 458, again
+    assert boxes(results[9])["Worktop Tool shelf"] == box["Worktop Tool shelf"]
+    assert volume(results[9], "Worktop") == volume(measure, "Worktop")
+    assert volume(results[9], "S Top") == volume(measure, "S Top")
+    # put back where it stood
+    assert boxes(results[9])["S Side L"] == box["S Side L"], boxes(results[9])["S Side L"]
+
+
+def test_a_tool_too_short_is_refused(approval):
+    steps = [plugin(approval, "cabinet", {"name": "S", "width": 900, "depth": 650}), pick("S Top"),
+             plugin(approval, "worktop", {"tool": "benchtop", "tool_x": 450, "tool_y": 345, "tool_height": 20})]
+    script = ROOT / "dist" / "refused-tool.json"
+    script.write_text(json.dumps(steps), encoding="utf-8")
+    done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
+    assert done.returncode and "the shelf would be above the worktop's underside" in done.stderr, done.stderr
