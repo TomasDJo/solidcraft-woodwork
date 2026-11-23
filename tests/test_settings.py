@@ -129,15 +129,18 @@ def test_plinth_fronts_cut_list_and_worktop_from_the_settings(approval):
 
 
 def test_apply_to_selected(approval):
-    # A, B and W made with the defaults; Settings with 19 mm boards and confirmat screws applied
-    # to A and W: they are built again with them, in place, B is not. W, a wall unit without a
-    # plinth, keeps none though the settings have one. Run again: nothing left to do.
+    # A, B and W made with the defaults; Settings with 19 mm boards and biscuits applied to A
+    # and W: they are built again with them, in place, B is not. W, a wall unit without a
+    # plinth, keeps none though the settings have one. Run again: nothing left to do. Shallow
+    # cabinets without shelves and biscuits (one cut a row) keep the apply run well under the
+    # app's 30 s on CI: confirmat in full-size cabinets took 7 s here, about 3 times that on CI.
     def pick(*names):
         return [{"type": "body", "name": n} for n in names]
-    new = {"thickness": 19, "joints": "confirmat", "plinth": 120, "apply": "yes"}
-    results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": "yes"}), select("A Side R"),
-                   plugin(approval, "cabinet", {"name": "B", "place": "right", "plinth": "yes"}),
-                   plugin(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin"}),
+    new = {"thickness": 19, "joints": "biscuit", "plinth": 120, "apply": "yes"}
+    light = {"shelves": 0, "depth": 300}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": "yes", **light}), select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "place": "right", "plinth": "yes", **light}),
+                   plugin(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin", **light}),
                    MEASURE,
                    setting(approval, {**new, "selection": pick("A Top", "W Side L")}),
                    MEASURE, plugin(approval, "cutlist"),
@@ -152,7 +155,7 @@ def test_apply_to_selected(approval):
     assert after["A Bottom"][2] == 120 and after["W Bottom"][2] == 0, (after["A Bottom"], after["W Bottom"])
     assert after["B Side L"] == before["B Side L"] and after["A Side L"][0] == before["A Side L"][0]
     hardware = {h["item"]: h["qty"] for h in results[7]["result"]["hardware"]}
-    assert hardware["Confirmat screw, 7 x 50 mm"] == 24 and "Dowel, 8 x 35 mm" in hardware, hardware
+    assert hardware["Biscuit, #20"] == 16 and "Dowel, 8 x 35 mm" in hardware, hardware
     assert results[8]["result"]["applied"] == [], results[8]
     assert "applied" not in results[9]["result"] and boxes(results[10])["B Side L"] == before["B Side L"], results[9]
 
