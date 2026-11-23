@@ -149,3 +149,18 @@ def test_saved_as_dxf(approval):
         # The sheet drawing reads back into a sketch.
         back = cli([{"command": "sketch.insert_dxf", "params": {"path": str(folder / names[0])}}])[0]
         assert back["curves"] >= 4 * (len(listed["layouts"][0]["parts"]) + 2), back
+
+
+def test_corner_l_boards_show_their_outline(approval):
+    # A one-piece L-shaped corner (900 x 900, 560 deep): its bottom, top and shelf are laid out
+    # as their 864 mm square but carry their open corner, 322 x 322, which the PDF and DXF draw;
+    # nothing else goes there. Split boards and the diagonal's have none.
+    results = cli([plugin(approval, "corner", {"name": "C"}), plugin(approval, "cutlist"),
+                   plugin(approval, "corner", {"name": "D", "shape": "diagonal", "place": "origin"}),
+                   plugin(approval, "cutlist")])
+    laid = {p["part"]: p for layout in results[1]["result"]["layouts"] for p in layout["parts"]}
+    for name in ("C Bottom", "C Top", "C Shelf 1"):
+        assert [round(v) for v in laid[name].get("corner", [])] == [322, 322], laid[name]
+    assert not [n for n, p in laid.items() if "corner" in p and n.split()[1] in ("Side", "Back")], laid
+    laid = {p["part"]: p for layout in results[3]["result"]["layouts"] for p in layout["parts"]}
+    assert "corner" not in laid["D Bottom"], laid["D Bottom"]

@@ -556,9 +556,21 @@ fn cutting_diagrams(doc: &mut Doc, list: &Value) {
             for p in sheet["parts"].as_array().unwrap_or(&none) {
                 let at = |key: &str| p[key].as_f64().unwrap_or(0.0) * scale;
                 let (x, y, w, h) = (x0 + at("x"), y0 + at("y"), at("w"), at("h"));
-                doc.raw(&format!(
-                    "1 g {INK} G 0.6 w {x:.2} {y:.2} {w:.2} {h:.2} re B\n"
-                ));
+                // An L board's real outline (its open corner is not laid out on), the label
+                // on its bigger leg.
+                let corner = crate::dxf::corner(p).map(|c| c.map(|v| v * scale));
+                let points = crate::dxf::part_outline(x, y, w, h, corner);
+                let path: Vec<String> = (points.iter().enumerate())
+                    .map(|(k, (px, py))| {
+                        format!("{px:.2} {py:.2} {}", if k == 0 { "m" } else { "l" })
+                    })
+                    .collect();
+                doc.raw(&format!("1 g {INK} G 0.6 w {} h B\n", path.join(" ")));
+                let (w, h) = match corner {
+                    Some([cx, cy]) if w * (h - cy) >= (w - cx) * h => (w, h - cy),
+                    Some([cx, _]) => (w - cx, h),
+                    None => (w, h),
+                };
                 let Some(i) = row(p) else {
                     continue;
                 };

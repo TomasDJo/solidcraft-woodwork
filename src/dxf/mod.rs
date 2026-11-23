@@ -151,11 +151,36 @@ fn pair(out: &mut String, code: u32, value: &str) {
 
 /// A closed rectangle: R12 has no LWPOLYLINE, so a POLYLINE of four VERTEXes.
 fn rect(out: &mut String, layer: &str, x: f64, y: f64, w: f64, h: f64) {
+    outline(
+        out,
+        layer,
+        &[(x, y), (x + w, y), (x + w, y + h), (x, y + h)],
+    );
+}
+
+/// A part's outline: its rectangle, or an L with its open `corner` (along x and y) cut out
+/// of the far corner (`cutlist`'s `corner`).
+pub fn part_outline(x: f64, y: f64, w: f64, h: f64, corner: Option<[f64; 2]>) -> Vec<(f64, f64)> {
+    match corner {
+        Some([cx, cy]) => vec![
+            (x, y),
+            (x + w, y),
+            (x + w, y + h - cy),
+            (x + w - cx, y + h - cy),
+            (x + w - cx, y + h),
+            (x, y + h),
+        ],
+        None => vec![(x, y), (x + w, y), (x + w, y + h), (x, y + h)],
+    }
+}
+
+/// A closed polyline through `points`.
+fn outline(out: &mut String, layer: &str, points: &[(f64, f64)]) {
     pair(out, 0, "POLYLINE");
     pair(out, 8, layer);
     pair(out, 66, "1");
     pair(out, 70, "1"); // closed
-    for (px, py) in [(x, y), (x + w, y), (x + w, y + h), (x, y + h)] {
+    for &(px, py) in points {
         pair(out, 0, "VERTEX");
         pair(out, 8, layer);
         pair(out, 10, &num(px, 0.01));
@@ -164,6 +189,11 @@ fn rect(out: &mut String, layer: &str, x: f64, y: f64, w: f64, h: f64) {
     }
     pair(out, 0, "SEQEND");
     pair(out, 8, layer);
+}
+
+/// A laid part's open corner, when it is an L board.
+pub fn corner(part: &Value) -> Option<[f64; 2]> {
+    Some([part["corner"][0].as_f64()?, part["corner"][1].as_f64()?])
 }
 
 /// One sheet's layout (`size, parts` as `cutlist` lays it out, a part with its `holes` from
@@ -188,7 +218,14 @@ pub fn render(layout: &Value, trim: f64) -> String {
     for part in layout["parts"].as_array().into_iter().flatten() {
         let size = |key: &str| part[key].as_f64().unwrap_or(0.0);
         let (x, y, w, h) = (size("x"), size("y"), size("w"), size("h"));
-        rect(&mut e, "OUTLINE", x, y, w, h);
+        let corner = corner(part);
+        outline(&mut e, "OUTLINE", &part_outline(x, y, w, h, corner));
+        // On an L, the name goes on its bigger leg.
+        let (w, h) = match corner {
+            Some([cx, cy]) if w * (h - cy) >= (w - cx) * h => (w, h - cy),
+            Some([cx, _]) => (w - cx, h),
+            None => (w, h),
+        };
         // The name along the part's longer side, as big as fits.
         let name = part["part"].as_str().unwrap_or("");
         let chars = name.chars().count().max(1) as f64;

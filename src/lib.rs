@@ -960,14 +960,23 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // ponytail: one more command per turned board, so a design with more than about
             // 250 boards standing at an angle runs into the 256-command limit.
             let mut local = std::collections::BTreeMap::new();
+            // A corner cabinet's L boards fill no box, so they are among these: their open
+            // corners from the same mesh (`_corners`, drawn in the layouts).
+            let (l_boards, mut corners) = (cutlist::l_boards(&design), serde_json::Map::new());
             for body in cutlist::turned(&measure) {
                 let mesh = run("model.mesh", json!({"body": body, "tolerance": 1.0}))?;
+                if let Some(corner) =
+                    cutlist::open_corner(&mesh).filter(|_| l_boards.contains(&body))
+                {
+                    corners.insert(body.clone(), json!(corner));
+                }
                 local.insert(body, cutlist::extents(&mesh));
             }
             let mut params = params.clone();
             settings::design(entry, &mut params, stored);
             params["_notched"] = json!(cutlist::notched(&design));
             params["_grooved"] = json!(cutlist::grooved(&design));
+            params["_corners"] = Value::Object(corners);
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
