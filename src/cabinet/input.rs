@@ -61,6 +61,8 @@ pub struct Input<'a> {
     /// Wooden runners (`slide_type` wood): the bottom runs in a groove in each side, this deep,
     /// with this much play round it. `None` on metal slides.
     pub runner: Option<[f64; 2]>,
+    /// Undermount slides (`slide_type` under_partial or under_full).
+    pub under: bool,
     pub drawers_top: bool,
     /// The doors' height, and the lowest drawer front's lower edge.
     pub door_h: f64,
@@ -338,20 +340,30 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !wood || drawers == 0.0 || ((3.0..=t - 6.0).contains(&runner[0]) && (0.0..runner[0]).contains(&runner[1])),
         "the runner groove must be 3 mm deep up to the panel thickness less 6 mm, with less play than its depth",
     )?;
+    // Undermount (Blum's rule): the box 42 mm narrower inside than the opening, which leaves
+    // room for sides of 16 mm at most; the box as long as the slide, which fits the inside.
+    let under = kind_of.starts_with("under_");
     check(
-        wood || drawers == 0.0 || box_d >= MIN_SLIDE,
+        !under || drawers == 0.0 || box_t[0] <= 16.0,
+        "undermount slides need drawer box sides of 16 mm or less",
+    )?;
+    check(
+        wood || under || drawers == 0.0 || box_d >= MIN_SLIDE,
         "too shallow for drawers: the boxes need 250 mm slides at least",
     )?;
-    let slide = match drawers > 0.0 && !wood {
-        true => {
-            let field = p.get("slide_length").and_then(Value::as_str);
-            crate::hardware::slide_length(field.unwrap_or("auto"), kit.unit, box_d)?
+    let field = p.get("slide_length").and_then(Value::as_str);
+    let field = field.unwrap_or("auto");
+    let slide = match (drawers > 0.0 && !wood, under) {
+        (true, false) => crate::hardware::slide_length(field, kit.unit, box_d)?,
+        (true, true) => {
+            let inside = if sink { shelf_d / 2.0 } else { shelf_d };
+            crate::hardware::under_length(field, kit.unit, inside)?
         }
-        false => (0.0, ""),
+        (false, _) => (0.0, ""),
     };
     let named = crate::hardware::SLIDE_TYPES.iter().find(|t| t.0 == kind_of);
     let named = named
-        .ok_or("slide_type must be partial, full, over or wood")?
+        .ok_or("slide_type must be partial, full, over, wood, under_partial or under_full")?
         .1;
     // A wooden runner has no stop: the drawer comes out two thirds of its box's depth.
     let travel = match wood {
@@ -392,6 +404,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         mixed,
         box_t,
         runner: wood.then_some(runner),
+        under,
         drawers_top,
         door_h,
         drawer_z,

@@ -46,6 +46,7 @@ pub fn build(cabinet: &Cabinet) {
         kind,
         box_t,
         runner,
+        under,
         ..
     } = cabinet.input;
     let sink = kind == "sink";
@@ -81,22 +82,6 @@ pub fn build(cabinet: &Cabinet) {
             kit.parameter("runner_play", play, "wooden runner play round the bottom"),
         ]
     });
-    let (box_w, gap_x) = match &wood {
-        Some([_, play]) => (format!("({eiw} - 2*{play})"), play.clone()),
-        None => (format!("({eiw} - 2*HW_slide_t)"), "HW_slide_t".into()),
-    };
-    // ponytail: a sink base's boxes stop at half depth, before the trap; a U-cut round it
-    // for deeper boxes is left to the user.
-    let box_d = match sink {
-        true => format!("({eshelf_d}/2)"),
-        false => format!("({eshelf_d} - {})", mm(BOX_BEHIND)),
-    };
-    // An overlay front laps the carcass by a panel; an inset one is already inside it, but
-    // beside doors it clears the rail as an overlay one does.
-    let lift = match inset && !mixed {
-        true => mm(BOX_CLEAR),
-        false => format!("({et} + {})", mm(BOX_CLEAR)),
-    };
     // The box's boards (sides, front and back) and its bottom: parameters while there are boxes.
     let [bt, bb] = match count > 1 || (count == 1 && !sink) {
         true => [
@@ -104,6 +89,30 @@ pub fn build(cabinet: &Cabinet) {
             kit.parameter("drawer_bottom", box_t[1], "drawer box bottom thickness"),
         ],
         false => return,
+    };
+    // Undermount slides (Blum's rule): the box 42 mm narrower inside than the opening, and as
+    // long as the slide.
+    let (box_w, gap_x) = match (&wood, under) {
+        (Some([_, play]), _) => (format!("({eiw} - 2*{play})"), play.clone()),
+        (_, true) => (
+            format!("({eiw} - 42 mm + 2*{bt})"),
+            format!("(21 mm - {bt})"),
+        ),
+        _ => (format!("({eiw} - 2*HW_slide_t)"), "HW_slide_t".into()),
+    };
+    // ponytail: a sink base's boxes stop at half depth, before the trap; a U-cut round it
+    // for deeper boxes is left to the user.
+    let label = cabinet.input.slide.1;
+    let box_d = match (sink, under) {
+        (_, true) => label.to_string(),
+        (true, _) => format!("({eshelf_d}/2)"),
+        (false, _) => format!("({eshelf_d} - {})", mm(BOX_BEHIND)),
+    };
+    // An overlay front laps the carcass by a panel; an inset one is already inside it, but
+    // beside doors it clears the rail as an overlay one does.
+    let lift = match inset && !mixed {
+        true => mm(BOX_CLEAR),
+        false => format!("({et} + {})", mm(BOX_CLEAR)),
     };
     let back_y = format!("{eback} + {box_d} - {bt}");
     for i in 0..count {
@@ -177,6 +186,62 @@ pub fn build(cabinet: &Cabinet) {
             -d / 2.0 + back_mm,
             drawer_z + (front_mm + reveal) * i as f64,
         ];
+        if under {
+            // The bottom raised for the runners, the back notched over them at each lower
+            // corner (35 mm from the box's outside), the runners' rear hooks' holes in the
+            // back (the left one named as a slide's first hole, which the cut list counts),
+            // and a runner model under each side.
+            let lift_b = format!("{z} + {}", mm(hardware::UNDER_RECESS));
+            panel(
+                &format!("{drawer} Bottom"),
+                [&inner_x, &inner_y, &lift_b],
+                [&inner_w, &inner_d, &bb],
+            );
+            let back = format!("{drawer} Box back");
+            let target = [format!("{} {back}", kit.name)];
+            let (y0, hook_z) = (format!("{back_y} - 1 mm"), format!("{lift_b} + 7 mm"));
+            let kind = cabinet.input.slide_type.0;
+            let ends = [
+                (x.clone(), format!("{x} + 17.5 mm"), "Left"),
+                (
+                    format!("{x} + {box_w} - 35 mm"),
+                    format!("{x} + {box_w} - 17.5 mm"),
+                    "Right",
+                ),
+            ];
+            for (k, (notch_x, hook_x, side)) in ends.iter().enumerate() {
+                kit.panel(
+                    &format!("{back} notch {}", k + 1),
+                    [notch_x, &y0, &format!("{z} - 1 mm")],
+                    [
+                        "35 mm",
+                        &format!("{bt} + 2 mm"),
+                        &format!("{} + 1 mm", mm(hardware::UNDER_RECESS)),
+                    ],
+                    Some(&target),
+                );
+                let at = kit.at(hook_x, &format!("{back_y} + {bt}"), &hook_z);
+                let what = format!("{side} slide 1 ({label}, {kind})");
+                fittings::hole(kit, &back, at, [0, -1, 0], "6 mm", "10 mm", &what);
+                let runner_x = match k {
+                    0 => format!("{inner_x} + {}", mm(hardware::UNDER_SIZE[0] / 2.0)),
+                    _ => format!("{right} - {}", mm(hardware::UNDER_SIZE[0] / 2.0)),
+                };
+                let model = format!("{} {label}", hardware::SLIDE_UNDER);
+                let component = format!("{} {drawer}", kit.name);
+                let upright = hardware::upright([0, -1, 0]);
+                hardware::copy(
+                    kit,
+                    &model,
+                    &component,
+                    kit.at(&runner_x, &y, &z),
+                    upright,
+                    None,
+                );
+            }
+            kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
+            continue;
+        }
         if let Some([depth, play]) = &wood {
             let out = format!("{et} - {depth} + {play}");
             let length = format!("{ew} - 2*({out})");

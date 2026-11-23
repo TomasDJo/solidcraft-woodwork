@@ -306,3 +306,29 @@ def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
     for label, steps in cases.items():
         off, hinges, cups = misplaced(steps)
         assert not off and hinges == cups, (label, off, hinges, cups)
+
+
+def test_undermount_slides(approval):
+    # Slide type Undermount full: the box 42 mm narrower inside than the opening (564 - 42),
+    # as long as the slide (500 mm in 542 inside), its bottom 13 mm up, the back notched and
+    # drilled for the runners' hooks, a runner model under each side; full travel; the cut list
+    # names the slides.
+    results = designed(approval, {"slide_type": "under_full"}, [
+        plugin(approval, "cabinet", {"drawers": 2}), {"command": "joint.list", "params": {}}, MEASURE,
+        drive("Cabinet Drawer 1 slide", 600), MEASURE, plugin(approval, "cutlist")])
+    limits = {j["name"]: j["values"][0]["limits"] for j in results[1]["joints"]}
+    assert limits["Cabinet Drawer 1 slide"] == [0, 500], limits
+    box = boxes(results[2])
+    inside = box["Cabinet Drawer 1 Box front"]
+    assert round(inside[3] - inside[0], 3) == 564 - 42, inside
+    left = box["Cabinet Drawer 1 Left"]
+    assert round(left[4] - left[1], 3) == 500, left
+    assert round(box["Cabinet Drawer 1 Bottom"][2] - left[2], 3) == 13, box["Cabinet Drawer 1 Bottom"]
+    back = next(b for b in results[2]["bodies"] if b["name"] == "Cabinet Drawer 1 Box back")
+    assert back["face_types"]["cylinder"] == 2, back
+    runners = [n for n in models(results[2], "HW slide under") if "(Cabinet:" in n]
+    assert len(runners) == 4 and not models(results[2], "HW slide drawer"), runners
+    out = boxes(results[4])
+    assert abs(out["Cabinet Drawer 1 Front"][1] - (box["Cabinet Drawer 1 Front"][1] - 500)) < 0.01
+    hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
+    assert hardware.get("Drawer slide, undermount full extension, 500 mm, pair") == 2, hardware

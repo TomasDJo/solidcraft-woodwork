@@ -168,6 +168,12 @@ const SLIDE: &str = "HW slide";
 pub const SLIDE_CABINET: &str = "HW slide cabinet";
 pub const SLIDE_MIDDLE: &str = "HW slide middle";
 pub const SLIDE_DRAWER: &str = "HW slide drawer";
+/// An undermount slide's runner under each box side (`HW slide under 450 mm`).
+pub const SLIDE_UNDER: &str = "HW slide under";
+/// The runner's width and height (unconfirmed, from Blum's sheets), and how far the box's
+/// bottom stands above the sides' lower edge for it.
+pub const UNDER_SIZE: [f64; 2] = [12.0, 14.0];
+pub const UNDER_RECESS: f64 = 13.0;
 // ponytail: `browser.visibility` set in a plugin run is not kept (0.46.1; the same command
 // through the CLI is), so the definitions stand just under the floor (their tops 1 mm below
 // it), turned half round so that they reach forward from 15 mm in front of the back of a
@@ -209,11 +215,13 @@ pub fn hinge(crank: f64) -> String {
 }
 
 /// The slide types, as the `slide_type` field names them, and as the cut list does.
-pub const SLIDE_TYPES: [(&str, &str); 4] = [
+pub const SLIDE_TYPES: [(&str, &str); 6] = [
     ("partial", "partial extension"),
     ("full", "full extension"),
     ("over", "over-travel"),
     ("wood", "wooden runners"),
+    ("under_partial", "undermount partial extension"),
+    ("under_full", "undermount full extension"),
 ];
 
 /// How far a drawer on slides `length` mm long of `kind` (`SLIDE_TYPES`) pulls out, in mm: a
@@ -221,7 +229,7 @@ pub const SLIDE_TYPES: [(&str, &str); 4] = [
 /// over-travel one 25 mm more.
 pub fn travel(kind: &str, length: f64) -> f64 {
     match kind {
-        "partial" => (length * 0.75).round(),
+        "partial" | "under_partial" => (length * 0.75).round(),
         "over" => length + 25.0,
         _ => length,
     }
@@ -251,23 +259,54 @@ pub const SLIDES: [(&str, f64); 20] = [
     ("26 in", 660.4),
     ("28 in", 711.2),
 ];
-/// Room a slide leaves behind it in the drawer box's depth.
+/// The standard undermount slide lengths (Blum TANDEM and the like): the box is as long.
+pub const UNDER: [(&str, f64); 14] = [
+    ("250 mm", 250.0),
+    ("270 mm", 270.0),
+    ("300 mm", 300.0),
+    ("350 mm", 350.0),
+    ("400 mm", 400.0),
+    ("450 mm", 450.0),
+    ("500 mm", 500.0),
+    ("550 mm", 550.0),
+    ("600 mm", 600.0),
+    ("9 in", 228.6),
+    ("12 in", 304.8),
+    ("15 in", 381.0),
+    ("18 in", 457.2),
+    ("21 in", 533.4),
+];
+/// Room a slide leaves behind it in the drawer box's depth (an undermount one in the inside).
 const SLIDE_CLEAR: f64 = 3.0;
 
 /// The drawer slide's length, in mm and as a length with its unit (`450 mm`, `18 in`):
 /// `field` is `slide_length`, `auto` (the longest standard length of the cabinet's `unit` that
 /// fits the box, `box_mm` deep, less `SLIDE_CLEAR`) or one of the standard lengths.
 pub fn slide_length(field: &str, unit: &str, box_mm: f64) -> Result<(f64, &'static str), String> {
+    lengths(&SLIDES, field, unit, box_mm)
+}
+
+/// `slide_length` from the undermount lengths (`UNDER`), `room_mm` the cabinet's inside depth.
+pub fn under_length(field: &str, unit: &str, room_mm: f64) -> Result<(f64, &'static str), String> {
+    lengths(&UNDER, field, unit, room_mm)
+}
+
+fn lengths(
+    all: &[(&'static str, f64)],
+    field: &str,
+    unit: &str,
+    box_mm: f64,
+) -> Result<(f64, &'static str), String> {
     let room = box_mm - SLIDE_CLEAR;
     if field == "auto" {
-        let mut ours = SLIDES.iter().filter(|(label, _)| label.ends_with(unit));
+        let mut ours = all.iter().filter(|(label, _)| label.ends_with(unit));
+        let shortest = ours.clone().next().map_or("", |s| s.0);
         let fits = ours.rfind(|(_, v)| *v <= room + 1e-9);
         return fits.map(|&(label, v)| (v, label)).ok_or(format!(
-            "the drawer boxes are {box_mm:.0} mm deep: no standard slide fits (the shortest is {}, with {SLIDE_CLEAR} mm behind it)",
-            if unit == "in" { "10 in" } else { "250 mm" }
+            "the drawer boxes are {box_mm:.0} mm deep: no standard slide fits (the shortest is {shortest}, with {SLIDE_CLEAR} mm behind it)"
         ));
     }
-    let &(label, v) = (SLIDES.iter())
+    let &(label, v) = (all.iter())
         .find(|(label, _)| *label == field)
         .ok_or("slide_length must be auto or a standard length such as 450 mm or 18 in")?;
     check(
@@ -362,6 +401,19 @@ fn shape(model: &str) -> Commands {
             "body_name": model, "name": model,
         })
     };
+    if let Some(length) = model.strip_prefix(SLIDE_UNDER) {
+        // the runner: a bar centred on X, its top 1 mm over the bottom's lower face
+        let [w, h] = UNDER_SIZE;
+        let corner = [mm(-w / 2.0), mm(0.0), mm(UNDER_RECESS - h)];
+        let size = [mm(w), length.trim().to_string(), mm(h)];
+        return vec![(
+            "solid.box",
+            block(
+                [&corner[0], &corner[1], &corner[2]],
+                [&size[0], &size[1], &size[2]],
+            ),
+        )];
+    }
     let member = MEMBERS.iter().find(|m| model.starts_with(m.0));
     if let Some(&(name, t, height)) = member {
         let length = model.strip_prefix(name).unwrap_or_default().trim();
