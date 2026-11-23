@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
 
+# A newer push to the same pull request or branch cancels the older run.
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: write # to attach the package to a release; pull requests from forks get read
 
