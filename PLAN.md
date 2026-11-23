@@ -115,6 +115,8 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Casters on corner cabinets, at the legs' places through the shared `fittings::foot`; the casters' post is joined before the wheel, so no timeline warning
 - Frame (a leg-and-rail base) removed: not useful on its own; a different design is planned in #101. Its bolts and barrel nuts went with it (no cabinet joint used them)
 - [x] Joinery chosen when a box cabinet is made, through one shared module (`src/joint/`): dowels (the default), confirmat screws, plain screws, cam locks, pocket screws, biscuits or Dominos, or a dado (box cabinets) where the sides meet the bottom and top, rows that follow a resize, counted in the cut list from parameters, changed by Edit, a default in Woodwork settings; the Frame's dowels and bolts on the same module
+- [x] SolidCraft 0.47: tests run against 0.47.0
+- [x] Version 0.4.0, for SolidCraft 0.47 (works on 0.46)
 
 ## Open
 
