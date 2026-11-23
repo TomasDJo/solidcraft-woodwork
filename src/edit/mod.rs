@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 19] = [
+const SIZES: [&str; 24] = [
     "width",
     "height",
     "depth",
@@ -32,12 +32,19 @@ const SIZES: [&str; 19] = [
     "apron_thickness",
     "inset",
     "stretcher_height",
+    // joinery's (`joint`)
+    "joint_spacing",
+    "joint_edge",
+    "dowel_d",
+    "dowel_length",
+    "dado_depth",
 ];
 
 /// The Edit fields only a box cabinet takes, and only a corner cabinet: `merge` refuses them
 /// for the other kind and the dialog hook hides them. Shrink them as the two kinds catch up.
-const BOX_ONLY: [&str; 8] = [
+const BOX_ONLY: [&str; 9] = [
     "kind",
+    "joints_inner",
     "dividers",
     "doors",
     "drawers",
@@ -48,7 +55,8 @@ const BOX_ONLY: [&str; 8] = [
 ];
 const CORNER_ONLY: [&str; 2] = ["corner_doors", "shape"];
 /// The Edit fields both kinds of cabinet take, and those only a frame takes.
-const CABINETS: [&str; 11] = [
+const CABINETS: [&str; 12] = [
+    "joints",
     "shelves",
     "handles",
     "handle_position",
@@ -64,7 +72,7 @@ const CABINETS: [&str; 11] = [
 const FRAME_ONLY: [&str; 3] = ["stretchers", "frame_legs", "joint"];
 
 /// The dialog hook's reply for Edit: the fields the selected cabinet does not take, hidden.
-/// A corner cabinet has a `<Prefix>_return` parameter (as Joinery tells it), a frame its
+/// A corner cabinet has a `<Prefix>_return` parameter, a frame its
 /// `<Name> Leg front left` body and only its own fields. Nothing picked, or
 /// not a cabinet: everything shown. Hidden only from view, so a run is the same.
 /// `design` is `document.inspect`'s reply with body names.
@@ -138,6 +146,15 @@ pub fn merge(
             existing.insert(key.into(), json!(mm));
         }
     }
+    // The fastener counts only tell `Kit` that the cabinet has them (`joint::COUNTS`).
+    for key in crate::joint::COUNTS {
+        let id = format!("{prefix}_{key}");
+        let all = design["params"].as_array().into_iter().flatten();
+        let found = all.into_iter().find(|p| p["name"] == id.as_str());
+        if let Some(v) = found.and_then(|p| p["value"].as_f64()) {
+            existing.insert(key.into(), json!(v));
+        }
+    }
     let mixed = |p: &Map<String, Value>| {
         let count = |key: &str| p.get(key).and_then(Value::as_f64).unwrap_or(0.0);
         count("drawers") > 0.0 && count("doors") > 0.0
@@ -183,6 +200,23 @@ pub fn merge(
     // alike) unless the edit gives one.
     if was_mixed && !mixed(&params) && changes["drawer_height"].is_null() {
         params.insert("drawer_height".into(), json!(0));
+    }
+    // Holes drilled by the Joinery function of 0.2.0 and before (`joinery` beside the values):
+    // the same kind of joint at build, unless the edit or the cabinet chose one.
+    let method = |p: &Map<String, Value>| {
+        p.get("joints").and_then(Value::as_str).unwrap_or("none") != "none"
+    };
+    let asked = changes["joints"].as_str().is_some_and(|m| m != "keep");
+    if let Some(kind) = remembered["joinery"]
+        .as_str()
+        .filter(|_| !method(&params) && !asked)
+    {
+        let joints = if kind == "dowel" {
+            "dowels"
+        } else {
+            "confirmat"
+        };
+        params.insert("joints".into(), json!(joints));
     }
     params.insert("_existing".into(), Value::Object(existing));
     Ok((entry.into(), Value::Object(params)))

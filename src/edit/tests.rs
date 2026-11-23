@@ -368,3 +368,30 @@ fn a_frame_takes_its_sizes_from_the_design_and_only_its_own_fields() {
     let err = merge(&cabinet[KEY], &json!({"frame_legs": "6"}), &design).unwrap_err();
     assert!(err.contains("only for a frame"), "{err}");
 }
+
+#[test]
+fn joinery_sizes_come_from_parameters_and_counts_only_tell_kit() {
+    let remembered = json!({"entry": "cabinet", "params": {"name": "K", "joints": "dowels"}});
+    let design = json!({"params": [
+        {"name": "K_joint_spacing", "value": 120.0}, {"name": "K_dowels", "value": 20.0}
+    ]});
+    let (_, params) = merge(&remembered, &json!({"joints": "confirmat"}), &design).unwrap();
+    assert_eq!(params["joints"], "confirmat");
+    assert_eq!(params["joint_spacing"], 120.0);
+    assert!(params.get("dowels").is_none());
+    assert_eq!(params["_existing"]["dowels"], 20.0);
+}
+
+#[test]
+fn holes_from_the_old_joinery_function_become_the_same_joint_at_build() {
+    let remembered = json!({"entry": "cabinet", "params": {"name": "K"}, "joinery": "dowel"});
+    let (_, params) = merge(&remembered, &json!({"shelves": 2}), &json!({})).unwrap();
+    assert_eq!(params["joints"], "dowels");
+    let remembered = json!({"entry": "cabinet", "params": {"name": "K", "joints": "none"},
+        "joinery": "confirmat"});
+    let (_, params) = merge(&remembered, &json!({}), &json!({})).unwrap();
+    assert_eq!(params["joints"], "confirmat");
+    // the edit's own choice wins, none too
+    let (_, params) = merge(&remembered, &json!({"joints": "none"}), &json!({})).unwrap();
+    assert_eq!(params["joints"], "none");
+}

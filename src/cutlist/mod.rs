@@ -184,7 +184,8 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let ending = |end: &str| features.iter().filter(|f| f.ends_with(end)).count();
     // Cabinets with a feature of this name, such as `<Cabinet> Side L pins`.
     let cabinets = |end: &'static str| features.iter().filter_map(move |f| f.strip_suffix(end));
-    // ponytail: a screw or dowel is a round hole in a board Joinery drills into (the bottom,
+    // ponytail: a design drilled by the Joinery function of 0.2.0 and before: a screw or dowel
+    // is a round hole in a board it drilled into (the bottom,
     // top, a sink base's rails), so a hole the user drills
     // there by hand is counted too.
     let holes = |cabinet: &str| -> u64 {
@@ -201,8 +202,9 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         bodies.iter().filter(shelf).count() as u64 // a split shelf is one shelf
     };
     let pulls = ending(" handle 2");
-    // A frame's joints: `<Frame> dowel <n>`, `bolt <n>`, `barrel nut <n>`, of a frame that is
-    // there (a split corner shelf's `return dowel <n>` is not one).
+    // A frame's joints, made before they were on the shared joinery: `<Frame> dowel <n>`, `bolt
+    // <n>`, `barrel nut <n>`, of a frame that is there (a split corner shelf's `return dowel <n>`
+    // is not one). A newer frame counts them in its parameters, as a cabinet does.
     let numbered = |word: &str| {
         let ends = features.iter().filter_map(|f| f.rsplit_once(word));
         let frame = |stem: &str| bodies.contains(&format!("{stem}{}", crate::frame::MARK));
@@ -268,6 +270,20 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
+    // The joinery chosen when a cabinet was built counts its fasteners in its parameters
+    // (`joint::hardware`); the old Joinery function's line of the same item takes them in.
+    let cabinets = (bodies.iter()).filter_map(|b| {
+        b.strip_suffix(" Side L")
+            .or(b.strip_suffix(crate::frame::MARK))
+    });
+    for cabinet in cabinets {
+        for (item, qty) in crate::joint::hardware(&crate::kit::prefix(cabinet), &design["params"]) {
+            match list.iter_mut().find(|line| line["item"] == item.as_str()) {
+                Some(line) => line["qty"] = json!(line["qty"].as_u64().unwrap_or(0) + qty),
+                None => list.push(json!({"item": item, "qty": qty})),
+            }
+        }
+    }
     // A cabinet on a steel rail has `<Prefix>_wall_rail`, its width (0 once an edit took the
     // rail away), and a corner cabinet `_wall_rail_return` too: a rail bought to that length
     // and two hangers each. Only for a cabinet that is

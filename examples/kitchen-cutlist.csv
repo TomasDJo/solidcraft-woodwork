@@ -40,8 +40,8 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 2,716,447,18,"Oak",yes,L2 W2,"Base 3 Door L, Base 3 Door R"
 1,764,150,18,"White melamine",,,"Base 1 Plinth"
 2,764,302,18,"White melamine",,L1,"Wall 1 Shelf 1, Wall 1 Shelf 2"
-2,764,320,18,"White melamine",,L1,"Wall 1 Bottom, Wall 1 Top"
 2,764,560,18,"White melamine",,L1,"Base 1 Bottom, Base 1 Top"
+2,776,320,18,"White melamine",,L1,"Wall 1 Bottom, Wall 1 Top"
 1,864,100,18,"White melamine",,,"Base 3 Rail back"
 1,864,100,18,"White melamine",,L1,"Base 3 Rail front"
 1,864,150,18,"White melamine",,,"Base 3 Plinth"
@@ -66,4 +66,4 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
 "Oak",18,50.766
-"White melamine",18,60.562
+"White melamine",18,60.588

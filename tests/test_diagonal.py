@@ -1,6 +1,14 @@
 """The diagonal corner cabinet: one front and one door at 45 degrees."""
 from helpers import *
 
+
+def plugin(approval, entry, params=None, _plugin=plugin):
+    """These tests count the doors' and pins' holes: corner cabinets without joinery
+    (tests/test_joints.py has it)."""
+    if entry == "corner":
+        params = {"joints": "none", **(params or {})}
+    return _plugin(approval, entry, params)
+
 CORNER = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"}
 
 

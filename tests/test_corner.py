@@ -1,6 +1,14 @@
 """The L-shaped corner cabinet and its bi-fold doors."""
 from helpers import *
 
+
+def plugin(approval, entry, params=None, _plugin=plugin):
+    """These tests count the doors' and pins' holes: corner cabinets without joinery
+    (tests/test_joints.py has it)."""
+    if entry == "corner":
+        params = {"joints": "none", **(params or {})}
+    return _plugin(approval, entry, params)
+
 CORNER = {"name": "C", "width": 1000, "return": 900, "plinth": 100, "doors": "hinged right"}
 
 
@@ -84,7 +92,7 @@ def test_inset_doors(approval):
     inset = {**CORNER, "fronts": "inset", "shelf_pins": True}
     results = cli([{"command": "document.units", "params": {"units": "in"}},
                    plugin(approval, "corner", inset), MEASURE,
-                   select("C Top"), plugin(approval, "cabinet", {"name": "N", "place": "right"}),
+                   select("C Top"), plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "N", "place": "right"}),
                    drive("C Door return fold", 90), MEASURE,
                    drive("C Door hinge", 90), MEASURE,
                    plugin(approval, "cutlist"),

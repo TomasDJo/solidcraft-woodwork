@@ -79,13 +79,14 @@ materials, joinery and cut lists.
   selection), `inspect.measure` and `model.mesh` are read.
 - Inside a plugin run, `solid.hole` checks its `position` in the active component's own
   coordinates but stores it shifted by where that component stands in the world, so the hole
-  misses on a component that has been moved (through the CLI directly it does not). Joinery
-  therefore moves the cabinet to the origin, drills, and moves it back. (The plugin now cuts
-  cylinders instead of holes, see Rules. Whether a cylinder cut is shifted the same way has
-  not been tried, so Joinery still does this.)
+  misses on a component that has been moved (through the CLI directly it does not). A box made
+  in a moved component lands shifted too, so Panel works on the cabinet at the origin (`inside`
+  in `lib.rs`: it moves the cabinet there, square, and back). The builders make every cut while
+  the new cabinet is still at its component's origin.
 - A pattern of a hole can lose copies ("cut copies remove no material") when the component has
-  been moved and another body stands where its local numbers point in the world. Joinery makes
-  every hole a feature of its own for that reason; the shelf pin patterns have not shown it.
+  been moved and another body stands where its local numbers point in the world. Patterns made at
+  the origin (pin rows, joint rows) have not shown it, also after a cabinet in the sample kitchen
+  is deleted.
 - The plugin runs on a background copy of the design. From 0.45 the window applies the last
   view command of an accepted run (`view.fit`, `view.home`); the preview's dry runs leave the
   camera alone. `execute` ends a cabinet, corner or edit run with `select.clear` and
@@ -137,8 +138,8 @@ materials, joinery and cut lists.
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/frame/` | Frame: a leg-and-rail base (legs, aprons, stretchers, dowel or bolt holes), built on `Kit` like a cabinet. `is_timber` tells its parts to the cut list |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
-| `src/joinery/` | Screw and dowel holes for an existing cabinet |
-| `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin, as Joinery: `inside`), remembers them for Edit, and refuses Place against a side that has one |
+| `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts and the fastener counts) that the builders share |
+| `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin: `inside`), remembers them for Edit, and refuses Place against a side that has one |
 | `src/worktop/` | Worktop over the selected cabinets: measures their feet (a corner cabinet's two legs), groups them into runs by the way they face, joins runs in corners (butt or mitre) and makes each piece a box or an extruded outline at world coordinates; dog holes and a cut-out in piece 1. `lib.rs` finds the cabinets (a picked worktop's remembered ones), replaces a worktop of that name, makes the component and grounds it |
 | `src/material.rs` | Board materials: create on first use, assign |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
@@ -160,7 +161,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `frame`, `edit`, `joinery`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `corner`, `frame`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
 `lib.rs` runs `cabinet`, `corner` and `frame` through the same steps (component, material,
@@ -253,18 +254,19 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   Edit deletes the component and its joints with it, so it makes the cabinet's own link
   again and those of the cabinets that hang on it (`edit::links`, from `joint.list`).
   A cabinet with any link cannot be moved (`occurrence.move` answers `reverted: true`, and
-  nothing fails), so Joinery suppresses all its links while the cabinet is on the origin.
+  nothing fails), so `inside` (Panel) suppresses all its links while the cabinet is on the origin.
 - **A cabinet remembers how it was made.** `make` in `lib.rs` stores the entry and the dialog
   values on the cabinet's component (`edit::remember`, metadata key
-  `io.github.tomasdjo.woodwork`; Joinery adds its kind there). Edit reads them, takes the
+  `io.github.tomasdjo.woodwork`; the Joinery function of 0.2.0 and before added `joinery`, its
+  kind, there: `edit::merge` turns it into the same `joints` at build). Edit reads them, takes the
   sizes from the design's parameters instead, applies the filled-in fields, deletes the
   component and builds it again: same name, same parameters (`Kit` gets them as `_existing`
   and only changes one whose value the edit changed, so links survive), same placement
   (`component.list`'s transform, transposed for `occurrence.move`'s `to_matrix`), the boards'
-  own materials, and the joinery drilled again. A new dialog field must survive this round
+  own materials, and the joinery made again. A new dialog field must survive this round
   trip; a field Edit should offer goes into `edit::merge` and the `edit` schema, where an
   empty number or `keep` means unchanged.
-- **A hole is a cylinder cut, never `solid.hole`.** `fittings::hole`, the pin rows and Joinery
+- **A hole is a cylinder cut, never `solid.hole`.** `fittings::hole`, the pin rows and the joints
   cut `solid.cylinder` with `operation: cut` out of the one board named in `targets`. A
   `solid.hole` keeps the face it was picked on, and in a design with many cabinets that
   face is not found again when the history is rebuilt (`the reference ... no longer exists
@@ -324,8 +326,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
 - A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
   its return's end there, not a back corner: it gets the older link.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
-  `joint`, `Drawer n Front`, `Leg n`, `Caster n`), so renaming those breaks it. Screws and dowels are the round
-  holes in the boards Joinery drills into: `Bottom`, `Top`, `Rail front`, `Rail back`.
+  `joint`, `Drawer n Front`, `Leg n`, `Caster n`), so renaming those breaks it. Joinery at build
+  counts from parameters (below). For a design drilled by the removed Joinery function (0.2.0
+  and before), the cut list still counts its screws and dowels: the round holes in `Bottom`,
+  `Top`, `Rail front`, `Rail back` of a cabinet with a feature `<Name> joint Side L Bottom
+  pilot` (confirmat) or `... dowel end` (dowels).
 - The cutting layouts (`nesting::nest`) are greedy guillotine packing into the free pieces of
   all open sheets: eight tries (four orders, best area or best short side fit, each piece split
   along its shorter leftover), the fewest sheets wins, then the emptiest last sheet. Free
@@ -334,11 +339,15 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   sheet is only reported (`oversize`), not split.
 - A frame (`frame`) is recognised by its `<Name> Leg front left` body (`frame::MARK`):
   `select::owner` takes it as it takes a cabinet's `Side L`, so Edit (`select::piece`) and
-  Material find it, and `select::cabinet` refuses it (Joinery, Panel, Drawing, Place against it).
+  Material find it, and `select::cabinet` refuses it (Panel, Drawing, Place against it).
   Its legs are `Leg front left` and so on, never `Leg <n>` (`fittings::is_leg`, hardware). Its
   parts (`frame::is_timber`: `Leg <words>`, `Apron ...`, `Stretcher ...`) are the cut list's
-  `timber`, bought to length, not on sheets; its holes `<Name> dowel <n>`, `bolt <n>`, `barrel
-  nut <n>` are counted as hardware. A stretcher has the apron's section. With bolts, rails that
+  `timber`, bought to length, not on sheets; its joints are the shared joinery's (`Joinery::fixed`: dowels
+  with `joint_edge` a quarter of the rail and the spacing its height, so a row of two, and bolts
+  by `joint_by("bolts")`, `single`, the nut from the face opposite `Joint::out` (the rail's
+  inner), `face_t` the leg), counted from `<Name>_dowels` and `_bolts` (a frame is found by
+  `MARK` in `cutlist::hardware`); a frame made before keeps its `<Name> dowel <n>`, `bolt <n>`,
+  `barrel nut <n>`, counted by name. A stretcher has the apron's section. With bolts, rails that
   meet at a middle leg are doweled. It has seats, so Place right or left of a cabinet links it;
   on Auto a cabinet's top gives the origin. Edit's frame fields are `stretchers`, `frame_legs`
   (the frame's `legs`) and `joint` (`edit::FRAME_ONLY`; the Edit hook hides them for a cabinet,
@@ -405,7 +414,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   drawers at the top or the bottom (`drawers_at`, cabinet and Edit) and a fixed `<Name> Rail`
   between the sides, centred behind the reveal between drawers and doors (at y = t when
   inset, as the shelves); the shelves and pin rows are on the doors' side of it. The rail is
-  not drilled by Joinery. `drawer_height` (beside doors each front, 150 mm when 0; drawers
+  joined by `joints_inner`. `drawer_height` (beside doors each front, 150 mm when 0; drawers
   only, the top one with the rest equal) is the parameter `<Prefix>_drawer_height` only while
   it is used; an edit that stops using it sets it to 0 (`Kit::has`), so the next Edit does not
   take the old value up again, and an Edit that takes the doors away sets it to 0 unless it
@@ -427,7 +436,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   placed right of the selected cabinet, else left. `lib.rs` settles it before building, so
   the cabinet remembers left or right and Edit keeps it.
 - A corner cabinet's two end panels are named `Side L` and `Side R`, so selection and placing
-  see its whole footprint. Joinery refuses it (it has a `<Prefix>_return` parameter). Place
+  see its whole footprint (it is told by its `<Prefix>_return` parameter). Place
   puts a new cabinet against the selected one's Side R (right) or Side L (left), whichever
   way that panel faces (`select::Cabinet::seat`, read from the boxes of the two sides and the
   back): so one continues a corner cabinet's return turned a quarter, and a turned run carries
@@ -436,8 +445,52 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
   parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the
   selected one has one. Material is not matched.
-- Joinery covers the four carcass corners only, and tells an overlaid back from a grooved one
-  by comparing the side depth with the depth parameter.
+- **Joinery at build** (`src/joint/`): the cabinet's `joints` field (carcass: sides to bottom and
+  top, a sink base's rails one fastener each, `Joint::single`) is `none`, `dowels` (the dialog's
+  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
+  away from `Joint::out`; `<Prefix>_cam_d`, `_cam_bolt`), `pocket` (a 9.5 mm pocket and a pilot,
+  cylinders on an axis at 15 degrees, a fixed angle: plugin runs take a non-axis `axis`; the
+  pocket in the end board's `out` face, or the other with `pocket_face: inside`), `biscuit` (a box cut through both boards
+  and a pattern, sizes from the `biscuit` choice, `SLOTS`, not parameters; a count parameter per
+  size) or `dado` (box cabinets only: the end board
+  is `Joinery::extension` (`<Prefix>_dado_depth`) longer at each end in the builder, and the
+  joint is one box cut of its volume in the face board, through front to back; nothing counted;
+  a corner cabinet refuses it, as its L-shaped boards, chamfer picked by point and backs would
+  all have to grow); absent is `none`, so a cabinet made before rebuilds as it was.
+  `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
+  doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
+  rail into the sides, rows along the shelves' depth from `ein`; and without shelf pins (`input.fixed`)
+  each shelf, per compartment, into the
+  side or divider at each end. A shelf right of a divider is `Joint::between`: half a pitch
+  along, one fewer, so the two shelves' holes in a divider do not meet; two dados opposite in a
+  divider are refused past `(t - 3 mm)/2`. So a cabinet made with this branch's joinery and
+  no pins gets joined shelves on its next Edit; one with no remembered method has `none` and
+  stays as it was.
+  `Joinery::new` reads it, checks the sizes and makes the parameters they need, once each
+  (`<Prefix>_joint_spacing`, `_joint_edge`, `_dowel_d`, `_dowel_length`: dialog fields in the
+  dialog's unit, `edit::SIZES`, so Edit takes them from Parameters and only changes the
+  method). `Joinery::joint` gives a joint's cuts: one cylinder (a dowel's through both boards,
+  `targets` two; confirmat a clearance in the face board and a pilot in the end) and a
+  `solid.pattern.rectangular` along the row, count `max(2, ceil((run - 2*edge)/spacing) + 1)`,
+  an expression, so the number follows a resize; joints that run the same way with the same
+  count share one pattern (`Row`). They are cut in the builder's last commands, before the pin
+  rows (a cut into a board full of pin holes is slow), with the cabinet on its component's
+  origin, where a pattern keeps its copies. A 2D pattern (bottom and top rows in one) made new
+  bodies of the copies that missed the targets: not used. Time goes by the hole, about 70 ms
+  each on this machine (each copy is a boolean), more in a big design: the default spacing is
+  250 mm. Measured in the sample kitchen: a box cabinet 3-7 s, the corner cabinets 7-8 s (about
+  4 without joinery). `finish` adds
+  the parameters the cut list counts from, `<Prefix>_dowels`, `_confirmats`, `_screws` (the rows'
+  counts summed; `parameters.change` on an edit, `0` when no longer used: `joint::COUNTS` go
+  into `_existing` only), and `joint::hardware` names the items from them (the dowel's size from
+  its parameters), for a cabinet that is still there (its `Side L`). Features `<Name> joint
+  <face> <end> <method>`, `... pilot`, `... row`, in the cabinet's folder. A dowel's depth in the face is `min(t - 5 mm, (L + 2 mm)/2)`.
+  A corner cabinet (`corner::Corner::joints`, `joints` only) joins the backs' upright ends (into
+  the back leg's end and the back return), the back return's front end (into the return's end)
+  and the bottom and top into the four uprights; with a wall mount the backs stand on the bottom
+  and under the top (joints along Z). Split, each piece is joined to what it meets and the two
+  keep their fixed `return dowel` pair (an edge joint; the cut list's `Dowel, 8 x 60 mm`).
+  A corner cabinet's shelves stay on pins (fixed only on a box cabinet).
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
 - A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
   from parameters takes whole parameters (`number(Width)`), not expressions. A board is told
@@ -470,9 +523,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   the cabinet's component with its handle hole and no box or slide, and the boxes below are
   `eshelf_d/2` deep, clear of the trap (no U-cut). An Edit to standard gives full drawers
   again; the panel counts its drawers as overlay fronts. The back groove is not
-  cut into a top it does not have. Joinery reads the kind from the remembered values
-  (`ours["params"]["kind"]` in `drill`) and drills the top corners into the rails: only the
-  first hole of a row (front rail) and the last (back rail), named `... Side L Rail ...`.
+  cut into a top it does not have. Its joinery goes into the bottom and, one fastener each,
+  into the rails (`Joint::single`).
 - `cabinet::build` refuses a cabinet of more than 230 commands (the run itself takes the rest
   of the app's 256), counting the shared hardware parameters it may have to make: a wide tall
   cabinet with many doors, shelves, pins and labels can reach it.
@@ -537,11 +589,9 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
 - A panel (`panel`: `<Cabinet> End panel L`, or `Filler R` and `Filler R return`) is a body
   inside its box cabinet's component, every size an expression over the cabinet's parameters,
   anchored on its side by `±<Prefix>_width/2`. Like a hole, a box made in a moved component
-  lands shifted in a plugin run, so `lib.rs` makes it with the cabinet on the origin (`inside`,
-  shared with Joinery). The cabinet remembers its panels (`panels` beside the remembered
+  lands shifted in a plugin run, so `lib.rs` makes it with the cabinet on the origin (`inside`). The cabinet remembers its panels (`panels` beside the remembered
   values, each `{kind, side, units, width, thickness}`, one a side), and Edit makes again
-  those whose first board was still there, before the materials are given back and the
-  joinery drilled: the user deletes the panel's history folder with its features. Its
+  those whose first board was still there, before the materials are given back: the user deletes the panel's history folder with its features. Its
   material is the Side L's. Overlay fronts (the panel comes forward to their faces: doors, or
   drawers on a standard cabinet, not inset) and the plinth come from the remembered values (a
   matched cabinet's plinth from its parameter), read when it is made: an Edit that changes

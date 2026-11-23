@@ -30,6 +30,8 @@ pub struct Input<'a> {
     pub doors: f64,
     pub drawers: f64,
     pub pins: bool,
+    /// The shelves fixed and joined (no shelf pins: the inside's joinery).
+    pub fixed: bool,
     pub back: &'a str,
     /// none, cleat (French cleat), rail (a hanging rail) or steel (bought rail and hangers).
     pub wall_mount: &'a str,
@@ -84,6 +86,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         .get("shelf_pins")
         .and_then(Value::as_bool)
         .unwrap_or(false);
+    // Without pins the shelves are fixed, joined by the inside's joinery (none on a cabinet
+    // that remembers no method: as before).
+    let fixed = !pins;
     // A sink base has no dividers: the sink and its pipes take the room. Its dialog hides
     // them; an Edit to a sink base drops the ones the cabinet remembers.
     let dividers = if sink { 0.0 } else { num(p, "dividers", 0.0)? };
@@ -312,6 +317,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         doors,
         drawers,
         pins,
+        fixed,
         back,
         wall_mount,
         mount_t,

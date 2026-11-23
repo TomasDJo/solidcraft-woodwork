@@ -16,6 +16,7 @@ mod doors;
 mod input;
 
 use crate::fittings::{self, PinRows, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::joint::{Joinery, Joint, CARCASS};
 use crate::kit::{mm, Kit};
 use crate::Commands;
 pub use input::hand;
@@ -31,6 +32,7 @@ const DOWEL_INSET: f64 = 40.0; // from each end of the joint
 /// What the steps of a build share: the checked input in mm, and the sizes as expressions.
 struct Corner<'a> {
     kit: &'a Kit,
+    joinery: Joinery<'a>,
     right: bool,
     diagonal: bool,
     split: bool, // the L-shaped boards as two dowelled boards
@@ -92,6 +94,20 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let ed = kit.parameter("depth", d, "depth of both legs");
     let eh = kit.parameter("height", h, "outside height, plinth included");
     let et = kit.parameter("thickness", t, "panel thickness");
+    let joinery = Joinery::new(&kit, p, (t, &et), false)?;
+    // ponytail: no dado on a corner cabinet: its L-shaped boards (notch, chamfer picked by
+    // point) and the backs would all have to grow into the grooves.
+    crate::kit::check(
+        joinery.method(CARCASS) != "dado",
+        "`joints`: a dado is for box cabinets; choose another joint for a corner cabinet",
+    )?;
+    // the shortest joint: the backs and the ends, the return's end, a split board's return
+    let shortest = [d - t, dr - t, h - plinth - 2.0 * t, b - d - t];
+    let shortest = match split {
+        true => shortest.iter().fold(f64::MAX, |a, b| a.min(*b)),
+        false => shortest[..3].iter().fold(f64::MAX, |a, b| a.min(*b)),
+    };
+    joinery.fits(CARCASS, shortest, p, "the shortest joint")?;
     let epl = match plinth > 0.0 {
         true => kit.parameter("plinth", plinth, "plinth height"),
         false => mm(0.0),
@@ -119,6 +135,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     };
     let corner = Corner {
         kit: &kit,
+        joinery,
         right,
         diagonal,
         split,
@@ -146,7 +163,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         wall_mount,
         emount,
     };
-    let drill = corner.carcass(shelves, pins); // holes, run after the panels exist
+    let pins = corner.carcass(shelves, pins); // holes, run after the panels exist
+    corner.joints();
+    // the joints before the pin rows: a cut into a board full of pin holes is slow
+    let mut drill = corner.joinery.finish();
+    drill.extend(pins);
     match on_return {
         Some(on_return) if diagonal => diagonal::door(&corner, on_return),
         Some(on_return) => doors::build(&corner, on_return),
@@ -465,6 +486,207 @@ impl Corner<'_> {
         match pins {
             true => self.pins(&elast),
             false => Vec::new(),
+        }
+    }
+
+    /// The carcass's joints (`joints`): the backs' ends into the ends and the back return,
+    /// and the bottom and top into the four upright panels round them; with a wall mount the
+    /// bottom and top reach the walls and the backs stand on the bottom, under the top. A split
+    /// board's two pieces keep their own dowels (an edge joint).
+    fn joints(&self) {
+        let Corner {
+            ea,
+            eb,
+            ed,
+            edr,
+            eh,
+            et,
+            epl,
+            ..
+        } = self;
+        let f = self.flip();
+        let (back_end, return_end) = self.ends();
+        let zero = mm(0.0);
+        let (tm, mount) = match &self.emount {
+            Some([tm, _]) => (tm.clone(), true),
+            None => (zero.clone(), false),
+        };
+        let (z, high) = match (mount, self.plinth_type) {
+            (true, _) => (format!("{epl} + {et}"), format!("({eh} - {epl} - 2*{et})")),
+            (_, "legs" | "casters") => (epl.clone(), format!("{eh} - {epl}")),
+            _ => (zero.clone(), eh.clone()),
+        };
+        // x as for a left corner; mirrored here with the directions along X
+        let joint = |face: &str,
+                     end: &str,
+                     at: [String; 3],
+                     into: [i32; 3],
+                     along: [i32; 3],
+                     run: String| {
+            let joint = Joint {
+                face: face.into(),
+                end: end.into(),
+                at: [self.point(&at[0]), at[1].clone(), at[2].clone()],
+                into: [into[0] * f, into[1], into[2]],
+                // the end board's hidden face: under the bottom, over the top, a back's wall side
+                out: match end {
+                    "Back" => [0, 1, 0],
+                    "Back return" => [-f, 0, 0],
+                    e if e.starts_with("Bottom") => [0, 0, -1],
+                    _ => [0, 0, 1],
+                },
+                along: [along[0] * f, along[1], along[2]],
+                run,
+                single: false,
+                between: false,
+            };
+            self.joinery.joint(CARCASS, &joint);
+        };
+        let (x, y, up) = ([1, 0, 0], [0, 1, 0], [0, 0, 1]);
+        let back_y = format!("{eb} - {tm} - {et}/2"); // the Back's middle
+        let back_x = format!("{tm} + {et}/2"); // the Back return's
+                                               // The backs' upright ends.
+        let inner_x = format!("{et} + {tm}");
+        let wall_x = format!("{ea} - {et}");
+        joint(
+            back_end,
+            "Back",
+            [wall_x.clone(), back_y.clone(), z.clone()],
+            [-1, 0, 0],
+            up,
+            high.clone(),
+        );
+        joint(
+            "Back return",
+            "Back",
+            [inner_x.clone(), back_y.clone(), z.clone()],
+            x,
+            up,
+            high.clone(),
+        );
+        joint(
+            return_end,
+            "Back return",
+            [back_x.clone(), et.clone(), z.clone()],
+            y,
+            up,
+            high.clone(),
+        );
+        let front_y = format!("{eb} - {ed}");
+        for (part, plane, mid, down) in [
+            (
+                "Bottom",
+                format!("{epl} + {et}"),
+                format!("{epl} + {et}/2"),
+                1,
+            ),
+            ("Top", format!("{eh} - {et}"), format!("{eh} - {et}/2"), -1),
+        ] {
+            let piece = format!("{part} return");
+            // what is in front of the back leg: the return's piece when split
+            let front = if self.split { piece.as_str() } else { part };
+            let (w0, reach) = match mount {
+                true => (zero.clone(), zero.clone()),
+                false => (et.clone(), et.clone()),
+            };
+            joint(
+                back_end,
+                part,
+                [wall_x.clone(), front_y.clone(), mid.clone()],
+                [-1, 0, 0],
+                y,
+                format!("{ed} - {reach}"),
+            );
+            joint(
+                return_end,
+                front,
+                [w0.clone(), et.clone(), mid.clone()],
+                y,
+                x,
+                format!("{edr} - {w0}"),
+            );
+            match mount {
+                // the backs stand on the bottom and under the top
+                true => {
+                    let into = [0, 0, down];
+                    joint(
+                        part,
+                        "Back",
+                        [inner_x.clone(), back_y.clone(), plane.clone()],
+                        into,
+                        x,
+                        format!("{ea} - 2*{et} - {tm}"),
+                    );
+                    let run = format!("{eb} - {et} - {tm}");
+                    if self.split {
+                        let leg = format!("{eb} - {ed} - {et}");
+                        joint(
+                            &piece,
+                            "Back return",
+                            [back_x.clone(), et.clone(), plane.clone()],
+                            into,
+                            y,
+                            leg,
+                        );
+                        joint(
+                            part,
+                            "Back return",
+                            [back_x.clone(), front_y.clone(), plane.clone()],
+                            into,
+                            y,
+                            format!("{ed} - {tm}"),
+                        );
+                    } else {
+                        joint(
+                            part,
+                            "Back return",
+                            [back_x.clone(), et.clone(), plane.clone()],
+                            into,
+                            y,
+                            run,
+                        );
+                    }
+                }
+                false => {
+                    let wall_y = format!("{eb} - {et}");
+                    joint(
+                        "Back",
+                        part,
+                        [et.clone(), wall_y, mid.clone()],
+                        [0, -1, 0],
+                        x,
+                        format!("{ea} - 2*{et}"),
+                    );
+                    if self.split {
+                        let leg = format!("{eb} - {ed} - {et}");
+                        joint(
+                            "Back return",
+                            &piece,
+                            [et.clone(), et.clone(), mid.clone()],
+                            x,
+                            y,
+                            leg,
+                        );
+                        joint(
+                            "Back return",
+                            part,
+                            [et.clone(), front_y.clone(), mid.clone()],
+                            x,
+                            y,
+                            format!("{ed} - {et}"),
+                        );
+                    } else {
+                        joint(
+                            "Back return",
+                            part,
+                            [et.clone(), et.clone(), mid.clone()],
+                            x,
+                            y,
+                            format!("{eb} - 2*{et}"),
+                        );
+                    }
+                }
+            }
         }
     }
 

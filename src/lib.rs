@@ -10,7 +10,7 @@ mod edit;
 mod fittings;
 mod frame;
 mod hardware;
-mod joinery;
+mod joint;
 mod kit;
 mod material;
 mod nesting;
@@ -209,28 +209,6 @@ fn noted(other: &select::Cabinet, place: &str, name: &str, run: Run) -> Result<b
         )?;
     }
     Ok(true)
-}
-
-/// Drills a cabinet's screw or dowel holes inside its component, and notes the kind on the
-/// component so that Edit can drill them again.
-fn drill(found: &select::Cabinet, kind: &str, run: Run) -> Result<(), String> {
-    let design = run(
-        "document.inspect",
-        json!({"bodies": false, "timeline": "summary"}),
-    )?;
-    let about = run("component.metadata", json!({"component": found.name}))?;
-    let mut ours = about["metadata"][edit::KEY].clone();
-    let cabinet = ours["params"]["kind"].as_str().unwrap_or("standard");
-    let commands = joinery::build(found, &design, kind, cabinet)?;
-    inside(&found.name, commands, run)?;
-    if ours.is_object() {
-        ours["joinery"] = json!(kind);
-        run(
-            "component.metadata.set",
-            json!({"component": found.name, "values": { edit::KEY: ours }}),
-        )?;
-    }
-    Ok(())
 }
 
 /// Runs `commands` with the cabinet `name`'s component active. In a plugin run the app shifts
@@ -530,13 +508,6 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     )?;
                 }
             }
-            // Its screw or dowel holes went with the old boards: drilled again, before it is
-            // put back where it stood.
-            if let Some(kind) = about["metadata"][edit::KEY]["joinery"].as_str() {
-                let found = select::named(&run("inspect.measure", json!({}))?, &name)?;
-                drill(&found, kind, run)?;
-                summary["joinery"] = json!(kind);
-            }
             run(
                 "occurrence.move",
                 json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
@@ -584,19 +555,6 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             }
             summary["edited"] = json!(true);
             Ok(summary)
-        }
-        "joinery" => {
-            // Screw or dowel holes at the corners of the selected cabinet, drilled inside its
-            // component.
-            let design = run(
-                "document.inspect",
-                json!({"bodies": false, "timeline": false}),
-            )?;
-            let picked = select::picked(params, &design);
-            let found = select::cabinet(&picked, &run("inspect.measure", json!({}))?)?;
-            let kind = params["type"].as_str().unwrap_or("confirmat");
-            drill(&found, kind, run)?;
-            Ok(json!({"cabinet": found.name, "type": kind, "joints": 4}))
         }
         "material" => {
             // A board material for the selected cabinet, or for just the selected parts.

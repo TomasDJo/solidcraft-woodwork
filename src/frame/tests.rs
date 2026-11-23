@@ -1,13 +1,16 @@
 use super::*;
+use serde_json::json;
 
 fn count(commands: &[(&str, Value)], id: &str) -> usize {
     commands.iter().filter(|c| c.0 == id).count()
 }
 
 /// The names of the features made, by what they start with after the frame's name.
-fn named(commands: &[(&str, Value)], start: &str) -> Vec<String> {
-    let all = commands.iter().filter_map(|c| c.1["name"].as_str());
-    all.filter(|n| n.starts_with(&format!("Frame {start}")))
+/// The joints' cuts by method (`dowels`, `bolts`, `bolts nut`): `Frame joint <leg> <rail> ...`.
+fn cuts(commands: &[(&str, Value)], method: &str) -> Vec<String> {
+    let all = commands.iter().filter(|c| c.0 == "solid.cylinder");
+    let all = all.filter_map(|c| c.1["name"].as_str());
+    all.filter(|n| n.starts_with("Frame joint ") && n.ends_with(&format!(" {method}")))
         .map(String::from)
         .collect()
 }
@@ -43,8 +46,8 @@ fn default_frame_four_legs_aprons_and_end_stretchers() {
     assert!(bodies
         .iter()
         .all(|b| !crate::fittings::is_leg(b) && is_timber(b)));
-    // eight parameters, every size an expression over them
-    assert_eq!(count(&commands, "parameters.add"), 8);
+    // eight parameters, every size an expression over them; the dowel's two and its count
+    assert_eq!(count(&commands, "parameters.add"), 8 + 3);
     assert_eq!(commands[0].1["name"], "Frame_width");
     let box_of = |name: &str| {
         let found = commands
@@ -69,21 +72,32 @@ fn default_frame_four_legs_aprons_and_end_stretchers() {
         "Frame_stretcher_height"
     );
     assert_eq!(box_of("Frame Leg back right")["height"], "Frame_height");
-    // two dowels at each end of each of the six rails, each through leg and rail
-    let dowels = named(&commands, "dowel ");
-    assert_eq!(dowels.len(), 24);
-    assert_eq!(dowels[23], "Frame dowel 24");
+    // two dowels at each end of each of the six rails, each through leg and rail: one cut at
+    // each end and one pattern of two for all, a quarter of the rail's height in from each edge
+    let dowels = cuts(&commands, "dowels");
+    assert_eq!(dowels.len(), 12);
     let first = commands
         .iter()
-        .find(|c| c.1["name"] == "Frame dowel 1")
+        .find(|c| c.1["name"] == "Frame joint Leg front left Apron L dowels")
         .unwrap();
     assert_eq!(
         first.1["targets"],
         json!(["Frame Leg front left", "Frame Apron L"])
     );
     assert_eq!(first.1["operation"], "cut");
-    assert_eq!(first.1["diameter"], "8 mm");
-    assert_eq!(first.1["height"], "40 mm");
+    assert_eq!(first.1["diameter"], "Frame_dowel_d");
+    assert_eq!(first.1["height"], "Frame_dowel_length + 2 mm");
+    let z = first.1["base"][2].as_str().unwrap();
+    assert_eq!(
+        z,
+        "Frame_height - Frame_apron_height + (Frame_apron_height/4)"
+    );
+    let rows: Vec<_> = (commands.iter())
+        .filter(|c| c.0 == "solid.pattern.rectangular")
+        .collect();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].1["features"].as_array().unwrap().len(), 12);
+    assert_eq!(rows[0].1["dir1"], json!([0, 0, 1]));
     // seats at the back corners, so a cabinet placed beside it links to it; one folder
     assert_eq!(count(&commands, "construct.axis.two_planes"), 2);
     assert_eq!(commands.last().unwrap().0, "timeline.group");
@@ -110,7 +124,7 @@ fn six_legs_split_the_long_rails_and_add_middle_ones() {
         assert!(bodies.contains(&json!(format!("Frame {part}"))), "{part}");
     }
     assert!(!bodies.contains(&json!("Frame Apron front")));
-    assert_eq!(named(&commands, "dowel ").len(), 14 * 4);
+    assert_eq!(cuts(&commands, "dowels").len(), 14 * 2);
     // well inside a run's 256 commands
     assert!(commands.len() < 150, "{}", commands.len());
 }
@@ -119,19 +133,19 @@ fn six_legs_split_the_long_rails_and_add_middle_ones() {
 fn no_stretchers_no_parameter() {
     let (commands, summary) = frame(json!({"stretchers": "none", "stretcher_height": 9999}));
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 8);
-    assert_eq!(count(&commands, "parameters.add"), 7);
+    assert_eq!(count(&commands, "parameters.add"), 7 + 3);
 }
 
 #[test]
 fn bolts_go_through_the_outer_faces_and_dowels_join_at_the_middle_legs() {
     let (commands, _) = frame(json!({"joint": "bolts"}));
     // a bolt and a barrel nut at each end of the six rails
-    assert_eq!(named(&commands, "bolt ").len(), 12);
-    assert_eq!(named(&commands, "barrel nut ").len(), 12);
-    assert!(named(&commands, "dowel ").is_empty());
+    assert_eq!(cuts(&commands, "bolts").len(), 12);
+    assert_eq!(cuts(&commands, "bolts nut").len(), 12);
+    assert!(cuts(&commands, "dowels").is_empty());
     let bolt = &commands
         .iter()
-        .find(|c| c.1["name"] == "Frame bolt 1")
+        .find(|c| c.1["name"] == "Frame joint Leg front left Apron L bolts")
         .unwrap()
         .1;
     // Apron L, from the front face of the front left leg, along +Y, at a third of its height
@@ -141,13 +155,13 @@ fn bolts_go_through_the_outer_faces_and_dowels_join_at_the_middle_legs() {
         bolt["base"],
         json!([
             "Frame_inset + Frame_apron_thickness/2 - Frame_width/2",
-            "Frame_leg - (1)*Frame_leg - Frame_depth/2",
-            "Frame_height - Frame_apron_height + Frame_apron_height/3"
+            "Frame_leg - (Frame_leg) - Frame_depth/2",
+            "Frame_height - Frame_apron_height + Frame_apron_height/3 + (0 mm / 2)"
         ])
     );
     let nut = &commands
         .iter()
-        .find(|c| c.1["name"] == "Frame barrel nut 1")
+        .find(|c| c.1["name"] == "Frame joint Leg front left Apron L bolts nut")
         .unwrap()
         .1;
     assert_eq!(nut["axis"], json!([-1, 0, 0])); // from the inside face
@@ -156,11 +170,11 @@ fn bolts_go_through_the_outer_faces_and_dowels_join_at_the_middle_legs() {
     let front = (commands.iter())
         .find(|c| c.1["targets"] == json!(["Frame Leg front left", "Frame Apron front"]))
         .unwrap();
-    assert!(front.1["base"][2].as_str().unwrap().ends_with("*2/3"));
+    assert!(front.1["base"][2].as_str().unwrap().contains("*2/3"));
     // with six legs the split rails meet the middle legs with dowels
     let (commands, _) = frame(json!({"joint": "bolts", "legs": "6", "stretchers": "none"}));
-    assert_eq!(named(&commands, "dowel ").len(), 4 * 2);
-    assert_eq!(named(&commands, "bolt ").len(), 7 * 2 - 4);
+    assert_eq!(cuts(&commands, "dowels").len(), 4);
+    assert_eq!(cuts(&commands, "bolts").len(), 7 * 2 - 4);
 }
 
 #[test]

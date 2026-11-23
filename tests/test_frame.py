@@ -6,7 +6,7 @@ import subprocess
 from build import CLI
 from helpers import *
 
-DOWEL = math.pi * 4 ** 2 * 20  # an 8 mm dowel's hole, 20 mm into a part
+DOWEL = math.pi * 4 ** 2 * 21  # an 8 x 40 mm dowel's hole, 21 mm into a part (1 mm to spare)
 BOLT = math.pi * 5 ** 2 * 70  # a 10 mm bolt's hole through a 70 mm leg
 
 
@@ -93,12 +93,12 @@ def test_edit_keeps_a_parameter_change_and_place_beside_a_cabinet(approval):
 
 def test_what_a_frame_refuses(approval):
     start = [frame(approval), select("Frame Leg front left")]
-    for steps in (start + [plugin(approval, "joinery", {"type": "dowel"})],
+    for steps in (start + [plugin(approval, "edit", {"joints": "dowels"})],
                   start + [plugin(approval, "panel", {"kind": "end"})],
                   start + [plugin(approval, "edit", {"shelves": 2})],
                   [frame(approval, leg=10)]):
         assert refused(steps), steps
-    assert "is a frame" in refused(start + [plugin(approval, "joinery", {"type": "dowel"})])
+    assert "is a frame" in refused(start + [plugin(approval, "panel", {"kind": "end"})])
 
 
 def test_a_worktop_over_a_frame(approval):

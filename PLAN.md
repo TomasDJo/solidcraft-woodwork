@@ -44,8 +44,8 @@ Surveyed: FreeCAD Woodworking, OpenCutList (SketchUp), MapBoards Pro and ExportC
 9. Doors, drawers, shelves with hardware drilling (hinge cups, 32 mm shelf pins, slides)
 10. Shop output (DXF per part, labels)
 
-0.2.0 covers 1, 2, 4, 6 and 7, and partly 3 (four materials), 5 (no minifix), 8 (back groove
-only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, labels, no DXF per part).
+0.2.0 covers 1, 2, 4, 5, 6 and 7, and partly 3 (four materials), 8 (back groove
+and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, labels, no DXF per part).
 
 ## Done
 
@@ -63,7 +63,7 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 - [x] Each cabinet is a component (moves as one piece, nests in a room component)
 - [x] Place a new cabinet right of, left of or above the selected one
 - [x] Materials (per cabinet or selected parts) and a sheet estimate in the cut list
-- [x] Joinery on the selected cabinet: confirmat or dowel holes at the carcass corners
+- [x] Joinery on the selected cabinet: confirmat or dowel holes at the carcass corners (removed: joinery is chosen at build; Edit gives an old drilled cabinet the same joint)
 - [x] Doors and drawers are sub-components with hinge and slide joints
 - [x] Drawers: a drawer unit with fronts and boxes sized for 12.7 mm slides
 - [x] Hardware list in the cut list: hinges, slides, shelf pins, screws, dowels, handles
@@ -114,12 +114,15 @@ only), 9 (box cabinets only for slide and plate holes) and 10 (DXF per sheet, la
 - [x] Casters as a plinth type on box cabinets: locking casters with pilot holes for their plates, counted as hardware (#79)
 - [x] Casters on corner cabinets, at the legs' places through the shared `fittings::foot`; the casters' post is joined before the wheel, so no timeline warning
 - [x] Frame: a leg-and-rail base for a workbench, table, desk or bench (4 or 6 legs, aprons, stretchers, dowels or bolts), solid timber in the cut list, kept by Edit cabinet (#79 part 1)
+- [x] Joinery chosen when a box cabinet is made, through one shared module (`src/joint/`): dowels (the default), confirmat screws, plain screws, cam locks, pocket screws, biscuits or Dominos, or a dado (box cabinets) where the sides meet the bottom and top, rows that follow a resize, counted in the cut list from parameters, changed by Edit, a default in Woodwork settings; the Frame's dowels and bolts on the same module
 
 ## Open
 
 Cabinets:
-- [ ] Corner cabinet: joinery, a thin back
-- [ ] Joinery for dividers and fixed shelves
+- [x] Corner cabinet: joinery at build (L-shaped and diagonal, split boards, with a wall mount)
+- [ ] Corner cabinet: a thin back
+- [x] Joinery for dividers and the rail between drawers and doors (`joints_inner`, the second method)
+- [x] Fixed shelves: without shelf pins, joined to the sides and dividers by the inside's method (box cabinets)
 - [ ] A cabinet turned a quarter in the dialog, to continue a corner cabinet's return
       (today: turn the component afterwards)
 - [x] Worktop over the selected cabinets: runs and corners (butt or mitre), gaps spanned, made again by running it again (#62)

@@ -14,7 +14,6 @@ without doors.
 - [Building a run: Place and Match selected](#building-a-run-place-and-match-selected)
 - [Changing sizes](#changing-sizes)
 - [Edit cabinet](#edit-cabinet)
-- [Joinery](#joinery)
 - [Material](#material)
 - [Panel](#panel)
 - [Worktop](#worktop)
@@ -36,6 +35,7 @@ component can hold its cabinets.
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
 | **Back**, **Back thickness** | In a groove, overlaid on the rear edges, or none. |
 | **Wall mount**, **Cleat height**, **Cleat thickness** | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
+| **Joinery**, **Joinery inside**, **Joint spacing**, **Joint edge distance**, **Dowel diameter**, **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket face** | How the sides are fixed to the bottom and top, and (Joinery inside, shown with dividers or a rail) the dividers and the rail: dowels (the default), confirmat screws, screws, cam locks, pocket screws, biscuits, a dado or none. See [Joinery at build](#joinery-at-build). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
@@ -44,7 +44,7 @@ component can hold its cabinets.
 | **Plinth height** | 0 for none. |
 | **Plinth type** | Shown with a plinth. **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
 | **Plinth set-back** | Shown with a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
-| **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. |
+| **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. Off, the shelves are fixed and joined by Joinery inside (a cabinet made before 0.2.0 keeps them unjoined, as it has no method). |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
 | **Fronts** | Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment. |
@@ -114,10 +114,75 @@ and no box. Drawer front height sets its height. The boxes below are half the sh
 deep, so they stop short of the trap; for deeper ones, cut a U round the trap yourself. A
 sink base with drawers changed back to a standard cabinet with Edit gets full drawers again. The back is your
 choice: Back None leaves it open for the pipes. Place works as on any cabinet;
-pick a rail or a side to select it, as it has no top. Joinery screws the sides to the rails: the
-first hole of a row goes into the front rail, the last into the back one.
+pick a rail or a side to select it, as it has no top. Its joinery fixes the sides to the
+bottom and to each rail, one fastener in the middle of a rail.
 
 There is no oven housing: size a tall cabinet for your oven yourself.
+
+### Joinery at build
+
+**Joinery** chooses how the sides are fixed to the bottom and the top (a sink base's to its
+bottom and its two rails), and the holes are drilled as the cabinet is made:
+
+- **Dowels** (the default): wooden pegs glued into both boards, hidden. Each hole is one
+  cut through both boards: blind in the side's inner face (5 mm short of coming through, at
+  most half the dowel), the rest into the end of the bottom or top, 2 mm longer than the dowel.
+  **Dowel diameter** 8 mm and **Dowel length** 35 mm by default; the dowel must be 4 mm
+  thinner than the boards and more than twice as long as it is thick.
+- **Confirmat screws**: 7 x 50 mm furniture screws from outside, heads showing: a 7 mm hole
+  through the side and a 5 mm pilot hole into the end, 50 mm less the side deep. Boards
+  under 40 mm only.
+- **Screws**: plain 4 x 50 mm wood or chipboard screws from outside, as confirmat: a 4.5 mm
+  hole through the side and a 3 mm pilot into the end. Counted as "Screw, 4 x 50 mm".
+- **Cam locks** (minifix): a 5 mm hole in the side's inner face for the bolt's thread (11 mm
+  deep, less in a thin side), an 8 mm hole along the middle of the bottom's or top's end for its
+  shank, and the cam's housing (**Cam size**, 15 mm) from the end board's inside face, where the
+  bolt reaches it: **Cam bolt length** (35 mm) less the thread, 24 mm from the side. The housing
+  goes 85 % of the cam's size deep, leaving 3 mm of the board. Boards of 12 mm or more. Spaced
+  as dowels; counted as "Cam lock and bolt, 15 mm". The cabinet comes apart again.
+- **Pocket screws**: a 9.5 mm pocket in the bottom's or top's face (**Pocket face**: Outside,
+  under the bottom and over the top, hidden; or Inside), at 15 degrees to it, aimed at the middle
+  of its end, and a 3.5 mm pilot from there on out through the end and up to 15 mm into the side
+  (less in a thin side). The angle is fixed. Spaced as dowels; counted as "Pocket screw, 32 mm".
+  Each pocket is a cylinder cut on a slanted axis.
+- **Biscuits**: a slot across the joint, half in each board, in the middle of the end's
+  thickness, for a flat glued biscuit: **Biscuit size** #0, #10 or #20 (53, 59 or 62 mm long,
+  9, 11 or 13 mm into each board, 4 mm thick; drawn as a rectangle, a biscuit jointer cuts a
+  half moon) or a Domino 5 x 30 (21 x 5 mm, 15 mm into each board). Spaced as dowels; counted
+  as "Biscuit, #20" or "Domino, 5 x 30 mm". The boards must leave 3 mm behind the slot.
+- **Dado** (box cabinets): the bottom and top sit in grooves (housings) cut across the sides,
+  **Dado depth** (6 mm) deep and as wide as the boards, through from front to back: each is that
+  much longer at each end, which the cut list shows (a 600 mm cabinet's bottom is 576, not 564).
+  Joinery inside: a divider grows into grooves in the bottom and top, the rail into the sides.
+  Glue them; nothing to buy. The depth leaves 3 mm of the side behind the groove at least.
+  A corner cabinet refuses it.
+- **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
+
+**Joinery inside** does the same for fixed shelves (without **Shelf pin holes** the shelves are
+fixed: each
+compartment's shelf runs between its side and divider, or two dividers, and is joined at both
+ends; a shelf right of a divider has one fewer, half a pitch along, so its holes fall between
+those of the shelf on the other side; in a dado the shelf is longer by the two grooves, and
+grooves from both sides of a divider must leave 3 mm, so the depth is at most half of the
+thickness less 3 mm), for the dividers (each end into the bottom's top face and the
+top's underside: a confirmat screw goes in from under the bottom and over the top) and for
+the rail between drawers and doors (into the sides, like the bottom). Their rows run along
+the shelves' depth, from behind inset fronts to the back.
+
+Along each joint the first and last are **Joint edge distance** (50 mm) from the front and
+back edges, and the rest are spread evenly, at most **Joint spacing** (250 mm, 10 in) apart: a
+560 mm deep cabinet gets 3 a joint, 230 mm apart. Each hole costs time when the cabinet is
+made (about a tenth of a second here, more in a big design), so a closer spacing makes slower
+runs. A sink base's rails get one each, in their
+middle. The sizes are the cabinet's design parameters (`Name_joint_spacing`,
+`Name_joint_edge`, `Name_dowel_d`, `Name_dowel_length`): change one in Parameters, or change
+the depth, and the holes follow, their number too. The cut list counts what to buy from the
+parameters `Name_dowels`, `Name_confirmats`, `Name_screws`, `Name_cams`, `Name_pocket_screws`, `Name_biscuits_20` (and `_0`, `_10`) and `Name_dominos` (the sum of the joints' counts, so they follow
+as well), as "Dowel, 8 x 35 mm" or "Confirmat screw, 7 x 50 mm". Edit cabinet changes either
+method (its sizes stay as they are in Parameters); Woodwork settings keeps the two methods new
+cabinets start with. Each joint is a cut in the cabinet's history folder (`Name joint Side L Bottom
+dowels`, `... confirmat` and `... confirmat pilot`), repeated along it by a pattern; the joints
+that run the same way with the same count share one (`Name joint Side L Bottom dowels row`).
 
 ### Wall mount
 
@@ -184,6 +249,16 @@ the boards; the shelves and the pin rows stop at the backs. A steel rail is one 
 wall (`Name_wall_rail`, the width, and `Name_wall_rail_return`, the return), two hangers each.
 L-shaped and diagonal alike.
 
+**Joinery** (dowels by default, or any other method of the box cabinet but a dado), with **Joint spacing**, **Joint edge
+distance**, **Dowel diameter** and **Dowel length**, works as on the box cabinet (see
+[Joinery at build](#joinery-at-build)) on every joint of the carcass: the back's two ends into
+the back leg's end and the back return, the back return's front end into the return's end,
+and the bottom and top into the four upright boards round them. With a cleat or a hanging rail
+the backs stand on the bottom and under the top, so those joints go up into the backs instead.
+Split boards keep their two dowels at the joint between the two pieces (an edge joint the
+other methods cannot make); each piece is joined to the boards it meets. L-shaped and
+diagonal alike; Edit cabinet changes the method.
+
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the
 left.
@@ -224,23 +299,25 @@ a cabinet, see Place below), made of solid timber, oak unless you choose another
 | **Stretchers** | None, Ends (one at each end, front leg to back leg) or All round (the front and back too). |
 | **Stretcher height** | Shown with stretchers: from the floor to their underside. Their top must stay 50 mm under the aprons. |
 | **Legs** | 4, or 6: a middle pair at the middle of the width, the long aprons (and stretchers) split there, and a middle apron (and with stretchers a middle stretcher) across between them. |
-| **Joint** | With bolts, depth (and with 4 legs width) must leave 160 mm between the legs, so the bolts from both ends of a rail do not meet. **Dowels**: two 8 x 40 mm dowel holes at each rail end, 20 mm into the leg and 20 mm into the rail, along the rail, centred on its thickness, at a quarter and three quarters of its height. **Bolts**: a 10 mm bed bolt hole from the leg's outer face through the leg and 80 mm into the rail's end, and a 10 mm barrel nut hole from the rail's inner face, 60 mm from its end, across to past the bolt. The rails along the width are bolted higher than those along the depth, so the two bolts in a corner leg do not meet. Rails that meet at a middle leg are doweled, as a bolt cannot come from both sides. |
+| **Joint** | With bolts, depth (and with 4 legs width) must leave 160 mm between the legs, so the bolts from both ends of a rail do not meet. **Dowels**: two 8 x 40 mm dowel holes at each rail end, 21 mm into the leg and 21 mm into the rail (1 mm to spare at each end, as on a cabinet), along the rail, centred on its thickness, at a quarter and three quarters of its height. **Bolts**: a 10 mm bed bolt hole from the leg's outer face through the leg and 80 mm into the rail's end, and a 10 mm barrel nut hole from the rail's inner face, 60 mm from its end, across to past the bolt. The rails along the width are bolted higher than those along the depth, so the two bolts in a corner leg do not meet. Rails that meet at a middle leg are doweled, as a bolt cannot come from both sides. |
 | **Material, Place, Selected cabinet, Name** | As for a cabinet. Place: Auto, the origin, or right or left of the selected cabinet, against its side with the backs flush and held to it as a cabinet is (the frame has seats at its back corners). Auto on a cabinet's top puts it at the origin. |
 
 The parts are `Name Leg front left`, `Leg front right`, `Leg back left`, `Leg back right`
 (`Leg middle front`, `Leg middle back`), `Name Apron front`, `Apron back`, `Apron L`, `Apron R`
 (with six legs `Apron front L`, `Apron front R`, `Apron back L`, `Apron back R` and
-`Apron middle`) and the stretchers named the same way (`Stretcher L`, ...). The holes are
-features `Name dowel 1`, `Name bolt 1`, `Name barrel nut 1` and so on. The sizes are the
-parameters `Name_width`, `Name_depth`, `Name_height`, `Name_leg`, `Name_apron_height`,
-`Name_apron_thickness`, `Name_inset` and, with stretchers, `Name_stretcher_height`: change one
-in Parameters and the frame and its holes follow.
+`Apron middle`) and the stretchers named the same way (`Stretcher L`, ...). The joints are
+made by the same joinery as a cabinet's ([Joinery at build](#joinery-at-build)): a cut at each
+rail end (`Name joint Leg front left Apron L dowels`, `... bolts` and `... bolts nut`) and one
+pattern repeating the dowels up the rails. The sizes are the parameters `Name_width`,
+`Name_depth`, `Name_height`, `Name_leg`, `Name_apron_height`, `Name_apron_thickness`,
+`Name_inset`, `Name_dowel_d`, `Name_dowel_length` and, with stretchers,
+`Name_stretcher_height`: change one in Parameters and the frame and its holes follow.
 
 The cut list lists the legs, aprons and stretchers as solid timber bought to length (length x
 width x thickness), not laid out on sheets, and counts the dowels, bed bolts and barrel nuts.
 Edit cabinet changes a frame's stretchers, legs and joint (Stretchers, Frame legs, Frame
-joint), keeping its sizes from Parameters; Material works on a frame. Joinery, Panel and
-Drawing are for cabinets and refuse a frame.
+joint), keeping its sizes from Parameters; Material works on a frame. Panel and Drawing are
+for cabinets and refuse a frame.
 
 The top: run [Worktop](#worktop) with a frame part picked. It goes over the legs' outer faces
 (plus the overhangs), on the aprons' top, and the cut list lists it bought to length. Run
@@ -254,8 +331,8 @@ shelves are.
 
 Select any part of a cabinet, then open **Cabinet** or **Corner cabinet**. The selection
 shows in the dialog as **Selected cabinet**. Click that field and pick another board in the
-model while the dialog is open, and the preview follows. Edit cabinet, Joinery, Material and
-Drawing have the same field.
+model while the dialog is open, and the preview follows. Edit cabinet, Material and Drawing
+have the same field.
 
 **Place** puts the new cabinet against the selected one, backs flush. That cabinet must
 stand square to the axes.
@@ -294,7 +371,8 @@ Changes a cabinet after it is made. Select any part of it, fill in only what sho
 leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth,
-plinth type, plinth set-back, the kind (standard or sink base), the wall mount, a corner cabinet's doors and shape, and a
+plinth type, plinth set-back, the kind (standard or sink base), the wall mount, the
+[joinery](#joinery-at-build) (Joinery inside on box cabinets only; the sizes stay as they are in Parameters), a corner cabinet's doors and shape, and a
 [frame](#frame)'s stretchers, legs and joint (a cabinet's fields are refused on a frame, and
 the frame's on a cabinet). The reveal, the plinth set-back and the drawer
 front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
@@ -311,19 +389,13 @@ hinge side, drawers, drawer front height, Drawers at and back. With nothing pick
 board that is no cabinet's, it shows them all.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
-in Parameters, its doors keep their material, its joinery is drilled again, and cabinets
+in Parameters, its doors keep their material, its joinery is made again, and cabinets
 matched to it still follow. Doors and drawers come back closed. Its end panels and fillers
 are made again to fit it.
 
-Works on cabinets made by 0.1.7 or later.
-
-## Joinery
-
-Drills the selected cabinet where its sides meet the bottom and top: holes for 7 x 50
-confirmat screws, or for 8 x 35 dowels. A sink base's sides are drilled into its two rails
-instead of a top, one hole each. The holes follow the cabinet's parameters; their
-number is set when they are drilled. The rail between drawers and doors is not drilled (nor
-are fixed shelves and dividers): screw it by hand, and count those screws yourself.
+Works on cabinets made by 0.1.7 or later. A cabinet drilled by the Joinery function of
+0.2.0 and before gets the same kind of joint at build (confirmat or dowels) when an Edit gives
+it no method of its own; until then the cut list still counts its old holes.
 
 ## Material
 
@@ -333,7 +405,7 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 ## Woodwork settings
 
 The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
-holes, plinth height and plinth type. Set the ones you want and run it; Keep or an empty field
+holes, plinth height, plinth type and the two joinery methods (Corner cabinet takes the first). Set the ones you want and run it; Keep or an empty field
 leaves what is stored, and the result shows everything stored now. The Cabinet and Corner
 cabinet dialogs then open with these values (the hint says "From Woodwork settings"), in the
 dialog's own unit: a 19.05 mm thickness shows as 0.75 in when Units is Inches. You can still
@@ -597,7 +669,7 @@ quarter turn) is drawn from its own front.
   `woodwork.corner` and so on, with the dialog's fields as its arguments. Every field
   with a default is required there, so the agent sends them all, the defaults with what it wants changed; a
   field the dialog would hide is left out. From SolidCraft 0.46 the same check applies to a
-  script's `plugin.run` and `woodwork.<entry>` (except Joinery, Material and Drawing): pass
+  script's `plugin.run` and `woodwork.<entry>` (except Material and Drawing): pass
   every field the dialog would show. Cabinet and Corner cabinet are the exception (0.46,
   Woodwork settings): a field left out takes the stored setting, and only then must every
   field be there.
