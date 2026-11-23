@@ -716,3 +716,28 @@ fn sides_grooved_for_runners_are_noted() {
     );
     assert!(notes.contains(&&json!(GROOVED)), "{notes:?}");
 }
+
+#[test]
+fn an_l_boards_open_corner_comes_from_its_mesh() {
+    // an L 1164 x 864 x 18 with a 622 x 322 corner open at its far corner (x and y high),
+    // and a hole's points inside it; a plain board has none
+    let outline = [
+        [0, 0],
+        [1164, 0],
+        [1164, 542],
+        [542, 542],
+        [542, 864],
+        [0, 864],
+        [300, 300],
+    ];
+    let positions: Vec<Value> = (outline.iter())
+        .flat_map(|[x, y]| [json!([x, y, 0]), json!([x, y, 18])])
+        .collect();
+    let mesh = json!({"positions": positions});
+    assert_eq!(open_corner(&mesh), Some([622.0, 322.0, 0.0]));
+    let square = json!({"positions": [[0, 0, 0], [500, 0, 0], [500, 400, 0], [0, 400, 0], [0, 0, 18], [500, 400, 18]]});
+    assert_eq!(open_corner(&square), None);
+    let design = json!({"timeline": [{"name": "C Bottom notch"}, {"name": "C Side L notch"},
+                                     {"name": "C Shelf 1 notch"}]});
+    assert_eq!(l_boards(&design), ["C Bottom", "C Shelf 1"]);
+}

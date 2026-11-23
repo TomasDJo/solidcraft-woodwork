@@ -345,6 +345,48 @@ pub fn grooved(design: &Value) -> Vec<String> {
     sides
 }
 
+/// A corner cabinet's one-piece L-shaped boards, from the box cut that makes each one's open
+/// corner (`<Board> notch`; a side's toe kick is named so too, and left out), as `notched`.
+pub fn l_boards(design: &Value) -> Vec<String> {
+    let features = design["timeline"].as_array().into_iter().flatten();
+    let boards = features.filter_map(|f| f["name"].as_str()?.strip_suffix(" notch"));
+    boards
+        .filter(|s| !s.ends_with(" Side L") && !s.ends_with(" Side R"))
+        .map(String::from)
+        .collect()
+}
+
+/// An L-shaped board's open corner from `model.mesh` (in its own component, square to it):
+/// its size along X, Y and Z (0 across the thickness), at the corner of its box that no point
+/// reaches: along each edge of the box through that corner the points stop short of it by the
+/// corner's size. None when every corner is filled.
+pub fn open_corner(mesh: &Value) -> Option<[f64; 3]> {
+    let points: Vec<[f64; 3]> = (mesh["positions"].as_array().into_iter().flatten())
+        .filter_map(|p| Some([p[0].as_f64()?, p[1].as_f64()?, p[2].as_f64()?]))
+        .collect();
+    let lo = |i: usize| points.iter().map(|p| p[i]).fold(f64::MAX, f64::min);
+    let hi = |i: usize| points.iter().map(|p| p[i]).fold(f64::MIN, f64::max);
+    let mut axes = [0, 1, 2];
+    axes.sort_by(|&i, &j| (hi(i) - lo(i)).total_cmp(&(hi(j) - lo(j))));
+    let [_, a, b] = axes;
+    // How far the points on the box's edge where `across` is `at` stay from `end` along `along`.
+    let short = |along: usize, end: f64, across: usize, at: f64| {
+        let on = points.iter().filter(|p| (p[across] - at).abs() < 0.01);
+        on.map(|p| (p[along] - end).abs()).fold(f64::MAX, f64::min)
+    };
+    for ea in [lo(a), hi(a)] {
+        for eb in [lo(b), hi(b)] {
+            let (sa, sb) = (short(a, ea, b, eb), short(b, eb, a, ea));
+            if sa > 1.0 && sb > 1.0 && sa < f64::MAX && sb < f64::MAX {
+                let mut size = [0.0; 3];
+                (size[a], size[b]) = (sa, sb);
+                return Some(size);
+            }
+        }
+    }
+    None
+}
+
 /// What a grooved side's line in the cut list says.
 pub const GROOVED: &str = "grooved for the drawer runners";
 
@@ -534,6 +576,7 @@ pub fn cutlist(
     // length and along the width, and whether it is notched.
     type Key = (i64, i64, i64, String, u64, u64, String);
     let mut rows: BTreeMap<Key, Vec<String>> = BTreeMap::new();
+    let mut corners: BTreeMap<String, [f64; 2]> = BTreeMap::new(); // L boards' open corners
     for &body in &bodies {
         let name = body["name"].as_str().unwrap_or("?").to_string();
         let tenths = size(body)?.map(|mm| (mm * 10.0).round() as i64);
@@ -559,6 +602,10 @@ pub fn cutlist(
             Edges::Front if grain == Some(w) => (0, 1),
             Edges::Front => (1, 0),
         };
+        let corner = |i: usize| params["_corners"][name.as_str()][i].as_f64();
+        if let (Some(cl), Some(cw)) = (corner(l), corner(w)) {
+            corners.insert(name.clone(), [cl, cw]);
+        }
         let key = (
             tenths[t],
             tenths[l],
@@ -676,8 +723,15 @@ pub fn cutlist(
             let parts: Vec<Value> = (placed.iter())
                 .map(|p| {
                     let (_, name, row) = &group[p.part];
-                    json!({"part": name, "row": row, "x": tenth(p.x), "y": tenth(p.y), "w": tenth(p.w),
-                           "h": tenth(p.h), "rotated": p.rotated})
+                    let mut laid = json!({"part": name, "row": row, "x": tenth(p.x), "y": tenth(p.y), "w": tenth(p.w),
+                           "h": tenth(p.h), "rotated": p.rotated});
+                    // An L board's open corner, along x and y, at the part's far corner (the
+                    // board turned or over to suit): drawn, not laid out on.
+                    if let Some(&[cl, cw]) = corners.get(name) {
+                        let (cx, cy) = if p.rotated { (cw, cl) } else { (cl, cw) };
+                        laid["corner"] = json!([tenth(cx), tenth(cy)]);
+                    }
+                    laid
                 })
                 .collect();
             layouts.push(json!({

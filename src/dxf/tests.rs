@@ -186,3 +186,17 @@ fn a_file_per_sheet() {
         ]
     );
 }
+
+#[test]
+fn an_l_board_is_drawn_as_an_l() {
+    let layout = json!({"size": [2440, 1220], "parts": [
+        {"part": "C Bottom", "x": 10, "y": 10, "w": 864, "h": 864, "corner": [322, 322]}]});
+    let dxf = render(&layout, 0.0);
+    // the sheet's four vertices and the part's six
+    assert_eq!(dxf.matches("VERTEX").count(), 4 + 6);
+    assert!(
+        dxf.contains("10\n552\n20\n552\n"),
+        "the inner corner at (874 - 322, 874 - 322)"
+    );
+    assert_eq!(part_outline(0.0, 0.0, 4.0, 3.0, None).len(), 4);
+}

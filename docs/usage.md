@@ -685,7 +685,7 @@ The parts are laid out on sheets of the **Sheet size** chosen (2440 x 1220, the 
 and the **Edge trim** (10 mm) cut off every edge of the sheet. Each layout can be cut on a panel
 saw: every cut runs right across the piece it is made in. A part of a material with a grain
 keeps its length along the sheet's length; any other part may be turned. Parts are laid out at
-the size the list shows, so at the cut size when **Sizes** is Cut. A part that is too big for
+the size the list shows, so at the cut size when **Sizes** is Cut. A corner cabinet's one-piece L-shaped bottom, top and shelves take their whole square, as they are cut on a panel saw, but the PDF's diagrams and the DXF draw their real L outline, the open corner at the part's far corner (turn or flip the board to match): it is cut out with a jigsaw or track saw afterwards, and nothing else is laid out there. An L board bigger than the sheet stays in the oversize list; Split in two makes it fit. The diagonal corner's boards are drawn whole. A part that is too big for
 the sheet less its trim (or fits only with its grain across the sheet) is not laid out: the
 reply lists it under `oversize` with the reason, and the PDF names it under the sheets to buy.
 Sheet sizes, kerf and trim are metric mm: a 4 x 8 ft sheet is 2438.4 x 1219.2 mm, so pick

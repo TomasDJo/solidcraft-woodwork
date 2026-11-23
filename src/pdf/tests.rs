@@ -239,3 +239,20 @@ fn a_notched_side_says_so() {
     let text = String::from_utf8_lossy(&labels::render(&boards)).to_string();
     assert!(text.contains("(#1, sheet 1 of 1, notched)"), "{text}");
 }
+
+#[test]
+fn an_l_board_is_drawn_as_an_l_in_the_diagram() {
+    let mut listed = list(1);
+    listed["layouts"] = json!([{"material": "Birch plywood", "thickness": 18.0, "size": [2440.0, 1220.0],
+        "yield_pct": 30.0, "parts": [{"part": "C Bottom", "row": 0, "x": 10.0, "y": 10.0,
+        "w": 864.0, "h": 864.0, "rotated": false, "corner": [322.0, 322.0]}]}]);
+    let pdf = render(&listed, "Corner", true);
+    well_formed(&pdf);
+    let text = String::from_utf8_lossy(&pdf);
+    // a six-point path, not a rectangle
+    let path = text
+        .lines()
+        .find(|l| l.contains(" m ") && l.ends_with(" h B"))
+        .expect("an L path");
+    assert_eq!(path.matches(" l ").count(), 5, "{path}");
+}

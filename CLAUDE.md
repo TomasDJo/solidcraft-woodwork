@@ -415,7 +415,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   along its shorter leftover), the fewest sheets wins, then the emptiest last sheet. Free
   pieces are never joined again, so a cutting optimiser may save a sheet on a big job (the
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
-  sheet is only reported (`oversize`), not split.
+  sheet is only reported (`oversize`), not split. A corner's one-piece L board (`cutlist::l_boards`: its `<Board> notch` cut) is laid out
+  as its square; `lib.rs` reads its open corner from the `model.mesh` it already takes (it fills
+  no box: `turned`), `cutlist::open_corner` (the box corner no point reaches), passed as
+  `_corners`, and each laid part carries `corner` (along x and y, at its far corner), which
+  `dxf::part_outline` draws as an L in the DXF and the PDF's diagrams, the label on the bigger leg.
 - The Frame function (a leg-and-rail base, entry `frame`) was removed: not useful on its own, a
   different design is planned in #101. With it went `src/frame/`, Edit's frame fields, the cut
   list's `timber`, the worktop over a frame, and the joinery's frame-only bolts and barrel nuts
