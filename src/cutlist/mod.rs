@@ -201,6 +201,14 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         bodies.iter().filter(shelf).count() as u64 // a split shelf is one shelf
     };
     let pulls = ending(" handle 2");
+    // A frame's joints: `<Frame> dowel <n>`, `bolt <n>`, `barrel nut <n>`, of a frame that is
+    // there (a split corner shelf's `return dowel <n>` is not one).
+    let numbered = |word: &str| {
+        let ends = features.iter().filter_map(|f| f.rsplit_once(word));
+        let frame = |stem: &str| bodies.contains(&format!("{stem}{}", crate::frame::MARK));
+        let ends = ends.filter(|(stem, n)| n.parse::<u32>().is_ok() && frame(stem));
+        ends.count() as u64
+    };
     let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front");
     let counts = [
         (
@@ -250,6 +258,9 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
                 .filter(|b| crate::fittings::is_caster(b))
                 .count() as u64,
         ),
+        ("Dowel, 8 x 40 mm", numbered(" dowel ")),
+        ("Bed bolt, 10 mm", numbered(" bolt ")),
+        ("Barrel nut, 10 mm", numbered(" barrel nut ")),
         ("Knob", (ending(" handle 1") - pulls) as u64),
         ("Pull, 128 mm", pulls as u64),
     ];
@@ -548,6 +559,7 @@ pub fn cutlist(
     type Laid = (crate::nesting::Part, String, usize); // a part, its name and its row
     let mut pieces: BTreeMap<(String, i64), Vec<Laid>> = BTreeMap::new(); // to lay out, the same
     let mut worktops = Vec::new();
+    let mut timber = Vec::new(); // a frame's parts
     for ((t, l, w, material, le, we, notch), names) in &rows {
         let qty = names.len();
         let row_m2 = mm(*l) * mm(*w) * qty as f64 / 1e6;
@@ -564,9 +576,15 @@ pub fn cutlist(
         let grain = crate::material::GRAINED.contains(&material.as_str());
         let (row, one_m2) = (parts.len(), mm(*l) * mm(*w) / 1e6);
         for name in names {
-            // A board named so: a worktop, bought to length.
-            if worktop(name) {
-                worktops.push(
+            // A frame's leg, apron or stretcher (solid timber), or a board named so (a
+            // worktop): bought to length.
+            let bought = match worktop(name) {
+                _ if crate::frame::is_timber(name) => Some(&mut timber),
+                true => Some(&mut worktops),
+                false => None,
+            };
+            if let Some(list) = bought {
+                list.push(
                     json!({"part": name, "material": material, "thickness": shown(*t),
                                      "length": shown(cl), "width": shown(cw)}),
                 );
@@ -693,6 +711,7 @@ pub fn cutlist(
         "layouts": layouts,
         "oversize": oversize,
         "worktops": worktops,
+        "timber": timber,
         "banding": banding,
         "parts": parts,
         "boards": bodies.len(),

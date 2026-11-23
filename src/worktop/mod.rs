@@ -66,6 +66,9 @@ struct Foot {
 /// each side, the whole length of the cabinet that way and as deep, from its wall, as that
 /// side is long, facing the way the other side faces out.
 fn feet(measure: &Value, name: &str) -> Result<(Vec<Foot>, f64), String> {
+    if is_frame(measure, name) {
+        return frame_foot(measure, name);
+    }
     let c = select::named(measure, name)?;
     let mut whole = [
         f64::INFINITY,
@@ -118,6 +121,60 @@ fn feet(measure: &Value, name: &str) -> Result<(Vec<Foot>, f64), String> {
         front,
     });
     Ok((feet.collect(), c.max[2]))
+}
+
+/// Whether `name` is a frame in the design: it has its `<Name> Leg front left`.
+pub fn is_frame(measure: &Value, name: &str) -> bool {
+    let leg = format!("{name}{}", crate::frame::MARK);
+    let all = measure["bodies"].as_array().into_iter().flatten();
+    all.into_iter().any(|b| b["name"] == leg.as_str())
+}
+
+/// A frame's one foot: its legs' outer faces seen from above, facing the way from its back
+/// legs to its front ones, and the legs' top (the aprons' top) as its height.
+fn frame_foot(measure: &Value, name: &str) -> Result<(Vec<Foot>, f64), String> {
+    let mut plan = [
+        f64::INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::NEG_INFINITY,
+    ];
+    let (mut top, mut middle) = (f64::NEG_INFINITY, std::collections::BTreeMap::new());
+    let legs = format!("{name} Leg ");
+    for body in measure["bodies"].as_array().into_iter().flatten() {
+        let part = body["name"].as_str().unwrap_or_default();
+        let Some(which) = part.strip_prefix(&legs) else {
+            continue;
+        };
+        let at = |end: &str, i: usize| body["bbox"][end][i].as_f64().unwrap_or(f64::NAN);
+        plan = [
+            plan[0].min(at("min", 0)),
+            plan[1].min(at("min", 1)),
+            plan[2].max(at("max", 0)),
+            plan[3].max(at("max", 1)),
+        ];
+        top = top.max(at("max", 2));
+        let centre = [
+            (at("min", 0) + at("max", 0)) / 2.0,
+            (at("min", 1) + at("max", 1)) / 2.0,
+        ];
+        middle.insert(which.to_string(), centre);
+    }
+    let (Some(l), Some(r)) = (middle.get("front left"), middle.get("front right")) else {
+        return Err(format!("`{name}` is missing its front legs"));
+    };
+    // ponytail: quarter turns only, as for a cabinet: the front goes by the larger axis
+    let d = [r[0] - l[0], r[1] - l[1]];
+    let right = match d[0].abs() >= d[1].abs() {
+        true => [d[0].signum(), 0.0],
+        false => [0.0, d[1].signum()],
+    };
+    let foot = Foot {
+        cabinet: name.to_string(),
+        plan,
+        front: [right[1], -right[0]],
+    };
+    Ok((vec![foot], top))
 }
 
 /// A straight run of cabinets facing the same way: the way its right is seen from the front,

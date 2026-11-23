@@ -371,10 +371,18 @@ pub fn render(list: &Value, title: &str, diagrams: bool) -> Vec<u8> {
         doc.text(M, doc.y, 7.5, false, GREY, &line);
     }
 
-    let worktops = list["worktops"].as_array().unwrap_or(&none);
-    if !worktops.is_empty() {
-        doc.heading("Worktops, bought to length", "");
-        let rows: Vec<Vec<String>> = (worktops.iter())
+    // Worktops and a frame's solid timber: bought to length, not on a sheet.
+    let bought = [
+        ("worktops", "Worktops, bought to length"),
+        ("timber", "Solid timber, bought to length"),
+    ];
+    for (key, heading) in bought {
+        let parts = list[key].as_array().unwrap_or(&none);
+        if parts.is_empty() {
+            continue;
+        }
+        doc.heading(heading, "");
+        let rows: Vec<Vec<String>> = (parts.iter())
             .map(|w| {
                 vec![
                     String::new(),

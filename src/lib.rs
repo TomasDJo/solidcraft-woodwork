@@ -8,6 +8,7 @@ mod drawing;
 mod dxf;
 mod edit;
 mod fittings;
+mod frame;
 mod hardware;
 mod joinery;
 mod kit;
@@ -34,23 +35,35 @@ pub type Run<'a> = &'a mut dyn FnMut(&str, Value) -> Result<Value, String>;
 /// `component.create`'s reply.
 /// `design` is `document.inspect`'s reply.
 fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value, Value), String> {
-    let built = match entry {
-        "cabinet" => cabinet::build(params)?,
-        _ => corner::build(params)?,
-    };
+    let built = build(entry, params)?;
     // The hinges' and slides' shared sizes, the first time a cabinet needs them.
     if hardware::used(&built.0) {
         for (command, args) in hardware::parameters(design) {
             run(command, args)?;
         }
     }
-    let (summary, made) = component(built, params, "Birch plywood", run)?;
+    // a frame is solid timber
+    let default = if entry == "frame" {
+        "Oak"
+    } else {
+        "Birch plywood"
+    };
+    let (summary, made) = component(built, params, default, run)?;
     let name = summary["name"].as_str().unwrap_or_default();
     run(
         "component.metadata.set",
         json!({"component": name, "values": edit::remember(entry, params, name)}),
     )?;
     Ok((summary, made))
+}
+
+/// The commands and summary of the entry that builds a cabinet or a frame.
+fn build(entry: &str, params: &Value) -> Result<(Commands, Value), String> {
+    match entry {
+        "cabinet" => cabinet::build(params),
+        "frame" => frame::build(params),
+        _ => corner::build(params),
+    }
 }
 
 /// Runs a builder's commands in a new component named after it, inside whichever component
@@ -371,7 +384,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     // such as the board a cabinet was placed against, so that is cleared first. Woodwork
     // settings' Camera `leave` leaves the view as it is; the selection is still cleared, so the
     // next run does not place against a board picked before this one.
-    if matches!(entry, "cabinet" | "corner" | "edit" | "worktop") {
+    if matches!(entry, "cabinet" | "corner" | "frame" | "edit" | "worktop") {
         let stored = run("storage.get", json!({}))?;
         run("select.clear", json!({}))?;
         if settings::fits(&stored) {
@@ -383,7 +396,7 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
 
 fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     match entry {
-        "cabinet" | "corner" => {
+        "cabinet" | "corner" | "frame" => {
             // Where it goes: on the origin, or against the cabinet that is selected.
             let mut place = params["place"].as_str().unwrap_or("origin");
             check(
@@ -408,6 +421,10 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
             if place == "auto" {
                 // By the board that is selected: its side, or its top.
                 place = select::side(&picked, &measure);
+                // a frame stands on the floor, not on a cabinet's top
+                if entry == "frame" && place == "above" {
+                    place = "origin";
+                }
                 params["place"] = json!(place);
             }
             if entry == "corner" {
@@ -469,15 +486,13 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 json!({"bodies": false, "timeline": false}),
             )?;
             let measure = run("inspect.measure", json!({}))?;
-            let name = select::cabinet(&select::picked(params, &design), &measure)?.name;
+            // a cabinet or a frame
+            let name = select::piece(&select::picked(params, &design), &measure)?;
             let about = run("component.metadata", json!({"component": name}))?;
             let (entry, params) = edit::merge(&about["metadata"][edit::KEY], params, &design)
                 .map_err(|e| format!("`{name}`: {e}"))?;
             // Checked before anything is taken away.
-            match entry.as_str() {
-                "cabinet" => cabinet::build(&params)?,
-                _ => corner::build(&params)?,
-            };
+            build(&entry, &params)?;
             let tree = run("component.list", json!({}))?;
             let (parent, matrix, grounded) = edit::placement(&tree, &name)?;
             let materials = edit::materials(&measure, &select::parts(&measure, &name));
@@ -543,8 +558,9 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                     json!({"occurrence": made["occurrence"], "grounded": grounded}),
                 )?;
             }
-            let this = select::named(&measure, &name)?;
+            // (read per cabinet: a frame has none, and no Side L to read)
             for other in hanging {
+                let this = select::named(&measure, &name)?;
                 let about = run("component.metadata", json!({"component": other}))?;
                 let place = about["metadata"][edit::KEY]["link"]["place"].as_str();
                 let (_, matrix, _) = edit::placement(&tree, &other)?;
@@ -593,7 +609,7 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 "parts" => picked,
                 "cabinet" => {
                     let measure = run("inspect.measure", json!({}))?;
-                    select::parts(&measure, &select::cabinet(&picked, &measure)?.name)
+                    select::parts(&measure, &select::piece(&picked, &measure)?)
                 }
                 _ => return Err("scope must be cabinet or parts".into()),
             };
@@ -728,8 +744,9 @@ fn entries(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
                 }
             };
             params["name"] = json!(name);
-            // A cabinet deleted since a worktop remembered it is left out.
-            cabinets.retain(|c| select::named(&measure, c).is_ok());
+            // A cabinet (or frame) deleted since a worktop remembered it is left out.
+            cabinets
+                .retain(|c| select::named(&measure, c).is_ok() || worktop::is_frame(&measure, c));
             let mut seen = std::collections::BTreeSet::new();
             cabinets.retain(|c| seen.insert(c.clone()));
             // Checked before anything is taken away.
