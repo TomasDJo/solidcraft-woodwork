@@ -81,3 +81,19 @@ fn patch_leaves_out_numbers_as_stored_or_default() {
         json!({"settings": {"thickness": 19.05}})
     );
 }
+
+#[test]
+fn camera_is_stored_and_only_leave_skips_the_fit() {
+    let leave = patch(&json!({"camera": "leave"}), &Value::Null).unwrap();
+    assert_eq!(leave, json!({"settings": {"camera": "leave"}}));
+    assert_eq!(
+        patch(&json!({"camera": "keep"}), &Value::Null).unwrap(),
+        json!({"settings": {}})
+    );
+    assert!(!fits(&json!({"document": leave})));
+    assert!(fits(&json!({"document": {"settings": {"camera": "fit"}}})));
+    assert!(fits(&json!({})));
+    // Not a Cabinet field, so the Cabinet dialog gets no default for it.
+    let stored = json!({"document": {"settings": {"camera": "leave"}}});
+    assert_eq!(fields("cabinet", &json!({}), &stored), json!({}));
+}

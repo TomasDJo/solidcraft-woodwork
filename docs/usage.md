@@ -295,6 +295,9 @@ value too.
 
 - The settings are kept in the design (SolidCraft 0.46, `storage@0.1`), not for you as a user:
   a new design starts with none.
+- **Camera after a run**: Fit (the default) frames the result after a cabinet, corner, edit or
+  worktop run; Leave as it is keeps your view, for when you or a script set the camera. A
+  script sets it with `woodwork.settings {"camera": "leave"}` (or `"fit"`).
 - Nothing is cleared: to go back to a default, set it to that value.
 - The dialog does not remember the last values you used; only what Woodwork settings stored.
 

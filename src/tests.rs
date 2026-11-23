@@ -23,6 +23,14 @@ fn a_run_that_builds_a_cabinet_frames_the_model() {
         );
         assert_eq!(called.iter().filter(|c| *c == "view.fit").count(), 1);
     }
+    // Camera `leave` in Woodwork settings: cleared, not framed.
+    let mut called = Vec::new();
+    let mut run = |command: &str, _: Value| {
+        called.push(command.to_string());
+        Ok(json!({"document": {"settings": {"camera": "leave"}}}))
+    };
+    let _ = execute("cabinet", &json!({}), &mut run);
+    assert_eq!(called[called.len() - 2..], ["storage.get", "select.clear"]);
     // Material and the cut list change nothing worth framing.
     assert!(!calls("material").contains(&"view.fit".to_string()));
     assert!(!calls("cutlist").contains(&"view.fit".to_string()));

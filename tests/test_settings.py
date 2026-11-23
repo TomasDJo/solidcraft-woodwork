@@ -31,3 +31,13 @@ def test_settings(approval):
     # What a run gives wins: C is oak, 18 mm, on the floor.
     assert material["C Side L"] == "Oak", material
     assert box["C Side L"][2] == 0 and "C Leg 1" not in box, box
+
+
+def test_camera_leave_skips_the_fit(approval):
+    # Camera `leave` in Woodwork settings: a cabinet run reports no view; back to `fit`, it does.
+    results = cli([plugin(approval, "settings", {"camera": "leave"}),
+                   plugin(approval, "cabinet", {"name": "A"}),
+                   plugin(approval, "settings", {"camera": "fit"}),
+                   plugin(approval, "cabinet", {"name": "B"})])
+    assert results[0].get("result", results[0])["settings"] == {"camera": "leave"}, results[0]
+    assert [results[i].get("view") for i in (1, 3)] == [None, {"kind": "fit"}], results
