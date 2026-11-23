@@ -202,15 +202,6 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         bodies.iter().filter(shelf).count() as u64 // a split shelf is one shelf
     };
     let pulls = ending(" handle 2");
-    // A frame's joints, made before they were on the shared joinery: `<Frame> dowel <n>`, `bolt
-    // <n>`, `barrel nut <n>`, of a frame that is there (a split corner shelf's `return dowel <n>`
-    // is not one). A newer frame counts them in its parameters, as a cabinet does.
-    let numbered = |word: &str| {
-        let ends = features.iter().filter_map(|f| f.rsplit_once(word));
-        let frame = |stem: &str| bodies.contains(&format!("{stem}{}", crate::frame::MARK));
-        let ends = ends.filter(|(stem, n)| n.parse::<u32>().is_ok() && frame(stem));
-        ends.count() as u64
-    };
     // A drawer's slides by their length and type, in its left box side's first screw hole's
     // name (`<Drawer n Left> slide 1 (450 mm, full extension)`); drawers made before that are
     // only pairs.
@@ -223,7 +214,12 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             *slides.entry(length).or_default() += 1;
         }
     }
-    let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front");
+    // a drawer on wooden runners (`<Name> Side L runner <n>`) has no slides
+    let runners = |b: &String| {
+        let runner = b.replacen(" Drawer ", " Side L runner ", 1);
+        features.contains(&runner.trim_end_matches(" Front").to_string())
+    };
+    let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front") && !runners(b);
     let counts = [
         (
             "Hinge, cup",
@@ -272,9 +268,6 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
                 .filter(|b| crate::fittings::is_caster(b))
                 .count() as u64,
         ),
-        ("Dowel, 8 x 40 mm", numbered(" dowel ")),
-        ("Bed bolt, 10 mm", numbered(" bolt ")),
-        ("Barrel nut, 10 mm", numbered(" barrel nut ")),
         ("Knob", (ending(" handle 1") - pulls) as u64),
         ("Pull, 128 mm", pulls as u64),
     ];
@@ -290,10 +283,7 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     }
     // The joinery chosen when a cabinet was built counts its fasteners in its parameters
     // (`joint::hardware`); the old Joinery function's line of the same item takes them in.
-    let cabinets = (bodies.iter()).filter_map(|b| {
-        b.strip_suffix(" Side L")
-            .or(b.strip_suffix(crate::frame::MARK))
-    });
+    let cabinets = (bodies.iter()).filter_map(|b| b.strip_suffix(" Side L"));
     for cabinet in cabinets {
         for (item, qty) in crate::joint::hardware(&crate::kit::prefix(cabinet), &design["params"]) {
             match list.iter_mut().find(|line| line["item"] == item.as_str()) {
@@ -345,6 +335,18 @@ pub fn notched(design: &Value) -> Vec<String> {
 
 /// What a notched side's line in the cut list says.
 pub const NOTCHED: &str = "notched for the toe kick; size over the notch";
+
+/// The sides grooved for wooden drawer runners (`<Side> runner <n>`), as `notched`.
+pub fn grooved(design: &Value) -> Vec<String> {
+    let features = design["timeline"].as_array().into_iter().flatten();
+    let sides = features.filter_map(|f| Some(f["name"].as_str()?.split_once(" runner ")?.0));
+    let mut sides: Vec<String> = sides.map(String::from).collect();
+    sides.dedup();
+    sides
+}
+
+/// What a grooved side's line in the cut list says.
+pub const GROOVED: &str = "grooved for the drawer runners";
 
 /// The folder grant in `plugin.json` that a cut list is saved into.
 pub const FOLDER: &str = "cutlists";
@@ -487,9 +489,12 @@ pub fn cutlist(
         .iter()
         .filter(|b| !crate::fittings::is_foot(b["name"].as_str().unwrap_or("")))
         .collect();
-    let notched = |name: &str| {
-        let all = params["_notched"].as_array().into_iter().flatten();
-        all.into_iter().any(|n| n == name)
+    // A board's note: notched for the toe kick, grooved for runners, or both.
+    let noted = |name: &str| {
+        let has = |key: &str| (params[key].as_array().into_iter().flatten()).any(|n| n == name);
+        let notes = [(has("_notched"), NOTCHED), (has("_grooved"), GROOVED)];
+        let notes: Vec<&str> = notes.iter().filter(|n| n.0).map(|n| n.1).collect();
+        notes.join("; ")
     };
     if bodies.is_empty() {
         return Err("the design has no boards to list".into());
@@ -527,7 +532,7 @@ pub fn cutlist(
     };
     // Key: thickness, length, width in tenths of a mm, material, the banded edges along the
     // length and along the width, and whether it is notched.
-    type Key = (i64, i64, i64, String, u64, u64, bool);
+    type Key = (i64, i64, i64, String, u64, u64, String);
     let mut rows: BTreeMap<Key, Vec<String>> = BTreeMap::new();
     for &body in &bodies {
         let name = body["name"].as_str().unwrap_or("?").to_string();
@@ -561,7 +566,7 @@ pub fn cutlist(
             material,
             le,
             we,
-            notched(&name),
+            noted(&name),
         );
         rows.entry(key).or_default().push(name);
     }
@@ -593,7 +598,6 @@ pub fn cutlist(
     type Laid = (crate::nesting::Part, String, usize); // a part, its name and its row
     let mut pieces: BTreeMap<(String, i64), Vec<Laid>> = BTreeMap::new(); // to lay out, the same
     let mut worktops = Vec::new();
-    let mut timber = Vec::new(); // a frame's parts
     for ((t, l, w, material, le, we, notch), names) in &rows {
         let qty = names.len();
         let row_m2 = mm(*l) * mm(*w) * qty as f64 / 1e6;
@@ -610,15 +614,9 @@ pub fn cutlist(
         let grain = crate::material::GRAINED.contains(&material.as_str());
         let (row, one_m2) = (parts.len(), mm(*l) * mm(*w) / 1e6);
         for name in names {
-            // A frame's leg, apron or stretcher (solid timber), or a board named so (a
-            // worktop): bought to length.
-            let bought = match worktop(name) {
-                _ if crate::frame::is_timber(name) => Some(&mut timber),
-                true => Some(&mut worktops),
-                false => None,
-            };
-            if let Some(list) = bought {
-                list.push(
+            // A worktop: bought to length.
+            if worktop(name) {
+                worktops.push(
                     json!({"part": name, "material": material, "thickness": shown(*t),
                                      "length": shown(cl), "width": shown(cw)}),
                 );
@@ -642,9 +640,9 @@ pub fn cutlist(
             quoted(material),
             if grain { "yes" } else { "" },
             mark(*le, *we),
-            quoted(&match notch {
-                true => format!("{} ({NOTCHED})", names.join(", ")),
-                false => names.join(", "),
+            quoted(&match notch.is_empty() {
+                false => format!("{} ({notch})", names.join(", ")),
+                true => names.join(", "),
             })
         );
         let mut part = json!({
@@ -652,8 +650,8 @@ pub fn cutlist(
             "material": material, "grain": grain,
             "banding": {"length": le, "width": we}, "parts": names,
         });
-        if *notch {
-            part["note"] = json!(NOTCHED);
+        if !notch.is_empty() {
+            part["note"] = json!(notch);
         }
         parts.push(part);
     }
@@ -745,7 +743,6 @@ pub fn cutlist(
         "layouts": layouts,
         "oversize": oversize,
         "worktops": worktops,
-        "timber": timber,
         "banding": banding,
         "parts": parts,
         "boards": bodies.len(),

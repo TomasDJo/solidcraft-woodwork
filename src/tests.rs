@@ -13,7 +13,7 @@ fn calls(entry: &str) -> Vec<String> {
 
 #[test]
 fn a_run_that_builds_a_cabinet_frames_the_model() {
-    for entry in ["cabinet", "corner", "frame"] {
+    for entry in ["cabinet", "corner"] {
         let called = calls(entry);
         // Fit frames the selection, so it is cleared first.
         assert_eq!(
@@ -30,21 +30,12 @@ fn a_run_that_builds_a_cabinet_frames_the_model() {
         Ok(json!({"document": {"settings": {"camera": "leave"}}}))
     };
     let _ = execute("cabinet", &json!({}), &mut run);
-    assert_eq!(called[called.len() - 2..], ["storage.get", "select.clear"]);
+    // read once, first: it also holds the design-wide joinery and hardware
+    assert_eq!(called[0], "storage.get");
+    assert_eq!(called.last().unwrap(), "select.clear");
     // Material and the cut list change nothing worth framing.
     assert!(!calls("material").contains(&"view.fit".to_string()));
     assert!(!calls("cutlist").contains(&"view.fit".to_string()));
-}
-
-#[test]
-fn a_frame_is_oak_unless_asked() {
-    let mut oak = false;
-    let mut run = |_: &str, args: Value| {
-        oak |= args.to_string().contains("\"Oak\"");
-        Ok(json!({}))
-    };
-    execute("frame", &json!({"name": "F"}), &mut run).unwrap();
-    assert!(oak);
 }
 
 #[test]
@@ -275,16 +266,25 @@ fn a_panel_is_made_in_its_cabinet_and_kept() {
 fn settings_patch_then_show_and_the_hook_names_our_data() {
     assert_eq!(
         calls("settings"),
-        ["storage.get", "storage.patch", "storage.get"]
+        [
+            "storage.get",
+            "storage.patch",
+            "storage.get",
+            "material.list"
+        ]
     );
-    let mut asked = Value::Null;
+    let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
-        asked = json!([command, args]);
+        asked.push(json!([command, args]));
         Ok(json!({"document": {"settings": {"material": "MDF"}}}))
     };
     let reply = dialog("cabinet", &json!({}), &mut run).unwrap();
-    assert_eq!(asked, json!(["storage.get", {"plugin": "woodwork"}]));
+    // our data, then the body names for Match selected: two reads
+    assert_eq!(asked[0], json!(["storage.get", {"plugin": "woodwork"}]));
+    assert_eq!(asked[1][0], "document.inspect");
+    assert_eq!(asked.len(), 2);
     assert_eq!(reply["material"]["default"], "MDF");
+    assert_eq!(reply["match"], json!({"visible": false}));
 }
 
 #[test]
@@ -307,4 +307,47 @@ fn the_edit_hook_reads_body_names_once_and_never_fails() {
     assert!(!reply.to_string().contains("default"), "{reply}");
     let mut failing = |_: &str, _: Value| -> Result<Value, String> { Err("busy".into()) };
     assert_eq!(dialog("edit", &json!({}), &mut failing).unwrap(), json!({}));
+}
+
+#[test]
+fn see_through_boards_change_our_materials_and_new_ones() {
+    // On: our design materials that are solid get the opacity with their look; Oak (built in)
+    // and one already see-through are left.
+    let list = json!({"materials": [
+        {"name": "MDF", "user": true, "appearance": {"color": "#b59a73", "opacity": 1.0}},
+        {"name": "White melamine", "user": true, "appearance": {"opacity": 0.35}},
+        {"name": "Birch plywood", "user": true, "appearance": {"name": "Wood"}},
+        {"name": "Oak"}, {"name": "Steel", "user": true}]});
+    let stored = json!({"document": {"settings": {"see_through": "on"}}});
+    let mut edits = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        match command {
+            "material.list" => return Ok(list.clone()),
+            "storage.get" => return Ok(stored.clone()),
+            "material.edit" => edits.push(args),
+            _ => {}
+        }
+        Ok(json!({}))
+    };
+    let reply = execute("settings", &json!({"see_through": "on"}), &mut run).unwrap();
+    assert_eq!(reply["see_through"], json!(["MDF", "Birch plywood"]));
+    assert_eq!(
+        edits[0],
+        json!({"material": "MDF", "color": "#b59a73", "opacity": 0.35, "pbr": null})
+    );
+    assert_eq!(edits[1]["appearance"], "Wood - Cream Birch Uniform Preview");
+    // a material made later is made see-through
+    let mut made = Value::Null;
+    let mut run = |command: &str, args: Value| {
+        match command {
+            "storage.get" => return Ok(stored.clone()),
+            "material.create" => made = args,
+            _ => {}
+        }
+        Ok(json!({}))
+    };
+    material::assign(&mut run, "Oak", &["A Side L".into()]).unwrap();
+    assert_eq!(made["opacity"], 0.35);
+    // off: solid again
+    assert_eq!(material::opacity(&json!({})), 1.0);
 }

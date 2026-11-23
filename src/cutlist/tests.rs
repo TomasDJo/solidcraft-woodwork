@@ -686,36 +686,33 @@ fn panels_beside_a_cabinet() {
 }
 
 #[test]
-fn a_frames_parts_are_timber_and_its_joints_hardware() {
-    let part = |name: &str, size: [f64; 3]| json!({"name": name, "material": "Oak", "bbox": {"min": [0, 0, 0], "max": size}});
-    let measure = json!({"bodies": [
-        part("F Leg front left", [70.0, 70.0, 870.0]),
-        part("F Leg front right", [70.0, 70.0, 870.0]),
-        part("F Apron front", [1060.0, 22.0, 100.0]),
-        part("A Side L", [18.0, 560.0, 720.0]),
-    ]});
-    let list = cutlist(&measure, &BTreeMap::new(), false, &json!({})).unwrap();
-    // length x width x thickness, not on a sheet; still in the rows
+fn a_split_corner_shelfs_dowels_are_their_own_line() {
+    let design = json!({"timeline": [{"name": "C Shelf 1 return dowel 1"}]});
     assert_eq!(
-        list["timber"],
-        json!([
-            {"part": "F Apron front", "material": "Oak", "thickness": 22.0, "length": 1060.0, "width": 100.0},
-            {"part": "F Leg front left", "material": "Oak", "thickness": 70.0, "length": 870.0, "width": 70.0},
-            {"part": "F Leg front right", "material": "Oak", "thickness": 70.0, "length": 870.0, "width": 70.0},
-        ])
+        hardware(&json!({"bodies": []}), &design),
+        json!([{"item": "Dowel, 8 x 60 mm", "qty": 1}])
     );
-    let laid = list["layouts"].as_array().unwrap();
-    assert!(laid
+}
+
+#[test]
+fn sides_grooved_for_runners_are_noted() {
+    let mut m = measure();
+    m["bodies"][0]["name"] = json!("A Side L");
+    m["bodies"][1]["name"] = json!("A Side R");
+    let design = json!({"timeline": [{"name": "A Side L runner 1"}, {"name": "A Side L runner 2"},
+                                     {"name": "A Side R runner 1"}, {"name": "A Side L notch"}]});
+    assert_eq!(grooved(&design), ["A Side L", "A Side R"]);
+    let params = json!({"_notched": notched(&design), "_grooved": grooved(&design)});
+    let list = cutlist(&m, &BTreeMap::new(), false, &params).unwrap();
+    let notes: Vec<&Value> = list["parts"]
+        .as_array()
+        .unwrap()
         .iter()
-        .all(|l| l["parts"].as_array().unwrap().len() == 1));
-    assert_eq!(list["parts"].as_array().unwrap().len(), 3);
-    let design = json!({"timeline": [{"name": "F dowel 1"}, {"name": "F dowel 2"},
-        {"name": "F bolt 1"}, {"name": "F barrel nut 1"}, {"name": "A joint Side L Bottom dowel end"},
-        {"name": "C Shelf 1 return dowel 1"}]});
-    assert_eq!(
-        hardware(&json!({"bodies": [{"name": "F Leg front left"}]}), &design),
-        // the split corner shelf's dowel is its own line, not the frame's
-        json!([{"item": "Dowel, 8 x 60 mm", "qty": 1}, {"item": "Dowel, 8 x 40 mm", "qty": 2}, {"item": "Bed bolt, 10 mm", "qty": 1},
-               {"item": "Barrel nut, 10 mm", "qty": 1}])
+        .map(|p| &p["note"])
+        .collect();
+    assert!(
+        notes.contains(&&json!(format!("{NOTCHED}; {GROOVED}"))),
+        "{notes:?}"
     );
+    assert!(notes.contains(&&json!(GROOVED)), "{notes:?}");
 }

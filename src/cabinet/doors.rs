@@ -90,7 +90,7 @@ pub fn build(cabinet: &Cabinet) {
             (false, true) => 0.0,
             (false, false) => 9.5,
         };
-        hardware::cup_holes(kit, &part, at, [[0, -1, 0], toward], crank, &cups);
+        hardware::cup_holes(kit, &part, at, [[0, -1, 0], toward], Some(crank), &cups);
         // The handle is on the side away from the hinges.
         let handle_x = match (i + first) % 2 {
             0 => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),

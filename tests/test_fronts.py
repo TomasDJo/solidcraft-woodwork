@@ -1,4 +1,6 @@
 """Drawers, handle holes, and the joints doors and drawers move on."""
+import subprocess
+
 from helpers import *
 
 
@@ -276,3 +278,69 @@ def test_overlay_fronts_with_a_reveal(approval):
     # Overlay doors with a 3 mm reveal: 3 mm in from the outside and between them, 3 mm proud.
     box = boxes(cli([plugin(approval, "cabinet", {"reveal": 3, "doors": 2}), MEASURE])[1])
     assert box["Cabinet Door L"] == [-297, -301, 3, -1.5, -283, 717], box["Cabinet Door L"]
+
+
+def test_the_lowest_drawer_front_height(approval):
+    # 0 is Auto, else 100 mm or more: 102 mm with 18 mm boards, the room for a box. The lowest
+    # builds, one below is refused (the message, naming the minimum, is a unit test's).
+    results = cli([plugin(approval, "cabinet", {"drawers": 3, "drawer_height": 102}), MEASURE])
+    heights = [round(b[5] - b[2], 3) for name, b in boxes(results[1]).items() if name.endswith("Front")]
+    assert 102 in heights, heights
+    try:
+        cli([plugin(approval, "cabinet", {"drawers": 3, "drawer_height": 101})])
+    except subprocess.CalledProcessError:
+        return
+    raise AssertionError("a drawer front under the minimum went through")
+
+
+def test_drawer_box_and_bottom_thickness(approval):
+    # Woodwork settings' drawer box boards and bottoms: 15 and 9 mm instead of 12 and 6. The
+    # box keeps its outside; its front, back and bottom fit between the thicker sides.
+    results = cli([plugin(approval, "cabinet", {"drawers": 1, "drawer_thickness": 15, "drawer_bottom": 9}), MEASURE])
+    box = boxes(results[1])
+    size = lambda name, axis: round(box[f"Cabinet Drawer 1 {name}"][axis + 3] - box[f"Cabinet Drawer 1 {name}"][axis], 3)
+    assert (size("Left", 0), size("Right", 0), size("Box back", 1), size("Bottom", 2)) == (15, 15, 15, 9), box
+    assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7, box["Cabinet Drawer 1 Left"]
+    assert size("Bottom", 0) == 600 - 2 * 18 - 2 * 12.7 - 2 * 15, box["Cabinet Drawer 1 Bottom"]
+
+
+def test_wooden_runners(approval):
+    # Slide type Wood: the bottom, 6 mm, is wider than the box and runs in a 6 mm deep groove in
+    # each side with 1 mm of play; the drawer comes out two thirds of its box (532 mm deep).
+    # No slide holes, models or hardware; the cut list notes the grooves. Beside a door with
+    # inset fronts too.
+    results = designed(approval, {"slide_type": "wood"}, [
+        plugin(approval, "cabinet", {"drawers": 2}), {"command": "joint.list", "params": {}}, MEASURE,
+        drive("Cabinet Drawer 1 slide", 600), MEASURE, plugin(approval, "cutlist"),
+        plugin(approval, "cabinet", {"name": "B", "drawers": 1, "doors": 1, "fronts": "inset", "place": "origin"}),
+        MEASURE])
+    limits = {j["name"]: j["values"][0]["limits"] for j in results[1]["joints"]}
+    assert limits["Cabinet Drawer 1 slide"] == [0, 355], limits
+    shut, out = boxes(results[2]), boxes(results[4])
+    bottom = shut["Cabinet Drawer 1 Bottom"]
+    assert (round(bottom[0], 3), round(bottom[3], 3)) == (-300 + 13, 300 - 13), bottom
+    assert shut["Cabinet Drawer 1 Left"][0] == -300 + 19 and shut["Cabinet Drawer 1 Left"][2] == bottom[5]
+    assert abs(out["Cabinet Drawer 1 Front"][1] - (shut["Cabinet Drawer 1 Front"][1] - 355)) < 0.01
+    # each side loses two grooves of 6 x 8 mm, front to back
+    side = volume(results[2], "Cabinet Side L")
+    assert side < 720 * 560 * 18 - 2 * 6 * 8 * 500, side
+    assert not [n for n in boxes(results[2], models=True) if n.startswith("HW slide")], "slide models"
+    cutlist = results[5]["result"]
+    assert not [h for h in cutlist["hardware"] if "slide" in h["item"].lower()], cutlist["hardware"]
+    notes = [p.get("note", "") for p in cutlist["parts"] if "Cabinet Side L" in p["parts"]]
+    assert notes and "grooved for the drawer runners" in notes[0], cutlist["parts"]
+    b = boxes(results[7])
+    assert b["B Drawer 1 Bottom"][3] - b["B Drawer 1 Bottom"][0] > b["B Drawer 1 Right"][3] - b["B Drawer 1 Left"][0], b
+
+
+def test_a_cabinet_sized_by_its_drawers_inside(approval):
+    # Size by Drawer inside, 672 x 672 mm (16 x 16 Gridfinity bins): the cabinet comes out
+    # 757.4 x 724 mm and keeps that as its ordinary size, which an edit keeps.
+    results = cli([plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 672, "drawer_depth": 672}),
+                   MEASURE, select("Cabinet Top"), plugin(approval, "edit", {"drawers": 3}), MEASURE])
+    size = results[0]["result"]["size"]
+    assert (size["width"], size["depth"]) == (757.4, 724), size
+    for measure in (results[1], results[4]):
+        box = boxes(measure)
+        inside = box["Cabinet Drawer 1 Bottom"]
+        assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (672, 672), inside

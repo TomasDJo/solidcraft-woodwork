@@ -17,17 +17,14 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides, legs or casters); doors, drawers, or
   drawers above or below doors, that open on their joints, overlay or inset; shelf pin, handle, hinge and drawer slide holes, sized by shared parameters. Also as a sink base
   (rails instead of a top), with doors or drawers. Hangs on a French cleat, a hanging rail or a steel rail.
-- **Corner cabinet**: L-shaped with a bi-fold pair of doors, or diagonal with one door, overlay
-  or inset.
-- **Frame**: a leg-and-rail base for a workbench, table, desk or bench: square legs, aprons
-  and stretchers in solid timber, joined with dowels or bolts, listed in the cut list as timber
-  bought to length.
+- **Corner cabinets**, in the same Cabinet dialog (Shape): L-shaped with a bi-fold pair of
+  doors, or diagonal with one door, overlay or inset.
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
   a run stays together when a cabinet changes size.
 - **Edit cabinet**: change shelves, doors, drawers and more on a cabinet that is already made.
-- **Joinery**: chosen in the Cabinet and Corner dialogs: dowels, confirmat or plain screws, cam locks, pocket screws, biscuits or a dado, counted in the cut list.
+- **Joinery**: chosen in Woodwork settings for the whole design: dowels, confirmat or plain screws, cam locks, pocket screws, biscuits or a dado, counted in the cut list.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
-- **Woodwork settings**: the material, thickness, reveal, handles and plinth new cabinets start with, kept in the design.
+- **Woodwork settings**: what is the same for the whole design (joinery, hardware, back, fronts, plinth, cut list sheets, worktop), kept in the design, and applied to picked cabinets on request.
 - **Panel**: an end panel or a filler on one end of a cabinet, following its sizes.
 - **Worktop**: over the selected cabinets, straight or round corners (butt or mitre), with dog holes, a sink or router plate cut-out, and a benchtop tool set flush on a shelf in the cabinet below.
 - **Drawing**: a shop drawing sheet per cabinet, A3, with front, right and iso views, its width, height and depth, and its boards.

@@ -105,7 +105,7 @@ pub fn door(corner: &Corner, on_return: bool) {
     let at = |z: &str| json!([cup_x, back, z]);
     let toward = [if at_end { 1 } else { -1 }, 0, 0];
     let crank = if corner.inset { 18.0 } else { 0.0 };
-    hardware::cup_holes(kit, "Door", at, [[0, -1, 0], toward], crank, &cups);
+    hardware::cup_holes(kit, "Door", at, [[0, -1, 0], toward], Some(crank), &cups);
     let handle_z = fittings::handle_height(
         handles,
         handle_at,

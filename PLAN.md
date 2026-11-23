@@ -113,7 +113,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Wall mount on corner cabinets: cleats, hanging rails or steel rails along both walls, through the box cabinet's shared code (`fittings::wall_mount`, `mount_sizes`, `steel_rail`, `mount_board`)
 - [x] Casters as a plinth type on box cabinets: locking casters with pilot holes for their plates, counted as hardware (#79)
 - [x] Casters on corner cabinets, at the legs' places through the shared `fittings::foot`; the casters' post is joined before the wheel, so no timeline warning
-- [x] Frame: a leg-and-rail base for a workbench, table, desk or bench (4 or 6 legs, aprons, stretchers, dowels or bolts), solid timber in the cut list, kept by Edit cabinet (#79 part 1)
+- Frame (a leg-and-rail base) removed: not useful on its own; a different design is planned in #101. Its bolts and barrel nuts went with it (no cabinet joint used them)
 - [x] Joinery chosen when a box cabinet is made, through one shared module (`src/joint/`): dowels (the default), confirmat screws, plain screws, cam locks, pocket screws, biscuits or Dominos, or a dado (box cabinets) where the sides meet the bottom and top, rows that follow a resize, counted in the cut list from parameters, changed by Edit, a default in Woodwork settings; the Frame's dowels and bolts on the same module
 
 ## Open
@@ -141,6 +141,14 @@ Cabinets:
 - [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
 - [ ] Hinges in the model with hinge types (#60); hinge models that cut their cups by default once SolidCraft 0.47 is out (upstream tangency-labs/solidcraft#20787)
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
+- [x] Joinery and hardware are design wide: the two methods, their sizes, hardware models, hinge opening and slide type are Woodwork settings, no longer Cabinet and Corner fields (a new cabinet takes them and remembers them; Edit changes the methods, models, opening and type of one cabinet; slide length is Auto at build, chosen in Edit); the manifest 6.5 KB smaller
+- [x] See-through boards (Woodwork settings): our board materials at 35 % opacity to look at the joinery and fittings inside, also materials made later; Oak (built into the app) stays solid
+- [x] Fastener models: dowels, screws, cam locks with bolts and biscuits as bodies in their holes, one per joint and a pattern of bodies per row, hidden from every measure like the hinge models; Fastener models in Woodwork settings (off by default, for looking with See-through boards). Each joint adds a feature: past about 400 features SolidCraft 0.46 names faces another way and a later picked chamfer breaks on delete or Edit, so the sample kitchen shows them only on the return's units
+- [x] More design-wide settings: back, fronts, handle position, the plinth (Cabinet keeps Yes or No), labels, cleat sizes, the cut list's banding, sizes, sheet, kerf and trim, a worktop's material and thickness
+- [x] Woodwork settings: Apply to the picked cabinets, built again with the settings (as many as fit in a run, the rest the next run)
+- [x] One Cabinet dialog for box and corner cabinets (Shape); the Corner cabinet entry is gone
+- [x] Every dialog reviewed: field order (controllers before what they show), tooltips and placement
+- [ ] Corner chamfers and cleat bevels without picked edges (a cut by a sketched profile), so a design past 400 features survives deleting an early cabinet
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats
 

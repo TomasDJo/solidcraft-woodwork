@@ -98,19 +98,23 @@ pub fn cup_holes(
     door: &str,
     at: impl Fn(&str) -> Value,
     [into, toward]: [[i32; 3]; 2],
-    crank: f64,
+    crank: Option<f64>,
     cups: &[String],
 ) {
     let component = format!("{} {door}", kit.name);
-    let model = hinge(crank);
-    let cut = kit.models == "cut";
+    // ponytail: no model (`crank` None) for a corner's fold, a door hung on a door: its cups
+    // are drilled, but a door-to-door hinge (plate on the other door, no holes for it) is not
+    // modelled.
+    let cut = kit.models == "cut" && crank.is_some();
     for (j, z) in cups.iter().enumerate() {
         let what = format!("hinge cup {}", j + 1);
         if !cut {
             fittings::hole(kit, door, at(z), into, "HW_cup_d", "HW_cup_depth", &what);
         }
-        let name = cut.then(|| format!("{component} {what}"));
-        copy(kit, &model, &component, at(z), [into, toward], name);
+        if let Some(crank) = crank {
+            let name = cut.then(|| format!("{component} {what}"));
+            copy(kit, &hinge(crank), &component, at(z), [into, toward], name);
+        }
     }
 }
 
@@ -164,10 +168,18 @@ const SLIDE: &str = "HW slide";
 pub const SLIDE_CABINET: &str = "HW slide cabinet";
 pub const SLIDE_MIDDLE: &str = "HW slide middle";
 pub const SLIDE_DRAWER: &str = "HW slide drawer";
-// ponytail: `browser.visibility` is not kept after a plugin run, so the definitions stand
-// just under the floor about the origin, under the first cabinet, where no view from above
-// sees them and Fit hardly changes. A hidden flag upstream would do better.
-const HIDDEN: [f64; 3] = [0.0, -125.0, -30.0];
+// ponytail: `browser.visibility` set in a plugin run is not kept (0.46.1; the same command
+// through the CLI is), so the definitions stand just under the floor (their tops 1 mm below
+// it), turned half round so that they reach forward from 15 mm in front of the back of a
+// 560 mm deep cabinet on the origin: under the first cabinet's back, away from the fronts
+// that are looked at through see-through boards. No view from above sees them (from below
+// they show), and Fit frames about 3 % wider than without them. A slide longer than 530 mm
+// reaches out in front. A hidden flag upstream would do better.
+/// Where `HOME` stands: a row-major 3 x 4 placement, half a turn about Z.
+const HIDDEN: [f64; 12] = [
+    -1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 265.0, 0.0, 0.0, 1.0, -25.0,
+];
+const ORIGIN: [f64; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
 // The models' sizes in mm, from a common hinge (35 mm cup, 0 mm cruciform plate on the 37/32
 // holes) and a 45 mm ball-bearing slide; they only show, so they are not parameters.
@@ -197,10 +209,11 @@ pub fn hinge(crank: f64) -> String {
 }
 
 /// The slide types, as the `slide_type` field names them, and as the cut list does.
-pub const SLIDE_TYPES: [(&str, &str); 3] = [
+pub const SLIDE_TYPES: [(&str, &str); 4] = [
     ("partial", "partial extension"),
     ("full", "full extension"),
     ("over", "over-travel"),
+    ("wood", "wooden runners"),
 ];
 
 /// How far a drawer on slides `length` mm long of `kind` (`SLIDE_TYPES`) pulls out, in mm: a
@@ -266,8 +279,14 @@ pub fn slide_length(field: &str, unit: &str, box_mm: f64) -> Result<(f64, &'stat
 
 /// Whether a body (`inspect.measure`'s name) is a model's definition or a copy of one, such as
 /// `HW hinge (Base:1/Base Door:1/HW hinge:2)` or `HW slide drawer 450 mm`.
+/// A joint's fastener (`<Name> joint ... fastener`, its pattern's copies `... fastener (2)`) is
+/// one too.
 pub fn is_model(body: &str) -> bool {
-    [HINGE, SLIDE].iter().any(|m| body.starts_with(m))
+    let copy = body
+        .rsplit_once(" (")
+        .filter(|(_, n)| n.trim_end_matches(')').parse::<u32>().is_ok());
+    let body_of = copy.map_or(body, |(name, _)| name);
+    [HINGE, SLIDE].iter().any(|m| body.starts_with(m)) || body_of.ends_with(" fastener")
 }
 
 /// Takes the models out of `inspect.measure`'s reply: they are not boards, nor part of any
@@ -304,18 +323,30 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
     let new = !names.contains(&HOME);
     let create = |name: &str| ("component.create", json!({"name": name, "grounded": false}));
     let activate = |name: &str| ("component.activate", json!({"component": name}));
+    // Where `HOME` stands, absolutely.
+    let at = |to: [f64; 12]| {
+        (
+            "occurrence.move",
+            json!({"occurrence": format!("{HOME}:1"), "to_matrix": to}),
+        )
+    };
     let mut commands = vec![activate("root")];
-    commands.push(if new { create(HOME) } else { activate(HOME) });
+    if new {
+        commands.push(create(HOME));
+    } else {
+        // In a plugin run a body made in a moved component lands shifted by where it stands
+        // (as a hole does, see `inside` in lib.rs): so `HOME` goes back to the origin while
+        // a definition is added, and under the floor again after.
+        commands.push(at(ORIGIN));
+        commands.push(activate(HOME));
+    }
     for model in missing {
         commands.push(create(model));
         commands.extend(shape(model));
         commands.push(activate(HOME));
     }
     commands.push(activate("root"));
-    if new {
-        let to = json!({"occurrence": format!("{HOME}:1"), "translate": HIDDEN});
-        commands.push(("occurrence.move", to));
-    }
+    commands.push(at(HIDDEN));
     commands
 }
 
@@ -428,7 +459,7 @@ pub fn cost(commands: &Commands) -> usize {
     let shared = if used(commands) { PARAMETERS.len() } else { 0 };
     let definitions = match copies {
         0 => 0,
-        _ => definitions(&json!({}), &wanted(commands)).len() + 1,
+        _ => definitions(&json!({}), &wanted(commands)).len() + 2, // and back to the user's component; one more when `HOME` is there already
     };
     commands.len() + copies + 2 * cuts + usize::from(cuts > 0) + shared + definitions
 }

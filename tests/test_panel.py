@@ -16,7 +16,7 @@ def refused(steps):
     """The reason a script fails, or None when it runs."""
     with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
         script = Path(folder) / "refused.json"
-        script.write_text(json.dumps(steps), encoding="utf-8")
+        script.write_text(json.dumps(flat(steps)), encoding="utf-8")
         done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
     return done.stderr if done.returncode else None
 
@@ -29,7 +29,7 @@ def test_panels_follow_the_cabinet_and_survive_edit(approval):
                    select("A Side R"), plugin(approval, "panel", {"kind": "end"}),
                    select("A Side L"), plugin(approval, "panel", {"kind": "filler", "width": 50}),
                    MEASURE, change("A_width", 800), change("A_height", 900), MEASURE,
-                   select("A Top"), plugin(approval, "edit", {"shelves": 3, "plinth": 0}), MEASURE,
+                   select("A Top"), plugin(approval, "edit", {"shelves": 3, "plinth": "no"}), MEASURE,
                    delete, select("A Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE])
     assert results[2]["result"]["side"] == "right", results[2]
     box = boxes(results[5])
@@ -58,13 +58,13 @@ def test_panels_follow_the_cabinet_and_survive_edit(approval):
 
 def test_not_beside_a_cabinet_and_on_a_moved_one(approval):
     # B on the origin with an end panel on its right; inset fronts: flush with the carcass.
-    start = [plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "B", "doors": 1, "fronts": "inset"}),
+    start = [plugin(approval, "settings", NONE), plugin(approval, "cabinet", {"name": "B", "doors": 1, "fronts": "inset"}),
              select("B Side R"), plugin(approval, "panel", {"kind": "end"})]
     # placed on that side, the new cabinet stands beyond the panel, by Right or by the panel
     # picked with Auto; with a filler between two cabinets too
-    results = cli([*start, select("B Side R"), plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "C", "place": "right"}),
+    results = cli([*start, select("B Side R"), plugin(approval, "cabinet", {"name": "C", "place": "right"}),
                    select("C Side R"), plugin(approval, "panel", {"kind": "filler", "width": 50}),
-                   select("C Filler R"), plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "D", "place": "auto"}), MEASURE])
+                   select("C Filler R"), plugin(approval, "cabinet", {"name": "D", "place": "auto"}), MEASURE])
     box = boxes(results[-1])
     assert box["C Side L"][0] == 318 and box["C Side R"][3] == 918, (box["C Side L"], box["C Side R"])
     assert box["D Side L"][0] == 968 and box["D Side L"][1] == -280, box["D Side L"]
@@ -74,7 +74,7 @@ def test_not_beside_a_cabinet_and_on_a_moved_one(approval):
     reason = refused([plugin(approval, "corner", {"name": "K"}), select("K Side L"), plugin(approval, "panel", {})])
     assert reason and "`K` is a corner cabinet" in reason, reason
     # not where another cabinet stands, on either cabinet of the pair
-    beside = [*start, select("B Side L"), plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "C", "place": "left"})]
+    beside = [*start, select("B Side L"), plugin(approval, "cabinet", {"name": "C", "place": "left"})]
     reason = refused([*beside, select("B Side L"), plugin(approval, "panel", {})])
     assert reason and "`B` has a cabinet against its left" in reason, reason
     reason = refused([*beside, select("C Side R"), plugin(approval, "panel", {})])
@@ -87,16 +87,16 @@ def test_not_beside_a_cabinet_and_on_a_moved_one(approval):
     # which takes C to the origin and back
     results = cli([*beside, select("C Side L"), plugin(approval, "panel", {"thickness": 25}), MEASURE,
                    select("C Top"), plugin(approval, "edit", {"joints": "confirmat"}), MEASURE])
-    box = boxes(results[7])
+    box = boxes(results[8])
     assert box["B End panel R"] == [300, -280, 0, 318, 280, 720], box["B End panel R"]
     assert box["C End panel L"] == [-925, -280, 0, -900, 280, 720], box["C End panel L"]
-    box = boxes(results[10])
+    box = boxes(results[11])
     assert box["C End panel L"] == [-925, -280, 0, -900, 280, 720], box["C End panel L"]
     # T turned a quarter (as Place turns a cabinet past a corner's return) and moved: its end
     # panel still stands at its own Side R, which faces -Y now (x 300 to 318 turned to y -318
     # to -300, y -280 to 280 to x 720 to 1280).
     to = {"position": [1000, 0, 0], "axis": [0, 0, 1], "angle": "-90 deg"}
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "T"}),
+    results = designed(approval, NONE, [plugin(approval, "cabinet", {"name": "T"}),
                    {"command": "occurrence.ground", "params": {"occurrence": "T:1", "grounded": False}},
                    {"command": "occurrence.move", "params": {"occurrence": "T:1", "to": to}},
                    {"command": "occurrence.ground", "params": {"occurrence": "T:1", "grounded": True}},

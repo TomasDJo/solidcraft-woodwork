@@ -239,23 +239,3 @@ fn a_notched_side_says_so() {
     let text = String::from_utf8_lossy(&labels::render(&boards)).to_string();
     assert!(text.contains("(#1, sheet 1 of 1, notched)"), "{text}");
 }
-
-#[test]
-fn a_frames_timber_has_a_table_and_labels_of_its_own() {
-    let mut cut = list(1);
-    cut["timber"] = json!([{"part": "Bench Leg front left", "material": "Oak",
-        "thickness": 70.0, "length": 870.0, "width": 70.0}]);
-    let pdf = render(&cut, "Bench", false);
-    let text = String::from_utf8_lossy(&pdf);
-    assert!(
-        text.contains("(Solid timber, bought to length)")
-            && text.contains("(Bench Leg front left)")
-    );
-    assert!(!String::from_utf8_lossy(&render(&list(1), "Bench", false)).contains("Solid timber"));
-    let mut boards = boards(2);
-    boards["parts"][0]["parts"] = json!(["Bench Leg front left", "Base Shelf 1"]);
-    boards["layouts"] = json!([]);
-    boards["timber"] = json!([{"part": "Bench Leg front left"}]);
-    let text = String::from_utf8_lossy(&labels::render(&boards)).to_string();
-    assert_eq!(text.matches("(bought to length)").count(), 1, "{text}");
-}

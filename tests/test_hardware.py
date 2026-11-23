@@ -66,8 +66,8 @@ def test_plate_holes_go_into_the_pin_holes_or_clear_of_them(approval):
 def test_three_doors_and_a_right_hung_one(approval):
     # Three doors hinge left, right, left: plate holes in Side L only (the other hinge edges are
     # on dividers, which get none). A single door hinged right: the plate on Side R. Inches.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "T", "width": 900, "dividers": 2, "doors": 3}),
-                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
+    results = designed(approval, NONE, [plugin(approval, "cabinet", {"name": "T", "width": 900, "dividers": 2, "doors": 3}),
+                   plugin(approval, "cabinet", {"name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
                                                 "thickness": 0.75, "back_thickness": 0.25, "doors": 1, "door_hinge": "right"}),
                    MEASURE, faces("R Door"), faces("R Side R")])
     measure = results[2]
@@ -84,12 +84,12 @@ def test_slides_drill_the_sides_and_the_boxes(approval):
     # mm behind the box's front, in the middle of the box side's
     # height), and the carcass sides beside them (5 mm, as far behind their front edge). A
     # sink base's false front has no slide. A thinner slide in Parameters makes every box wider.
-    results = cli([plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "drawers": 2}), MEASURE,
+    results = designed(approval, NONE, [plugin(approval, "cabinet", {"drawers": 2}), MEASURE,
                    faces("Cabinet Drawer 1 Left"), faces("Cabinet Side L"),
-                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "S", "kind": "sink", "drawers": 2}), MEASURE,
+                   plugin(approval, "cabinet", {"name": "S", "kind": "sink", "drawers": 2}), MEASURE,
                    drive("Cabinet Drawer 1 slide", 200), faces("Cabinet Drawer 1 Left"), faces("Cabinet Side L"),
                    change("HW_slide_t", "10 mm"), MEASURE,
-                   plugin(approval, "cabinet", {"joints": "none", "joints_inner": "none", "name": "N", "drawers": 1, "thickness": 9}), faces("N Side L")],
+                   plugin(approval, "cabinet", {"name": "N", "drawers": 1, "thickness": 9}), faces("N Side L")],
                   "--save", str(ROOT / "dist" / "slides.sc"))
     box = boxes(results[1])
     assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7 and box["Cabinet Drawer 1 Right"][3] == 300 - 18 - 12.7
@@ -175,11 +175,11 @@ def test_models_off_is_the_same_cabinet_without_them(approval):
     # cut list counts no model, and its hardware is counted once.
     cabinet = {"doors": 2, "drawers": 1, "handles": "pull"}
     def made(mode):
-        results = cli([plugin(approval, "cabinet", cabinet | {"hardware_models": mode}), MEASURE, plugin(approval, "cutlist")])
+        results = designed(approval, {"hardware_models": mode}, [plugin(approval, "cabinet", cabinet), MEASURE, plugin(approval, "cutlist")])
         measure = {b["name"]: (b["bbox"], round(b["volume_mm3"]), b["face_types"]) for b in results[1]["bodies"]}
         return measure, results[2]["result"]
     (on, on_list), (off, off_list) = made("on"), made("off")
-    assert {n: v for n, v in on.items() if not n.startswith("HW ")} == off, set(on) ^ set(off)
+    assert {n: v for n, v in on.items() if not model(n)} == off, set(on) ^ set(off)
     assert any(n.startswith("HW hinge (") for n in on) and not any(n.startswith("HW") for n in off)
     assert on_list["csv"] == off_list["csv"] and on_list["hardware"] == off_list["hardware"]
     assert {h["item"]: h["qty"] for h in on_list["hardware"]}["Hinge, cup"] == 4
@@ -189,7 +189,7 @@ def test_models_can_cut_the_cups(approval):
     # `cut` (for SolidCraft 0.47): the hinge models cut the cups instead of cylinders. The
     # doors come out the same, the cut list counts the cups.
     def door(mode):
-        results = cli([plugin(approval, "cabinet", {"doors": 1, "hardware_models": mode}), MEASURE,
+        results = designed(approval, {"hardware_models": mode}, [plugin(approval, "cabinet", {"doors": 1}), MEASURE,
                        faces("Cabinet Door"), plugin(approval, "cutlist"),
                        {"command": "document.inspect", "params": {"bodies": False, "timeline": "summary"}}])
         features = [f["name"] for f in results[4]["timeline"]]
@@ -214,7 +214,7 @@ def test_edit_makes_the_models_again_and_keeps_the_definitions(approval):
 def test_slide_type_and_hinge_angle_set_the_joints_limits(approval):
     # A 165 degree hinge opens the door that far; a partial extension 500 mm slide pulls the
     # drawer out 375 mm and stops there, with no middle member; the cut list names the slide.
-    results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1, "hinge_angle": "165", "slide_type": "partial"}),
+    results = designed(approval, {"hinge_angle": "165", "slide_type": "partial"}, [plugin(approval, "cabinet", {"doors": 1, "drawers": 1}),
                    {"command": "joint.list", "params": {}}, MEASURE,
                    drive("Cabinet Drawer 1 slide", 600), drive("Cabinet Door hinge", 200), MEASURE,
                    plugin(approval, "cutlist")])
@@ -226,3 +226,83 @@ def test_slide_type_and_hinge_angle_set_the_joints_limits(approval):
     assert not models(results[2], "HW slide middle")
     hardware = {h["item"]: h["qty"] for h in results[6]["result"]["hardware"]}
     assert hardware["Drawer slide, partial extension, 500 mm, pair"] == 1, hardware
+
+
+def test_definitions_made_later_stay_under_the_floor(approval):
+    # The first cabinet makes Woodwork hardware and moves it under the floor; a later one adds
+    # definitions to it (a cranked hinge for an inset door, another slide length). They went
+    # in at the origin, shifted by where the component stood: now every one is under the floor
+    # and under the first cabinet, its copies still in their cups.
+    results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1}),
+                   plugin(approval, "cabinet", {"name": "B", "doors": 1, "fronts": "inset", "drawers": 1,
+                                                "depth": 450, "place": "origin"}),  # 400 mm slides
+                   MEASURE, faces("B Door")])
+    shut = models(results[2])
+    definitions = {n: b for n, b in shut.items() if "(" not in n}
+    assert {"HW hinge crank 18", "HW slide drawer 400 mm", "HW hinge"} <= set(definitions), sorted(definitions)
+    for name, box in definitions.items():
+        assert box[5] < 0 and box[2] > -60 and -280 <= box[1], (name, box)
+    cups = holes(results[3], 17.5)
+    hinges = sorted(n for n in shut if n.startswith("HW hinge crank 18 (B:1/B Door:1/"))
+    assert len(hinges) == 2 and all(abs(middle(shut[n])[2] - z) < 0.2 for n, (_, _, z) in zip(hinges, sorted(cups, key=lambda c: c[2]))), (hinges, cups)
+
+
+def flat(steps):
+    out = []
+    for step in steps:
+        out += step if isinstance(step, list) else [step]
+    return out
+
+
+def misplaced(steps):
+    """The hinge copies that are not in a cup hole and the plates more than 12 mm from a plate
+    hole, after `steps`; and the counts of hinge copies and of cups that should have one (all
+    but a corner's fold door's, which has cups and no model)."""
+    results = cli(flat(steps) + [MEASURE, {"command": "joint.list", "params": {}}])
+    measure, joints = results[-2], results[-1]
+    folds = [j["name"][:-len(" fold")] for j in joints["joints"] if j["name"].endswith(" fold")]
+    names = [b["name"] for b in measure["bodies"]]
+    boards = [n for n in names if not n.startswith("HW ") and (" Door" in n or " Side " in n)]
+    found = cli(flat(steps) + [faces(n) for n in boards])[-len(boards):]
+    round_faces = [(f["cylinder"]["radius"], f["centroid"], n) for n, each in zip(boards, found)
+                   for f in each["faces"] if f.get("cylinder")]
+    cups = [c for r, c, n in round_faces if abs(r - 17.5) < 0.01 and n not in folds]
+    fold_cups = [c for r, c, n in round_faces if abs(r - 17.5) < 0.01 and n in folds]
+    screws = [c for r, c, _ in round_faces if abs(r - 2.5) < 0.01]
+    box = {b["name"]: b["bbox"] for b in measure["bodies"]}
+    far = lambda b, p: sum(max(b["min"][i] - p[i], 0, p[i] - b["max"][i]) ** 2 for i in range(3)) ** 0.5
+    hinges = [n for n in names if n.startswith("HW hinge") and "(" in n and not n.startswith("HW hinge plate")]
+    plates = [n for n in names if n.startswith("HW hinge plate (")]
+    off = [h for h in hinges if min((far(box[h], c) for c in cups), default=99) > 0.5]
+    # no model in a fold door's cups
+    off += [h for h in hinges if min((far(box[h], c) for c in fold_cups), default=99) <= 0.5]
+    off += [p for p in plates if min((far(box[p], c) for c in screws), default=99) > 12]
+    return off, len(hinges), len(cups)
+
+
+def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
+    # Box cabinets (doors made after a drawers-only cabinet made the hardware component, inset,
+    # a door on a divider), L-shaped corners left and right hung on either end, inset, and the
+    # diagonal door; and after Edit of a box and a corner cabinet that stand off the origin
+    # (no copies left behind: as many hinges as cups). A corner's fold door has cups but no
+    # hinge models.
+    cab = lambda p: plugin(approval, "cabinet", p)
+    away = lambda name: [{"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": False}},
+                         {"command": "occurrence.move", "params": {"occurrence": f"{name}:1", "translate": [1500, 700, 0], "axis": [0, 0, 1], "angle": "90 deg"}},
+                         {"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": True}}]
+    cases = {
+        "box": [cab({"drawers": 2}), cab({"name": "B", "doors": 2, "place": "origin"}),
+                cab({"name": "I", "doors": 1, "fronts": "inset", "place": "origin"}),
+                cab({"name": "T", "width": 900, "dividers": 2, "doors": 3, "place": "origin"})],
+        "L": [cab({"name": f"L{i}", "shape": "L-shaped", "corner": corner, "corner_doors": doors, "fronts": fronts, "place": "origin"})
+              for i, (corner, doors, fronts) in enumerate([("left", "hinged left", "overlay"), ("left", "hinged right", "overlay"),
+                                                           ("right", "hinged left", "overlay"), ("right", "hinged right", "inset")])],
+        "diagonal": [cab({"name": f"D{i}", "shape": "diagonal", "corner": corner, "corner_doors": doors, "place": "origin"})
+                     for i, (corner, doors) in enumerate([("left", "hinged left"), ("right", "hinged right")])],
+        "edit": [cab({"name": "E", "doors": 2, "fronts": "inset"}), *away("E"), select("E Side L"), plugin(approval, "edit", {"shelves": 2}),
+                 cab({"name": "C", "shape": "L-shaped", "corner_doors": "hinged left", "place": "origin"}), *away("C"),
+                 select("C Side L"), plugin(approval, "edit", {"shelves": 2})],
+    }
+    for label, steps in cases.items():
+        off, hinges, cups = misplaced(steps)
+        assert not off and hinges == cups, (label, off, hinges, cups)

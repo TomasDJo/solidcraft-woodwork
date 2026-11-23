@@ -37,6 +37,12 @@ materials, joinery and cut lists.
   and `x-solidcraft-when` exist but are not used.
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
+  **Field order:** the most used first, and a conditional field right after the field that
+  controls it (drawer height and Drawers at after Drawers, a joinery method's sizes after it,
+  the filler width after the panel's kind, the cut list's diagrams after its format). A field
+  that may be left empty cannot be required, so it comes last whatever it controls: Edit's
+  numbers (shelves, doors, drawers...) and the cut list's Save as. Settings' numbers have
+  defaults (and are required) so they keep their place; the hook starts them at the stored value.
 - **Tools for agents (0.45).** Every entry is also the tool `woodwork.<entry>` (`plugin.tools`,
   MCP `tools/list`), with its schema as the arguments. Over MCP the arguments are checked
   strictly first: a field `required` names must be there even when it has a default, and
@@ -92,8 +98,9 @@ materials, joinery and cut lists.
   camera alone. `execute` ends a cabinet, corner or edit run with `select.clear` and
   `view.fit`: Fit frames the selection when there is one, such as the board a cabinet was placed
   against. `plugin.run` through the CLI reports it as `view: {kind: fit}`. Woodwork settings'
-  `camera: leave` leaves `view.fit` out (`settings::fits`, one `storage.get` before
-  `select.clear`); `select.clear` stays, so the next run does not place against a board picked
+  `camera: leave` leaves `view.fit` out (`settings::fits`, from the one `storage.get` that
+  `execute` runs first for these entries, which also gives a new cabinet its design-wide
+  joinery and hardware); `select.clear` stays, so the next run does not place against a board picked
   before. The run takes one command more than before (three of the 26 `cabinet::build` leaves).
 - `build.py` runs `solidcraft-cli plugin check` on the package: an error fails the build.
 - Official docs: `docs/plugins.md`, `docs/plugin-runtime.md` and `docs/rfcs/0002-plugins.md` in
@@ -111,9 +118,63 @@ materials, joinery and cut lists.
   the last used values are not remembered; settings are per design, not per user. `camera`
   (`keep`, `fit`, `leave`) is stored like the choices but is no Cabinet field, so
   `settings::fields` skips it and the Settings dialog starts at Keep. `settings` has
-  the hook too: its three numbers start at the stored value or the Cabinet default, so the app
-  draws them as drag fields kept within their bounds, and `settings::patch` leaves out a number
-  equal to the stored one (or that default), as the hook fills omitted keys for scripts too.
+  the hook too: its numbers start at the stored value or the Cabinet default, so the app
+  draws them as drag fields kept within their bounds, and `settings::patch` leaves out a value
+  equal to the stored one (or the default), as the hook fills omitted keys for scripts too.
+  **Design-wide settings** (`settings::CHOICES` and `joint::SIZES`): `joints`, `joints_inner`,
+  the joint sizes, `biscuit`, `pocket_face`, `hardware_models`, `hinge_angle`, `slide_type`
+  are no Cabinet or Corner field. `lib.rs` fills a new cabinet's params with them
+  (`settings::design`: stored, else the default, lengths in its `units`; only keys absent, as
+  the unit tests give them; a corner skips `joints_inner` and `slide_type` and takes dowels for
+  a stored dado), so `make` remembers them and Edit rebuilds from those, not from the settings.
+  Over `plugin.run` and the tools they cannot be passed (undeclared, refused on an entry with
+  conditions): a script runs `settings` first. The Settings dialog's choices keep `keep` (the
+  test helper sends schema defaults) but the hook answers the stored value or the default, so
+  each size's `x-solidcraft-visible-when` on the method works; `build.plugin` sends Settings no
+  number (the hook fills them). Slide length stays per cabinet: Auto at build (it goes by the
+  depth), chosen in Edit. Edit keeps `joints`, `joints_inner`, `hardware_models`,
+  `hinge_angle`, `slide_type`, `slide_length`; the sizes are Parameters. Tests: `designed` and
+  `setting` in `tests/helpers.py` (settings results left out, so indices stay the cabinets').
+  Since then also `back`, `back_thickness` (box only), `fronts`, `handle_position`, `plinth`
+  (the height, 100 mm by default), `plinth_type`, `plinth_setback`, `labels` (stored `yes`/`no`,
+  given as a bool), `cleat_height`, `cleat_thickness`, `drawer_thickness`, `drawer_bottom` (box only, parameters while the cabinet has boxes); the cut list's `banding`, `cut_sizes`
+  (its field `size`), `sheet`, `kerf`, `trim` (mm in every unit, `Def::Mm`); a worktop's
+  `worktop_material` and `worktop_thickness` (its `material` and `thickness`; a worktop made
+  again keeps its remembered ones). `settings::table` is the one list: key, the entry's field,
+  `Def` (choice, length, mm number with bounds) and `To` (who takes it). Cabinet and Corner keep
+  `plinth` as `yes`/`no` (`design` makes it the settings' height or 0; Match selected still
+  takes the selected cabinet's in `Kit`); Edit's `plinth` is `keep`/`yes`/`no`
+  (`settings::edit_plinth` before `merge`: Yes keeps a plinth the cabinet has, else the settings'
+  height and type). `execute` reads the settings for `cutlist` too. Over `plugin.run` a size that
+  a choice shows must come with that choice (the app checks the controller first: "is
+  required"). `build.plugin` turns a test's moved fields into a group (Settings, the entry,
+  Settings back to the defaults) that `build.cli` runs as one step (`flat`), and gives a cabinet
+  without a plinth Plinth No; it sends Settings only `units`, `material`, `handles`, `camera`
+  (the hook fills the rest).
+  **Apply to** (`settings`' `apply: yes` and its `selection`, several bodies; `apply` is No by
+  default because the dialog fills `selection` with whatever is selected, which must not
+  rebuild a cabinet by itself; only the field, not the design's selection, which tests and
+  scripts leave behind): `lib.rs` `apply` reads the picked cabinets
+  (`select::owner`, or for a hinge or slide model's copy, which measures hide, the first name of
+  its `(A:1/...)` path; box and corner only), takes each one's `edit::merge` with no changes (sizes
+  from Parameters) and `settings::apply` (what the settings give it now: the design-wide ones
+  stored or default, the hook's four only stored, the plinth's only on a cabinet with one, and
+  only what its entry takes; `None` when it has them all), then `rebuild` (Edit's path, shared:
+  delete, `make`, panels, materials, place, links) while `drawing::fits` (20 s by `clock.now`,
+  the commands counted, the next one's `hardware::cost` + 40), at least one. The reply adds
+  `applied`, `changed` (each cabinet's fields that changed), `remaining`, `skipped` (with
+  `why`) and `message`. A cabinet without a plinth keeps its plinth type and set-back too, so
+  it is skipped when nothing else differs. The preview runs it too, so a dialog with cabinets
+  picked previews every change slowly.
+  **See-through boards** (`see_through`, in `CHOICES` but no cabinet's: `design` skips it): each
+  Settings run gives our design materials (`material.list`'s `user: true`, of `BOARDS`) the
+  stored opacity, `SEE_THROUGH` 0.35 or 1, by `material.edit` of each that differs. It takes
+  `opacity` only with `color` or `appearance`, so the look is given again, and a library
+  appearance's preset PBR is opaque only ("opaque PBR requires numeric opacity 1"): `pbr: null`
+  while see-through, left out (preset back) when solid. `material::assign` reads the setting
+  (`storage.get`, one command, only when it creates a material) and creates it see-through.
+  Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Settings is
+  an edit entry, so its preview shows the change.
   `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
   the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
   kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
@@ -136,12 +197,11 @@ materials, joinery and cut lists.
 | `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them; and their models: definitions under `Woodwork hardware`, copies in the doors and drawers, hidden from every `inspect.measure` |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
-| `src/frame/` | Frame: a leg-and-rail base (legs, aprons, stretchers, dowel or bolt holes), built on `Kit` like a cabinet. `is_timber` tells its parts to the cut list |
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
-| `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts and the fastener counts) that the builders share |
+| `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts, the fastener models and counts) that the builders share |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin: `inside`), remembers them for Edit, and refuses Place against a side that has one |
 | `src/worktop/` | Worktop over the selected cabinets: measures their feet (a corner cabinet's two legs), groups them into runs by the way they face, joins runs in corners (butt or mitre) and makes each piece a box or an extruded outline at world coordinates; dog holes and a cut-out in piece 1. `lib.rs` finds the cabinets (a picked worktop's remembered ones), replaces a worktop of that name, makes the component and grounds it |
-| `src/material.rs` | Board materials: create on first use, assign |
+| `src/material.rs` | Board materials: create on first use, assign; See-through boards (`see_through`, `opacity`) |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
 | `src/nesting/` | Cutting layouts: parts packed onto sheets per material and thickness, with kerf, trim and grain, in guillotine cuts a panel saw can make |
 | `src/pdf/` | The cut list as an A4 PDF, written by hand with the viewer's own Helvetica (WinAnsi text, no embedded font), with a cutting diagram per sheet |
@@ -154,6 +214,7 @@ materials, joinery and cut lists.
 | `tests/test_*.py` | End-to-end tests, one file per function of the plugin; every `test_*(approval)` function in them is run. `tests/helpers.py` has the shared steps and readers |
 | `docs/intro-video.jpg` | The introduction video's thumbnail with a play button, the README's second picture; it links to the video on YouTube |
 | `docs/banner.py` | Draws `docs/banner.png`, the README's first picture (plugin lists show it): a small run of cabinets on a dark background beside the name. Needs Pillow. Rerun it when the cabinets look different |
+| `scripts/usage_pictures.py`, `docs/images/` | The usage guide's pictures: one list (`SHOTS`: name, caption, steps, camera), each a small design rendered with `solidcraft-cli snapshot` (one at a time, plugin.run on `dist/woodwork`, never installed) and saved as a 128-colour PNG. `tests/test_docs.py` checks each is drawn and shown in `docs/usage.md`. Rerun when the cabinets look different |
 | `examples/kitchen.py` | Builds the sample kitchen, `examples/kitchen.sc` and its cut list CSV, through the CLI. Rerun it when the plugin's output changes |
 
 The pattern: a module is plain Rust that turns input into `Vec<(command, json args)>`, so
@@ -161,10 +222,19 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `corner`, `frame`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+**One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
+`diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
+a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or
+the corner's (`corner`, `return`, `corner_doors`, `boards`); the corner's sizes and name are
+conditional defaults on `shape` (`x-solidcraft-defaults` takes any condition, first rule wins).
+`entries` in `lib.rs` sends a corner shape to `corner::build` as the entry `corner`, its
+`corner_doors` as `doors`, so the cabinet remembers `corner` and Edit, the Edit hook and every
+`entry == "corner"` test work as before. There is no `corner` entry (`woodwork.corner` is gone);
+`build.plugin` still takes `"corner"` in the tests and sends Cabinet with a shape.
 
 A new kind of cabinet is a new module that builds on `Kit` and a new entry with its own dialog.
-`lib.rs` runs `cabinet`, `corner` and `frame` through the same steps (component, material,
+`lib.rs` runs `cabinet` and `corner` through the same steps (component, material,
 place, ground), so a builder only returns its commands and `Kit`'s summary.
 
 ## Build, test, install
@@ -346,34 +416,17 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   pieces are never joined again, so a cutting optimiser may save a sheet on a big job (the
   sample kitchen's 18 mm melamine: 13 sheets for 10.4 sheets of area). A part bigger than the
   sheet is only reported (`oversize`), not split.
-- A frame (`frame`) is recognised by its `<Name> Leg front left` body (`frame::MARK`):
-  `select::owner` takes it as it takes a cabinet's `Side L`, so Edit (`select::piece`) and
-  Material find it, and `select::cabinet` refuses it (Panel, Drawing, Place against it).
-  Its legs are `Leg front left` and so on, never `Leg <n>` (`fittings::is_leg`, hardware). Its
-  parts (`frame::is_timber`: `Leg <words>`, `Apron ...`, `Stretcher ...`) are the cut list's
-  `timber`, bought to length, not on sheets; its joints are the shared joinery's (`Joinery::fixed`: dowels
-  with `joint_edge` a quarter of the rail and the spacing its height, so a row of two, and bolts
-  by `joint_by("bolts")`, `single`, the nut from the face opposite `Joint::out` (the rail's
-  inner), `face_t` the leg), counted from `<Name>_dowels` and `_bolts` (a frame is found by
-  `MARK` in `cutlist::hardware`); a frame made before keeps its `<Name> dowel <n>`, `bolt <n>`,
-  `barrel nut <n>`, counted by name. A stretcher has the apron's section. With bolts, rails that
-  meet at a middle leg are doweled. It has seats, so Place right or left of a cabinet links it;
-  on Auto a cabinet's top gives the origin. Edit's frame fields are `stretchers`, `frame_legs`
-  (the frame's `legs`) and `joint` (`edit::FRAME_ONLY`; the Edit hook hides them for a cabinet,
-  and every cabinet field, `edit::CABINETS` and the kinds' lists, for a frame); its sizes come
-  from Parameters (`edit::SIZES`). Dowels that would meet in a leg (a corner's two rails, or a
-  middle leg's split rails: a leg under 50 mm with 6 legs) and bolts from both ends of a rail
-  shorter than `2*BOLT_PAST` are refused. A frame made
-  inside a moved component has the hole shift above.
+- The Frame function (a leg-and-rail base, entry `frame`) was removed: not useful on its own, a
+  different design is planned in #101. With it went `src/frame/`, Edit's frame fields, the cut
+  list's `timber`, the worktop over a frame, and the joinery's frame-only bolts and barrel nuts
+  (`Joinery::fixed`, `face_t`). A design with a frame still opens; the plugin no longer knows it.
 - A board is a worktop, bought to length and not laid out on sheets, when its name contains
   `Worktop` (`cutlist::worktop`), at its world box (`cutlist::turned` leaves it out, so a
   mitred or cut-out piece is not measured by mesh). A worktop named otherwise is a board, and
   so is a name with ` Tool ` in it (the tool station's shelf and battens).
 - A worktop (`worktop`) is numeric: measured from the cabinets' Side L, Side R, Back and Back
   return world boxes, made at world coordinates in a component in the active component, which
-  must stand on the origin, unturned. A frame counts as a cabinet (`worktop::is_frame`,
-  `frame_foot`): one foot over its legs' world boxes, facing from its front left to front right
-  leg turned a quarter, top at the legs' top. It does not follow a cabinet; running Worktop again with
+  must stand on the origin, unturned. It does not follow a cabinet; running Worktop again with
   its name (or a piece picked) deletes its component and makes it again over the cabinets it
   remembers (`cabinets` in its metadata, entry `worktop`), with its remembered values when no
   cabinet is picked, the dialog's when one is. A picked piece belongs to the longest worktop
@@ -450,13 +503,20 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   way that panel faces (`select::Cabinet::seat`, read from the boxes of the two sides and the
   back): so one continues a corner cabinet's return turned a quarter, and a turned run carries
   on turned, corner cabinets included. Quarter turns only.
+- Match selected (`match`) is set by the Cabinet hook: `settings::matching` answers
+  `{default: selected, visible: true}` when the picked board (the field, else the design's
+  selection) is a box or corner cabinet's (`select::owner` and its `Side L`),
+  else `{visible: false}`. That is the hook's second read, `document.inspect {bodies: "names"}`
+  after `storage.get`: 1-3 ms on the sample kitchen, well within its 250 ms. A hidden field is
+  still sent, so the run uses `match` only when something is picked or selected
+  (`entries`: `matching && !picked.is_empty()`).
 - Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
   A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
   parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the
   selected one has one. Material is not matched.
-- **Joinery at build** (`src/joint/`): the cabinet's `joints` field (carcass: sides to bottom and
-  top, a sink base's rails one fastener each, `Joint::single`) is `none`, `dowels` (the dialog's
-  default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
+- **Joinery at build** (`src/joint/`): the cabinet's `joints` (a Woodwork setting, filled in by
+  `settings::design`; carcass: sides to bottom and top, a sink base's rails one fastener each,
+  `Joint::single`) is `none`, `dowels` (the default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
   away from `Joint::out`; `<Prefix>_cam_d`, `_cam_bolt`), `pocket` (a 9.5 mm pocket and a pilot,
   cylinders on an axis at 15 degrees, a fixed angle: plugin runs take a non-axis `axis`; the
   pocket in the end board's `out` face, or the other with `pocket_face: inside`), `biscuit` (a box cut through both boards
@@ -476,8 +536,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   no pins gets joined shelves on its next Edit; one with no remembered method has `none` and
   stays as it was.
   `Joinery::new` reads it, checks the sizes and makes the parameters they need, once each
-  (`<Prefix>_joint_spacing`, `_joint_edge`, `_dowel_d`, `_dowel_length`: dialog fields in the
-  dialog's unit, `edit::SIZES`, so Edit takes them from Parameters and only changes the
+  (`<Prefix>_joint_spacing`, `_joint_edge`, `_dowel_d`, `_dowel_length`: settings in mm, given
+  to the builder in the cabinet's unit, `edit::SIZES`, so Edit takes them from Parameters and only changes the
   method). `Joinery::joint` gives a joint's cuts: one cylinder (a dowel's through both boards,
   `targets` two; confirmat a clearance in the face board and a pilot in the end) and a
   `solid.pattern.rectangular` along the row, count `max(2, ceil((run - 2*edge)/spacing) + 1)`,
@@ -555,9 +615,10 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   doors call too): the grid over the bottom panel, the first door's plate holes in the end it
   hangs on (`corner::doors`, after its hinge), none for the fold (it hangs on a door) nor the
   diagonal door (its ends stand at 45 degrees).
-  **Models** (`hardware_models`: `on` by default, `off`, `cut`; cabinet, corner and Edit, kept by
+  **Models** (`hardware_models`: `on` by default, `off`, `cut`; Woodwork settings and Edit, kept by
   `Kit::models`): `hardware::copy` pushes an `occurrence.copy` of `HW hinge` or `HW hinge crank
-  <c>` (cup and arm, in the door, from `cup_holes`, so corner doors too; `hardware::hinge`:
+  <c>` (cup and arm, in the door, from `cup_holes`, so corner doors too, but not a corner's fold
+  door, which has cups and no plate holes: `crank` None, a door-to-door hinge is not modelled; `hardware::hinge`:
   the caller gives the crank, 18 for inset, 9.5 for a box cabinet's hinge edge on a divider,
   else 0), `HW hinge plate` (in the cabinet, over each cup's plate holes, from `plate_holes`:
   none on a divider or the diagonal door) and `HW slide cabinet|middle|drawer <length>` (each
@@ -579,9 +640,20 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   (`hardware::definitions` of `hardware::wanted`, the components a build copies: one slide
   definition a length, since a move cannot scale; made by `component` before the cabinet when
   one is missing, then back to the user's component): a definition inside a cabinet is deleted with it, with every
-  copy elsewhere, and Edit deletes the cabinet. `browser.visibility` is not kept after a plugin
-  run, so `Woodwork hardware` is moved to `HIDDEN`, just under the floor at the origin (under
-  the first cabinet; `view.fit` hardly changes). Every `inspect.measure` reply in a run goes
+  copy elsewhere, and Edit deletes the cabinet. `browser.visibility` set in a plugin run is not kept
+  (checked on 0.46.1 with `paths` on the component's placement: the same command through the
+  CLI hides it, also after save and reopen), so `Woodwork hardware` is placed at `HIDDEN`
+  (absolute `to_matrix`, half a turn about Z), its tops 1 mm under the floor, reaching
+  forward from 15 mm in front of a 560 mm cabinet's back on the origin, under the first
+  cabinet's back, away from the fronts: the iso and front views' Fit frame about 3 %
+  wider than with it hidden (measured with `view.apply`); from below it shows. In a plugin run
+  a body made in a moved component lands shifted by where the component stands, so a
+  definition added later (a crank, another slide length) is made with `Woodwork hardware`
+  back on the origin, and it goes to `HIDDEN` again after (before, such a definition's body stood
+  at the origin, offset from its component by `HIDDEN`, so every copy of it floated that far
+  (125 mm back, 30 up) from its cup or slide; in an older design it stays so until its
+  component is deleted and the cabinets using it are edited; `tests/test_hardware.py` checks
+  every hinge copy against its cup and every plate against its holes, Edit included). Every `inspect.measure` reply in a run goes
   through `hardware::hide` (`execute`), so the cut list, drawing, worktop, select, Edit's
   materials and panels never see a model; the hardware list still counts features (`hinge
   cup`, drawer fronts), so nothing is counted twice. A drawing's views are of the cabinet's
@@ -594,7 +666,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   refused there. `cabinet::build` counts a copy as 2 commands, a cut as 2 more plus one
   `component.list`, and the definitions it copies (`hardware::cost`); over 230 it builds the
   cabinet again with `off` and says so (`hardware_models` in the summary).
-  **Slide length** (`slide_length`, cabinet and Edit, `edit::BOX_ONLY`): `hardware::SLIDES`,
+  **Slide length** (`slide_length`, Edit only, `edit::BOX_ONLY`; a new cabinet is always auto): `hardware::SLIDES`,
   250, 270, 300 to 650 mm and 10 to 28 in; `auto` is the longest of the cabinet's unit
   (`Kit::unit`) within the box depth less `SLIDE_CLEAR` (3 mm), and a chosen one that does not
   fit is refused (`hardware::slide_length`, read in `cabinet::input` as `Input::slide`, mm and
@@ -603,16 +675,36 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   HW_pitch`); the box side holes are named `<Drawer n Left> slide k (450 mm, full extension)`, and the
   cut list counts `Drawer slide, full extension, 450 mm, pair` from ` Left slide 1 (` (the
   rest of the drawer fronts, older drawers, as `Drawer slide, pair`). **Slide type**
-  (`slide_type`, cabinet and Edit, `BOX_ONLY`: `partial`, `full` by default, `over`;
+  (`slide_type`, Woodwork settings and Edit, `BOX_ONLY`: `partial`, `full` by default, `over`;
   `hardware::SLIDE_TYPES`, `travel`: 75 %, 100 %, +25 mm) is the drawer joint's limit
   (`Input::slide_type`), and 2-section slides have no middle member. **Hinge opening**
-  (`hinge_angle`, cabinet, corner and Edit: 95, 110 by default, 165; `Kit::hinge_angle`) is
+  (`hinge_angle`, Woodwork settings and Edit: 95, 110 by default, 165; `Kit::hinge_angle`) is
   every door hinge joint's limit, the box cabinet's, the corner's first door and the diagonal
   door; a corner's fold stays 90 (it lays the second door flat on the first). The hinge model
   is the same for every angle. Hinges a door: `fittings::cup_heights`, 2 up to 900 mm, 3 to
   1600, 4 to 2000, 5 above (the first two cups at the ends keep their names). The cup's two
   screw holes (45 apart, 9.5 off its centre) are not cut: 2 commands a cup more.
   Undermount slides are deferred. Sample kitchen, local: models on cost up to 1.5 s a cabinet run more than off.
+  **Fastener models** (`fastener_models`, Woodwork settings, `off` by default by the user's
+  decision: they are for looking, with See-through boards; remembered, absent is off; none
+  with `hardware_models: off`; `Joinery::fasteners`): after a joint's
+  hole `Joinery::fastener` pushes the same command without `operation` and `targets`, named and
+  `body_name` `<cut> fastener` (a confirmat or screw: the clearance hole as long as the screw; a
+  cam: a 6 mm rod from the bolt's tip, `cam_bolt` long, and the housing; a pocket screw: its
+  pilot; a biscuit: its slot; a dowel: the hole), and the row adds a
+  `solid.pattern.rectangular` of `bodies` (`<row> fasteners`, copies `<name> (2)`, a fraction of a
+  millisecond; a pattern of new-body *features* names its copies `Body1`). One command a joint
+  and one a row. `hardware::is_model` takes a name ending in ` fastener`, or ` fastener (n)`, so
+  `hide` keeps them from every measure; the drawing's views show them, as the hinge models.
+  **The naming depth:** SolidCraft names a feature's faces from its history only up to
+  `MAX_DEPTH` 400 (`crates/doc/src/naming.rs`; the depth is the highest of every body's in the
+  design plus one a feature, `eval.rs` `stamp`), and past it `Body:face:k`. A chamfer picked
+  past it stores `Wall corner Cleat:face:3|...:face:5`; deleting an earlier cabinet brings it
+  under 400, the face is `F662:+z` and the chamfer fails ("no longer exists as it was picked").
+  The sample kitchen without fasteners had 419 features before the wall corner's bevel (not all
+  count) and survived; with them everywhere it did not. So `examples/kitchen.py` sets Fastener
+  models off before all but the units on the return (`LATE`), made after the wall corner.
+  Fasteners everywhere cost the kitchen about 1.2 s on its slowest run (7.4 to 8.5 s).
 - Drawing (`drawing::sheet`): the drawing commands (0.45) run inside a plugin run; while a
   drawing is open the model's commands wait, so `lib.rs` reads everything first, then opens or
   makes `Woodwork`, draws, deletes the replaced sheets and closes it. The board list is four notes
@@ -669,8 +761,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   shifted (`tests/test_panel.py`). An Edit with panels runs about a dozen commands
   more each, so a cabinet near `cabinet::build`'s 230 can then fail the 256 limit (the run is
   discarded, nothing is lost).
-- `plinth_type` (cabinet, corner and Edit; the dialogs show it when the plinth is not 0 or Match
-  selected is on; `fittings::plinth_type`, `board` when absent, so older cabinets keep theirs):
+- `plinth_type` (Woodwork settings and Edit; `fittings::plinth_type`, `board` when absent, so older cabinets keep theirs):
   `board` is `<Name> Plinth` (the corner's two, or the diagonal's turned one), `plinth_setback`
   back from the front: the field (shown for board or notch, 50 mm when absent: `KICK_RECESS`)
   is the parameter `<Prefix>_plinth_setback` while a board or notch uses it, kept once made

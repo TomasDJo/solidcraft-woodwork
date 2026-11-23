@@ -10,15 +10,16 @@ It uses every function of the plugin:
 - Cabinet, with shelves, dividers, doors, drawers, shelf pins, handle holes and a plinth; an
   inset door on the tall unit, a graduated drawer unit (a lower top drawer), a drawer over
   a door on the return, and Base 3 is a sink base (rails instead of a top)
-- Corner cabinet, at the right end of the base units and of the wall units; the wall one hangs on French cleats along both walls
+- Cabinet with a corner Shape, at the right end of the base units and of the wall units; the wall one hangs on French cleats along both walls
 - Place: each floor unit goes to the right of the one before it, by selecting that one, and is
   held to it: widen `Base_1_width` and the units after it move along
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
   thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
-- Joinery chosen in the Cabinet dialog: confirmat screws in most floor units (biscuits in the tall
-  one, cam locks in the drawer unit, pocket screws in the sink base), dowels in the wall units (a
-  dado in the first) and inside
+- Woodwork settings: the joinery, fronts, labels, handle position and plinth height are design
+  wide, set there before the cabinets that take them (wall units have Plinth No). Joinery:
+  confirmat screws in most floor units (biscuits in the tall one, cam locks in the drawer unit,
+  pocket screws in the sink base), dowels in the wall units (a dado in the first) and inside
 - Edit cabinet: the wall unit on the return gets a third shelf after it is made, hung, turned and drilled
 - Labels: the tall unit has each board's name written on it
 - Panel: an end panel on the tall unit's free side and one at the open end of the return run
@@ -26,7 +27,8 @@ It uses every function of the plugin:
   sink cut-out over the sink base
 - Drawing: a shop drawing of every cabinet, a sheet each in the design's drawing Woodwork
 - Hardware models: every hinge and drawer slide is shown (the default), moving with its door
-  or drawer; the definitions sit under the floor in the Woodwork hardware component
+  or drawer; the definitions sit under the floor in the Woodwork hardware component. The units
+  on the return also show their dowels and screws (Fastener models, kept out of the others)
 - Cut list: written out as CSV (boards with grain and banded edges, and the banding to buy); the sheets from the cutting layouts and the hardware are printed
 
 Everything sits in a Kitchen component; every cabinet is a component inside it, and every door
@@ -68,12 +70,12 @@ BACK = 280  # the wall: the tall unit is 560 deep and centred on the origin
 # wall, and one more base unit continues it, turned to face into the room.
 # Biscuits in both corner cabinets: their joints are the cheapest to cut, and a corner cabinet's
 # run with screws or dowels came close to the 30 s limit on CI.
-CORNER = {**FLOOR_UNIT, **MATCH, "width": 1000, "return": 1000, "doors": "hinged left",
+CORNER = {**FLOOR_UNIT, **MATCH, "shape": "L-shaped", "width": 1000, "return": 1000, "corner_doors": "hinged left",
           "handles": "pull", "place": "right", "joints": "biscuit"}
 RIGHT = 300 + sum(params["width"] for _, params in FLOOR[1:]) + CORNER["width"]  # the right wall
 RETURN = {**FLOOR_UNIT, **MATCH, "width": 600, "drawers": 1, "doors": 1, "handles": "pull"}
 WALL_CORNER = {**WHITE, **MATCH, "width": 1000, "return": 1000, "height": 700, "depth": 320,
-               "shape": "diagonal", "shelves": 2, "shelf_pins": True, "doors": "hinged right", "handles": "knob",
+               "shape": "diagonal", "shelves": 2, "shelf_pins": True, "corner_doors": "hinged right", "handles": "knob",
                "handle_position": "middle",
                "wall_mount": "cleat", "joints": "biscuit", "place": "right"}
 WALL_RETURN = {**WALL, **MATCH, "width": 600, "doors": 1}
@@ -91,6 +93,33 @@ def select(*bodies):
     return step("select.set", items=[{"type": "body", "name": body} for body in bodies])
 
 
+joinery = {}  # what Woodwork settings hold now
+# Fastener models (off by default, for looking) turned on for the units made after the wall
+# corner, to show them: SolidCraft names the faces of a
+# design's first 400 features one way and those after another, so in a design this size a
+# chamfer's picked edge (the wall corner's) is not found again once an earlier cabinet is
+# deleted or edited if more features come before it. The fasteners add a feature for each joint.
+LATE = ("Base 4", "Wall 4")
+
+
+def cabinet(entry, params):
+    """The steps for a cabinet: Woodwork settings first when what it takes from them (joinery,
+    fronts, labels, handle position, the plinth's height: the same for the whole design, no
+    Cabinet field) differs from what they hold, then the cabinet with Plinth Yes or No."""
+    params = dict(params)
+    wanted = {"joints": params.pop("joints", "dowels"), "fastener_models": "on" if params["name"] in LATE else "off",
+              "fronts": params.pop("fronts", "overlay"), "handle_position": params.pop("handle_position", "auto"),
+              "labels": "yes" if params.pop("labels", False) else "no"}
+    if params.get("plinth"):
+        wanted["plinth"] = params["plinth"]
+    params["plinth"] = "yes" if params.get("plinth") else "no"
+    steps = []
+    if wanted != {key: joinery.get(key) for key in wanted}:
+        joinery.update(wanted)
+        steps.append(build.plugin(approval, "settings", wanted))
+    return steps + [build.plugin(approval, entry, params)]
+
+
 approval = build.cli([step("plugin.inspect", path=str(build.PKG))])[0]["approval"]
 kitchen = step("component.activate", component="Kitchen")
 
@@ -99,7 +128,7 @@ steps = [step("component.create", name="Kitchen")]
 for i, (name, params) in enumerate(FLOOR):
     if i:
         steps.append(select(f"{FLOOR[i - 1][0]} Side R"))
-    steps.append(build.plugin(approval, "cabinet", {**params, "name": name}))
+    steps += cabinet("cabinet", {**params, "name": name})
     if name == "Tall":  # the run's visible end
         steps += [select("Tall Side L"), build.plugin(approval, "panel", {"kind": "end"})]
 for name, left, params in HANGING:
@@ -109,18 +138,18 @@ for name, left, params in HANGING:
     if name != HANGING[0][0]:
         steps.append(select(f"{HANGING[0][0]} Top"))
         params = {**params, **MATCH}
-    steps += [build.plugin(approval, "cabinet", {**params, "name": name}),
+    steps += [*cabinet("cabinet", {**params, "name": name}),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", translate=move),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=True)]
-steps += [select(f"{FLOOR[-1][0]} Side R"), build.plugin(approval, "corner", {**CORNER, "name": "Corner"}),
-          select(f"{HANGING[-1][0]} Top"), build.plugin(approval, "corner", {**WALL_CORNER, "name": "Wall corner"})]
+steps += [select(f"{FLOOR[-1][0]} Side R"), *cabinet("cabinet", {**CORNER, "name": "Corner"}),
+          select(f"{HANGING[-1][0]} Top"), *cabinet("cabinet", {**WALL_CORNER, "name": "Wall corner"})]
 # The units on the return are made on the origin, then turned a quarter and put at the end of
 # the corner cabinet's return.
 end = BACK - CORNER["return"]
 for name, params, z, like in (("Base 4", RETURN, 0, "Corner"), ("Wall 4", WALL_RETURN, WALL_Z, "Wall corner")):
     to = {"position": [RIGHT - params["depth"] / 2, end - params["width"] / 2, z], "axis": [0, 0, 1], "angle": "-90 deg"}
-    steps += [select(f"{like} Top"), build.plugin(approval, "cabinet", {**params, "name": name, "place": "origin"}),
+    steps += [select(f"{like} Top"), *cabinet("cabinet", {**params, "name": name, "place": "origin"}),
               *([select("Base 4 Side R"), build.plugin(approval, "panel", {"kind": "end"})] if name == "Base 4" else []),
               step("occurrence.ground", occurrence=f"{name}:1", grounded=False),
               step("occurrence.move", occurrence=f"{name}:1", to=to),

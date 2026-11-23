@@ -61,10 +61,13 @@ def test_choices_have_titles(approval):
                     values = [leaf["eq"]] if "eq" in leaf else leaf["in"]
                     assert values and all(fits(controller, v) for v in values), (at, leaf)
                     assert not (negated and WHEN in controller), (at, leaf)
-            # A size's inch default (0.46): the dialog shows it when Units is Inches, until the
-            # field is changed. Each one a size the field can have.
+            # A conditional default (0.46): a size's inch default when Units is Inches, or a
+            # corner cabinet's when Shape is a corner, until the field is changed. Each rule a
+            # sound condition over sibling fields, and a value the field can have.
             for rule in field.get("x-solidcraft-defaults", []):
-                assert rule["when"] == {"field": "units", "eq": "in"} and fits(field, rule["value"]), (at, rule)
+                for leaf, _ in conditions(rule["when"]):
+                    assert leaf["field"] in ("units", "shape") and leaf["field"] in schema["properties"], (at, rule)
+                assert fits(field, rule["value"]), (at, rule)
             # Its description is the field's hover tooltip: every field explains itself.
             assert field.get("description", "").strip(), at
             # The one list the dialog draws: `selection`, picked in the viewport (0.44). The app
@@ -85,7 +88,7 @@ def test_choices_have_titles(approval):
             assert field["default"] in values, at
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
-    assert choices == 91, choices
+    assert choices == 71, choices
     # SolidCraft 0.45 refuses a manifest over 64 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
     assert json.loads(packed) == manifest and len(packed) < 64 * 1024, len(packed)

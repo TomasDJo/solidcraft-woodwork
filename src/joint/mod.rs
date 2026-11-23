@@ -30,9 +30,9 @@ pub const METHODS: [&str; 8] = [
 /// The methods with fasteners in a row along the joint, spaced by `joint_spacing`.
 const SPACED: [&str; 6] = ["dowels", "confirmat", "screws", "biscuit", "cam", "pocket"];
 
-/// The sizes a method can take: dialog field, which is also the parameter `<Prefix>_<key>`,
-/// and its default in mm.
-const SIZES: [(&str, f64); 7] = [
+/// The sizes a method can take: Woodwork settings' field, which is also the parameter
+/// `<Prefix>_<key>`, and its default in mm.
+pub const SIZES: [(&str, f64); 7] = [
     ("joint_spacing", 250.0),
     ("joint_edge", 50.0),
     ("dowel_d", 8.0),
@@ -44,7 +44,7 @@ const SIZES: [(&str, f64); 7] = [
 
 /// The parameters that count the fasteners for the cut list, `<Prefix>_<key>`: 0 once an edit
 /// took them away. `edit::merge` passes the ones a cabinet has to `Kit`.
-pub const COUNTS: [&str; 10] = [
+pub const COUNTS: [&str; 9] = [
     "dowels",
     "confirmats",
     "screws",
@@ -54,7 +54,6 @@ pub const COUNTS: [&str; 10] = [
     "dominos",
     "cams",
     "pocket_screws",
-    "bolts",
 ];
 
 // A screw from the face board's outside into the other's end: clearance, pilot, length.
@@ -69,6 +68,19 @@ const SLOTS: [(&str, [f64; 3], &str, &str); 4] = [
     ("20", [62.0, 13.0, 4.0], "biscuits_20", "Biscuit, #20"),
     ("domino", [21.0, 15.0, 5.0], "dominos", "Domino, 5 x 30 mm"),
 ];
+
+/// The sizes' bounds in mm.
+pub fn range(key: &str) -> (f64, f64) {
+    match key {
+        "joint_spacing" => (20.0, 2000.0),
+        "joint_edge" => (5.0, 500.0),
+        "dowel_d" => (3.0, 20.0),
+        "dado_depth" => (0.5, 25.0),
+        "cam_d" => (10.0, 35.0),
+        "cam_bolt" => (20.0, 80.0),
+        _ => (10.0, 150.0),
+    }
+}
 
 /// Where the end of one board meets the face of another. Positions are counted from the
 /// cabinet's front left bottom corner, as a panel's (`Kit::at` shifts them).
@@ -103,6 +115,10 @@ pub struct Joinery<'a> {
     counts: RefCell<Vec<(&'static str, String)>>,
     cuts: RefCell<Commands>,
     rows: RefCell<Vec<Row>>,
+    /// The fastener models of the joint being cut (`fastener`), for its row's body pattern.
+    models: RefCell<Vec<String>>,
+    /// Fastener models: with Hardware models on and Fastener models `on` (off by default).
+    fasteners: bool,
     slot: usize,         // in SLOTS
     pocket_inside: bool, // the pockets in the end board's inside face
 }
@@ -115,6 +131,8 @@ struct Row {
     count: String,
     pitch: String,
     features: Vec<String>,
+    /// The fastener models, copied along by a pattern of bodies (copies `<name> (2)`, ...).
+    models: Vec<String>,
 }
 
 /// Which of a cabinet's two methods a joint takes: the carcass's, or the inside's.
@@ -152,15 +170,7 @@ impl<'a> Joinery<'a> {
                 continue;
             }
             let v = kit.size(p, key, default)?;
-            let (low, high) = match key {
-                "joint_spacing" => (20.0, 2000.0),
-                "joint_edge" => (5.0, 500.0),
-                "dowel_d" => (3.0, 20.0),
-                "dado_depth" => (0.5, 25.0),
-                "cam_d" => (10.0, 35.0),
-                "cam_bolt" => (20.0, 80.0),
-                _ => (10.0, 150.0),
-            };
+            let (low, high) = range(key);
             check(
                 (low..=high).contains(&v),
                 &format!("`{key}` must be {low} to {high} mm"),
@@ -221,25 +231,11 @@ impl<'a> Joinery<'a> {
             counts: RefCell::default(),
             cuts: RefCell::default(),
             rows: RefCell::default(),
+            models: RefCell::default(),
+            fasteners: kit.models != "off" && p["fastener_models"] == "on",
             slot,
             pocket_inside,
         })
-    }
-
-    /// Joinery with one method and its sizes given as expressions, not read from a dialog: a
-    /// frame's dowels (and its bolts, `joint_by`). `t` is the end boards' thickness.
-    pub fn fixed(kit: &'a Kit, t: &str, method: &str, sizes: Vec<(&'static str, String)>) -> Self {
-        Joinery {
-            kit,
-            t: t.to_string(),
-            methods: [method.to_string(), "none".into()],
-            sizes,
-            counts: RefCell::default(),
-            cuts: RefCell::default(),
-            rows: RefCell::default(),
-            slot: 0,
-            pocket_inside: false,
-        }
     }
 
     /// The method for the carcass (`CARCASS`) or the boards inside (`INNER`).
@@ -274,9 +270,8 @@ impl<'a> Joinery<'a> {
         self.joint_by(self.method(scope), j)
     }
 
-    /// The cuts of one joint by `method`, whatever the cabinet's: a frame's bolts beside its
-    /// dowels.
-    pub fn joint_by(&self, method: &str, j: &Joint) {
+    /// The cuts of one joint by `method`.
+    fn joint_by(&self, method: &str, j: &Joint) {
         let method = method.to_string();
         let (spacing, edge) = (self.size("joint_spacing"), self.size("joint_edge"));
         let count = format!("max(2, ceil(({} - 2*{edge}) / {spacing}) + 1)", j.run);
@@ -300,7 +295,7 @@ impl<'a> Joinery<'a> {
                 _ => format!("{name} {method} {what}"),
             };
             let targets = match what {
-                "" if method == "dowels" || method == "bolts" => vec![face.clone(), end.clone()],
+                "" if method == "dowels" => vec![face.clone(), end.clone()],
                 "" => vec![face.clone()],
                 _ => vec![end.clone()],
             };
@@ -312,14 +307,10 @@ impl<'a> Joinery<'a> {
                 // Blind in the face, 5 mm short of coming through; the rest in the end, with
                 // 1 mm to spare at each end.
                 let (d, l) = (self.size("dowel_d"), self.size("dowel_length"));
-                // the face board's thickness: a frame's leg is thicker than its rails
-                let ft = match self.size("face_t") {
-                    "" => t.as_str(),
-                    leg => leg,
-                };
-                let into_face = format!("min({ft} - 5 mm, ({l} + 2 mm) / 2)");
+                let into_face = format!("min({t} - 5 mm, ({l} + 2 mm) / 2)");
                 let base = shift(&start, neg(j.into), &into_face);
                 cut("", base, j.into, d.into(), format!("{l} + 2 mm"));
+                self.fastener(|_| {});
                 "dowels"
             }
             "confirmat" | "screws" => {
@@ -330,6 +321,8 @@ impl<'a> Joinery<'a> {
                 };
                 let base = shift(&start, neg(j.into), t);
                 cut("", base, j.into, mm(clear), t.clone());
+                // the screw: the clearance hole's, as long as the screw
+                self.fastener(|screw| screw["height"] = json!(mm(length)));
                 let depth = format!("{} - {t} + 2 mm", mm(length));
                 cut("pilot", start.clone(), j.into, mm(pilot), depth);
                 if method == "screws" {
@@ -374,23 +367,9 @@ impl<'a> Joinery<'a> {
                 let height = format!("10 mm + min({t} - 3 mm, 15 mm) / {cos}");
                 let targets = vec![end.clone(), face.clone()];
                 self.cylinder(&pilot, at("10 mm"), json!(axis), "3.5 mm", &height, targets);
+                self.fastener(|_| {});
                 features.extend([feature, pilot]);
                 "pocket_screws"
-            }
-            "bolts" => {
-                // A frame's: a bed bolt through the face board (`face_t` thick) from its
-                // outside and on into the end, and a barrel nut's hole across the end board
-                // from the face opposite `out` to past the bolt.
-                use crate::frame::{BOLT_D, BOLT_PAST, NUT_FROM_END};
-                let through = self.size("face_t");
-                let base = shift(&start, neg(j.into), through);
-                let long = format!("{through} + {}", mm(BOLT_PAST));
-                cut("", base, j.into, mm(BOLT_D), long);
-                let nut = shift(&start, j.into, &mm(NUT_FROM_END));
-                let nut = shift(&nut, neg(j.out), &format!("{t}/2"));
-                let deep = format!("{t}/2 + {}", mm(BOLT_D / 2.0));
-                cut("nut", nut, j.out, mm(BOLT_D), deep);
-                "bolts"
             }
             "cam" => {
                 // The bolt's thread in the face board, its shank along the end board's middle
@@ -404,12 +383,22 @@ impl<'a> Joinery<'a> {
                     "5 mm".into(),
                     thread.clone(),
                 );
+                // the bolt: one 6 mm rod from its tip in the face board to the cam
+                let tip = shift(&start, neg(j.into), &thread);
+                let tip = self.kit.at(&tip[0], &tip[1], &tip[2]);
+                self.fastener(|rod| {
+                    rod["base"] = tip;
+                    rod["axis"] = json!(j.into);
+                    rod["diameter"] = json!("6 mm");
+                    rod["height"] = json!(bolt);
+                });
                 let reach = format!("{bolt} - {thread}");
                 cut("bolt", start.clone(), j.into, "8 mm".into(), reach.clone());
                 let centre = shift(&start, j.into, &reach);
                 let face = shift(&centre, neg(j.out), &format!("{t}/2"));
                 let depth = format!("min({t} - 3 mm, {d} * 0.85)");
                 cut("housing", face, j.out, d.into(), depth);
+                self.fastener(|_| {});
                 "cams"
             }
             "biscuit" => {
@@ -438,6 +427,7 @@ impl<'a> Joinery<'a> {
                         "name": feature,
                     }),
                 ));
+                self.fastener(|_| {});
                 features.push(feature);
                 item
             }
@@ -475,6 +465,7 @@ impl<'a> Joinery<'a> {
             }
             _ => return,
         };
+        let models = self.models.take();
         if j.single {
             self.counts.borrow_mut().push((item, "1".into()));
             return;
@@ -485,15 +476,45 @@ impl<'a> Joinery<'a> {
             .iter_mut()
             .find(|r| r.along == j.along && r.count == count)
         {
-            Some(row) => row.features.extend(features),
+            Some(row) => {
+                row.features.extend(features);
+                row.models.extend(models);
+            }
             None => rows.push(Row {
                 name: format!("{name} {method} row"),
                 along: j.along,
                 count,
                 pitch,
                 features,
+                models,
             }),
         }
+    }
+
+    /// A model of the fastener in the hole just cut (the last of `cuts`): a body of the same
+    /// shape, which `shape` may change, `<cut> fastener`, in the cabinet's component, which the
+    /// row's pattern of bodies copies along. Not with `fasteners` off. Not a board:
+    /// `hardware::is_model` hides it.
+    fn fastener(&self, shape: impl FnOnce(&mut Value)) {
+        if !self.fasteners {
+            return;
+        }
+        let mut cuts = self.cuts.borrow_mut();
+        let Some((command, cut)) = cuts.last() else {
+            return;
+        };
+        let mut args = cut.clone();
+        let name = format!("{} fastener", cut["name"].as_str().unwrap_or_default());
+        if let Some(args) = args.as_object_mut() {
+            args.remove("operation");
+            args.remove("targets");
+        }
+        shape(&mut args);
+        args["name"] = json!(name);
+        args["body_name"] = json!(name);
+        let command = *command;
+        cuts.push((command, args));
+        self.models.borrow_mut().push(name);
     }
 
     fn board(&self, part: &str) -> String {
@@ -555,9 +576,18 @@ impl<'a> Joinery<'a> {
                 "solid.pattern.rectangular",
                 json!({
                     "features": row.features, "name": row.name,
-                    "dir1": row.along, "count1": row.count, "spacing1": row.pitch,
+                    "dir1": row.along, "count1": row.count, "spacing1": row.pitch.clone(),
                 }),
             ));
+            if !row.models.is_empty() {
+                cuts.push((
+                    "solid.pattern.rectangular",
+                    json!({
+                        "bodies": row.models, "name": format!("{} fasteners", row.name),
+                        "dir1": row.along, "count1": row.count, "spacing1": row.pitch,
+                    }),
+                ));
+            }
         }
         cuts
     }
@@ -602,10 +632,6 @@ pub fn hardware(prefix: &str, params: &Value) -> Vec<(String, u64)> {
             "screws" => "Screw, 4 x 50 mm".to_string(),
             "cams" => format!("Cam lock and bolt, {} mm", size("cam_d")),
             "pocket_screws" => "Pocket screw, 32 mm".to_string(),
-            "bolts" => {
-                items.push(("Bed bolt, 10 mm".to_string(), qty));
-                "Barrel nut, 10 mm".to_string()
-            }
             slot if slot.starts_with("biscuits") || slot == "dominos" => {
                 let found = SLOTS.iter().find(|s| s.2 == slot);
                 found.map(|s| s.3).unwrap_or_default().to_string()

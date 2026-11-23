@@ -138,12 +138,12 @@ fn names(measure: &Value) -> impl Iterator<Item = &str> {
         .filter_map(|b| b.as_str().or(b["name"].as_str()))
 }
 
-/// The cabinet or frame a body belongs to. Every cabinet has a body called "<name> Side L",
-/// a frame "<name> Leg front left"; of the names that fit, the longest wins, so "Base 2 Door"
+/// The cabinet a body belongs to. Every cabinet has a body called "<name> Side L"; of the
+/// names that fit, the longest wins, so "Base 2 Door"
 /// is in "Base 2", not in "Base".
 pub fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
     names(measure)
-        .filter_map(|name| (name.strip_suffix(" Side L")).or(name.strip_suffix(crate::frame::MARK)))
+        .filter_map(|name| name.strip_suffix(" Side L"))
         .filter(|cabinet| body.starts_with(&format!("{cabinet} ")))
         .max_by_key(|cabinet| cabinet.len())
 }
@@ -199,22 +199,16 @@ pub fn parts(measure: &Value, cabinet: &str) -> Vec<String> {
         .collect()
 }
 
-/// The name of the cabinet or frame of the first selected body.
+/// The name of the cabinet of the first selected body.
 pub fn piece(picked: &[String], measure: &Value) -> Result<String, String> {
     let picked = picked.first().ok_or("select a part of a cabinet first")?;
     let name = owner(measure, picked).ok_or(format!("`{picked}` is not part of a cabinet"))?;
     Ok(name.into())
 }
 
-/// The cabinet of the first selected body. A frame is refused.
+/// The cabinet of the first selected body.
 pub fn cabinet(picked: &[String], measure: &Value) -> Result<Cabinet, String> {
     let name = piece(picked, measure)?;
-    let frame = format!("{name}{}", crate::frame::MARK);
-    if names(measure).any(|b| b == frame) {
-        return Err(format!(
-            "`{name}` is a frame: this works on cabinets only (Edit cabinet and Material work on a frame)"
-        ));
-    }
     named(measure, &name)
 }
 

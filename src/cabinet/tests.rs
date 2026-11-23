@@ -846,6 +846,33 @@ fn a_graduated_drawer_stack() {
 }
 
 #[test]
+fn a_drawer_front_height_is_auto_or_the_minimum_or_more() {
+    // inset drawers only: 100 mm is the lowest; beside doors 18 mm boards need 102 mm
+    let p = |dh: f64| build(&json!({"drawers": 3, "fronts": "inset", "drawer_height": dh}));
+    assert!(p(0.0).is_ok());
+    assert!(p(100.0).is_ok());
+    let low = p(99.0).unwrap_err();
+    assert!(low.contains("0 (Auto) or at least 100 mm"), "{low}");
+    let doors = json!({"drawers": 1, "doors": 1, "drawer_height": 102});
+    assert!(build(&doors).is_ok());
+    let low = build(&json!({"drawers": 1, "doors": 1, "drawer_height": 101})).unwrap_err();
+    assert!(low.contains("at least 102 mm"), "{low}");
+    // in inches 4 in, or 4 1/8 in with 3/4 in boards beside doors
+    let inch = |dh: f64, doors: u8| {
+        build(
+            &json!({"units": "in", "fronts": "inset", "drawers": 2, "doors": doors,
+                      "width": 24, "height": 30, "depth": 22, "thickness": 0.75, "drawer_height": dh}),
+        )
+    };
+    assert!(inch(4.0, 0).is_ok());
+    assert!(inch(3.9, 0).unwrap_err().contains("at least 4 in"));
+    assert!(inch(4.125, 2).is_ok());
+    assert!(inch(4.0, 2).unwrap_err().contains("at least 4.125 in"));
+    // one drawer alone has no front height to check
+    assert!(build(&json!({"drawers": 1, "drawer_height": 50})).is_ok());
+}
+
+#[test]
 fn drawer_slides_set_the_box_width_and_drill_both_sides() {
     let (commands, _) = build(&json!({"drawers": 2})).unwrap();
     let box_side = named(&commands, "Cabinet Drawer 1 Left");
@@ -1029,4 +1056,127 @@ fn a_steel_rail_is_a_parameter_the_cut_list_reads() {
     assert!(!has(&kept, "Cabinet_wall_rail"));
     // a cabinet that never had one gets none
     assert!(!has(&plain, "Cabinet_wall_rail"));
+}
+
+#[test]
+fn drawer_boxes_take_their_board_and_bottom_thickness() {
+    let p = json!({"drawers": 2, "drawer_thickness": 18, "drawer_bottom": 9});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_thickness")["expression"],
+        "18 mm"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_bottom")["expression"],
+        "9 mm"
+    );
+    let (t, b) = ("Cabinet_drawer_thickness", "Cabinet_drawer_bottom");
+    assert_eq!(named(&commands, "Cabinet Drawer 1 Left")["length"], t);
+    assert_eq!(named(&commands, "Cabinet Drawer 1 Box back")["width"], t);
+    let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    assert_eq!(bottom["height"], b);
+    assert!(bottom["length"]
+        .as_str()
+        .unwrap()
+        .ends_with(&format!(" - 2*{t}")));
+    // 12 and 6 mm by default; no parameters without boxes
+    let (commands, _) = build(&json!({"drawers": 1})).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_thickness")["expression"],
+        "12 mm"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_bottom")["expression"],
+        "6 mm"
+    );
+    assert!(!has(
+        &build(&json!({"doors": 1})).unwrap().0,
+        "Cabinet_drawer_thickness"
+    ));
+    // the slides' screws need 10 mm of side
+    assert!(build(&json!({"drawers": 1, "drawer_thickness": 8})).is_err());
+    assert!(build(&json!({"drawers": 1, "drawer_bottom": 25})).is_err());
+}
+
+#[test]
+fn wooden_runners_run_the_bottom_in_grooves_in_the_sides() {
+    let p = json!({"drawers": 2, "slide_type": "wood"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_runner_depth")["expression"],
+        "6 mm"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_runner_play")["expression"],
+        "1 mm"
+    );
+    // the bottom under the box, into each groove less the play; the box's boards on it
+    let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    let out = "Cabinet_thickness - Cabinet_runner_depth + Cabinet_runner_play";
+    assert_eq!(bottom["length"], format!("Cabinet_width - 2*({out})"));
+    let left = named(&commands, "Cabinet Drawer 1 Left");
+    assert_eq!(
+        left["height"]
+            .as_str()
+            .unwrap()
+            .matches("Cabinet_drawer_bottom")
+            .count(),
+        1
+    );
+    // a groove in each side per drawer, the bottom's thickness and the play round it
+    for side in [
+        "Side L runner 1",
+        "Side R runner 1",
+        "Side L runner 2",
+        "Side R runner 2",
+    ] {
+        let groove = named(&commands, &format!("Cabinet {side}"));
+        assert_eq!(groove["operation"], "cut");
+        assert_eq!(
+            groove["height"],
+            "Cabinet_drawer_bottom + 2*Cabinet_runner_play"
+        );
+    }
+    // no slide holes or models; the drawer comes out two thirds of its box's depth
+    assert!(!commands.iter().any(|c| c.1.to_string().contains("HW_")));
+    let limit = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
+    assert_eq!(
+        limit.1["max"],
+        ((560.0 - 12.0 - 6.0 - 10.0) * 2.0 / 3.0_f64).round()
+    );
+    // beside doors and inset too; a groove too deep for the sides is refused
+    assert!(build(&json!({"drawers": 1, "doors": 1, "slide_type": "wood"})).is_ok());
+    assert!(build(&json!({"drawers": 2, "fronts": "inset", "slide_type": "wood"})).is_ok());
+    assert!(build(&json!({"drawers": 1, "slide_type": "wood", "runner_depth": 13})).is_err());
+}
+
+#[test]
+fn a_cabinet_sized_from_its_drawers_inside() {
+    // 16 x 16 Gridfinity bins: 672 mm inside; 12 mm box sides, 12.7 mm slides, 18 mm panels,
+    // 10 mm behind the box and a 6 mm back 12 mm in from the rear
+    let mut p = json!({"drawers": 3, "sizing": "drawer", "drawer_width": 672, "drawer_depth": 672});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(
+        (&p["width"], &p["depth"], &p["sizing"]),
+        (&json!(757.4), &json!(724.0), &json!("outside"))
+    );
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert!((input.shelf_d - 10.0 - 2.0 * 12.0 - 672.0).abs() < 1e-9);
+    // wooden runners leave 1 mm a side instead of a slide; inches in inches
+    let mut p = json!({"units": "in", "drawers": 1, "slide_type": "wood", "thickness": 0.75,
+                       "sizing": "drawer", "drawer_width": 20, "drawer_depth": 18});
+    from_drawers(&mut p).unwrap();
+    let w = (20.0 * 25.4 + 2.0 * (12.0 + 1.0 + 19.05)) / 25.4;
+    assert!(
+        (p["width"].as_f64().unwrap() - w).abs() < 1e-5,
+        "{}",
+        p["width"]
+    );
+    // outside sizing is left alone; no drawers, or Match selected, are refused
+    let mut p = json!({"drawers": 1, "width": 600});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(p["width"], 600);
+    assert!(from_drawers(&mut json!({"sizing": "drawer"})).is_err());
+    let mut p = json!({"drawers": 1, "sizing": "drawer", "_match": {"values": {}}});
+    assert!(from_drawers(&mut p).is_err());
 }

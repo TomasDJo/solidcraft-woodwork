@@ -293,14 +293,14 @@ fn the_hook_hides_what_the_picked_cabinet_does_not_take() {
         all.sort();
         all
     };
-    let box_only = sorted(&[&BOX_ONLY, &FRAME_ONLY]);
+    let box_only = sorted(&[&BOX_ONLY]);
     assert_eq!(
         hidden_keys(hidden(&face("C Back return"), &design)),
         box_only
     );
     // a corner cabinet is getting the wall mount: shown
     assert!(!box_only.contains(&"wall_mount".to_string()));
-    let box_cabinet = sorted(&[&CORNER_ONLY, &FRAME_ONLY]);
+    let box_cabinet = sorted(&[&CORNER_ONLY]);
     assert_eq!(
         hidden_keys(hidden(&face("Base Side L"), &design)),
         box_cabinet
@@ -309,11 +309,6 @@ fn the_hook_hides_what_the_picked_cabinet_does_not_take() {
     assert_eq!(
         hidden_keys(hidden(&json!({"selection": []}), &design)),
         box_cabinet
-    );
-    // a frame: every cabinet field hidden, its own shown
-    assert_eq!(
-        hidden_keys(hidden(&face("F Apron L"), &design)),
-        sorted(&[&CABINETS, &BOX_ONLY, &CORNER_ONLY])
     );
     // not a cabinet, or nothing selected: everything shown
     assert_eq!(hidden(&face("Sketch body"), &design), json!({}));
@@ -339,35 +334,6 @@ fn every_edit_field_a_kind_takes_is_one_merge_takes() {
     // corner_doors are the corner's doors
     let (_, params) = merge(&corner[KEY], &json!({"corner_doors": "none"}), &design).unwrap();
     assert_eq!(params["doors"], "none");
-}
-
-#[test]
-fn a_frame_takes_its_sizes_from_the_design_and_only_its_own_fields() {
-    let made = remember(
-        "frame",
-        &json!({"legs": "4", "leg": 70, "joint": "dowels"}),
-        "F",
-    );
-    let design = json!({"params": [{"name": "F_leg", "value": 80.0},
-        {"name": "F_stretcher_height", "value": 200.0}]});
-    let changes = json!({"frame_legs": "6", "stretchers": "all", "joint": "keep"});
-    let (entry, params) = merge(&made[KEY], &changes, &design).unwrap();
-    assert_eq!(entry, "frame");
-    assert_eq!(
-        (&params["legs"], &params["stretchers"]),
-        (&json!("6"), &json!("all"))
-    );
-    assert_eq!(params["joint"], "dowels");
-    assert_eq!(
-        (&params["leg"], &params["stretcher_height"]),
-        (&json!(80.0), &json!(200.0))
-    );
-    // a cabinet's field on a frame, and a frame's on a cabinet, are refused
-    let err = merge(&made[KEY], &json!({"shelves": 2}), &design).unwrap_err();
-    assert!(err.contains("`shelves` is only for a cabinet"), "{err}");
-    let cabinet = remember("cabinet", &json!({}), "A");
-    let err = merge(&cabinet[KEY], &json!({"frame_legs": "6"}), &design).unwrap_err();
-    assert!(err.contains("only for a frame"), "{err}");
 }
 
 #[test]

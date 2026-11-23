@@ -63,8 +63,7 @@ pub fn render(list: &Value) -> Vec<u8> {
             if labels.iter().any(|l| l.0 == name) {
                 continue;
             }
-            let timber = list["timber"].as_array().unwrap_or(&none);
-            let bought = (worktops.iter().chain(timber)).any(|w| w["part"] == name);
+            let bought = worktops.iter().any(|w| w["part"] == name);
             let note = if bought {
                 "bought to length"
             } else {

@@ -2,10 +2,11 @@
 import contextlib
 import json
 import os
+import re
 import shutil
 import threading
 
-from build import LOCAL, PKG, ROOT, cli, env, plugin  # noqa: F401 (the tests use them through `import *`)
+from build import LOCAL, PKG, ROOT, cli, env, flat, plugin  # noqa: F401 (the tests use them through `import *`)
 
 MEASURE = {"command": "inspect.measure", "params": {}}
 # The tests with a profile share dist/profile and the folders they empty: one at a time.
@@ -34,6 +35,23 @@ def own_profile(*folders):
             del LOCAL.env
 
 
+def designed(approval, settings, script, *extra):
+    """`cli` with Woodwork settings run first (the joinery and hardware of new cabinets are design
+    wide, no Cabinet field). The results of Settings, this one and any `setting` in the script,
+    are left out, so the indices are those of the other steps."""
+    script = [setting(approval, settings), *script]
+    results = cli(script, *extra)
+    return [r for step, r in zip(script, results)
+            if isinstance(step, tuple) or step["params"].get("entry") != "settings"]
+
+
+def setting(approval, settings):
+    return plugin(approval, "settings", settings)
+
+
+NONE = {"joints": "none", "joints_inner": "none"}  # the quickest cabinets
+
+
 def select(name):
     return {"command": "select.set", "params": {"items": [{"type": "body", "name": name}]}}
 
@@ -46,10 +64,16 @@ def drive(joint, value):
     return {"command": "joint.drive", "params": {"joint": joint, "value": value}}
 
 
+def model(name):
+    """A hardware model (`HW hinge`, ...: definitions and copies) or a joint's fastener
+    (`... fastener`, its pattern's copies `... fastener (2)`), as `hardware::is_model`."""
+    return name.startswith("HW ") or re.sub(r" \(\d+\)$", "", name).endswith(" fastener")
+
+
 def boards(measure):
-    """The bodies of a measure through the CLI but the hardware models (`HW hinge`, ...: their
-    definitions and copies), which the plugin's own measures leave out."""
-    return [b for b in measure["bodies"] if not b["name"].startswith("HW ")]
+    """The bodies of a measure through the CLI but the models, which the plugin's own measures
+    leave out."""
+    return [b for b in measure["bodies"] if not model(b["name"])]
 
 
 def boxes(measure, models=False):

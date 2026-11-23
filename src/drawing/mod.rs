@@ -221,7 +221,7 @@ fn corner(p: [f64; 3], path: &[u64]) -> Value {
 /// `notched`, the sides `cutlist::notched` found), `local` the
 /// sizes of its turned boards (`cutlist::cutlist`). Each note's text and the middle of its column.
 fn board_list(measure: &Value, local: &Local, name: &str) -> Result<Vec<(String, f64)>, String> {
-    let notched = json!({"_notched": measure["notched"]});
+    let notched = json!({"_notched": measure["notched"], "_grooved": measure["grooved"]});
     let list = crate::cutlist::cutlist(measure, local, false, &notched)?;
     let mut columns = [
         vec!["Qty".to_string()],
