@@ -684,7 +684,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   is the same for every angle. Hinges a door: `fittings::cup_heights`, 2 up to 900 mm, 3 to
   1600, 4 to 2000, 5 above (the first two cups at the ends keep their names). The cup's two
   screw holes (45 apart, 9.5 off its centre) are not cut: 2 commands a cup more.
-  Undermount slides are deferred. Sample kitchen, local: models on cost up to 1.5 s a cabinet run more than off.
+  **Undermount** (`under_partial`, `under_full`; `Input::under`): box inside = opening - 42 mm
+  (`21 mm - bt` a side, so `drawer_thickness` over 16 is refused), box as long as the slide
+  (`hardware::UNDER`, `under_length` against the inside depth), bottom `UNDER_RECESS` 13 mm up,
+  `<Box back> notch 1/2` (35 x 13), a 6 x 10 mm hook hole by each (the left one named
+  `... Left slide 1 (<length>, <type>)`, which the hardware list counts), and `HW slide under
+  <length>` (`UNDER_SIZE` 12 x 14) under each side in the drawer's component; no side holes.
+  Sizes unconfirmed, from Blum's sheets. Sample kitchen, local: models on cost up to 1.5 s a cabinet run more than off.
   **Fastener models** (`fastener_models`, Woodwork settings, `off` by default by the user's
   decision: they are for looking, with See-through boards; remembered, absent is off; none
   with `hardware_models: off`; `Joinery::fasteners`): after a joint's

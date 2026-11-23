@@ -464,3 +464,18 @@ fn a_corners_fold_has_cups_but_no_hinge_models() {
         assert!(cups(fold) == 2 && hinges(fold) == 0, "{doors}");
     }
 }
+
+#[test]
+fn undermount_lengths_fit_the_inside_depth() {
+    // 560 deep, a groove back: 542 inside; 3 mm behind the slide
+    assert_eq!(under_length("auto", "mm", 542.0), Ok((500.0, "500 mm")));
+    assert_eq!(under_length("auto", "in", 542.0), Ok((533.4, "21 in")));
+    assert_eq!(under_length("15 in", "mm", 542.0), Ok((381.0, "15 in")));
+    assert!(under_length("650 mm", "mm", 700.0).is_err()); // side-mount only
+    assert!(slide_length("21 in", "in", 700.0).is_err()); // undermount only
+    assert!(under_length("auto", "mm", 240.0)
+        .unwrap_err()
+        .contains("250 mm"));
+    assert_eq!(travel("under_partial", 500.0), 375.0);
+    assert_eq!(travel("under_full", 500.0), 500.0);
+}

@@ -85,12 +85,22 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     check(input.drawers > 0.0, "drawer inside size needs drawers")?;
     let [bt, _] = input.box_t;
     let clear = input.runner.map_or(drawers::SLIDE, |[_, play]| play);
-    let w = inside[0] + 2.0 * (bt + clear + input.t);
-    let box_d = inside[1] + 2.0 * bt;
-    let shelf_d = match input.kind {
+    let w = match input.under {
+        true => inside[0] + 42.0 + 2.0 * input.t, // Blum's rule
+        false => inside[0] + 2.0 * (bt + clear + input.t),
+    };
+    let mut box_d = inside[1] + 2.0 * bt;
+    let mut shelf_d = match input.kind {
         "sink" => 2.0 * box_d,
         _ => box_d + drawers::BOX_BEHIND,
     };
+    if input.under {
+        // the box is as long as a standard undermount slide: the shortest that holds it
+        let mut ours = (crate::hardware::UNDER.iter()).filter(|s| s.0.ends_with(kit.unit));
+        let slide = ours.find(|s| s.1 >= box_d - 1e-9);
+        box_d = slide.ok_or("no standard undermount slide is that long")?.1;
+        shelf_d = box_d * if input.kind == "sink" { 2.0 } else { 1.0 } + 3.0;
+    }
     let d = shelf_d + 1000.0 - input.shelf_d;
     let round = |mm: f64| (mm / scale * 1e6).round() / 1e6;
     p["width"] = json!(round(w));

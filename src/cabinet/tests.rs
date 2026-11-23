@@ -1172,6 +1172,13 @@ fn a_cabinet_sized_from_its_drawers_inside() {
         "{}",
         p["width"]
     );
+    // undermount: 42 mm and the panels; the shortest slide that holds the box, 3 mm behind it
+    let mut p = json!({"drawers": 2, "slide_type": "under_full", "sizing": "drawer",
+                       "drawer_width": 500, "drawer_depth": 400});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(p["width"], json!(578.0));
+    let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+    assert_eq!((input.slide.1, input.shelf_d), ("450 mm", 453.0));
     // outside sizing is left alone; no drawers, or Match selected, are refused
     let mut p = json!({"drawers": 1, "width": 600});
     from_drawers(&mut p).unwrap();
@@ -1179,4 +1186,49 @@ fn a_cabinet_sized_from_its_drawers_inside() {
     assert!(from_drawers(&mut json!({"sizing": "drawer"})).is_err());
     let mut p = json!({"drawers": 1, "sizing": "drawer", "_match": {"values": {}}});
     assert!(from_drawers(&mut p).is_err());
+}
+
+#[test]
+fn undermount_slides_make_the_box_to_fit_them() {
+    let p = json!({"drawers": 2, "slide_type": "under_full", "drawer_thickness": 16});
+    let (commands, _) = build(&p).unwrap();
+    // 42 mm narrower inside than the opening; as long as the slide (542 mm inside: 500)
+    let front = named(&commands, "Cabinet Drawer 1 Box front");
+    assert_eq!(front["length"], "((Cabinet_width - 2*Cabinet_thickness) - 42 mm + 2*Cabinet_drawer_thickness) - 2*Cabinet_drawer_thickness");
+    assert_eq!(named(&commands, "Cabinet Drawer 1 Left")["width"], "500 mm");
+    // the bottom 13 mm up, the back notched at both lower corners, a hook hole by each
+    let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    assert!(
+        bottom["corner"][2].as_str().unwrap().ends_with(" + 13 mm"),
+        "{bottom}"
+    );
+    for k in [1, 2] {
+        let notch = named(&commands, &format!("Cabinet Drawer 1 Box back notch {k}"));
+        assert_eq!(notch["operation"], "cut");
+        assert_eq!(notch["length"], "35 mm");
+    }
+    let hook = named(
+        &commands,
+        "Cabinet Drawer 1 Box back Left slide 1 (500 mm, undermount full extension)",
+    );
+    assert_eq!(
+        (&hook["diameter"], &hook["height"]),
+        (&json!("6 mm"), &json!("10 mm"))
+    );
+    // a runner model under each side, no side-mount holes or members; full travel
+    let runners: Vec<_> = (commands.iter())
+        .filter(|c| c.0 == "occurrence.copy" && c.1["component"] == "HW slide under 500 mm")
+        .collect();
+    assert_eq!(runners.len(), 4);
+    assert!(!commands.iter().any(|c| c.1["component"]
+        .as_str()
+        .is_some_and(|m| m.starts_with("HW slide drawer"))));
+    assert!(!commands
+        .iter()
+        .any(|c| c.1.to_string().contains("HW_slide_t")));
+    let limit = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
+    assert_eq!(limit.1["max"], 500.0);
+    // box sides over 16 mm are refused
+    let thick = json!({"drawers": 1, "slide_type": "under_full", "drawer_thickness": 18});
+    assert!(build(&thick).unwrap_err().contains("16 mm"));
 }
