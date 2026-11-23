@@ -131,7 +131,7 @@ def test_saved_as_dxf(approval):
                     circles.append((e[1]["8"], part, x, y, r))
             layers |= used
         # Every hole the model has is drawn, or counted as drilled into an edge.
-        holes = sum(b["face_types"].get("cylinder", 0) for b in measure["bodies"])
+        holes = sum(b["face_types"].get("cylinder", 0) for b in boards(measure))
         assert len(circles) + listed["dxf_edge_holes"] == holes and "dxf_holes_skipped" not in listed, (len(circles), holes)
         hardware = {h["item"]: h["qty"] for h in listed["hardware"]}
         cups = [c for c in circles if c[0] == "DRILL_35_D13"]

@@ -103,7 +103,9 @@ pub fn door(corner: &Corner, on_return: bool) {
     let base = format!("{epl} + {et}");
     let cups = hardware::cups(&z0, &z1, h - plinth - 2.0 * o_mm, &base);
     let at = |z: &str| json!([cup_x, back, z]);
-    hardware::cup_holes(kit, "Door", at, [0, -1, 0], &cups);
+    let toward = [if at_end { 1 } else { -1 }, 0, 0];
+    let crank = if corner.inset { 18.0 } else { 0.0 };
+    hardware::cup_holes(kit, "Door", at, [[0, -1, 0], toward], crank, &cups);
     let handle_z = fittings::handle_height(
         handles,
         handle_at,
@@ -142,7 +144,7 @@ pub fn door(corner: &Corner, on_return: bool) {
         [&seat[0], &seat[1]],
         own,
         turn,
-        110.0,
+        kit.hinge_angle,
     );
 }
 

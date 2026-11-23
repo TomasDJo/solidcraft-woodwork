@@ -135,7 +135,11 @@ Cabinets:
 - [ ] Drawer slides in the model: slide length in the hardware list, undermount slides (#59)
 - [x] Hinge plates drilled: the plates' screw holes in the sides, cups and plates from shared `HW_` parameters (#60 part 1)
 - [x] Corner doors on the shared hinge holes: `HW_` cups on the pins' grid and plate holes in the end the pair hangs on (`hardware::cups`, `cup_holes`, `plate_holes`, also used by the box cabinet); the diagonal door gets cups only
-- [ ] Hinges in the model, with hinge types (#60); shared hardware models that drill their own holes (#70) wait for cheaper evaluation of `occurrence.copy` and `solid.combine` in SolidCraft
+- [x] Shared hardware models (#70): a simple hinge (cup and arm in the door, mounting plate on the side) in each cup and a slide's two members on each drawer, copies of definitions in `Woodwork hardware` at the root, moving with the doors and drawers; field Hardware models (shown, none, or cutting the cups for SolidCraft 0.47)
+- [x] Drawer slide length: standard lengths in mm or inches, Auto the longest that fits, a field to choose one; the models, screw holes and the cut list's hardware line follow it
+- [x] Slide type (partial, full extension, over-travel) and hinge opening (95, 110, 165 degrees) set the joints' limits; hinges per door by its height (2 to 5)
+- [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
+- [ ] Hinges in the model with hinge types (#60); hinge models that cut their cups by default once SolidCraft 0.47 is out (upstream tangency-labs/solidcraft#20787)
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - Oven housing dropped by decision: size a tall cabinet for the oven yourself
 - [ ] Dishwasher gap: an integrated front alone in a run, keeping the seats

@@ -133,7 +133,7 @@ materials, joinery and cut lists.
 | `src/<module>/mod.rs`, `tests.rs` | Each module below that has unit tests is a folder: the code in `mod.rs`, its tests in `tests.rs` beside it |
 | `src/kit/` | Shared by the cabinet builders: size fields, design parameters, panels, moving parts on joints, history folder, summary |
 | `src/fittings.rs` | Hardware both cabinet builders use: the constants, shelf pin rows, hinge cup heights, handle height and screw holes, legs and casters, and the wall mount (cleats, hanging rail, steel rail) |
-| `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them |
+| `src/hardware/` | The hinges' and drawer slides' shared sizes (`HW_cup_d`, `HW_slide_t`, ...): design parameters `lib.rs` makes the first time a cabinet's commands use them; and their models: definitions under `Woodwork hardware`, copies in the doors and drawers, hidden from every `inspect.measure` |
 | `src/cabinet/` | Box cabinet builder: parameters in, list of commands out. `mod.rs` is the carcass and the order of things, `input.rs` reads and checks the fields, `doors.rs` and `drawers.rs` are the fronts |
 | `src/corner/` | Corner cabinet builder, L-shaped or diagonal, written for a left corner and mirrored for a right one. `mod.rs` is the carcass, `input.rs` reads the dialog, `doors.rs` the L's bi-fold pair, `diagonal.rs` the diagonal front's door and plinth |
 | `src/frame/` | Frame: a leg-and-rail base (legs, aprons, stretchers, dowel or bolt holes), built on `Kit` like a cabinet. `is_timber` tells its parts to the cut list |
@@ -325,7 +325,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   grows away from it.
 - A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
   its return's end there, not a back corner: it gets the older link.
-- The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`,
+- The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`, `Left slide 1 (<length>)`,
   `joint`, `Drawer n Front`, `Leg n`, `Caster n`), so renaming those breaks it. Joinery at build
   counts from parameters (below). For a design drilled by the removed Joinery function (0.2.0
   and before), the cut list still counts its screws and dowels: the round holes in `Bottom`,
@@ -536,7 +536,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   plate n.k`, cut after `Kit::hinge` so the cabinet is active), `HW_setback` behind the front
   of the opening (`ein`, the shelf pins' line); a hinge edge on a divider gets no plate holes.
   A drawer box's sides (`<Drawer n Left> slide k`, cut before `Kit::close` while the drawer is
-  active) and the carcass sides (`<Side> Drawer n slide k`, after), 6 pitches apart; the box is
+  active) and the carcass sides (`<Side> Drawer n slide k`, after), whole pitches apart as the slide's length allows; the box is
   `2*HW_slide_t` narrower than the opening, and one shallower than 250 mm is refused
   (`input::MIN_SLIDE`, numbers only). The box cabinet's cups are moved to the pins' grid
   (`hardware::on_grid`, from `Cabinet::shelf_zone`'s base, the rail's top under doors over
@@ -546,13 +546,64 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   doors call too): the grid over the bottom panel, the first door's plate holes in the end it
   hangs on (`corner::doors`, after its hinge), none for the fold (it hangs on a door) nor the
   diagonal door (its ends stand at 45 degrees).
-  Shared hardware *models* (#70: definitions under a `Hardware` component, an `occurrence.copy`
-  per hinge or slide on an axis joint, one `solid.combine` cut per board) worked in a plugin
-  run but are too slow on 0.46.1: each copy re-evaluates every combine in the design, and once
-  a design holds such cuts every `component.create` re-evaluates the whole design (the sample
-  kitchen's runs went from 1-4 s to 25-30 s and over the 30 s limit). `browser.visibility` is
-  still not kept after a plugin run, and a definition made inside a cabinet's component is
-  deleted with it (and every copy elsewhere).
+  **Models** (`hardware_models`: `on` by default, `off`, `cut`; cabinet, corner and Edit, kept by
+  `Kit::models`): `hardware::copy` pushes an `occurrence.copy` of `HW hinge` or `HW hinge crank
+  <c>` (cup and arm, in the door, from `cup_holes`, so corner doors too; `hardware::hinge`:
+  the caller gives the crank, 18 for inset, 9.5 for a box cabinet's hinge edge on a divider,
+  else 0), `HW hinge plate` (in the cabinet, over each cup's plate holes, from `plate_holes`:
+  none on a divider or the diagonal door) and `HW slide cabinet|middle|drawer <length>` (each
+  drawer side; the cabinet member in the cabinet's component, the drawer member and, on a
+  3-section slide, the middle member in the drawer's, in `cabinet::drawers`; the middle member
+  moves the drawer's whole travel, as half would need a driven joint), with our own keys
+  `_matrix` and `_cut`. Sizes are constants after a Blum CLIP top 110° hinge on a 0 mm plate and a 45 mm ball-bearing slide
+  (`PLATE_SIZE` 8.5 x 40 x 48, `ARM_SIZE` 11 x 52 x 16, `MEMBERS` 6/3/4 thick and 45/40/35
+  high): the arm lies on the plate's outer face for the standard geometry (`ARM_REACH`, the cup
+  6.5 mm inside the side: 22.5 in from the edge, 18 mm sides, 2 mm reveal; other thicknesses
+  or reveals leave it off by the difference, as the definitions are shared), and a crank moves
+  it that much towards the hinge edge. The
+  turn is given by two unit axes: the model's -Y goes `into` the board and its -X `toward`
+  (for a hinge the hinge edge from the cup, so the arm reaches that way: a right-hung door's
+  hinge is turned half about Y; `upright` for the rest). `component` in `lib.rs` strips
+  them, runs the copy and then `occurrence.move` with `matrix` (the translation column
+  expressions, which a move keeps and follows; `occurrence.copy`'s `translate` takes numbers
+  only): 2 commands a model. The definitions are components in `Woodwork hardware` at the root
+  (`hardware::definitions` of `hardware::wanted`, the components a build copies: one slide
+  definition a length, since a move cannot scale; made by `component` before the cabinet when
+  one is missing, then back to the user's component): a definition inside a cabinet is deleted with it, with every
+  copy elsewhere, and Edit deletes the cabinet. `browser.visibility` is not kept after a plugin
+  run, so `Woodwork hardware` is moved to `HIDDEN`, just under the floor at the origin (under
+  the first cabinet; `view.fit` hardly changes). Every `inspect.measure` reply in a run goes
+  through `hardware::hide` (`execute`), so the cut list, drawing, worktop, select, Edit's
+  materials and panels never see a model; the hardware list still counts features (`hinge
+  cup`, drawer fronts), so nothing is counted twice. A drawing's views are of the cabinet's
+  component, so they draw the models in it. `cut` drops the cup cylinders and, after the
+  build, combines each door with its copy (`hardware::world_name` from one `component.list`,
+  the occurrences' names from the root), the feature named `<Door> hinge cup n`; outside the
+  cabinet's history folder. On 0.46.1 every combine against a copy makes every later
+  `occurrence.copy` and `component.create` re-evaluate it (tangency-labs/solidcraft#20787,
+  for 0.47), so it is not the default; the app's version cannot be read in a run, so it is not
+  refused there. `cabinet::build` counts a copy as 2 commands, a cut as 2 more plus one
+  `component.list`, and the definitions it copies (`hardware::cost`); over 230 it builds the
+  cabinet again with `off` and says so (`hardware_models` in the summary).
+  **Slide length** (`slide_length`, cabinet and Edit, `edit::BOX_ONLY`): `hardware::SLIDES`,
+  250, 270, 300 to 650 mm and 10 to 28 in; `auto` is the longest of the cabinet's unit
+  (`Kit::unit`) within the box depth less `SLIDE_CLEAR` (3 mm), and a chosen one that does not
+  fit is refused (`hardware::slide_length`, read in `cabinet::input` as `Input::slide`, mm and
+  the label `450 mm`). The label is the slide models' definition names, their bar length, and
+  the back screw hole's place (`HW_setback + floor((L - 2*HW_setback) / HW_pitch) *
+  HW_pitch`); the box side holes are named `<Drawer n Left> slide k (450 mm, full extension)`, and the
+  cut list counts `Drawer slide, full extension, 450 mm, pair` from ` Left slide 1 (` (the
+  rest of the drawer fronts, older drawers, as `Drawer slide, pair`). **Slide type**
+  (`slide_type`, cabinet and Edit, `BOX_ONLY`: `partial`, `full` by default, `over`;
+  `hardware::SLIDE_TYPES`, `travel`: 75 %, 100 %, +25 mm) is the drawer joint's limit
+  (`Input::slide_type`), and 2-section slides have no middle member. **Hinge opening**
+  (`hinge_angle`, cabinet, corner and Edit: 95, 110 by default, 165; `Kit::hinge_angle`) is
+  every door hinge joint's limit, the box cabinet's, the corner's first door and the diagonal
+  door; a corner's fold stays 90 (it lays the second door flat on the first). The hinge model
+  is the same for every angle. Hinges a door: `fittings::cup_heights`, 2 up to 900 mm, 3 to
+  1600, 4 to 2000, 5 above (the first two cups at the ends keep their names). The cup's two
+  screw holes (45 apart, 9.5 off its centre) are not cut: 2 commands a cup more.
+  Undermount slides are deferred. Sample kitchen, local: models on cost up to 1.5 s a cabinet run more than off.
 - Drawing (`drawing::sheet`): the drawing commands (0.45) run inside a plugin run; while a
   drawing is open the model's commands wait, so `lib.rs` reads everything first, then opens or
   makes `Woodwork`, draws, deletes the replaced sheets and closes it. The board list is four notes
@@ -649,7 +700,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   thickness, 90 mm fixed). Either sits under the top, flush with the sides' rear, and the back
   groove moves forward by its thickness (an overlaid back is refused). `steel` is only hardware:
   the parameter `<Prefix>_wall_rail` (the width, 0 after an Edit takes it away) gives the cut
-  list a rail bought to length and two hangers; hanger models come with #70. The cut list gives
+  list a rail bought to length and two hangers; no hanger models yet. The cut list gives
   the cleats as square boards (the bevel is sawn after).
   A corner cabinet gets them along both walls (`Cleat`, `Cleat return`, and the same for the
   wall cleats and rails; the return's bevel edges are the box's +x or -x ones, 11 and 0 or 7

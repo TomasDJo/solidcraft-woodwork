@@ -60,6 +60,11 @@ pub struct Input<'a> {
     /// The doors' height, and the lowest drawer front's lower edge.
     pub door_h: f64,
     pub drawer_z: f64,
+    /// The drawer slides' length: mm, and with its unit (`450 mm`), from `slide_length`
+    pub slide: (f64, &'a str),
+    /// The slides' type (`hardware::SLIDE_TYPES`): its name in the cut list, and how far it
+    /// pulls out, in mm
+    pub slide_type: (&'a str, f64),
 }
 
 pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
@@ -292,7 +297,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !sink || shelf_d + o >= 2.0 * RAIL_D,
         "too shallow for a sink base: its two 100 mm rails would overlap",
     )?;
-    // The slides' screw holes go 37 and 229 mm back from the box's front (`crate::hardware`).
+    // The slides' length, and so their screw holes, from the box's depth (`crate::hardware`).
     let box_d = if sink {
         shelf_d / 2.0
     } else {
@@ -302,6 +307,20 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawers == 0.0 || box_d >= MIN_SLIDE,
         "too shallow for drawers: the boxes need 250 mm slides at least",
     )?;
+    let slide = match drawers > 0.0 {
+        true => {
+            let field = p.get("slide_length").and_then(Value::as_str);
+            crate::hardware::slide_length(field.unwrap_or("auto"), kit.unit, box_d)?
+        }
+        false => (0.0, ""),
+    };
+    let kind_of = p
+        .get("slide_type")
+        .and_then(Value::as_str)
+        .unwrap_or("full");
+    let named = crate::hardware::SLIDE_TYPES.iter().find(|t| t.0 == kind_of);
+    let named = named.ok_or("slide_type must be partial, full or over")?.1;
+    let slide_type = (named, crate::hardware::travel(kind_of, slide.0));
     Ok(Input {
         kind,
         w,
@@ -336,5 +355,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawers_top,
         door_h,
         drawer_z,
+        slide,
+        slide_type,
     })
 }

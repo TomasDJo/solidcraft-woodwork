@@ -77,7 +77,7 @@ def test_dividers_and_the_rail(approval):
     ends = holes(results[3], 4)
     assert len(ends) == 6 and {e[2] for e in ends} == {18 + 12, 702 - 12}, ends
     assert cylinders(measure, "M Rail") == 6 and cylinders(measure, "M Bottom") == 0
-    assert hardware(results[4]) == {"Hinge, cup": 2, "Drawer slide, pair": 1, "Dowel, 8 x 35 mm": 12,
+    assert hardware(results[4]) == {"Hinge, cup": 2, "Drawer slide, full extension, 500 mm, pair": 1, "Dowel, 8 x 35 mm": 12,
                                     "Confirmat screw, 7 x 50 mm": 12 + 6}, hardware(results[4])
 
 

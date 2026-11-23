@@ -104,17 +104,22 @@ pub fn hole(
 }
 
 /// Where the hinge cups go on a door from `z0` up to `z1`, `door_h` mm high: one near each
-/// end, and a third in the middle of a door over 1000 mm.
+/// end (the first two), and the rest evenly between them. Two hinges up to 900 mm, three up
+/// to 1600, four up to 2000, five above (`HINGES`).
 pub fn cup_heights(z0: &str, z1: &str, door_h: f64) -> Vec<String> {
-    let mut cups = vec![
-        format!("{z0} + {}", mm(CUP_FROM_END)),
-        format!("{z1} - {}", mm(CUP_FROM_END)),
-    ];
-    if door_h > 1000.0 {
-        cups.push(format!("({z0} + {z1}) / 2"));
+    let end = mm(CUP_FROM_END);
+    let mut cups = vec![format!("{z0} + {end}"), format!("{z1} - {end}")];
+    let n = HINGES.iter().filter(|&&up_to| door_h > up_to).count() + 2;
+    for k in 1..n - 1 {
+        let gap = format!("({z1} - ({z0}) - 2*{end})");
+        cups.push(format!("{z0} + {end} + {gap} * {k} / {}", n - 1));
     }
     cups
 }
+
+/// The door heights in mm past which a door takes one hinge more (a hinge maker's chart for
+/// 18 to 19 mm doors).
+const HINGES: [f64; 3] = [900.0, 1600.0, 2000.0];
 
 /// Where the screws of a knob (one) or a pull (two) sit, from the handle's middle.
 pub fn screw_offsets(handles: &str) -> &'static [f64] {

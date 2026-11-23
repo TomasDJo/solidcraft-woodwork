@@ -211,6 +211,18 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         let ends = ends.filter(|(stem, n)| n.parse::<u32>().is_ok() && frame(stem));
         ends.count() as u64
     };
+    // A drawer's slides by their length and type, in its left box side's first screw hole's
+    // name (`<Drawer n Left> slide 1 (450 mm, full extension)`); drawers made before that are
+    // only pairs.
+    let mut slides: BTreeMap<&str, u64> = BTreeMap::new();
+    for f in &features {
+        let length = f
+            .split_once(" Left slide 1 (")
+            .map(|(_, l)| l.trim_end_matches(')'));
+        if let Some(length) = length {
+            *slides.entry(length).or_default() += 1;
+        }
+    }
     let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front");
     let counts = [
         (
@@ -222,7 +234,7 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
         ),
         (
             "Drawer slide, pair",
-            bodies.iter().filter(drawers).count() as u64,
+            (bodies.iter().filter(drawers).count() as u64).saturating_sub(slides.values().sum()),
         ),
         (
             "Shelf pin, 5 mm",
@@ -270,6 +282,12 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
+    let at = usize::from(list.first().is_some_and(|h| h["item"] == "Hinge, cup"));
+    for (slide, qty) in slides.into_iter().rev() {
+        let (length, kind) = slide.split_once(", ").unwrap_or((slide, ""));
+        let item = format!("Drawer slide, {kind}, {length}, pair").replace(", ,", ",");
+        list.insert(at, json!({"item": item, "qty": qty}));
+    }
     // The joinery chosen when a cabinet was built counts its fasteners in its parameters
     // (`joint::hardware`); the old Joinery function's line of the same item takes them in.
     let cabinets = (bodies.iter()).filter_map(|b| {

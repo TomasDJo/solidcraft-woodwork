@@ -622,12 +622,13 @@ fn a_sink_base_with_drawers_under_a_false_front() {
     assert!(!has(&commands, "Cabinet Drawer 3 Front") && !has(&commands, "Cabinet Drawer 3 Left"));
     assert_eq!(count(&commands, "joint.as_built"), 2);
     assert!((commands.iter()).any(|c| c.1["targets"] == json!(["Cabinet False front"])));
-    // the boxes below are half the shelves' depth deep, clear of the trap, and slide 4/5 of it
+    // the boxes below are half the shelves' depth deep, clear of the trap, on 250 mm slides
+    // (271 deep) that pull out their length
     let side = named(&commands, "Cabinet Drawer 1 Left");
     let half = "((Cabinet_depth - 12 mm - Cabinet_back_thickness)/2)";
     assert_eq!(side["width"], half);
     let slide = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
-    assert_eq!(slide.1["max"], (542.0_f64 / 2.0 * 0.8).round());
+    assert_eq!(slide.1["max"], 250.0);
     // doors or drawers, and two drawers or more
     for p in [
         json!({"kind": "sink", "drawers": 1}),
@@ -852,14 +853,18 @@ fn drawer_slides_set_the_box_width_and_drill_both_sides() {
         box_side["corner"][0],
         "Cabinet_thickness + HW_slide_t - Cabinet_width/2"
     );
-    // into the box side from outside, and into the carcass side beside it, 6 pitches apart
-    let hole = named(&commands, "Cabinet Drawer 1 Left slide 2");
+    // into the box side from outside, and into the carcass side beside it, as far apart as
+    // the slide's length allows (500 mm, the longest that fits)
+    let hole = named(
+        &commands,
+        "Cabinet Drawer 1 Left slide 2 (500 mm, full extension)",
+    );
     assert_eq!(hole["axis"], json!([1, 0, 0]));
     assert_eq!(hole["diameter"], "HW_box_screw_d");
     assert!(hole["base"][1]
         .as_str()
         .unwrap()
-        .contains("HW_setback + 6*HW_pitch"));
+        .contains("HW_setback + floor((500 mm - 2*HW_setback) / HW_pitch) * HW_pitch"));
     let side = named(&commands, "Cabinet Side R Drawer 2 slide 1");
     assert_eq!(side["axis"], json!([1, 0, 0]));
     assert_eq!(side["targets"], json!(["Cabinet Side R"]));

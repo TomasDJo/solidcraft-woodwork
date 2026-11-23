@@ -131,6 +131,11 @@ fn hardware_is_counted_from_names() {
         "A Side L pins", "A Side R pins", "A 2 Drawer 1 Front handle 1",
         "A joint Side L Bottom pilot", "A joint Side L Bottom row",
         "C Bottom return dowel 1", "C Bottom return dowel 2",
+        // slides by length: a drawer's left box side's first screw hole
+        "A 3 Drawer 1 Left slide 1 (450 mm, full extension)",
+        "A 3 Drawer 1 Left slide 2 (450 mm, full extension)",
+        "A 3 Drawer 1 Right slide 1 (450 mm, full extension)",
+        "A 3 Drawer 2 Left slide 1 (18 in, partial extension)",
     ])});
     let mut bodies = named(&[
         "A Shelf 1",
@@ -138,6 +143,8 @@ fn hardware_is_counted_from_names() {
         "A 2 Shelf 1",
         "A Shelf 1 return", // half of a split shelf: not a shelf of its own
         "A 2 Drawer 1 Front",
+        "A 3 Drawer 1 Front",
+        "A 3 Drawer 2 Front",
         "A Leg 1",
         "A Leg 2",
         "A 2 Leg 1",
@@ -150,7 +157,8 @@ fn hardware_is_counted_from_names() {
     bodies.push(json!({"name": "A 2 Top", "face_types": {"cylinder": 3}}));
     let list = hardware(&json!({"bodies": bodies}), &design);
     let expected = json!([
-        {"item": "Hinge, cup", "qty": 2}, {"item": "Drawer slide, pair", "qty": 1},
+        {"item": "Hinge, cup", "qty": 2}, {"item": "Drawer slide, partial extension, 18 in, pair", "qty": 1},
+        {"item": "Drawer slide, full extension, 450 mm, pair", "qty": 1}, {"item": "Drawer slide, pair", "qty": 1},
         {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
         {"item": "Dowel, 8 x 60 mm", "qty": 2}, {"item": "Adjustable leg", "qty": 3},
         {"item": "Caster, locking", "qty": 2},

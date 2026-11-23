@@ -196,13 +196,18 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     drill.extend(pins);
     let (commands, mut summary) = kit.finish(drill, [w, h, d]);
     // The app runs at most 256 commands in one run, and the run itself takes some: also the
-    // shared hardware parameters, the first time.
-    let shared = match crate::hardware::used(&commands) {
-        true => crate::hardware::PARAMETERS.len(),
-        false => 0,
-    };
+    // shared hardware parameters and the models' definitions, the first time, and the moves
+    // of the models' copies. Too many: the cabinet is made without the models.
+    let cost = crate::hardware::cost(&commands);
+    if cost > 230 && kit.models != "off" {
+        let mut p = p.clone();
+        p["hardware_models"] = json!("off");
+        let (commands, mut summary) = build(&p)?;
+        summary["hardware_models"] = json!("left out: too many parts for one run");
+        return Ok((commands, summary));
+    }
     check(
-        commands.len() + shared <= 230,
+        cost <= 230,
         "too many parts for one run: fewer doors, drawers or shelves, or no labels",
     )?;
     // one compartment

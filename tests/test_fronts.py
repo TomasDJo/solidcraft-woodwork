@@ -9,7 +9,7 @@ def test_drawers(approval):
                    {"command": "parameters.change", "params": {"name": "Cabinet_width", "expression": "800 mm"}},
                    {"command": "inspect.measure", "params": {}}],
                   "--save", str(ROOT / "dist" / "drawers.sc"))
-    box = {b["name"]: [round(v, 4) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in results[1]["bodies"]}
+    box = {b["name"]: [round(v, 4) for v in b["bbox"]["min"] + b["bbox"]["max"]] for b in boards(results[1])}
     assert len(box) == 5 + 3 * 6, sorted(box)
     assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7, box["Cabinet Drawer 1 Left"]
     assert box["Cabinet Drawer 1 Right"][3] == 300 - 18 - 12.7, box["Cabinet Drawer 1 Right"]
@@ -219,7 +219,7 @@ def test_labels(approval):
                                   ("corner", {"shape": "diagonal", "doors": "hinged left", "plinth": 100}, 9)):
         results = cli([plugin(approval, entry, {**params, "labels": True}), MEASURE, change, inspect, plugin(approval, "cutlist")])
         sketches = {s["name"]: s["status"] for s in results[3]["sketches"]}
-        bodies = [b["name"] for b in results[1]["bodies"]]
+        bodies = [b["name"] for b in boards(results[1])]
         assert sorted(sketches) == sorted(f"{body} label" for body in bodies), (entry, sorted(sketches), bodies)
         assert set(sketches.values()) == {"solved"} and len(sketches) == wanted, (entry, sketches)
         assert results[4]["result"]["boards"] == len(bodies)  # the cut list counts boards, not labels
