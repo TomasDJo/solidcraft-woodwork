@@ -602,3 +602,74 @@ fn each_fastener_is_a_model_in_its_hole_copied_along_its_row() {
     );
     assert!(models("dado").is_empty());
 }
+
+#[test]
+fn finger_joints_interleave_at_the_shell_corners_in_shared_rows() {
+    let (commands, _) = crate::cabinet::build(&json!({"name": "K", "joints": "finger"})).unwrap();
+    // the bottom and top reach through the sides to the outside
+    let bottom = find(&commands, "K Bottom");
+    assert_eq!(
+        bottom["length"],
+        "(K_width - 2*K_thickness) + 2*K_thickness"
+    );
+    // auto: the fingers as wide as the boards are thick, and following them
+    assert_eq!(
+        find(&commands, "K_finger_width")["expression"],
+        "K_thickness"
+    );
+    // each board loses the other's fingers: the side from the second on, the bottom from the first
+    let side = find(&commands, "K Side L finger Bottom");
+    let end = find(&commands, "K Bottom finger Side L");
+    assert_eq!(
+        (&side["operation"], &side["targets"]),
+        (&json!("cut"), &json!(["K Side L"]))
+    );
+    assert_eq!(end["targets"], json!(["K Bottom"]));
+    let half = "floor((K_depth) / (2*K_finger_width))";
+    let w = format!("((K_depth) / (2*{half} + 1))");
+    assert_eq!(side["width"], w.as_str());
+    assert!(
+        side["corner"][1]
+            .as_str()
+            .unwrap()
+            .contains(&format!("+ {w}")),
+        "{side}"
+    );
+    // the corner's overlap: the side's thickness outward of its inner face, the bottom's across
+    assert_eq!(
+        (&side["length"], &side["height"]),
+        (&json!("K_thickness"), &json!("K_thickness"))
+    );
+    // two rows for the whole shell: the sides' cuts, odd fingers left, and the ends'
+    let rows: Vec<&Value> = (commands.iter())
+        .filter(|c| c.0 == "solid.pattern.rectangular")
+        .map(|c| &c.1)
+        .collect();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(row(&commands, "K Side L finger Bottom")["count1"], half);
+    assert_eq!(
+        row(&commands, "K Top finger Side R")["count1"],
+        format!("({half} + 1)")
+    );
+    assert_eq!(
+        row(&commands, "K Side R finger Top")["features"]
+            .as_array()
+            .unwrap()
+            .len(),
+        4
+    );
+    assert_eq!(rows[0]["spacing1"], format!("2*{w}"));
+    // a given width; refused inside and on a corner cabinet
+    let (commands, _) =
+        crate::cabinet::build(&json!({"name": "K", "joints": "finger", "finger_width": 30}))
+            .unwrap();
+    assert_eq!(find(&commands, "K_finger_width")["expression"], "30 mm");
+    let inner = json!({"joints_inner": "finger", "dividers": 1});
+    assert!(crate::cabinet::build(&inner)
+        .unwrap_err()
+        .contains("finger"));
+    assert!(crate::corner::build(&json!({"joints": "finger"}))
+        .unwrap_err()
+        .contains("finger"));
+    assert!(crate::cabinet::build(&json!({"joints": "finger", "finger_width": 2})).is_err());
+}

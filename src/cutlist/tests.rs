@@ -741,3 +741,10 @@ fn an_l_boards_open_corner_comes_from_its_mesh() {
                                      {"name": "C Shelf 1 notch"}]});
     assert_eq!(l_boards(&design), ["C Bottom", "C Shelf 1"]);
 }
+
+#[test]
+fn finger_jointed_boards_are_noted() {
+    let design = json!({"timeline": [{"name": "A Side L finger Bottom"}, {"name": "A Bottom finger Side L"},
+                                     {"name": "A Bottom finger Side R"}, {"name": "A fingers 1"}]});
+    assert_eq!(fingered(&design), ["A Bottom", "A Side L"]);
+}

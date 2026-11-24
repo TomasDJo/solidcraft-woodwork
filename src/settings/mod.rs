@@ -516,6 +516,7 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
             "biscuit",
             "cam_d",
             "cam_bolt",
+            "finger_width",
             "pocket_face",
         ],
     ),

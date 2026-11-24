@@ -594,7 +594,14 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   is `Joinery::extension` (`<Prefix>_dado_depth`) longer at each end in the builder, and the
   joint is one box cut of its volume in the face board, through front to back; nothing counted;
   a corner cabinet refuses it, as its L-shaped boards, chamfer picked by point and backs would
-  all have to grow); absent is `none`, so a cabinet made before rebuilds as it was.
+  all have to grow), or `finger` (#131: box cabinets, carcass only; `joints_inner` refuses it):
+  `Joinery::extension` is the thickness, so the end board runs through the face board, and each
+  joint is two box cuts in the overlap (`joint::finger`): `<face> finger <end>` from the second
+  finger on, `<end> finger <face>` from the first, `w = run / (2*floor(run/(2*fw)) + 1)` with
+  `fw` the parameter `<Prefix>_finger_width` (auto, 0: the expression `<Prefix>_thickness`),
+  repeated every `2w` by two shared rows (`<Name> fingers <n>`) for the whole shell: 8 cuts and
+  2 patterns a cabinet. The cut list notes the boards (`cutlist::fingered`, `_fingered`);
+  absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
   rail into the sides, rows along the shelves' depth from `ein`; and without shelf pins (`input.fixed`)

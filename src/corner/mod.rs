@@ -98,8 +98,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     // ponytail: no dado on a corner cabinet: its L-shaped boards (notch, chamfer picked by
     // point) and the backs would all have to grow into the grooves.
     crate::kit::check(
-        joinery.method(CARCASS) != "dado",
-        "`joints`: a dado is for box cabinets; choose another joint for a corner cabinet",
+        !matches!(joinery.method(CARCASS), "dado" | "finger"),
+        "`joints`: a dado or finger joint is for box cabinets; choose another joint for a corner cabinet",
     )?;
     // the shortest joint: the backs and the ends, the return's end, a split board's return
     let shortest = [d - t, dr - t, h - plinth - 2.0 * t, b - d - t];

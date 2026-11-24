@@ -134,6 +134,26 @@ def test_dado(approval):
     assert hardware(results[2]) == {}, hardware(results[2])
 
 
+def test_finger_joints(approval):
+    # Finger joints on the shell (#131): the bottom and top run through the sides to the outside,
+    # 31 fingers 560/31 mm wide along each corner (the fingers as wide as the 18 mm boards), the
+    # sides keeping the outer ones: a side loses 15 at each of its two corners, a bottom or top
+    # 16 at each end. The cut list notes them; no hardware.
+    results = designed(approval, {"joints": "finger"},
+                       [plugin(approval, "cabinet", {"name": "F", "shelves": 0, "place": "origin"}),
+                        MEASURE, plugin(approval, "cutlist")])
+    box = boxes(results[1])
+    assert box["F Bottom"][0] == -300 and box["F Bottom"][3] == 300, box["F Bottom"]
+    w = 560 / 31
+    side, bottom = volume(results[1], "F Side L"), volume(results[1], "F Bottom")
+    # less the back's groove: 9 x 6 along the side's inside (702) and the bottom's (564)
+    assert abs(side - (18 * 560 * 720 - 2 * 15 * w * 18 * 18 - 9 * 6 * 702)) < 100, side
+    assert abs(bottom - (600 * 560 * 18 - 2 * 16 * w * 18 * 18 - 9 * 6 * 564)) < 100, bottom
+    notes = [p.get("note", "") for p in results[2]["result"]["parts"]]
+    assert any("finger jointed" in n for n in notes), results[2]["result"]["parts"]
+    assert hardware(results[2]) == {}, hardware(results[2])
+
+
 def test_biscuits(approval):
     # #20 slots, 62 x 4 mm, 13 mm into each board: 3 a joint, 6 in each side; N without any.
     # A corner cabinet with Dominos.

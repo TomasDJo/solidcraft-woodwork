@@ -387,6 +387,19 @@ pub fn open_corner(mesh: &Value) -> Option<[f64; 3]> {
     None
 }
 
+/// The boards with finger joints (`<Board> finger <other board>`), as `notched`.
+pub fn fingered(design: &Value) -> Vec<String> {
+    let features = design["timeline"].as_array().into_iter().flatten();
+    let boards = features.filter_map(|f| Some(f["name"].as_str()?.split_once(" finger ")?.0));
+    let mut boards: Vec<String> = boards.map(String::from).collect();
+    boards.sort();
+    boards.dedup();
+    boards
+}
+
+/// What a finger-jointed board's line in the cut list says.
+pub const FINGERED: &str = "finger jointed; size over the fingers";
+
 /// What a grooved side's line in the cut list says.
 pub const GROOVED: &str = "grooved for the drawer runners";
 
@@ -534,7 +547,11 @@ pub fn cutlist(
     // A board's note: notched for the toe kick, grooved for runners, or both.
     let noted = |name: &str| {
         let has = |key: &str| (params[key].as_array().into_iter().flatten()).any(|n| n == name);
-        let notes = [(has("_notched"), NOTCHED), (has("_grooved"), GROOVED)];
+        let notes = [
+            (has("_notched"), NOTCHED),
+            (has("_grooved"), GROOVED),
+            (has("_fingered"), FINGERED),
+        ];
         let notes: Vec<&str> = notes.iter().filter(|n| n.0).map(|n| n.1).collect();
         notes.join("; ")
     };

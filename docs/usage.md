@@ -266,6 +266,14 @@ as the cabinet is made:
   Joinery inside: a divider grows into grooves in the bottom and top, the rail into the sides.
   Glue them; nothing to buy. The depth leaves 3 mm of the side behind the groove at least.
   A corner cabinet refuses it.
+- **Finger joints** (box cabinets, the shell only): the bottom and top run through the sides
+  to the outside, and the corners interlock in an odd count of equal fingers, the sides keeping
+  the outer ones. **Finger width** (Woodwork settings) is 0 by default, making the fingers as wide
+  as the boards are thick, and following the thickness. Each finger is a box cut, repeated along
+  the corner, so the count follows a resize. The cut list gives the bottom and top at their size over
+  the fingers (a 600 mm cabinet's bottom is 600) with the note "finger jointed"; the layouts
+  and DXF draw rectangles. Glue them; nothing to buy. Not for Joinery inside; a corner cabinet
+  refuses it.
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
 **Joinery inside** does the same for fixed shelves (without **Shelf pin holes** the shelves are
