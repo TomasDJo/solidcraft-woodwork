@@ -43,10 +43,18 @@ fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value,
     }
     let (summary, made) = component(built, params, "Birch plywood", run)?;
     let name = summary["name"].as_str().unwrap_or_default();
+    let remembered = edit::remember(entry, params, name);
+    // What Edit's dialog shows for it, in our data in the design, which its hook can read (a
+    // read entry may not read component metadata: it counts as an edit command). Kept small:
+    // every hook reads our data, with 10M fuel.
+    let shown = edit::shown(entry, params);
+    let copy =
+        json!({"cabinets": {name: {"entry": entry, "units": params["units"], "shown": shown}}});
     run(
         "component.metadata.set",
-        json!({"component": name, "values": edit::remember(entry, params, name)}),
+        json!({"component": name, "values": remembered}),
     )?;
+    run("storage.patch", json!({"patch": copy}))?;
     Ok((summary, made))
 }
 
@@ -748,24 +756,125 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             Ok(summary)
         }
         "edit" => {
-            // The selected cabinet, built again where it stands with some of its values
-            // changed. Its parameters stay, so what is linked to them still follows.
+            // The picked cabinets, each built again where it stands with the fields that were
+            // changed (#128: one or several). A field a cabinet does not take skips it, and is
+            // refused only when none takes it. Their parameters stay, so what is linked to them
+            // still follows. Several are built while the run has time, as Apply to does.
+            let start = now();
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
             let measure = run("inspect.measure", json!({}))?;
-            let name = select::piece(&select::picked(params, &design), &measure)?;
-            let about = run("component.metadata", json!({"component": name}))?;
-            let ours = &about["metadata"][edit::KEY];
-            let changes = settings::edit_plinth(params, ours, &design, stored);
-            let (entry, params) =
-                edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
-            // Checked before anything is taken away.
-            build(&entry, &params)?;
-            let mut summary = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
-            summary["edited"] = json!(true);
-            Ok(summary)
+            let picked = select::picked(params, &design);
+            let mut names: Vec<String> = Vec::new();
+            for body in &picked {
+                if let Some(owner) = select::owner(&measure, body).map(String::from) {
+                    if !names.contains(&owner) {
+                        names.push(owner);
+                    }
+                }
+            }
+            if names.is_empty() {
+                select::piece(&picked, &measure)?; // says why
+            }
+            let mut cabinets = Vec::new();
+            for name in &names {
+                let about = run("component.metadata", json!({"component": name}))?;
+                let entry = about["metadata"][edit::KEY]["entry"].as_str();
+                let entry = entry.unwrap_or_default().to_string();
+                cabinets.push((name.clone(), about, entry));
+            }
+            // A field no picked cabinet takes is refused, by `merge` as before.
+            let asked = edit::asked(params);
+            for key in &asked {
+                if !cabinets.iter().any(|(_, _, entry)| edit::takes(entry, key)) {
+                    let (name, about, _) = &cabinets[0];
+                    let one = json!({key.as_str(): params[key.as_str()].clone()});
+                    edit::merge(&about["metadata"][edit::KEY], &one, &design)
+                        .map_err(|e| format!("`{name}`: {e}"))?;
+                }
+            }
+            let (mut edited, mut unchanged, mut skipped, mut remaining) =
+                (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            let mut summary = Value::Null;
+            let used = std::cell::Cell::new(0);
+            for (name, about, entry) in &cabinets {
+                let ours = &about["metadata"][edit::KEY];
+                let mut changes = params.clone();
+                for key in asked.iter().filter(|k| !edit::takes(entry, k)) {
+                    if let Some(all) = changes.as_object_mut() {
+                        all.remove(key.as_str());
+                    }
+                    let why = format!("a {entry} cabinet does not take it");
+                    skipped.push(json!({"cabinet": name, "field": key, "why": why}));
+                }
+                let changes = settings::edit_plinth(&changes, ours, &design, stored);
+                let (entry, params) =
+                    edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
+                // The dialog shows the cabinets as they are: left as shown, nothing to build.
+                let (_, base) = edit::merge(ours, &json!({}), &design)?;
+                if edit::unchanged(&params, &base) {
+                    unchanged.push(name.clone());
+                    continue;
+                }
+                // Checked before anything is taken away.
+                let (commands, _) = build(&entry, &params)?;
+                let next = hardware::cost(&commands) + 40;
+                let elapsed = now().saturating_sub(start);
+                if !edited.is_empty() && !drawing::fits(elapsed, used.get(), next) {
+                    remaining.push(name.clone());
+                    continue;
+                }
+                let design = match edited.is_empty() {
+                    true => design.clone(),
+                    false => run(
+                        "document.inspect",
+                        json!({"bodies": false, "timeline": false}),
+                    )?,
+                };
+                let mut counted = |command: &str, args: Value| {
+                    used.set(used.get() + 1);
+                    run(command, args)
+                };
+                summary = rebuild(
+                    name,
+                    about,
+                    &entry,
+                    &params,
+                    &design,
+                    &measure,
+                    &mut counted,
+                )?;
+                edited.push(name.clone());
+            }
+            // One cabinet: its summary, as before.
+            if cabinets.len() == 1 {
+                let name = &names[0];
+                return Ok(match edited.is_empty() {
+                    true => json!({"name": name, "edited": false,
+                                   "message": format!("{name}: nothing changed")}),
+                    false => {
+                        summary["edited"] = json!(true);
+                        summary
+                    }
+                });
+            }
+            let mut message = format!("{} cabinets built again", edited.len());
+            if !unchanged.is_empty() {
+                message += &format!("; {} unchanged", unchanged.len());
+            }
+            if !remaining.is_empty() {
+                let n = remaining.len();
+                message += &format!("; {n} left: run Edit again with them picked");
+            }
+            if !skipped.is_empty() {
+                message += &format!("; {} fields skipped (see skipped)", skipped.len());
+            }
+            Ok(
+                json!({"edited": !edited.is_empty(), "cabinets": edited, "unchanged": unchanged,
+                      "remaining": remaining, "skipped": skipped, "message": message}),
+            )
         }
         "material" => {
             // A board material for the selected cabinet, or for just the selected parts.
@@ -1236,11 +1345,41 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
 pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     if entry == "edit" {
         // A failing hook fails `plugin.run`: if the design cannot be read, hide nothing.
-        let design = run(
+        let Ok(design) = run(
             "document.inspect",
             json!({"bodies": "names", "timeline": false}),
-        );
-        return Ok(design.map_or(json!({}), |d| edit::hidden(values, &d)));
+        ) else {
+            return Ok(json!({}));
+        };
+        // Each picked cabinet's values (#128): a field shows when
+        // any of them takes it, with their value when they all have the same one. Without them
+        // (nothing picked, or no metadata) only the other kind's fields are hidden, as before.
+        let picked = select::picked(values, &design);
+        let mut names: Vec<&str> = Vec::new();
+        for body in &picked {
+            if let Some(owner) = select::owner(&design, body).filter(|o| !names.contains(o)) {
+                names.push(owner);
+            }
+        }
+        // A read entry may not read component metadata (an edit command), so the copy `make`
+        // keeps in our data: one `storage.get`, only with a cabinet picked.
+        let mut cabinets = Vec::new();
+        if !names.is_empty() {
+            let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
+            for name in names {
+                let ours = &stored["document"]["cabinets"][name];
+                let (Some(entry), Some(shown)) =
+                    (ours["entry"].as_str(), ours["shown"].as_object())
+                else {
+                    continue;
+                };
+                cabinets.push((entry.to_string(), edit::sized(shown, ours, name, &design)));
+            }
+        }
+        return Ok(match cabinets.is_empty() {
+            true => edit::hidden(values, &design),
+            false => edit::fields(&cabinets),
+        });
     }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
     let mut reply = settings::fields(entry, values, &stored);

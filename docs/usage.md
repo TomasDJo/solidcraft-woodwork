@@ -451,8 +451,12 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 ## Edit cabinet
 
-Changes a cabinet after it is made. Select any part of it, fill in only what should change and
-leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
+Changes a cabinet after it is made. Select any part of it: the dialog opens showing that
+cabinet as it is, each field at its current value, so only the fields that apply show (no doors:
+no hinge fields; no drawers: no drawer height, Drawers at or slide fields; no plinth: no plinth
+type or set-back). Change what should change; a field left as shown changes nothing, and with
+nothing changed the cabinet is not built again. With nothing picked the fields start empty or on
+Keep, as before. The fields: shelves, dividers, doors, the side the first door is hinged
 on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
 (overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth
 (Yes keeps the cabinet's own plinth, or gives one without a plinth the height and type of

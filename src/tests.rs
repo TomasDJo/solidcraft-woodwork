@@ -288,7 +288,7 @@ fn settings_patch_then_show_and_the_hook_names_our_data() {
 }
 
 #[test]
-fn the_edit_hook_reads_body_names_once_and_never_fails() {
+fn the_edit_hook_reads_body_names_and_the_picked_cabinets_and_never_fails() {
     let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
         asked.push(json!([command, args]));
@@ -298,9 +298,14 @@ fn the_edit_hook_reads_body_names_once_and_never_fails() {
         )
     };
     let reply = dialog("edit", &json!({}), &mut run).unwrap();
+    // the names, then our data with the picked cabinet's values (none here: only the other
+    // kind hidden)
     assert_eq!(
         asked,
-        [json!(["document.inspect", {"bodies": "names", "timeline": false}])]
+        [
+            json!(["document.inspect", {"bodies": "names", "timeline": false}]),
+            json!(["storage.get", {"plugin": "woodwork"}])
+        ]
     );
     assert_eq!(reply["doors"], json!({"visible": false}));
     // no default anywhere: in Edit an empty field means unchanged

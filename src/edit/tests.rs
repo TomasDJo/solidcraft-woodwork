@@ -57,7 +57,7 @@ fn the_drawer_front_height_and_side_are_kept_or_changed() {
         (&params["drawer_height"], &params["doors"]),
         (&json!(160.0), &json!(1))
     );
-    let changes = json!({"drawer_height": 120, "drawers_at": "bottom"});
+    let changes = json!({"drawers_height": 120, "drawers_at": "bottom"});
     let (_, params) = merge(&made[KEY], &changes, &design).unwrap();
     assert_eq!(params["drawer_height"], 120);
     assert_eq!(params["drawers_at"], "bottom");
@@ -65,14 +65,14 @@ fn the_drawer_front_height_and_side_are_kept_or_changed() {
     let (_, params) = merge(&made[KEY], &json!({"drawers_at": "keep"}), &design).unwrap();
     assert_eq!(params.get("drawers_at"), None);
     let corner = remember("corner", &json!({}), "A");
-    assert!(merge(&corner[KEY], &json!({"drawer_height": 120}), &design).is_err());
+    assert!(merge(&corner[KEY], &json!({"drawers_height": 120}), &design).is_err());
     assert!(merge(&corner[KEY], &json!({"drawers_at": "top"}), &design).is_err());
     // beside doors the empty height was kept as 150: taking the doors away makes them alike
     let mixed = remember("cabinet", &json!({"drawers": 3, "doors": 1}), "A");
     let design = json!({"params": [{"name": "A_drawer_height", "value": 150.0}]});
     let (_, params) = merge(&mixed[KEY], &json!({"doors": 0}), &design).unwrap();
     assert_eq!(params["drawer_height"], 0);
-    let changes = json!({"doors": 0, "drawer_height": 140});
+    let changes = json!({"doors": 0, "drawers_height": 140});
     let (_, params) = merge(&mixed[KEY], &changes, &design).unwrap();
     assert_eq!(params["drawer_height"], 140);
     let (_, params) = merge(&mixed[KEY], &json!({"shelves": 2}), &design).unwrap();
@@ -361,4 +361,104 @@ fn holes_from_the_old_joinery_function_become_the_same_joint_at_build() {
     // the edit's own choice wins, none too
     let (_, params) = merge(&remembered, &json!({"joints": "none"}), &json!({})).unwrap();
     assert_eq!(params["joints"], "none");
+}
+
+#[test]
+fn the_dialog_shows_the_cabinet_as_it_is_and_unchanged_builds_nothing() {
+    let made = remember(
+        "cabinet",
+        &json!({"doors": 2, "drawers": 1, "shelf_pins": true,
+        "plinth": 100, "plinth_type": "legs", "fronts": "inset", "drawer_height": 140}),
+        "A",
+    );
+    let design = json!({"params": [{"name": "A_drawer_height", "value": 160.0}]});
+    let (entry, base) = merge(&made[KEY], &json!({}), &design).unwrap();
+    let shown = shown(&entry, &base);
+    assert_eq!(shown["doors"], 2);
+    assert_eq!(shown["drawers_height"], 160.0); // from the design, not what it remembered
+    assert_eq!(
+        (&shown["shelf_pins"], &shown["plinth"]),
+        (&json!("yes"), &json!("yes"))
+    );
+    assert_eq!(
+        (&shown["fronts"], &shown["slide_length"]),
+        (&json!("inset"), &json!("auto"))
+    );
+    assert_eq!(shown["labels"], "no");
+    // a corner's doors are its corner_doors
+    let corner = remember("corner", &json!({"doors": "hinged left"}), "C");
+    let (entry, params) = merge(&corner[KEY], &json!({}), &json!({"params": []})).unwrap();
+    assert_eq!(edit_shown_doors(&entry, &params), json!("hinged left"));
+    // the dialog's values sent back as they are: nothing to build; one change: something
+    let mut asis = Map::new();
+    for (k, v) in &shown {
+        asis.insert(k.clone(), v.clone());
+    }
+    asis.insert("doors".into(), json!(2.0)); // a number written another way is the same
+    asis.insert("plinth".into(), json!(100)); // `settings::edit_plinth` turns Yes into the height
+    let (_, params) = merge(&made[KEY], &Value::Object(asis.clone()), &design).unwrap();
+    assert!(unchanged(&params, &base));
+    asis.insert("drawers".into(), json!(2));
+    let (_, params) = merge(&made[KEY], &Value::Object(asis), &design).unwrap();
+    assert!(!unchanged(&params, &base));
+}
+
+#[test]
+fn several_cabinets_show_what_they_share() {
+    let a = (
+        "cabinet".to_string(),
+        shown(
+            "cabinet",
+            &json!({"doors": 2, "drawers": 0, "fronts": "overlay"}),
+        ),
+    );
+    let b = (
+        "cabinet".to_string(),
+        shown(
+            "cabinet",
+            &json!({"doors": 1, "drawers": 0, "fronts": "overlay"}),
+        ),
+    );
+    let c = (
+        "corner".to_string(),
+        shown(
+            "corner",
+            &json!({"doors": "hinged left", "fronts": "overlay"}),
+        ),
+    );
+    let reply = fields(&[a.clone(), b.clone()]);
+    assert_eq!(reply["fronts"], json!({"default": "overlay"}));
+    assert_eq!(reply["drawers"], json!({"default": 0}));
+    assert_eq!(reply["doors"], json!({"hint": "differs: 2 values"}));
+    assert_eq!(reply["corner_doors"], json!({"visible": false})); // no corner picked
+                                                                  // a box and a corner: only the fields both take
+    let reply = fields(&[a, c]);
+    assert_eq!(reply["corner_doors"], json!({"visible": false}));
+    assert_eq!(reply["doors"], json!({"visible": false}));
+    assert_eq!(reply["fronts"], json!({"default": "overlay"}));
+    assert!(
+        takes("corner", "corner_doors") && !takes("corner", "doors") && takes("corner", "fronts")
+    );
+    let asked = asked(&json!({"doors": 1, "fronts": "keep", "shelves": null, "selection": []}));
+    assert_eq!(asked, ["doors"]);
+}
+
+fn edit_shown_doors(entry: &str, params: &Value) -> Value {
+    shown(entry, params)["corner_doors"].clone()
+}
+
+#[test]
+fn the_kept_values_take_the_sizes_from_the_design() {
+    let kept = shown(
+        "cabinet",
+        &json!({"drawers": 2, "drawer_height": 140, "reveal": 2, "units": "in"}),
+    );
+    let ours = json!({"entry": "cabinet", "units": "in", "shown": kept});
+    let design = json!({"params": [{"name": "A_drawer_height", "value": 152.4},
+        {"name": "A_reveal", "value": 3.0}, {"name": "AB_reveal", "value": 5.0}]});
+    let now = sized(ours["shown"].as_object().unwrap(), &ours, "A", &design);
+    assert_eq!(
+        (&now["drawers_height"], &now["reveal"], &now["drawers"]),
+        (&json!(6.0), &json!(3.0), &json!(2))
+    );
 }

@@ -122,7 +122,7 @@ def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
                    plugin(approval, "edit", {"drawers": 1}), MEASURE,
                    change("Cabinet_drawer_height", "200 mm"), select("Cabinet Top"),
                    plugin(approval, "edit", {"shelves": 2}), MEASURE,
-                   select("Cabinet Top"), plugin(approval, "edit", {"drawer_height": 120}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawers_height": 120}), MEASURE,
                    select("Cabinet Top"), plugin(approval, "edit", {"drawers_at": "bottom"}), MEASURE,
                    drive("Cabinet Drawer 1 slide", 200), drive("Cabinet Door hinge", 90), MEASURE])
     front = lambda measure: boxes(measure)["Cabinet Drawer 1 Front"][2:6:3]
@@ -136,3 +136,33 @@ def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
     assert front(results[13]) == [102, 222] and door(results[13]) == [224, 718], (front(results[13]), door(results[13]))
     assert boxes(results[16])["Cabinet Drawer 1 Front"][1] == -300 - 200, boxes(results[16])["Cabinet Drawer 1 Front"]
     assert boxes(results[16])["Cabinet Door"][1] < -500, boxes(results[16])["Cabinet Door"]
+
+
+def test_edit_left_as_shown_changes_nothing(approval):
+    # Edit's hook gives every field the picked cabinet's value (#128): run with nothing changed,
+    # the cabinet is not built again; one change still builds it.
+    results = cli([plugin(approval, "cabinet", {"doors": 2, "drawers": 1, "plinth": 100}),
+                   select("Cabinet Top"), plugin(approval, "edit", {}),
+                   select("Cabinet Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE])
+    assert results[2]["result"]["edited"] is False, results[2]
+    assert "nothing changed" in results[2]["result"]["message"], results[2]
+    assert results[4]["result"]["edited"] is True and "Cabinet Shelf 2" in boxes(results[5]), results[4]
+
+
+def test_edit_two_cabinets_that_differ(approval):
+    # Two cabinets picked, one with two doors and one with one: Edit's hook shows their shared
+    # values and a hint where they differ; Shelves 2 changes both; Doors (box only) given with
+    # a corner picked too changes the box and skips the corner, and says so.
+    pick = lambda *names: {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "doors": 2}),
+                   plugin(approval, "cabinet", {"name": "B", "doors": 1, "place": "origin"}),
+                   pick("A Top", "B Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
+                   plugin(approval, "corner", {"name": "C", "place": "origin"}),
+                   pick("A Top", "C Top"), plugin(approval, "edit", {"doors": 1})])
+    reply = results[3]["result"]
+    assert sorted(reply["cabinets"]) == ["A", "B"], reply
+    box = boxes(results[4])
+    assert "A Shelf 2" in box and "B Shelf 2" in box, sorted(box)
+    reply = results[7]["result"]
+    assert reply["cabinets"] == ["A"], reply
+    assert reply["skipped"] == [{"cabinet": "C", "field": "doors", "why": "a corner cabinet does not take it"}], reply

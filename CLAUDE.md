@@ -44,7 +44,8 @@ table says which).
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
   **Field order:** the most used first, and a conditional field right after the field that
-  controls it (drawer height and Drawers at after Drawers, a joinery method's sizes after it,
+  controls it, directly below it (drawer height and Drawers at under Drawers, the door hinge and
+  hinge angle under Doors, plinth type and set-back under Plinth, slide length under slide type, a joinery method's sizes after it,
   the filler width after the panel's kind, the cut list's diagrams after its format). A field
   that may be left empty cannot be required, so it comes last whatever it controls: Edit's
   numbers (shelves, doors, drawers...) and the cut list's Save as. Settings' numbers have
@@ -181,6 +182,22 @@ table says which).
   (`storage.get`, one command, only when it creates a material) and creates it see-through.
   Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Settings is
   an edit entry, so its preview shows the change.
+  `edit`'s hook also gives the fields the picked cabinets' current values (#128). A read entry may
+  not read `component.metadata` (an edit command), so `make` keeps each cabinet's `edit::shown`
+  (with `entry`, `units`) in our data, `cabinets.<name>`, small since every hook reads our data
+  with 10M fuel; the hook takes it and `edit::sized` (drawer height, reveal, set-back from
+  Parameters), and `edit::fields` gives the patch. A cabinet made before has none: only the
+  other kind's fields are hidden, as before. A
+  field shows only when every picked cabinet takes it (`edit::takes`; a box and a corner show
+  what both take), gets their value as its
+  `default` when they all have the same, and a `hint` ("differs: 2 values") and no default when
+  they differ, so its conditions (`not doors eq 0`, `not drawers eq 0`, `not plinth eq no`)
+  work as in Cabinet. Edit takes several cabinets (`selection` without `maxItems`): each is
+  built again with the fields it takes (`skipped` names the others; a field none takes is
+  refused), none when `edit::unchanged` (numbers compared as numbers, absent as no/0), while
+  `drawing::fits`, as Apply to. Its numbers stay optional (empty: unchanged, which differing
+  values need), so they come after the choices, by key: Edit's drawer height is the key
+  `drawers_height` (`merge` makes it `drawer_height`) so that it sorts right after Drawers.
   `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
   the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
   kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
