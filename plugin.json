@@ -3,8 +3,9 @@
   "name": "Woodwork",
   "version": "0.4.0",
   "description": "Cabinets and furniture in sheet goods: carcass generator and cut list.",
-  "capabilities": ["commands@0.2", "dialog@0.1", "storage@0.1"],
+  "capabilities": ["commands@0.2", "dialog@0.1", "storage@0.1", "ui@0.1"],
   "runtime": {
+    "ui": {"ui_version": 1, "panels": [{"id": "cabinets", "title": "Cabinets", "zones": ["right"], "layout": {"root": 0, "nodes": [{"widget": {"group": [1, 2]}}, {"widget": {"toolbar": [{"label": "Refresh", "icon": null, "entry": "cabinets"}]}}, {"widget": {"table": {"bind": "/rows", "row_id": "id", "columns": [{"key": "name", "label": "Cabinet", "unit": null}, {"key": "kind", "label": "Kind", "unit": null}, {"key": "size", "label": "W x H x D", "unit": null}, {"key": "material", "label": "Material", "unit": null}, {"key": "fronts", "label": "Fronts", "unit": null}], "select": "none", "on_select": null, "on_edit": null}}}]}}], "workspaces": []},
     "module": "woodwork.wasm",
     "data_format": 1,
     "entries": [
@@ -186,6 +187,10 @@
           }
         }
       },
+        {
+          "name": "cabinets", "effect": "edit",
+          "input_schema": {"type": "object", "x-solidcraft-icon": "icons/cabinets.svg", "required": [], "properties": {}}
+        },
         {
           "name": "rebuild", "effect": "edit", "job": true,
           "slots": [{"kind": "menu", "name": "Rebuild cabinets"}, {"kind": "ribbon", "name": "Rebuild cabinets"}],

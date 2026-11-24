@@ -1216,7 +1216,8 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             Ok(reply)
         }
         // The job (0.48): every cabinet, or the picked ones, built again with the settings or
-        // as each was made, with progress per cabinet and no 30 s limit.
+        // as each was made, with progress per cabinet and no 30 s limit. The Cabinets panel
+        // shows the result.
         "rebuild" => {
             let stored = run("storage.get", json!({}))?;
             let how = Apply {
@@ -1224,10 +1225,33 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 settings: params["with"] != "made",
                 job: true,
             };
-            apply(params, &stored, how, run)
+            let reply = apply(params, &stored, how, run)?;
+            cabinets_panel(run)?;
+            Ok(reply)
+        }
+        // The Cabinets panel (0.48 `ui@0.1`): its Refresh button fills the table.
+        // ponytail: no Edit, Material or Select per row: 0.48.1 links no `forms@0.1` (to open a
+        // dialog) for a component with a panel, and a plugin run's `select.set` is not kept.
+        "cabinets" => {
+            let rows = cabinets_panel(run)?;
+            Ok(json!({"cabinets": rows, "message": format!("{rows} cabinets")}))
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }
+}
+
+/// Fills the Cabinets panel's table (`_panel`, `ui.set-data` in the guest) from the design's
+/// cabinets (`select::rows`). Returns how many. Two commands.
+fn cabinets_panel(run: Run) -> Result<usize, String> {
+    let design = run(
+        "document.inspect",
+        json!({"bodies": false, "timeline": false}),
+    )?;
+    let measure = run("inspect.measure", json!({}))?;
+    let rows = select::rows(&measure, &design["params"]);
+    let count = rows.len();
+    run("_panel", json!({"panel": "cabinets", "rows": rows}))?;
+    Ok(count)
 }
 
 /// The dialog hook (`dialog@0.1`): the Cabinet and Corner dialogs' defaults from Woodwork
@@ -1265,7 +1289,11 @@ mod tests;
 mod guest {
     wit_bindgen::generate!({ path: "wit", world: "woodwork" });
 
-    use craft::plugin::types::{FieldFailure, PluginError};
+    use craft::plugin::types::{Datum, FieldFailure, PluginError, Value};
+    use craft::plugin::ui::{
+        Column, Declarations, DockZone, Layout, Node, PanelSpec, SelectionMode, TableSpec, UiEvent,
+        Widget,
+    };
 
     struct Woodwork;
 
@@ -1282,6 +1310,25 @@ mod guest {
             let fraction = args["fraction"].as_f64().unwrap_or(0.0) as f32;
             let message = args["message"].as_str().unwrap_or_default();
             craft::plugin::control::progress(fraction, message);
+            return Ok(serde_json::Value::Null);
+        }
+        // The Cabinets panel's rows: every cell as text at `/rows/<i>/<key>`.
+        if command == "_panel" {
+            let panel = args["panel"].as_str().unwrap_or_default();
+            let mut data = Vec::new();
+            for (i, row) in args["rows"].as_array().into_iter().flatten().enumerate() {
+                for (key, value) in row.as_object().into_iter().flatten() {
+                    let text = value.as_str().map_or(value.to_string(), String::from);
+                    let path = format!("/rows/{i}/{key}");
+                    data.push(Datum {
+                        path,
+                        value: Value::Text(text),
+                    });
+                }
+            }
+            let failed = |e: PluginError| format!("{command}: {e:?}");
+            craft::plugin::ui::clear_data(panel).map_err(failed)?;
+            craft::plugin::ui::set_data(panel, &data).map_err(failed)?;
             return Ok(serde_json::Value::Null);
         }
         let reply =
@@ -1313,6 +1360,70 @@ mod guest {
                 craft::plugin::log::log(craft::plugin::log::Level::Info, message);
             }
             Ok(result.to_string())
+        }
+    }
+
+    /// The Cabinets panel, as `runtime.ui` in plugin.json declares it (they must match).
+    impl exports::craft::plugin::ui_provider::Guest for Woodwork {
+        fn describe() -> Declarations {
+            let column = |key: &str, label: &str| Column {
+                key: key.into(),
+                label: label.into(),
+                unit: None,
+            };
+            let table = TableSpec {
+                bind: "/rows".into(),
+                row_id: "id".into(),
+                columns: vec![
+                    column("name", "Cabinet"),
+                    column("kind", "Kind"),
+                    column("size", "W x H x D"),
+                    column("material", "Material"),
+                    column("fronts", "Fronts"),
+                ],
+                select: SelectionMode::None,
+                on_select: None,
+                on_edit: None,
+            };
+            let button = |label: &str, entry: &str| craft::plugin::ui::ButtonSpec {
+                label: label.into(),
+                icon: None,
+                entry: entry.into(),
+            };
+            let toolbar = vec![button("Refresh", "cabinets")];
+            Declarations {
+                ui_version: 1,
+                panels: vec![PanelSpec {
+                    id: "cabinets".into(),
+                    title: "Cabinets".into(),
+                    zones: vec![DockZone::Right],
+                    layout: Layout {
+                        root: 0,
+                        nodes: vec![
+                            Node {
+                                widget: Widget::Group(vec![1, 2]),
+                            },
+                            Node {
+                                widget: Widget::Toolbar(toolbar),
+                            },
+                            Node {
+                                widget: Widget::Table(table),
+                            },
+                        ],
+                    },
+                }],
+                workspaces: vec![],
+            }
+        }
+        // The click runs the entry too, with the event as its params: nothing more to do here.
+        fn on_event(_event: UiEvent) -> Result<(), PluginError> {
+            Ok(())
+        }
+        fn on_enter(_workspace: String) -> Result<(), PluginError> {
+            Ok(())
+        }
+        fn on_exit(_workspace: String) -> Result<(), PluginError> {
+            Ok(())
         }
     }
 
