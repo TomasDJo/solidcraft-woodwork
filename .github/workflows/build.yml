@@ -15,7 +15,7 @@ permissions:
   contents: write # to attach the package to a release; pull requests from forks get read
 
 env:
-  SOLIDCRAFT: 0.47.0 # the app version the end-to-end tests run against
+  SOLIDCRAFT: 0.48.1 # the app version the end-to-end tests run against
 
 jobs:
   build:

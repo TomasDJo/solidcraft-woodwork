@@ -183,3 +183,26 @@ def test_apply_hardware_models_both_ways(approval):
     again = results[4]["result"]
     assert again["applied"] == [] and again["skipped"] == [{"cabinet": "A", "why": "already has these settings"}], again
     assert "1 skipped" in again["message"], again["message"]
+
+
+def test_rebuild_job_takes_more_than_one_run(approval):
+    # Rebuild cabinets (a 0.48 job): twelve corner cabinets made without joinery get confirmat
+    # from the settings in one run, which takes longer than an ordinary run's 30 s (Settings'
+    # Apply to stops after 20 s); then As made builds them again as they now are.
+    import time
+    saved = ROOT / "dist" / "rebuild-job.sc"
+    script = [setting(approval, {"joints": "none", "hardware_models": "off"})]
+    script += [plugin(approval, "corner", {"name": f"C{i}", "place": "origin"}) for i in range(12)]
+    cli(script, "--save", str(saved))
+    start = time.time()
+    results = cli([setting(approval, {"joints": "confirmat"}), plugin(approval, "rebuild", {}),
+                   plugin(approval, "rebuild", {"with": "made", "scope": "selected",
+                                                "selection": [{"type": "body", "name": "C0 Top"}]}),
+                   {"command": "joint.list", "params": {}}], "--in", str(saved))
+    elapsed = time.time() - start
+    reply = results[1]["result"]
+    assert len(reply["applied"]) == 12 and reply["remaining"] == [], reply
+    assert all(c == ["joints"] for c in reply["changed"].values()), reply["changed"]
+    assert elapsed > 30, elapsed
+    again = results[2]["result"]
+    assert again["applied"] == ["C0"] and "as they were made" in again["message"], again

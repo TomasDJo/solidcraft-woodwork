@@ -14,6 +14,7 @@ without doors.
 - [Changing sizes](#changing-sizes)
 - [Edit cabinet](#edit-cabinet)
 - [Material](#material)
+- [Rebuild cabinets](#rebuild-cabinets)
 - [Panel](#panel)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
@@ -546,6 +547,21 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
   are the same.
 - Nothing is cleared: to go back to a default, set it to that value.
 - The dialog does not remember the last values you used; only what Woodwork settings stored.
+
+## Rebuild cabinets
+
+Builds cabinets again where they stand, as a long job (SolidCraft 0.48 or later): no 30 s
+limit, a row in the operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and
+Cancel, which leaves the design as it was. A job has no Preview.
+
+- **Build again**: **With the settings** gives each cabinet the Woodwork settings stored now,
+  where its own differ, as Settings' Apply to picked cabinets does but for any number of
+  cabinets (Settings stops after about 20 s and lists the rest). **As made** builds each with
+  its own values and sizes from Parameters, for example after updating Woodwork.
+- **Cabinets**: **All** box and corner cabinets in the design, or the **Picked** ones (a board
+  of each).
+
+The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why.
 
 ## Panel
 
