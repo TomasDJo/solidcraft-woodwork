@@ -1239,3 +1239,33 @@ fn undermount_slides_make_the_box_to_fit_them() {
     let thick = json!({"drawers": 1, "slide_type": "under_full", "drawer_thickness": 18});
     assert!(build(&thick).unwrap_err().contains("16 mm"));
 }
+
+#[test]
+fn drawer_boxes_take_finger_joints() {
+    let p = json!({"drawers": 2, "drawer_joints": "finger"});
+    let (commands, _) = build(&p).unwrap();
+    // the front and back run through the sides, as wide as the box
+    let front = named(&commands, "Cabinet Drawer 1 Box front");
+    assert_eq!(
+        front["length"],
+        "((Cabinet_width - 2*Cabinet_thickness) - 2*HW_slide_t)"
+    );
+    // four corners, a cut in each board at each, and two patterns up the box
+    let cuts = (commands.iter()).filter(|c| {
+        (c.1["name"].as_str())
+            .is_some_and(|n| n.starts_with("Cabinet Drawer 1 ") && n.contains(" finger "))
+    });
+    assert_eq!(cuts.count(), 8);
+    let side = named(&commands, "Cabinet Drawer 1 Left finger Box front");
+    assert_eq!(side["operation"], "cut");
+    assert_eq!(side["targets"], json!(["Cabinet Drawer 1 Left"]));
+    let pattern = named(&commands, "Cabinet Drawer 1 fingers 2");
+    assert_eq!(pattern["features"].as_array().unwrap().len(), 4);
+    assert_eq!(pattern["dir1"], json!([0, 0, 1]));
+    // without: as before
+    let (commands, _) = build(&json!({"drawers": 2})).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1.to_string().contains(" finger ")));
+    assert!(build(&json!({"drawers": 1, "drawer_joints": "dovetail"})).is_err());
+}

@@ -604,7 +604,12 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   Over a plinth board or notch (`closed_bottom` in `Joinery::new`) the bottom's joints take the
   third scope, `BOTTOM`: `none`, butted, unless `finger_bottom` is yes
   (Woodwork settings, design-wide), as its fingers would be closed mortises; no other board has them (the top
-  and a sink base's rails are flush with the sides' tops). Absent is `none`, so a cabinet made before rebuilds as it was.
+  and a sink base's rails are flush with the sides' tops).
+  Drawer boxes: `drawer_joints` (none / finger; Woodwork settings, box only), read as `Input::box_fingers`; `cabinet::drawers` runs the box's front and back
+  through the sides and cuts the four upright corners while the drawer is open (in its
+  component), fingers as wide as the box boards (`drawer_thickness`), 8 cuts and 2 patterns a
+  drawer. The cut list notes the boards (`cutlist::fingered`, `_fingered`);
+  absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
   rail into the sides, rows along the shelves' depth from `ein`; and without shelf pins (`input.fixed`)

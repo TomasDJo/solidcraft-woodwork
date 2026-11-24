@@ -278,6 +278,9 @@ as the cabinet is made:
   Joinery None) and keeps its own width, unless **Finger-joint
   the bottom too** (Woodwork settings; shown only with a board or notch plinth) is Yes. On legs or casters, or with no plinth, the
   bottom is finger-jointed as the top. The top is always flush with the sides' top edges.
+  **Drawer box joints** (Woodwork settings): Finger joints give the drawer boxes the same
+  at their four corners, the box's front and back running through the sides, fingers as wide as
+  the box boards are thick, the sides keeping the outer ones.
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
 **Joinery inside** does the same for fixed shelves (without **Shelf pin holes** the shelves are

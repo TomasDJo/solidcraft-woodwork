@@ -50,6 +50,7 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("hardware_models", "", Choice("on"), Cabinets),
         ("hinge_angle", "", Choice("110"), Cabinets),
         ("slide_type", "", Choice("full"), Box),
+        ("drawer_joints", "", Choice("none"), Box),
         ("fastener_models", "", Choice("off"), Cabinets),
         ("back", "", Choice("groove"), Box),
         ("back_thickness", "", Length(6.0, 3.175, 50.0), Box),
@@ -492,7 +493,12 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
     ),
     (
         "drawers",
-        &["drawer_thickness", "drawer_bottom", "slide_type"],
+        &[
+            "drawer_thickness",
+            "drawer_bottom",
+            "drawer_joints",
+            "slide_type",
+        ],
     ),
     (
         "plinth",

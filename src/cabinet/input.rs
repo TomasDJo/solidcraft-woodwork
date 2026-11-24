@@ -63,6 +63,8 @@ pub struct Input<'a> {
     pub runner: Option<[f64; 2]>,
     /// Undermount slides (`slide_type` under_partial or under_full).
     pub under: bool,
+    /// Finger joints at the drawer boxes' corners (`drawer_joints`, #131).
+    pub box_fingers: bool,
     pub drawers_top: bool,
     /// The doors' height, and the lowest drawer front's lower edge.
     pub door_h: f64,
@@ -124,6 +126,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => num(p, "dividers", 0.0)?,
     };
     let box_t = [size("drawer_thickness", 12.0)?, size("drawer_bottom", 6.0)?];
+    let box_fingers = match p.get("drawer_joints").and_then(Value::as_str) {
+        None | Some("none") => false,
+        Some("finger") => true,
+        _ => return Err("drawer_joints must be none or finger".into()),
+    };
     // the slides' screws go 8 mm into the box's sides (`HW_box_screw_depth`)
     check(
         (10.0..=25.0).contains(&box_t[0]) && (3.0..=19.0).contains(&box_t[1]),
@@ -407,6 +414,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         box_t,
         runner: wood.then_some(runner),
         under,
+        box_fingers,
         drawers_top,
         door_h,
         drawer_z,
