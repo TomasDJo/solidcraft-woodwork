@@ -1,7 +1,7 @@
 # solidcraft-woodwork
 
 Woodworking plugin for SolidCraft: parametric cabinets, materials, joinery and a cut list.
-Works with SolidCraft 0.46; older plugin versions work with 0.41 to 0.45. See [PLAN.md](PLAN.md) for the roadmap.
+Works with SolidCraft 0.48 or later; older plugin versions work with 0.41 to 0.47. See [PLAN.md](PLAN.md) for the roadmap.
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
 
@@ -48,7 +48,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.48 | next | Tested on every change, on 0.48.1. Rebuild cabinets is a long job (no 30 s limit, progress per cabinet, Cancel); it needs 0.48 or later. |
+| 0.48+ | next | Tested on every change, on 0.48.1; needs 0.48 or later. Rebuild cabinets is a long job (no 30 s limit, progress per cabinet, Cancel). |
 | 0.47 | 0.4.0 | Tested on every change, on 0.47.0; works on 0.46 too. Joinery, hardware and more defaults are design-wide Woodwork settings, one Cabinet dialog makes box and corner cabinets, and hinges, slides and fasteners can be shown as models. |
 | 0.46 | 0.3.0 | Tested on every change, on 0.46.1. The dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults, and Edit shows only what the picked cabinet takes. |
 | 0.45 | 0.2.0 | Tested on every change, on 0.45.0. The view is framed after a cabinet is added, a placed cabinet is previewed where it goes, and agents get each function as a tool. |

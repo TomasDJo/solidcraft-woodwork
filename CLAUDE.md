@@ -1,7 +1,11 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.46+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.48+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
+
+**Woodwork targets the latest SolidCraft release.** Raise the minimum version freely when a new
+release helps; older SolidCraft users keep the older Woodwork release (the README's version
+table says which).
 `README.md` is the short user-facing description, `docs/usage.md` how to use each function,
 `PLAN.md` the roadmap with what is done and open.
 
