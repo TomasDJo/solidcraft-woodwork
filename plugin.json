@@ -3,7 +3,7 @@
   "name": "Woodwork",
   "version": "0.4.0",
   "description": "Cabinets and furniture in sheet goods: carcass generator and cut list.",
-  "capabilities": ["commands@0.1", "dialog@0.1", "storage@0.1"],
+  "capabilities": ["commands@0.2", "dialog@0.1", "storage@0.1"],
   "runtime": {
     "module": "woodwork.wasm",
     "data_format": 1,

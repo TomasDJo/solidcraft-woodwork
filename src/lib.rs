@@ -1263,7 +1263,7 @@ mod tests;
 
 #[cfg(target_arch = "wasm32")]
 mod guest {
-    wit_bindgen::generate!({ path: "wit", world: "command-dialog-plugin" });
+    wit_bindgen::generate!({ path: "wit", world: "woodwork" });
 
     use craft::plugin::types::{FieldFailure, PluginError};
 

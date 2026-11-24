@@ -13,7 +13,9 @@ table says which).
 
 - A plugin is a folder with `plugin.json` and one WebAssembly **component**. It exports
   `execute(entry, params_json)` and can only call the app's ordinary commands through
-  `commands.run` (the same commands MCP and `solidcraft-cli` use). Interface: `wit/plugin.wit`.
+  `commands.run` (the same commands MCP and `solidcraft-cli` use). Interface: `wit/plugin.wit`,
+  upstream's `craft:plugin@0.2.0` (0.48) with our world `woodwork` at its end (commands, log,
+  control, files, clock, storage; exports entry and dialog-provider). wit-bindgen 0.63 parses it.
 - The manifest lists the entries, a JSON schema per entry, and every command id the plugin
   calls. A command that is not listed is refused. Entry names: lowercase letters, digits,
   hyphens (no underscores).
