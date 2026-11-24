@@ -15,6 +15,7 @@ without doors.
 - [Edit cabinet](#edit-cabinet)
 - [Material](#material)
 - [Rebuild cabinets](#rebuild-cabinets)
+- [Cabinets panel](#cabinets-panel)
 - [Panel](#panel)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
@@ -562,6 +563,14 @@ Cancel, which leaves the design as it was. A job has no Preview.
   of each).
 
 The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why.
+
+## Cabinets panel
+
+A docked panel (SolidCraft 0.48 or later; it opens on the right, and can be moved like any
+panel) with a table of the design's cabinets: name, kind (box or corner), width x height x depth
+in mm, the material of its Side L and its fronts. Its **Refresh** button fills it; Rebuild
+cabinets fills it too when it is done. Edit and Material work on the cabinet you pick in the
+model as before: SolidCraft 0.48.1 cannot yet open a dialog or select from a panel.
 
 ## Panel
 

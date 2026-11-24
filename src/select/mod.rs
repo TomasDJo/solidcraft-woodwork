@@ -1,6 +1,6 @@
 //! The cabinet the user has selected: any of its panels, or a face or edge of one.
 
-use serde_json::Value;
+use serde_json::{json, Value};
 
 pub struct Cabinet {
     pub name: String,
@@ -146,6 +146,55 @@ pub fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
         .filter_map(|name| name.strip_suffix(" Side L"))
         .filter(|cabinet| body.starts_with(&format!("{cabinet} ")))
         .max_by_key(|cabinet| cabinet.len())
+}
+
+/// The Cabinets panel's rows (SolidCraft 0.48): one per cabinet (its `Side L`), with its name,
+/// kind, outside size from its parameters (mm), the Side L's material and its fronts.
+/// `measure` is `inspect.measure`'s reply, `params` `document.inspect`'s `params`.
+pub fn rows(measure: &Value, params: &Value) -> Vec<Value> {
+    let param = |name: &str| {
+        let all = params.as_array().into_iter().flatten();
+        all.into_iter()
+            .find(|p| p["name"] == name)
+            .and_then(|p| p["value"].as_f64())
+    };
+    let mut cabinets: Vec<&str> = names(measure)
+        .filter_map(|name| name.strip_suffix(" Side L"))
+        .collect();
+    cabinets.sort();
+    let count = |cabinet: &str, test: &dyn Fn(&str) -> bool| {
+        (names(measure).filter_map(|n| n.strip_prefix(cabinet)))
+            .filter(|rest| test(rest))
+            .count()
+    };
+    (cabinets.into_iter())
+        .map(|cabinet| {
+            let prefix = crate::kit::prefix(cabinet);
+            let size = ["width", "height", "depth"].map(|key| {
+                param(&format!("{prefix}_{key}")).map_or("?".into(), |v| format!("{v:.0}"))
+            });
+            let kind = match param(&format!("{prefix}_return")) {
+                Some(_) => "corner",
+                None => "box",
+            };
+            let material = (measure["bodies"].as_array().into_iter().flatten())
+                .find(|b| b["name"] == format!("{cabinet} Side L").as_str())
+                .and_then(|b| b["material"].as_str())
+                .unwrap_or("");
+            let doors = count(cabinet, &|rest| rest.starts_with(" Door"));
+            let drawers = count(cabinet, &|rest| {
+                rest.starts_with(" Drawer ") && rest.ends_with(" Front")
+            });
+            let fronts = match (doors, drawers) {
+                (0, 0) => "open".to_string(),
+                (d, 0) => format!("{d} doors"),
+                (0, n) => format!("{n} drawers"),
+                (d, n) => format!("{d} doors, {n} drawers"),
+            };
+            json!({"id": cabinet, "name": cabinet, "kind": kind, "size": size.join(" x "),
+                   "material": material, "fronts": fronts})
+        })
+        .collect()
 }
 
 /// The selected bodies, by name: what the dialog's `selection` field holds (SolidCraft 0.44 picks

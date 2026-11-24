@@ -136,3 +136,13 @@ def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
     assert front(results[13]) == [102, 222] and door(results[13]) == [224, 718], (front(results[13]), door(results[13]))
     assert boxes(results[16])["Cabinet Drawer 1 Front"][1] == -300 - 200, boxes(results[16])["Cabinet Drawer 1 Front"]
     assert boxes(results[16])["Cabinet Door"][1] < -500, boxes(results[16])["Cabinet Door"]
+
+
+def test_cabinets_panel(approval):
+    # The Cabinets panel (0.48): its Refresh button runs `cabinets`, which fills the table (a
+    # row per cabinet) and says how many.
+    results = cli([plugin(approval, "cabinet", {"name": "A"}),
+                   plugin(approval, "cabinet", {"name": "B", "place": "origin", "doors": 2}),
+                   plugin(approval, "cabinets", {"panel": "cabinets", "event": "press", "path": "",
+                                                 "row": None, "value": None})])
+    assert results[2]["result"]["cabinets"] == 2, results[2]

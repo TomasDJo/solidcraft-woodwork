@@ -15,7 +15,8 @@ table says which).
   `execute(entry, params_json)` and can only call the app's ordinary commands through
   `commands.run` (the same commands MCP and `solidcraft-cli` use). Interface: `wit/plugin.wit`,
   upstream's `craft:plugin@0.2.0` (0.48) with our world `woodwork` at its end (commands, log,
-  control, files, clock, storage; exports entry and dialog-provider). wit-bindgen 0.63 parses it.
+  control, files, clock, storage, ui; exports entry, dialog-provider and ui-provider).
+  wit-bindgen 0.63 parses it.
 - The manifest lists the entries, a JSON schema per entry, and every command id the plugin
   calls. A command that is not listed is refused. Entry names: lowercase letters, digits,
   hyphens (no underscores).
@@ -234,6 +235,15 @@ host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply` wi
 settings, job}`: every cabinet's `Side L` or the picked ones, `settings::apply` or as made, no
 `drawing::fits` stop, and a `_progress` pseudo-command per cabinet that the guest's `run` turns
 into `control.progress`. Settings' Apply to selected is the same `apply` within one run.
+**Cabinets panel** (`ui@0.1`, WIT `craft:plugin@0.2.0`, our world `woodwork` in `wit/plugin.wit`
+with the upstream 0.2 file; wit-bindgen 0.63 parses its `series-1` names): `runtime.ui` declares
+one panel, `cabinets`, a toolbar (Refresh, entry `cabinets`) over a table bound to `/rows`, and the
+guest's `ui-provider.describe` returns the same (keep them equal). `cabinets_panel` reads
+`document.inspect` and `inspect.measure`, `select::rows` makes the rows, and the `_panel`
+pseudo-command becomes `ui.clear-data` and `ui.set-data` (every cell text). The capability makes
+the whole plugin need 0.48. On 0.48.1 a component with a panel cannot import `forms@0.1` (plugin
+check: no implementation of `open`) and a run's `select.set` is not kept, so there are no Edit,
+Material or Select buttons per row yet.
 **One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
 `diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
 a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or

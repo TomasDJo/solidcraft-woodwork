@@ -382,8 +382,8 @@ world command-dialog-plugin {
     export dialog-provider;
 }
 
-// Woodwork's world: commands with the dialog hook, and the storage interface for our files in
-// the design (capability storage@0.1).
+// Woodwork's world: commands with the dialog hook, the storage interface for our files in the
+// design (capability storage@0.1), and a docked panel (ui@0.1).
 world woodwork {
     import commands;
     import log;
@@ -391,6 +391,8 @@ world woodwork {
     import files;
     import clock;
     import storage;
+    import ui;
     export entry;
     export dialog-provider;
+    export ui-provider;
 }

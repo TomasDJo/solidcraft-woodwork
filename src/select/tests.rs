@@ -157,3 +157,25 @@ fn a_cabinet_goes_against_the_side_it_is_placed_on() {
     );
     assert_eq!(corner.seat("right", 400.0, 560.0), ([650.0, 170.0, 0.0], 0));
 }
+
+#[test]
+fn the_cabinets_panel_has_a_row_per_cabinet() {
+    let body = |name: &str| json!({"name": name, "material": "Birch plywood"});
+    let measure = json!({"bodies": [body("B Side L"), body("B Door L"), body("B Door R"),
+        body("A Side L"), body("A Drawer 1 Front"), body("C Side L"), body("A 2 Side L")]});
+    let params = json!([{"name": "A_width", "value": 600.0}, {"name": "A_height", "value": 720.0},
+        {"name": "A_depth", "value": 560.0}, {"name": "C_return", "value": 900.0}]);
+    let rows = rows(&measure, &params);
+    let names: Vec<&str> = rows.iter().map(|r| r["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["A", "A 2", "B", "C"]);
+    assert_eq!(rows[0]["size"], "600 x 720 x 560");
+    assert_eq!(
+        (&rows[0]["fronts"], &rows[0]["material"]),
+        (&json!("1 drawers"), &json!("Birch plywood"))
+    );
+    assert_eq!(rows[2]["fronts"], "2 doors");
+    assert_eq!(
+        (&rows[3]["kind"], &rows[3]["fronts"]),
+        (&json!("corner"), &json!("open"))
+    );
+}
