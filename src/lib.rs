@@ -153,11 +153,22 @@ fn component(
     Ok((summary, made))
 }
 
-/// Settings' Apply to selected: each picked cabinet (a box or corner cabinet) whose
-/// values differ from the settings is built again with them (`settings::apply`, `rebuild`),
-/// as many as fit in the run's time and commands (`drawing::fits`), at least one; the reply
-/// names those `applied` and those `remaining`, which the next run with them picked does.
-fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
+/// How `apply` goes: over every cabinet or the picked ones, with the settings or as each was
+/// made, and as a job (0.48: no 30 s, progress per cabinet) or within one ordinary run.
+#[derive(Clone, Copy)]
+struct Apply {
+    all: bool,
+    settings: bool,
+    job: bool,
+}
+
+/// Settings' Apply to selected, and the Rebuild job: each picked cabinet (a box or corner
+/// cabinet), or every one, built again (`rebuild`) with the settings where its values differ
+/// (`settings::apply`), or as it was made. An ordinary run does as many as fit in its time and
+/// commands (`drawing::fits`), at least one; the reply names those `applied` and those
+/// `remaining`, which the next run with them picked does. A job does them all, reporting each
+/// as `_progress` (`control.progress` in the guest).
+fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, String> {
     let start = now();
     let used = std::cell::Cell::new(0);
     let mut run = |command: &str, args: Value| {
@@ -172,7 +183,15 @@ fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
     // The cabinets of the picked bodies: a board, or a hinge or slide model's copy (`HW hinge
     // (A:1/A Door:1/HW hinge:2)`, which measures do not show: the first name on its path).
     let (mut names, mut skipped) = (Vec::new(), Vec::new());
-    for body in select::picked(params, &design) {
+    let bodies = match how.all {
+        // every cabinet: its Side L
+        true => (measure["bodies"].as_array().into_iter().flatten())
+            .filter_map(|b| b["name"].as_str().filter(|n| n.ends_with(" Side L")))
+            .map(String::from)
+            .collect(),
+        false => select::picked(params, &design),
+    };
+    for body in bodies {
         let model = (body.strip_prefix("HW "))
             .and_then(|b| b.split_once('(')?.1.split_once(':'))
             .map(|(cabinet, _)| cabinet.to_string());
@@ -195,19 +214,30 @@ fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
         };
         let entry = entry.to_string();
         let (_, base) = edit::merge(ours, &json!({}), &design)?;
-        match settings::apply(&entry, &base, stored) {
-            Some((params, changed)) => todo.push((name, about, entry, params, changed)),
-            None => skipped.push(json!({"cabinet": name, "why": "already has these settings"})),
+        match how.settings {
+            false => todo.push((name, about, entry, base, vec![])),
+            true => match settings::apply(&entry, &base, stored) {
+                Some((params, changed)) => todo.push((name, about, entry, params, changed)),
+                None => skipped.push(json!({"cabinet": name, "why": "already has these settings"})),
+            },
         }
     }
     let (mut applied, mut remaining, mut changes) = (Vec::new(), Vec::new(), Map::new());
-    for (name, about, entry, params, changed) in todo {
+    let count = todo.len();
+    for (i, (name, about, entry, params, changed)) in todo.into_iter().enumerate() {
         let (commands, _) = build(&entry, &params)?;
         let next = hardware::cost(&commands) + 40;
         let elapsed = now().saturating_sub(start);
-        if !applied.is_empty() && !drawing::fits(elapsed, used.get(), next) {
+        if !how.job && !applied.is_empty() && !drawing::fits(elapsed, used.get(), next) {
             remaining.push(name);
             continue;
+        }
+        if how.job {
+            let message = format!("{name} ({} of {count})", i + 1);
+            run(
+                "_progress",
+                json!({"fraction": i as f64 / count as f64, "message": message}),
+            )?;
         }
         let design = run(
             "document.inspect",
@@ -217,7 +247,12 @@ fn apply(params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
         changes.insert(name.clone(), json!(changed));
         applied.push(name);
     }
-    let mut message = format!("{} cabinets built again with the settings", applied.len());
+    let with = if how.settings {
+        "with the settings"
+    } else {
+        "as they were made"
+    };
+    let mut message = format!("{} cabinets built again {with}", applied.len());
     if !remaining.is_empty() {
         let n = remaining.len();
         message += &format!("; {n} left: run Settings again with them picked");
@@ -1168,12 +1203,28 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 .as_array()
                 .is_some_and(|p| !p.is_empty());
             if params["apply"] == "yes" && picked {
-                let applied = apply(params, &stored, run)?;
+                let how = Apply {
+                    all: false,
+                    settings: true,
+                    job: false,
+                };
+                let applied = apply(params, &stored, how, run)?;
                 if let (Some(all), Some(more)) = (reply.as_object_mut(), applied.as_object()) {
                     all.extend(more.clone());
                 }
             }
             Ok(reply)
+        }
+        // The job (0.48): every cabinet, or the picked ones, built again with the settings or
+        // as each was made, with progress per cabinet and no 30 s limit.
+        "rebuild" => {
+            let stored = run("storage.get", json!({}))?;
+            let how = Apply {
+                all: params["scope"] != "selected",
+                settings: params["with"] != "made",
+                job: true,
+            };
+            apply(params, &stored, how, run)
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }
@@ -1226,6 +1277,13 @@ mod guest {
     }
 
     fn run(command: &str, args: serde_json::Value) -> Result<serde_json::Value, String> {
+        // A job's step (`apply`): the operations panel's bar and name.
+        if command == "_progress" {
+            let fraction = args["fraction"].as_f64().unwrap_or(0.0) as f32;
+            let message = args["message"].as_str().unwrap_or_default();
+            craft::plugin::control::progress(fraction, message);
+            return Ok(serde_json::Value::Null);
+        }
         let reply =
             craft::plugin::commands::run(command, &args.to_string()).map_err(|e| match e {
                 PluginError::CommandFailed(f) => format!("{}: {}", f.command, f.reason),

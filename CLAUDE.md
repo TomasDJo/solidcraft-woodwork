@@ -222,7 +222,12 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing` and `settings`, all edit.
+Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing`, `settings` and `rebuild`, all edit.
+**Rebuild cabinets** (`rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
+host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply` with `Apply {all,
+settings, job}`: every cabinet's `Side L` or the picked ones, `settings::apply` or as made, no
+`drawing::fits` stop, and a `_progress` pseudo-command per cabinet that the guest's `run` turns
+into `control.progress`. Settings' Apply to selected is the same `apply` within one run.
 **One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
 `diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
 a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or
