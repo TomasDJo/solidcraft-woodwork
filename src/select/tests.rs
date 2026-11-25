@@ -174,7 +174,7 @@ fn picked_parts_resolve_to_their_cabinets_once_and_the_hint_says_so() {
     ]
     .map(String::from)
     .into();
-    let (found, skipped) = cabinets_of(&cabinets, &picked);
+    let (found, skipped) = cabinets_of(&cabinets, &picked, false);
     assert_eq!(found, ["Base", "Base 2", "Wall 1", "1"]);
     assert_eq!(skipped, ["HW hinge", "Worktop"]);
     assert_eq!(
@@ -186,4 +186,12 @@ fn picked_parts_resolve_to_their_cabinets_once_and_the_hint_says_so() {
         "Applies to 1 cabinet: Base"
     );
     assert_eq!(applies_to(&cabinets, &[]), "Applies to all cabinets");
+    // a cabinet with no file (made before 0.5.0): by its board's name in the hint
+    let old: Vec<String> = ["Old 1 Door 2", "Old 1 Side L", "HW slide"]
+        .map(String::from)
+        .into();
+    assert_eq!(
+        applies_to(&cabinets, &old),
+        "Applies to 1 cabinet: Old 1; not part of a cabinet: HW slide"
+    );
 }

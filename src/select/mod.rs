@@ -154,8 +154,14 @@ pub fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
 /// Apply settings' dialog hook, so both resolve alike. A board is the cabinet's whose prefix is
 /// the longest its own starts with (`Base 2 Door` is `Base 2`'s, not `Base`'s), named as the
 /// board begins; a hinge or slide model's copy (`HW hinge (A:1/A Door:1/HW hinge:2)`) the first
-/// name on its path.
-pub fn cabinets_of(cabinets: &[String], bodies: &[String]) -> (Vec<String>, Vec<String>) {
+/// name on its path. With `by_name` (the hook, whose list misses cabinets made before they had a
+/// file, pre-0.5.0), a board none of them owns is the cabinet named before its board word
+/// (`Base 1 Side L`, `Base 1 Door 2`: `BOARD_WORDS`).
+pub fn cabinets_of(
+    cabinets: &[String],
+    bodies: &[String],
+    by_name: bool,
+) -> (Vec<String>, Vec<String>) {
     let (mut found, mut skipped) = (Vec::new(), Vec::new());
     for body in bodies {
         let model = (body.strip_prefix("HW "))
@@ -177,7 +183,8 @@ pub fn cabinets_of(cabinets: &[String], bodies: &[String]) -> (Vec<String>, Vec<
                     (crate::kit::prefix(&name) == *c && next == Some(' ')).then_some(name)
                 })
             });
-        match model.or(board) {
+        let named = by_name.then(|| by_board_word(body)).flatten();
+        match model.or(board).or(named) {
             Some(owner) if !found.contains(&owner) => found.push(owner),
             Some(_) => {}
             None => skipped.push(body.clone()),
@@ -186,13 +193,27 @@ pub fn cabinets_of(cabinets: &[String], bodies: &[String]) -> (Vec<String>, Vec<
     (found, skipped)
 }
 
+/// The first words of a cabinet's boards and parts after the cabinet's name.
+const BOARD_WORDS: [&str; 16] = [
+    "Side", "Top", "Bottom", "Back", "Door", "Drawer", "Shelf", "Plinth", "Rail", "Divider",
+    "Cleat", "Wall", "Leg", "Filler", "End", "Caster",
+];
+
+/// The cabinet a body belongs to by its name alone: what comes before its first board word.
+fn by_board_word(body: &str) -> Option<String> {
+    let words: Vec<&str> = body.split(' ').collect();
+    (1..words.len())
+        .find(|&i| BOARD_WORDS.contains(&words[i]))
+        .map(|i| words[..i].join(" "))
+}
+
 /// What Apply settings' dialog says on its field: the cabinets the picked parts resolve to
 /// (`cabinets_of`), and the parts that are no cabinet's; all cabinets when none is picked.
 pub fn applies_to(cabinets: &[String], bodies: &[String]) -> String {
     if bodies.is_empty() {
         return "Applies to all cabinets".into();
     }
-    let (found, skipped) = cabinets_of(cabinets, bodies);
+    let (found, skipped) = cabinets_of(cabinets, bodies, true);
     let mut hint = match found.len() {
         1 => format!("Applies to 1 cabinet: {}", found[0]),
         n => format!("Applies to {n} cabinets: {}", found.join(", ")),

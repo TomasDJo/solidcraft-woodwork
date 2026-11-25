@@ -191,7 +191,7 @@ fn apply(
         .filter_map(|b| b["name"].as_str()?.strip_suffix(" Side L"))
         .map(kit::prefix)
         .collect();
-    let (names, skipped) = select::cabinets_of(&cabinets, &bodies);
+    let (names, skipped) = select::cabinets_of(&cabinets, &bodies, false);
     let mut skipped: Vec<Value> = (skipped.into_iter())
         .map(|body| json!({"picked": body, "why": "not part of a cabinet"}))
         .collect();

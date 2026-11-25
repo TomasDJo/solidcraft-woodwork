@@ -296,7 +296,9 @@ behind), by `select::cabinets_of` (cabinet name prefixes; a hinge or slide model
 measures hide, the first name of its `(A:1/...)` path); box and corner only. Its dialog hook
 puts `select::applies_to` on the field as a hint, with the prefixes from our files' names
 (`storage.get`, no design read for the 10M fuel), so the dialog names the same cabinets as the
-run (a cabinet made before it had a file, pre-0.5.0, shows as no cabinet's there). Each one's `edit::merge` with no changes (sizes from Parameters), then `settings::apply`
+run; a board of a cabinet made before it had a file (pre-0.5.0) by its name before its board
+word (`select::BOARD_WORDS`: `Base 1 Door 2` is `Base 1`'s). Only a body with neither, such as
+a hardware model's definition, is "not part of a cabinet". Each one's `edit::merge` with no changes (sizes from Parameters), then `settings::apply`
 (what the settings give it now: the design-wide ones stored or default, the hook's four only
 stored, the plinth's only on a cabinet with one, and only what its entry takes; `None` when it
 has them all) or as made, then `rebuild` (Edit's path, shared: delete, `make`, panels,
