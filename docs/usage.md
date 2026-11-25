@@ -34,8 +34,8 @@ without doors.
 
 **A combination that cannot be made is said at once.** When the fields do not go together (three
 doors without the two dividers behind them, more drawers than the height holds, a depth too
-small), the preview shows nothing, a **Problem** row at the bottom of the dialog says why (it
-shows only then), and the field it is about has the same in its tooltip, such as Doors:
+small), the preview shows nothing, a **Problem** row near the top of the dialog (under Mode) says why
+(it shows only then), and the field it is about has the same in its tooltip, such as Doors:
 "Doors must be 0, 1, 2 or one per compartment (dividers + 1 = 1 here): nothing is made or
 previewed until this is changed". Edit picked does the same for a change, and Woodwork settings
 for settings a new cabinet would refuse (casters on a plinth lower than 50 mm). The dialog's Run

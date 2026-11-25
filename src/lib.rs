@@ -1251,7 +1251,7 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     if entry == "cabinet" && values["mode"] == "edit" {
         let mut reply = dialog("edit", values, run)?;
         if reply.get("problem").is_none() {
-            reply["problem"] = json!({"visible": false});
+            reply["problem"] = settings::problem_row(None);
         }
         // Cabinet's Shape: a box stays a box (greyed), a corner a corner
         if reply["corner_doors"]["visible"] == false {

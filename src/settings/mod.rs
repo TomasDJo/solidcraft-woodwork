@@ -497,16 +497,17 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
     (field, why)
 }
 
-/// The dialog's Problem row (`problem`: a greyed text field, never stored): shown with the
+/// The dialog's Problem row (`problem`, near the top: a greyed text field, never stored): shown with the
 /// reason when there is one, hidden otherwise. A field's hint is only its hover tooltip in 0.49,
 /// so the row is what the user sees at once.
 pub fn problem_row(hint: Option<&str>) -> Value {
     match hint {
         Some(hint) => {
             let text: String = hint.chars().take(PROBLEM_MAX).collect();
-            json!({"value": text, "visible": true})
+            json!({"default": text, "value": text, "visible": true})
         }
-        None => json!({"visible": false}),
+        // its default too, for a script that leaves it out (it is required, for its place)
+        None => json!({"default": "None", "visible": false}),
     }
 }
 

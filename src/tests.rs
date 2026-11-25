@@ -551,11 +551,14 @@ fn the_cabinet_dialog_says_at_once_what_the_build_would_refuse() {
     assert!(hint.contains("dividers + 1 = 1 here"), "{hint}");
     assert!(hint.contains("nothing is made or previewed"), "{hint}");
     // and in the Problem row, which shows it (a hint is only a hover tooltip in 0.49)
-    assert_eq!(reply["problem"], json!({"value": hint, "visible": true}));
+    assert_eq!(
+        reply["problem"],
+        json!({"default": hint, "value": hint, "visible": true})
+    );
     // a corner's doors are Doors there; a fine cabinet gets no hint
     let ok = dialog("cabinet", &json!({"shape": "box", "doors": 2}), &mut run).unwrap();
     assert!(ok["doors"].get("hint").is_none(), "{ok}");
-    assert_eq!(ok["problem"], json!({"visible": false}));
+    assert_eq!(ok["problem"], json!({"default": "None", "visible": false}));
     let low = dialog(
         "cabinet",
         &json!({"shape": "box", "height": 100, "drawers": 4}),
