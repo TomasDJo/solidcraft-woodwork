@@ -476,12 +476,17 @@ fn edit_changes_one_cabinet_and_first_writes_the_file_of_one_made_before() {
                     json!({"bodies": [side("A Side L", 0.0), side("B Side L", 900.0)]})
                 }
                 "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet",
-                    "params": {"name": "A", "doors": 1}}}}),
+                    "params": {"name": "A", "doors": 1, "shelves": 3}}}}),
+                "component.list" => json!({"components": [{"id": 1, "name": "A",
+                    "occurrences": [{"id": 2, "parent": 0, "transform": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}]}]}),
                 "_get_blob" => file.clone(),
                 _ => json!({}),
             })
         };
-        let reply = execute("edit", &json!({"doors": 2}), &mut run);
+        // as the dialog sends it: every field, at its default where nothing could be shown
+        let dialog = json!({"doors": 2, "shelves": 1, "width": 600, "drawers": 0, "handles": "none",
+            "plinth": "yes", "shelf_pins": false, "labels": "no", "fronts": "overlay"});
+        let reply = execute("edit", &dialog, &mut run);
         (called, reply)
     };
     let (_, reply) = edit(
@@ -489,11 +494,12 @@ fn edit_changes_one_cabinet_and_first_writes_the_file_of_one_made_before() {
         json!({}),
     );
     assert!(reply.unwrap_err().starts_with("Edit changes one cabinet"));
-    // made before Edit's file: its fields were the defaults, so nothing is built, and the file
-    // is written for the next time
+    // made before Edit's file: the dialog could not show its values, so a field at its default
+    // is unchanged (3 shelves stay); Doors 2 is built in the same run, and the file written
     let (called, reply) = edit(json!([{"name": "A Side L"}]), Value::Null);
     let reply = reply.unwrap();
-    assert_eq!(reply["edited"], false, "{reply}");
+    assert_eq!(reply["edited"], true, "{reply}");
+    assert_eq!(reply["changed"], json!(["doors"]));
     assert!(called.contains(&"_put_blob".to_string()));
-    assert!(!called.contains(&"component.delete".to_string()));
+    assert!(called.contains(&"component.delete".to_string()));
 }

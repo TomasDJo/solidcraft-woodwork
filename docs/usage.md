@@ -469,8 +469,8 @@ alike again unless it gives another drawer front height.
 
 A corner cabinet shows its doors, shape and return instead of the kind, dividers, doors,
 hinge side, drawers and back. A cabinet made before Woodwork kept its values for Edit opens
-with the dialog's defaults: running Edit then builds nothing and says to open it again, and
-from then on it shows the cabinet's values.
+with the dialog's defaults the first time: what you change is built, and a field left at its
+default keeps the cabinet's value. From then on Edit shows the cabinet's values.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is made again, and cabinets

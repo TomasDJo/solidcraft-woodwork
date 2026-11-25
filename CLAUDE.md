@@ -235,8 +235,8 @@ table says which).
   `<Prefix>_width`... in the reply's text, in mm, without parsing it), then `edit::fields`.
   The release profile is `opt-level = 3` (less fuel than `s`). A cabinet made before has no
   file: the hook only hides the other kind's fields (`edit::hidden`, one
-  `document.inspect {bodies: "names"}`), and the run writes the file and builds nothing ("open
-  Edit again"), as its fields were the defaults. A failed read answers `{}`.
+  `document.inspect {bodies: "names"}`), and the run writes the file and takes a field at the
+  dialog's default as unchanged (`edit::unshown`; a change to exactly the default is lost that once). A failed read answers `{}`.
 
 ## Layout
 

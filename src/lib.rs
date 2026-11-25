@@ -780,24 +780,20 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let about = run("component.metadata", json!({"component": name}))?;
             let ours = &about["metadata"][edit::KEY];
             let entry = ours["entry"].as_str().unwrap_or_default();
-            // A cabinet made before Edit's file: the dialog could not show its values, so its
-            // fields were the defaults. Its file now, and nothing built.
+            // A cabinet made before Edit's file: the dialog could not show its values, so a
+            // field still at the dialog's default is taken as unchanged (`edit::unshown`), and
+            // the file is written now, for the next time.
             let file = run("_get_blob", json!({"name": edit::blob(&name)}));
-            if file.as_ref().map_or(true, Value::is_null) {
+            let unshown = file.as_ref().map_or(true, Value::is_null);
+            let mut changes = edit::taken(entry, params);
+            if unshown {
+                changes = edit::unshown(&changes);
                 let (_, now) = edit::merge(ours, &json!({}), &design)?;
                 let parts = select::parts(&measure, &name);
-                let parts = parts.iter().map(|b| b.as_str());
-                let copy = edit::copy(entry, &now, &name, parts);
-                run(
-                    "_put_blob",
-                    json!({"name": edit::blob(&name), "data": copy}),
-                )?;
-                let message = format!(
-                    "{name}: made before Edit showed a cabinet's values; open Edit again to see them"
-                );
-                return Ok(json!({"name": name, "edited": false, "message": message}));
+                let copy = edit::copy(entry, &now, &name, parts.iter().map(|b| b.as_str()));
+                let file = json!({"name": edit::blob(&name), "data": copy});
+                run("_put_blob", file)?;
             }
-            let changes = edit::taken(entry, params);
             let changes = settings::edit_plinth(&changes, ours, &design, stored);
             let (entry, params) =
                 edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;

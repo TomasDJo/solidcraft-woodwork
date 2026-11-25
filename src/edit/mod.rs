@@ -199,6 +199,29 @@ fn assumed(key: &str) -> Option<Value> {
     })
 }
 
+/// Edit's `changes` without the fields at the dialog's own default: for a cabinet whose values
+/// the dialog could not show (made before Edit's file), those are taken as unchanged.
+// ponytail: a change to exactly the default (Doors 0, say) is lost on that first Edit only
+pub fn unshown(changes: &Value) -> Value {
+    let default = |key: &str| {
+        Some(match key {
+            "width" => json!(600),
+            "height" => json!(720),
+            "depth" => json!(560),
+            "return" => json!(900),
+            "plinth" => json!("yes"),
+            "shelf_pins" => json!(false),
+            "labels" => json!("no"),
+            _ => return assumed(key),
+        })
+    };
+    let mut changes = changes.clone();
+    if let Some(all) = changes.as_object_mut() {
+        all.retain(|k, v| !default(k).is_some_and(|d| same(&d, v)));
+    }
+    changes
+}
+
 /// The changes an Edit run makes to a cabinet made by `entry`: the fields it takes. The dialog
 /// sends the other kind's fields too, hidden, at their schema defaults.
 pub fn taken(entry: &str, changes: &Value) -> Value {
