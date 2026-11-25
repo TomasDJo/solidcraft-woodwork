@@ -668,9 +668,6 @@ fn finger_joints_interleave_at_the_shell_corners_in_shared_rows() {
     assert!(crate::cabinet::build(&inner)
         .unwrap_err()
         .contains("finger"));
-    assert!(crate::corner::build(&json!({"joints": "finger"}))
-        .unwrap_err()
-        .contains("finger"));
     assert!(crate::cabinet::build(&json!({"joints": "finger", "finger_width": 2})).is_err());
 }
 
@@ -699,4 +696,68 @@ fn over_a_plinth_the_bottom_is_not_finger_jointed_unless_asked() {
         let (commands, _) = crate::cabinet::build(&p).unwrap();
         assert!(named(&commands, "K Bottom finger Side L") > 0, "{p}");
     }
+}
+
+#[test]
+fn a_corner_cabinet_is_finger_jointed_where_its_corners_are_open() {
+    let finger = |p: Value| {
+        let p = json!({"name": "C", "joints": "finger"})
+            .as_object()
+            .unwrap()
+            .clone()
+            .into_iter()
+            .chain(p.as_object().unwrap().clone())
+            .collect::<serde_json::Map<_, _>>();
+        crate::corner::build(&Value::Object(p)).unwrap().0
+    };
+    let fingered = |commands: &Commands, end: &str, face: &str| {
+        named(commands, &format!("C {end} finger {face}")) > 0
+    };
+    // an L: every joint, the bottom and top through all four uprights, the corners where two
+    // uprights meet cut out of them
+    let l = finger(json!({}));
+    for (end, face) in [
+        ("Back", "Side R"),
+        ("Back", "Back return"),
+        ("Back return", "Side L"),
+        ("Bottom", "Side R"),
+        ("Bottom", "Side L"),
+        ("Bottom", "Back"),
+        ("Top", "Back return"),
+    ] {
+        assert!(fingered(&l, end, face), "{end} into {face}");
+        assert!(fingered(&l, face, end), "{face} keeps {end}'s");
+    }
+    assert_eq!(named(&l, "C Bottom corner"), 3);
+    let back = find(&l, "C Back");
+    assert_eq!(
+        back["length"],
+        "C_width - 2*C_thickness + C_thickness + C_thickness"
+    );
+    assert_eq!(named(&l, " joint "), 0);
+    // over a plinth board the bottom is butted; the top still fingered
+    let plinth = finger(json!({"plinth": 100, "plinth_type": "board"}));
+    assert!(!fingered(&plinth, "Bottom", "Back") && fingered(&plinth, "Top", "Back"));
+    assert_eq!(named(&plinth, "C Bottom corner"), 0);
+    let asked = finger(json!({"plinth": 100, "finger_bottom": "yes"}));
+    assert!(fingered(&asked, "Bottom", "Back"));
+    // the diagonal's bottom and top keep their front edges for the chamfer: butted to the ends
+    let diagonal = finger(json!({"shape": "diagonal"}));
+    assert!(!fingered(&diagonal, "Bottom", "Side L") && fingered(&diagonal, "Bottom", "Back"));
+    assert!(fingered(&diagonal, "Back", "Side R"));
+    // a wall mount: the backs stand on the bottom and against the ends' middles: butted there
+    let mount = finger(json!({"wall_mount": "rail"}));
+    assert!(fingered(&mount, "Back", "Back return") && !fingered(&mount, "Back", "Side R"));
+    assert!(!fingered(&mount, "Back return", "Side L") && fingered(&mount, "Bottom", "Side R"));
+    // split: each piece through what it meets, the return's piece its own front corner
+    let split = finger(json!({"boards": "split"}));
+    assert!(
+        fingered(&split, "Bottom return", "Side L")
+            && fingered(&split, "Bottom return", "Back return")
+    );
+    assert_eq!(named(&split, "C Bottom return corner"), 1);
+    assert_eq!(named(&split, "C Bottom corner back"), 2);
+    // a right corner: mirrored
+    let right = finger(json!({"corner": "right"}));
+    assert!(fingered(&right, "Back", "Side L") && fingered(&right, "Bottom", "Side R"));
 }

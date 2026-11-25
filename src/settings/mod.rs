@@ -43,7 +43,7 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("material", "", Choice("Birch plywood"), Hook),
         ("handles", "", Choice("none"), Hook),
         ("joints", "", Choice("dowels"), Cabinets),
-        ("finger_bottom", "", Choice("no"), Box),
+        ("finger_bottom", "", Choice("no"), Cabinets),
         ("joints_inner", "", Choice("dowels"), Box),
         ("biscuit", "", Choice("20"), Cabinets),
         ("pocket_face", "", Choice("outside"), Cabinets),

@@ -603,7 +603,12 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   2 patterns a cabinet. The cut list notes the boards (`cutlist::fingered`, `_fingered`).
   Over a plinth board or notch (`closed_bottom` in `Joinery::new`) the bottom's joints take the
   third scope, `BOTTOM`: `none`, butted, unless `finger_bottom` is yes
-  (Woodwork settings, design-wide), as its fingers would be closed mortises; no other board has them (the top
+  (Woodwork settings, design-wide), as its fingers would be closed mortises. Corner cabinets
+  (`corner::Corner::fingered`, `corner`): every corner joint, the boards grown by `t` on their
+  fingered edges in `carcass` and a `t x t` square cut out of the bottom and top where two
+  uprights meet (`<Part> corner back left`, ...); butted (`joint_by("none")`) where it is a
+  T joint (a wall mount's backs on the bottom, under the top, against the ends' middles) or
+  would move the diagonal's chamfer (bottom and top to the ends); no other board has them (the top
   and a sink base's rails are flush with the sides' tops).
   Drawer boxes: `drawer_joints` (none / finger; Woodwork settings, box only), read as `Input::box_fingers`; `cabinet::drawers` runs the box's front and back
   through the sides and cuts the four upright corners while the drawer is open (in its

@@ -266,14 +266,19 @@ as the cabinet is made:
   Joinery inside: a divider grows into grooves in the bottom and top, the rail into the sides.
   Glue them; nothing to buy. The depth leaves 3 mm of the side behind the groove at least.
   A corner cabinet refuses it.
-- **Finger joints** (box cabinets, the shell only): the bottom and top run through the sides
+- **Finger joints** (the shell only, box and corner cabinets): the bottom and top run through the sides
   to the outside, and the corners interlock in an odd count of equal fingers, the sides keeping
   the outer ones. **Finger width** (Woodwork settings) is 0 by default, making the fingers as wide
   as the boards are thick, and following the thickness. Each finger is a box cut, repeated along
   the corner, so the count follows a resize. The cut list gives the bottom and top at their size over
   the fingers (a 600 mm cabinet's bottom is 600) with the note "finger jointed"; the layouts
-  and DXF draw rectangles. Glue them; nothing to buy. Not for Joinery inside; a corner cabinet
-  refuses it. Over a plinth board or notched sides the sides reach below the bottom, where its
+  and DXF draw rectangles. Glue them; nothing to buy. Not for Joinery inside. A corner cabinet's bottom and top run
+  through all four uprights round them, its back through the back return and the back leg's
+  end, the back return through the return's end; where two uprights meet, their corner is cut
+  out of the bottom and top. Butted (as None) instead where fingers cannot be made: with a
+  wall mount the backs stand on the bottom, under the top and against the middle of the ends
+  (mortises, not corners), and a diagonal cabinet's bottom and top keep their front edges for
+  the slanted front, so they are butted to the two ends. Over a plinth board or notched sides the sides reach below the bottom, where its
   fingers would be closed mortises through the sides (a CNC job): the bottom is then butted (as
   Joinery None) and keeps its own width, unless **Finger-joint
   the bottom too** (Woodwork settings; shown only with a board or notch plinth) is Yes. On legs or casters, or with no plinth, the

@@ -317,7 +317,7 @@ impl<'a> Joinery<'a> {
     }
 
     /// The cuts of one joint by `method`.
-    fn joint_by(&self, method: &str, j: &Joint) {
+    pub fn joint_by(&self, method: &str, j: &Joint) {
         let method = method.to_string();
         let (spacing, edge) = (self.size("joint_spacing"), self.size("joint_edge"));
         let count = format!("max(2, ceil(({} - 2*{edge}) / {spacing}) + 1)", j.run);
