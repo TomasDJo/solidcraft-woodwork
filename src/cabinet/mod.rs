@@ -60,13 +60,11 @@ struct Cabinet<'a> {
 /// `drawer_width` x `drawer_depth` inside, written into `p` as an ordinary outside size, so
 /// the cabinet is remembered, edited and resized by that.
 pub fn from_drawers(p: &mut Value) -> Result<(), String> {
-    if p["sizing"] != "drawer" {
+    // Match selected gives the sizes (the dialog hides Sizing then): outside sizing.
+    if p["sizing"] != "drawer" || !p["_match"].is_null() {
+        p["sizing"] = json!("outside");
         return Ok(());
     }
-    check(
-        p["_match"].is_null(),
-        "drawer inside size cannot be combined with Match selected",
-    )?;
     let kit = Kit::new(p)?;
     let inside = [
         kit.size(p, "drawer_width", 0.0)?,

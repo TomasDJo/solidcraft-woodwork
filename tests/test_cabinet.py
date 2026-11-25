@@ -278,3 +278,18 @@ def test_wall_mount_edit(approval):
     assert "A Cleat" not in box and "A Wall cleat" not in box, sorted(box)
     assert box["A Back"][4] == y1 - 12, box["A Back"]
     assert "Steel" not in str(results[13]["result"]["hardware"])
+
+
+def test_fields_that_cannot_combine_are_hidden_and_not_used(approval):
+    # Drawers take no dividers: with drawers the dialog hides Dividers, and the app leaves a
+    # hidden field out of the run, so A has drawers and no divider. B is matched to A: its
+    # height, depth, thickness and plinth come from A and are hidden, and so is Sizing (by the
+    # drawers' inside), which a matched cabinet cannot take: it is sized from its width.
+    results = cli([plugin(approval, "cabinet", {"name": "A", "drawers": 2, "dividers": 1, "height": 800}),
+                   select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "drawers": 1, "sizing": "drawer", "height": 500,
+                                                "match": "selected", "place": "right"}),
+                   MEASURE])
+    box = boxes(results[3])
+    assert "A Drawer 2 Front" in box and not [n for n in box if "Divider" in n], sorted(box)
+    assert box["B Side L"][5] == 800 and round(box["B Side R"][3] - box["B Side L"][0]) == 600, box["B Side L"]

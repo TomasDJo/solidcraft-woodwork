@@ -43,6 +43,20 @@ table says which).
   and `x-solidcraft-when` exist but are not used.
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
+  **Fields that cannot combine are hidden, and not used:** a field that another one makes
+  meaningless gets a condition, and the build takes a stale value of it (still sent by a
+  script, or remembered by Edit) as absent instead of refusing. Cabinet: Dividers with
+  drawers (`cabinet::input`: none beside drawers or on a sink base; drawers beside doors on a
+  sink base dropped); Sizing with Match selected (`from_drawers`: outside sizing); Width and
+  Depth with drawer sizing (they are worked out); Height, Depth, Thickness and Plinth with
+  Match selected (`Kit` takes the selected cabinet's). Edit, where Keep and differing values
+  leave a field shown: Dividers with drawers, Shelves and Shelf pins on a drawers-only
+  cabinet, Slide length without drawers, Fronts, Reveal and Handles without doors and drawers
+  (all as `not` over the number, so an empty number shows them), Handle position with handles
+  None or hidden. Settings: Handle position with handles None, Plinth type (and so its set-back)
+  with a plinth height of 0. Not expressed: Settings' Back against a Cabinet's Wall mount (two
+  dialogs), Edit's Wall mount against Back (an option, not a field), Picked cabinets with Apply
+  No (a keyword on the reserved `selection` may turn Run off).
   **Field order:** the most used first, and a conditional field right after the field that
   controls it, directly below it (drawer height and Drawers at under Drawers, the door hinge and
   hinge angle under Doors, plinth type and set-back under Plinth, slide length under slide type, a joinery method's sizes after it,
@@ -627,8 +641,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   selects it by a side or a rail. A depth that leaves less than two rails' depth for them is
   refused. Its dialog hides shelves, pins and dividers; `cabinet::input` drops them
   for a sink base without an error (Edit to a sink base keeps the remembered ones, unused).
-  It takes doors or drawers, not both (refused; the cabinet dialog hides Drawers when there
-  are doors), and 2 drawers or more: the top front is `<Name> False front`, a fixed body in
+  It takes doors or drawers, not both (the cabinet dialog hides Drawers when there are doors,
+  and `cabinet::input` drops drawers sent beside doors), and 2 drawers or more: the top front is `<Name> False front`, a fixed body in
   the cabinet's component with its handle hole and no box or slide, and the boxes below are
   `eshelf_d/2` deep, clear of the trap (no U-cut). An Edit to standard gives full drawers
   again; the panel counts its drawers as overlay fronts. The back groove is not

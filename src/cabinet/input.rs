@@ -104,19 +104,25 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     // Without pins the shelves are fixed, joined by the inside's joinery (none on a cabinet
     // that remembers no method: as before).
     let fixed = !pins;
-    // A sink base has no dividers: the sink and its pipes take the room. Its dialog hides
-    // them; an Edit to a sink base drops the ones the cabinet remembers.
-    let dividers = if sink { 0.0 } else { num(p, "dividers", 0.0)? };
     let drawers = num(p, "drawers", 0.0)?;
     check(
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
         "drawers must be 0 to 8",
     )?;
-    // Its top front is a false front before the sink, so drawers come two or more, and alone.
+    // A sink base takes doors or drawers: with doors the dialog hides Drawers, so a value
+    // still sent (or remembered by Edit) is not used.
+    let drawers = if sink && doors > 0.0 { 0.0 } else { drawers };
+    // Its top front is a false front before the sink, so drawers come two or more.
     check(
-        !sink || drawers == 0.0 || (drawers >= 2.0 && doors == 0.0),
-        "a sink base has doors or drawers, not both, and 2 drawers or more (the top front is a false front)",
+        !sink || drawers == 0.0 || drawers >= 2.0,
+        "a sink base has 2 drawers or more (the top front is a false front)",
     )?;
+    // A sink base has no dividers (the sink and its pipes take the room), nor drawers beside
+    // dividers: the dialogs hide Dividers then, and a value still sent is not used.
+    let dividers = match sink || drawers > 0.0 {
+        true => 0.0,
+        false => num(p, "dividers", 0.0)?,
+    };
     let box_t = [size("drawer_thickness", 12.0)?, size("drawer_bottom", 6.0)?];
     // the slides' screws go 8 mm into the box's sides (`HW_box_screw_depth`)
     check(
@@ -237,10 +243,6 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         [0.0, 1.0, 2.0, dividers + 1.0].contains(&doors),
         "doors must be 0, 1, 2 or one per compartment (dividers + 1)",
-    )?;
-    check(
-        drawers == 0.0 || dividers == 0.0,
-        "drawers cannot be combined with dividers",
     )?;
     // Room for a box behind each front (an inset one beside doors stays clear of the rail
     // as an overlay one does), and the width of the box between the slides.

@@ -288,7 +288,9 @@ fn drawers_replace_shelves() {
     );
     assert_eq!(height("auto"), height("top")); // 560 deep: a floor unit
     assert!(build(&json!({"doors": 1, "handles": "knob", "handle_position": "side"})).is_err());
-    assert!(build(&json!({"drawers": 2, "doors": 2, "dividers": 1})).is_err());
+    // drawers take no dividers: hidden, so a value still sent is not used
+    let (commands, _) = build(&json!({"drawers": 2, "doors": 2, "dividers": 1})).unwrap();
+    assert!(!commands.iter().any(|c| c.1.to_string().contains("Divider")));
     assert!(build(&json!({"drawers": 8, "height": 400})).is_err());
 }
 
@@ -629,13 +631,13 @@ fn a_sink_base_with_drawers_under_a_false_front() {
     assert_eq!(side["width"], half);
     let slide = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
     assert_eq!(slide.1["max"], 250.0);
-    // doors or drawers, and two drawers or more
-    for p in [
-        json!({"kind": "sink", "drawers": 1}),
-        json!({"kind": "sink", "drawers": 2, "doors": 2}),
-    ] {
-        assert!(build(&p).unwrap_err().contains("doors or drawers"));
-    }
+    // two drawers or more; with doors (Drawers hidden) the drawers are not used
+    let err = build(&json!({"kind": "sink", "drawers": 1})).unwrap_err();
+    assert!(err.contains("2 drawers or more"), "{err}");
+    let (commands, _) = build(&json!({"kind": "sink", "drawers": 2, "doors": 2})).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1.to_string().contains("Drawer 1")));
 }
 
 #[test]
@@ -1179,13 +1181,18 @@ fn a_cabinet_sized_from_its_drawers_inside() {
     assert_eq!(p["width"], json!(578.0));
     let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
     assert_eq!((input.slide.1, input.shelf_d), ("450 mm", 453.0));
-    // outside sizing is left alone; no drawers, or Match selected, are refused
+    // outside sizing is left alone; no drawers are refused; with Match selected (Sizing is
+    // hidden then) it is outside sizing
     let mut p = json!({"drawers": 1, "width": 600});
     from_drawers(&mut p).unwrap();
     assert_eq!(p["width"], 600);
     assert!(from_drawers(&mut json!({"sizing": "drawer"})).is_err());
-    let mut p = json!({"drawers": 1, "sizing": "drawer", "_match": {"values": {}}});
-    assert!(from_drawers(&mut p).is_err());
+    let mut p = json!({"drawers": 1, "sizing": "drawer", "_match": {"values": {}}, "width": 600});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(
+        (&p["width"], &p["sizing"]),
+        (&json!(600), &json!("outside"))
+    );
 }
 
 #[test]
