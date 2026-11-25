@@ -60,7 +60,7 @@ table says which).
   dialogs), Edit's Wall mount against Back (an option, not a field), Picked cabinets with Apply
   No (a keyword on the reserved `selection` may turn Run off).
   **Settings' sections (#128 step 2):** the field `section` ("Show settings for": General,
-  Doors and fronts, Drawers, Plinth and wall mount, Joinery, Cut list and worktop, Display, All;
+  Doors and fronts, Drawers, Plinth / toe kick and wall mount, Joinery, Cut list and worktop, Display, All;
   not stored; the hook's hint "Pick a group to see its settings") shows one group, under a
   divider row (`divider`: a string field greyed by an `x-solidcraft-enabled-when` that is never
   true, its default a line, `settings::DIVIDER`, given by the hook for scripts and never stored).

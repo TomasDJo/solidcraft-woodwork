@@ -219,7 +219,7 @@ pub const SLIDE_TYPES: [(&str, &str); 6] = [
     ("partial", "partial extension"),
     ("full", "full extension"),
     ("over", "over-travel"),
-    ("wood", "wooden runners"),
+    ("wood", "dado runners"),
     ("under_partial", "undermount partial extension"),
     ("under_full", "undermount full extension"),
 ];

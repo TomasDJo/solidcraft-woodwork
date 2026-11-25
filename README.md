@@ -14,7 +14,7 @@ The picture opens a one minute introduction on YouTube. Three how-tos follow it 
 
 Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
-- **Cabinet**: a box carcass with shelves, dividers, back and a plinth (a set-back board, notched sides, legs or casters); doors, drawers, or
+- **Cabinet**: a box carcass with shelves, dividers, back and a plinth / toe kick (a set-back board, notched sides, legs or casters); doors, drawers, or
   drawers above or below doors, that open on their joints, overlay or inset; shelf pin, handle, hinge and drawer slide holes, sized by shared parameters. Also as a sink base
   (rails instead of a top), with doors or drawers. Hangs on a French cleat, a hanging rail or a steel rail.
 - **Corner cabinets**, in the same Cabinet dialog (Shape): L-shaped with a bi-fold pair of
@@ -24,7 +24,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Edit cabinet** (Cabinet, Mode Edit picked): change the sizes, shelves, doors, drawers and more of one cabinet that is already made.
 - **Joinery**: chosen in Woodwork settings for the whole design: dowels, confirmat or plain screws, cam locks, pocket screws, biscuits or a dado, counted in the cut list.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
-- **Woodwork settings**: what is the same for the whole design (joinery, hardware, back, fronts, plinth, cut list sheets, worktop), kept in the design; Apply settings builds cabinets again with them.
+- **Woodwork settings**: what is the same for the whole design (joinery, hardware, back, fronts, plinth / toe kick, cut list sheets, worktop), kept in the design; Apply settings builds cabinets again with them.
 - **Panel**: an end panel or a filler on one end of a cabinet, following its sizes.
 - **Worktop**: over the selected cabinets, straight or round corners (butt or mitre), with dog holes, a sink or router plate cut-out, and a benchtop tool set flush on a shelf in the cabinet below.
 - **Drawing**: a shop drawing sheet per cabinet, A3, with front, right and iso views, its width, height and depth, and its boards.

@@ -55,11 +55,11 @@ component can hold its cabinets.
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers: with drawers the dialog hides Dividers. |
 | **Drawer front height** | 0 is Auto: 150 mm beside doors, all alike for drawers only. Otherwise at least 100 mm (4 in; more with boards thicker than 16 mm beside doors, as the box needs room), and a lower value is refused with a message that names the minimum. With doors: the height of each drawer front. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below). Typical: 150 mm beside doors, 140 mm for the top of a stack. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with Edit cabinet, not by setting the parameter to 0. |
-| **Size by**, **Drawer inside width** and **depth** | With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a wooden runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box and the back. The cabinet is then made and remembered with that outside size, which the summary gives: the drawer size is only the starting point, and Edit and Parameters work on the outside size. Not with Match selected. |
+| **Size by**, **Drawer inside width** and **depth** | With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box and the back. The cabinet is then made and remembered with that outside size, which the summary gives: the drawer size is only the starting point, and Edit and Parameters work on the outside size. Not with Match selected. |
 | **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
-| **Plinth** | Yes (the default): the plinth set in Woodwork settings, its height (100 mm unless set), type and set-back. No: none, for a wall cabinet or a cabinet on top. With Match selected the plinth is the selected cabinet's, as before. |
-| **Plinth type** (Woodwork settings) | **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
-| **Plinth set-back** (Woodwork settings) | With a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
+| **Plinth / toe kick** | Yes (the default): the plinth set in Woodwork settings, its height (100 mm unless set), type and set-back. No: none, for a wall cabinet or a cabinet on top. With Match selected the plinth is the selected cabinet's, as before. |
+| **Plinth / toe kick type** (Woodwork settings) | **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
+| **Plinth / toe kick set-back** (Woodwork settings) | With a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. Off, the shelves are fixed and joined by Joinery inside (a cabinet made before 0.2.0 keeps them unjoined, as it has no method). |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
@@ -97,9 +97,9 @@ it. A cabinet placed against another is held to that one instead.
 
 ### Hinges and slides
 
-![Wooden runners: each drawer's bottom runs in a groove in the sides.](images/wood-runners.png)
+![Dado runners: each drawer's bottom runs in a groove in the sides.](images/wood-runners.png)
 
-*Wooden runners: each drawer's bottom runs in a groove in the sides.*
+*Dado runners: each drawer's bottom runs in a groove in the sides.*
 
 A box cabinet drills the holes its hinges and drawer slides need, every size and place an
 expression over design parameters that all cabinets share, made the first time a cabinet
@@ -134,7 +134,7 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   the box or carcass sides. The sizes come from the makers' sheets and are not all confirmed:
   check yours. Partial pulls out three quarters of the length, full all of it; the cut list
   names them `Drawer slide, undermount full extension, 500 mm, pair`.
-- **Wooden runners** (Slide type Wood): no slides, holes or models. The box stands 1 mm
+- **Dado runners** (Slide type Dado runners, the drawer's bottom running in a groove, a dado, in each side): no slides, holes or models. The box stands 1 mm
   clear of each side on a bottom wider than it, whose edges run in a groove in each carcass
   side (`Name Side L runner 1` and on, front to back), as high as the bottom plus 1 mm of play
   above and below, 6 mm deep, the bottom 1 mm short of its end. The parameters
@@ -362,7 +362,7 @@ wall, so a cleat or a hanging rail needs a back in a groove or none; a steel rai
 
 Cabinet with **Shape** Corner, L-shaped or Corner, diagonal builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
-**Plinth** (Yes or No) and the plinth of Woodwork settings work as on the box cabinet: a board set back from the fronts, the two end panels
+**Plinth / toe kick** (Yes or No) and the plinth of Woodwork settings work as on the box cabinet: a board set back from the fronts, the two end panels
 notched at their front bottom corners, or legs under the corners of the footprint (six under the
 L, the sixth in its inner corner; five under the diagonal) with the ends and backs standing on them.
 **Casters** stand it on locking casters at the legs' places, but 50 mm in from the inside of
@@ -543,7 +543,7 @@ the Worktop dialog: they differ from run to run); and the joinery (**Joinery**, 
 chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel diameter**,
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
 face**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
-**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, wooden runners or undermount partial or full,
+**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, dado runners or undermount partial or full,
 **Fastener models**; see [Hinges and slides](#hinges-and-slides)). The dialog starts at what is stored, or at the
 defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowels, models
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
