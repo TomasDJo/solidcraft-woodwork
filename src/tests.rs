@@ -298,13 +298,14 @@ fn the_edit_hook_reads_body_names_and_the_picked_cabinets_and_never_fails() {
         )
     };
     let reply = dialog("edit", &json!({}), &mut run).unwrap();
-    // the names, then our data with the picked cabinet's values (none here: only the other
-    // kind hidden)
+    // the design's selection (the field is empty), our files (none here), so only the other
+    // kind hidden
     assert_eq!(
         asked,
         [
-            json!(["document.inspect", {"bodies": "names", "timeline": false}]),
-            json!(["storage.get", {"plugin": "woodwork"}])
+            json!(["document.inspect", {"bodies": false, "timeline": false}]),
+            json!(["storage.get", {"plugin": "woodwork"}]),
+            json!(["document.inspect", {"bodies": "names", "timeline": false}])
         ]
     );
     assert_eq!(reply["doors"], json!({"visible": false}));
@@ -355,4 +356,47 @@ fn see_through_boards_change_our_materials_and_new_ones() {
     assert_eq!(made["opacity"], 0.35);
     // off: solid again
     assert_eq!(material::opacity(&json!({})), 1.0);
+}
+
+#[test]
+fn a_cabinet_keeps_its_edit_values_in_a_small_file_not_in_our_document() {
+    // Every hook parses our main document with 10M fuel (the Cabinet dialog ran out at 30
+    // cabinets when each kept its values there): a cabinet run writes none of it, and its Edit
+    // values go to a file of its own, small.
+    let mut called = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        called.push((command.to_string(), args));
+        Ok(json!({}))
+    };
+    execute("cabinet", &json!({"name": "K 2", "drawers": 2}), &mut run).unwrap();
+    assert!(!called.iter().any(|(c, _)| c == "storage.patch"));
+    let blobs: Vec<&Value> = (called.iter())
+        .filter(|(c, _)| c == "_put_blob")
+        .map(|(_, a)| a)
+        .collect();
+    assert_eq!(blobs.len(), 1);
+    assert_eq!(blobs[0]["name"], "edit/K_2.json");
+    assert!(
+        blobs[0]["data"].to_string().len() < 1500,
+        "{}",
+        blobs[0]["data"]
+    );
+    // the Edit hook with 30 cabinets picked in its field: our files' names and a file each,
+    // never the whole design (whose names and parameters take most of the hook's 10M fuel)
+    let mut asked = Vec::new();
+    let picks: Vec<Value> = (0..30)
+        .map(|i| json!({"type": "body", "name": format!("K{i} Side L")}))
+        .collect();
+    let files: Vec<Value> = (0..30)
+        .map(|i| json!({"name": format!("edit/K{i}.json")}))
+        .collect();
+    let mut run = |command: &str, _: Value| {
+        asked.push(command.to_string());
+        Ok(json!({"blobs": files, "entry": "cabinet", "shown": {"doors": 1}}))
+    };
+    let reply = dialog("edit", &json!({"selection": picks}), &mut run).unwrap();
+    assert_eq!(asked.iter().filter(|c| *c == "_get_blob").count(), 30);
+    assert_eq!(asked.iter().filter(|c| *c == "storage.get").count(), 1);
+    assert!(!asked.iter().any(|c| c == "document.inspect"));
+    assert_eq!(reply["doors"], json!({"default": 1}));
 }

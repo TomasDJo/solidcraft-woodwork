@@ -147,32 +147,18 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
     shown
 }
 
-/// The Edit values `make` kept for a cabinet (`ours`: its `shown`, `units`) with the sizes
-/// that are design parameters as they are now: the drawer height, reveal and plinth set-back
-/// (`<Prefix>_...`, in mm; the reveal stays mm), so a changed parameter is shown as it is.
-pub fn sized(
-    shown: &Map<String, Value>,
-    ours: &Value,
-    name: &str,
-    design: &Value,
-) -> Map<String, Value> {
+/// The name of the file in our data that keeps what Edit shows for the cabinet `name`.
+pub fn blob(name: &str) -> String {
+    format!("edit/{}.json", kit::prefix(name))
+}
+
+/// The Edit values `make` kept for a cabinet, without the sizes that are design parameters (drawer
+/// height, reveal, plinth set-back): they may have changed in Parameters since, and the hook
+/// does not read the design's parameters (10M fuel), so they stay empty, which is unchanged.
+pub fn without_sizes(shown: &Map<String, Value>) -> Map<String, Value> {
     let mut shown = shown.clone();
-    let scale = if ours["units"] == "in" { 25.4 } else { 1.0 };
-    let prefix = kit::prefix(name);
-    let params = design["params"].as_array().into_iter().flatten();
-    for p in params {
-        let Some(key) = p["name"].as_str().and_then(|n| n.strip_prefix(&prefix)) else {
-            continue;
-        };
-        let (field, scale) = match key {
-            "_drawer_height" => ("drawers_height", scale),
-            "_reveal" => ("reveal", 1.0),
-            "_plinth_setback" => ("plinth_setback", scale),
-            _ => continue,
-        };
-        if let Some(mm) = p["value"].as_f64() {
-            shown.insert(field.into(), json!((mm / scale * 1e6).round() / 1e6));
-        }
+    for key in ["drawers_height", "reveal", "plinth_setback"] {
+        shown.remove(key);
     }
     shown
 }

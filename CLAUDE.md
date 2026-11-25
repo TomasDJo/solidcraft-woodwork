@@ -184,9 +184,15 @@ table says which).
   an edit entry, so its preview shows the change.
   `edit`'s hook also gives the fields the picked cabinets' current values (#128). A read entry may
   not read `component.metadata` (an edit command), so `make` keeps each cabinet's `edit::shown`
-  (with `entry`, `units`) in our data, `cabinets.<name>`, small since every hook reads our data
-  with 10M fuel; the hook takes it and `edit::sized` (drawer height, reveal, set-back from
-  Parameters), and `edit::fields` gives the patch. A cabinet made before has none: only the
+  (with `entry`, `units`) in a file of ours in the design, `edit/<Prefix>.json` (`edit::blob`,
+  the `_put_blob` pseudo-command, storage `put-blob`), not in our main document, which every
+  hook parses with 10M fuel (the Cabinet hook ran out at 30 cabinets with copies there). The Edit
+  hook stays light: the picks from the dialog's field (the design's selection, read without body
+  names, only when it is empty), the cabinets from our files' names (`storage.get`, owners by
+  `kit::prefix`), only the picked ones' files (`_get_blob`), the sizes that are parameters left
+  out (`edit::without_sizes`: empty, unchanged), and `edit::fields` gives the patch; reading a
+  30-cabinet design's names and parameters took most of the 10M. The release profile is
+  `opt-level = 3` (fewer instructions, so less fuel, than `s`). A cabinet made before has none: only the
   other kind's fields are hidden, as before. A
   field shows only when every picked cabinet takes it (`edit::takes`; a box and a corner show
   what both take), gets their value as its

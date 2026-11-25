@@ -44,17 +44,16 @@ fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value,
     let (summary, made) = component(built, params, "Birch plywood", run)?;
     let name = summary["name"].as_str().unwrap_or_default();
     let remembered = edit::remember(entry, params, name);
-    // What Edit's dialog shows for it, in our data in the design, which its hook can read (a
-    // read entry may not read component metadata: it counts as an edit command). Kept small:
-    // every hook reads our data, with 10M fuel.
+    // What Edit's dialog shows for it, in a file of ours in the design (`edit::blob`), which its
+    // hook can read (a read entry may not read component metadata: it counts as an edit
+    // command). A file, not our main document: every hook parses that, with 10M fuel.
     let shown = edit::shown(entry, params);
-    let copy =
-        json!({"cabinets": {name: {"entry": entry, "units": params["units"], "shown": shown}}});
+    let copy = json!({"entry": entry, "units": params["units"], "shown": shown});
     run(
         "component.metadata.set",
         json!({"component": name, "values": remembered}),
     )?;
-    run("storage.patch", json!({"patch": copy}))?;
+    run("_put_blob", json!({"name": edit::blob(name), "data": copy}))?;
     Ok((summary, made))
 }
 
@@ -1344,42 +1343,67 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
 /// fields the selected cabinet does not take, hidden.
 pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     if entry == "edit" {
-        // A failing hook fails `plugin.run`: if the design cannot be read, hide nothing.
-        let Ok(design) = run(
-            "document.inspect",
-            json!({"bodies": "names", "timeline": false}),
-        ) else {
+        // Kept light, as the hook has 10M fuel and reading a 30-cabinet design's body names and
+        // parameters takes most of it: the picked boards from the dialog's field (the design's
+        // selection only when it is empty, as for a script), the cabinets from the names of our
+        // files (`storage.get`, small), and each picked cabinet's file (#128). A failing hook
+        // fails `plugin.run`, so a read that fails hides nothing.
+        let field = select::picked(values, &Value::Null);
+        let read = |run: Run| {
+            run(
+                "document.inspect",
+                json!({"bodies": "names", "timeline": false}),
+            )
+        };
+        // the design's selection without its bodies' names, which only the fallback needs
+        let picked = match field.is_empty() {
+            true => run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )
+            .map(|d| select::picked(values, &d))
+            .unwrap_or_default(),
+            false => field,
+        };
+        let stored = run("storage.get", json!({"plugin": "woodwork"})).unwrap_or_default();
+        let files: Vec<&str> = (stored["blobs"].as_array().into_iter().flatten())
+            .filter_map(|b| {
+                b["name"]
+                    .as_str()?
+                    .strip_prefix("edit/")?
+                    .strip_suffix(".json")
+            })
+            .collect();
+        let mut owners: Vec<&str> = Vec::new();
+        for body in &picked {
+            let body = kit::prefix(body);
+            let owner = (files.iter())
+                .filter(|f| {
+                    body.strip_prefix(**f)
+                        .is_some_and(|rest| rest.starts_with('_'))
+                })
+                .max_by_key(|f| f.len());
+            if let Some(&owner) = owner.filter(|o| !owners.contains(o)) {
+                owners.push(owner);
+            }
+        }
+        let mut cabinets = Vec::new();
+        for owner in owners {
+            let ours = run("_get_blob", json!({"name": format!("edit/{owner}.json")}));
+            let ours = ours.unwrap_or_default();
+            if let (Some(entry), Some(shown)) = (ours["entry"].as_str(), ours["shown"].as_object())
+            {
+                cabinets.push((entry.to_string(), edit::without_sizes(shown)));
+            }
+        }
+        if !cabinets.is_empty() {
+            return Ok(edit::fields(&cabinets));
+        }
+        // A cabinet made before has no file: only the other kind's fields are hidden, as before.
+        let Ok(design) = read(run) else {
             return Ok(json!({}));
         };
-        // Each picked cabinet's values (#128): a field shows when
-        // any of them takes it, with their value when they all have the same one. Without them
-        // (nothing picked, or no metadata) only the other kind's fields are hidden, as before.
-        let picked = select::picked(values, &design);
-        let mut names: Vec<&str> = Vec::new();
-        for body in &picked {
-            if let Some(owner) = select::owner(&design, body).filter(|o| !names.contains(o)) {
-                names.push(owner);
-            }
-        }
-        // A read entry may not read component metadata (an edit command), so the copy `make`
-        // keeps in our data: one `storage.get`, only with a cabinet picked.
-        let mut cabinets = Vec::new();
-        if !names.is_empty() {
-            let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
-            for name in names {
-                let ours = &stored["document"]["cabinets"][name];
-                let (Some(entry), Some(shown)) =
-                    (ours["entry"].as_str(), ours["shown"].as_object())
-                else {
-                    continue;
-                };
-                cabinets.push((entry.to_string(), edit::sized(shown, ours, name, &design)));
-            }
-        }
-        return Ok(match cabinets.is_empty() {
-            true => edit::hidden(values, &design),
-            false => edit::fields(&cabinets),
-        });
+        return Ok(edit::hidden(values, &design));
     }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
     let mut reply = settings::fields(entry, values, &stored);
@@ -1416,6 +1440,22 @@ mod guest {
     }
 
     fn run(command: &str, args: serde_json::Value) -> Result<serde_json::Value, String> {
+        // Our files in the design (`storage@0.1`): JSON, a missing file read as null.
+        if command == "_put_blob" {
+            let (name, data) = (
+                args["name"].as_str().unwrap_or_default(),
+                args["data"].to_string(),
+            );
+            craft::plugin::storage::put_blob(name, data.as_bytes(), false, false)
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            return Ok(serde_json::Value::Null);
+        }
+        if command == "_get_blob" {
+            let name = args["name"].as_str().unwrap_or_default();
+            let bytes = craft::plugin::storage::get_blob(Some("woodwork"), name, 0, 16 * 1024)
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            return Ok(serde_json::from_slice(&bytes).unwrap_or_default());
+        }
         // A job's step (`apply`): the operations panel's bar and name.
         if command == "_progress" {
             let fraction = args["fraction"].as_f64().unwrap_or(0.0) as f32;

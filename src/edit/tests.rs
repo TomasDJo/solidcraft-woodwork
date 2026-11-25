@@ -448,17 +448,12 @@ fn edit_shown_doors(entry: &str, params: &Value) -> Value {
 }
 
 #[test]
-fn the_kept_values_take_the_sizes_from_the_design() {
+fn the_kept_values_leave_out_the_sizes_in_parameters() {
     let kept = shown(
         "cabinet",
-        &json!({"drawers": 2, "drawer_height": 140, "reveal": 2, "units": "in"}),
+        &json!({"drawers": 2, "drawer_height": 140, "reveal": 2}),
     );
-    let ours = json!({"entry": "cabinet", "units": "in", "shown": kept});
-    let design = json!({"params": [{"name": "A_drawer_height", "value": 152.4},
-        {"name": "A_reveal", "value": 3.0}, {"name": "AB_reveal", "value": 5.0}]});
-    let now = sized(ours["shown"].as_object().unwrap(), &ours, "A", &design);
-    assert_eq!(
-        (&now["drawers_height"], &now["reveal"], &now["drawers"]),
-        (&json!(6.0), &json!(3.0), &json!(2))
-    );
+    let now = without_sizes(&kept);
+    assert_eq!(now["drawers"], 2);
+    assert!(now.get("drawers_height").is_none() && now.get("reveal").is_none());
 }
