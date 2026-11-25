@@ -153,13 +153,13 @@
         }
       },
         {
-          "name": "rebuild", "effect": "edit", "job": true,
+          "name": "rebuild", "effect": "edit", "job": true, "dialog_hook": true,
           "slots": [{"kind": "menu", "name": "Apply settings"}, {"kind": "ribbon", "name": "Apply settings"}],
           "input_schema": {"type": "object", "x-solidcraft-icon": "icons/rebuild.svg",
           "required": ["with", "selection"],
           "properties": {
             "with": { "type": "string", "title": "Build again", "description": "Each cabinet built again where it stands, as a long job with progress and Cancel (SolidCraft 0.48).", "default": "settings", "oneOf": [{"const": "settings", "title": "With the settings", "description": "The Woodwork settings stored now, where a cabinet's differ."}, {"const": "made", "title": "As made", "description": "Each with its own values, sizes from Parameters: after a Woodwork update."}] },
-            "selection": { "type": "array", "title": "Cabinets", "description": "A board of each cabinet to build again. Empty: all cabinets." }
+            "selection": { "type": "array", "title": "Cabinets", "description": "Pick any part of each cabinet; several parts of one cabinet count once. Empty: all cabinets." }
           }}
         },
       {
