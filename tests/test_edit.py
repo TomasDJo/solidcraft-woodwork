@@ -166,3 +166,18 @@ def test_edit_left_as_shown_changes_nothing(approval):
                 select("Cabinet Top"), plugin(approval, "edit", {}), select("Cabinet Top"), plugin(approval, "edit", {"doors": 2}), MEASURE])
     assert more[3]["result"]["edited"] is False, more[3]
     assert boxes(more[6])["Cabinet Side R"][3] == 225, boxes(more[6])["Cabinet Side R"]
+
+
+def test_mode_auto_edits_what_a_front_is_picked_of(approval):
+    # Cabinet with Mode Auto: a door picked changes that cabinet (the hook prefills Edit's
+    # fields, the run edits); a side picked makes a new cabinet next to it; nothing picked, a
+    # new one.
+    auto = lambda **p: plugin(approval, "cabinet", {"mode": "auto", **p})
+    comps = {"command": "component.list", "params": {"compact": True}}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "doors": 1}),
+                   select("A Door"), {"command": "plugin.run", "params": {**auto()["params"], "params": {"mode": "auto", "selection": [], "shelves": 3}}},
+                   select("A Side R"), auto(name="B", place="auto"), comps])
+    assert results[2]["result"]["edited"] is True and results[2]["result"]["name"] == "A", results[2]
+    assert results[4]["result"]["name"] == "B" and "right of A" in results[4]["result"].get("placed", ""), results[4]
+    tops = [c["name"] for c in results[5]["components"] if c["name"] in ("A", "B", "Cabinet")]
+    assert sorted(tops) == ["A", "B"], tops

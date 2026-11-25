@@ -148,6 +148,46 @@ pub fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
         .max_by_key(|cabinet| cabinet.len())
 }
 
+/// What Cabinet's Mode Auto does with the picked boards: a door, front, shelf, divider or
+/// drawer part of a cabinet edits it; a side, top, bottom or back (what Match selected and Place
+/// use), or nothing, makes a new cabinet. One function for the dialog hook and the run, so the
+/// two never disagree. `names` is `inspect.measure`'s or `document.inspect`'s reply with body
+/// names.
+#[derive(Debug, PartialEq)]
+pub enum Auto<'a> {
+    New,
+    Beside(&'a str),
+    Edit(&'a str, &'static str),
+}
+
+pub fn auto<'a>(names: &'a Value, picked: &[String]) -> Auto<'a> {
+    let Some((body, cabinet)) = picked.first().and_then(|b| Some((b, owner(names, b)?))) else {
+        return Auto::New;
+    };
+    let part = &body[cabinet.len() + 1..];
+    let what = match part.split(' ').next().unwrap_or_default() {
+        "Side" | "Top" | "Bottom" | "Back" => return Auto::Beside(cabinet),
+        "Door" => "a door",
+        "Drawer" if part.ends_with("Front") => "a drawer front",
+        "Drawer" => "a drawer",
+        "Shelf" => "a shelf",
+        "Divider" => "a divider",
+        _ => "a part",
+    };
+    Auto::Edit(cabinet, what)
+}
+
+impl Auto<'_> {
+    /// What Mode's hint says Auto does.
+    pub fn hint(&self) -> String {
+        match self {
+            Auto::New => "Auto: a new cabinet".into(),
+            Auto::Beside(c) => format!("Auto: a new cabinet next to {c}"),
+            Auto::Edit(c, what) => format!("Auto: editing {c} ({what} is picked)"),
+        }
+    }
+}
+
 /// The selected bodies, by name: what the dialog's `selection` field holds (SolidCraft 0.44 picks
 /// it in the viewport), else the design's selection, which is what a script has. Both are
 /// selection references; for a face or an edge, the body it is on. A plain name is taken too.

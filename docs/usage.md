@@ -54,7 +54,7 @@ component can hold its cabinets.
 
 | Field | What it does |
 |---|---|
-| **Mode** | New cabinet (the default) makes one; Edit picked changes the picked cabinet, see [Edit cabinet](#edit-cabinet). With a cabinet picked, Mode says so: a picked side is also what Match selected and Place use, so the dialog does not switch by itself. |
+| **Mode** | **Auto** (the default) goes by what is picked: a door, drawer front, shelf, divider or drawer part of a cabinet changes that cabinet, as Edit picked (see [Edit cabinet](#edit-cabinet)); a side, top, bottom or back makes a new cabinet next to it (with Match selected and Place as usual); nothing picked, a new cabinet. Mode's hint says which ("Auto: editing Cabinet 2 (a door is picked)"); pick another part to switch. **New cabinet** and **Edit picked** do that whatever is picked. |
 | **Kind** | Standard or a sink base: see [Sink base](#sink-base). |
 | **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
@@ -481,9 +481,8 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 ## Edit cabinet
 
-Changes one cabinet after it is made: the Cabinet dialog with **Mode** on **Edit picked** (New
-cabinet is the default; picking a side alone does not switch it, as a picked side is what Match
-selected and Place use). Select any part of the cabinet: the fields show that cabinet as it is, each field at its current value (the sizes as they are in Parameters), and
+Changes one cabinet after it is made: the Cabinet dialog with **Mode** on **Edit picked**, or on Auto with a door, front, shelf or
+drawer of the cabinet picked. Select any part of the cabinet: the fields show that cabinet as it is, each field at its current value (the sizes as they are in Parameters), and
 only the fields that apply show (no doors: no hinge side; no drawers: no drawer height or
 Drawers at; no plinth: no plinth type). Change what should change; with nothing changed the
 cabinet is not built again. The fields are the cabinet's own: width, height, depth (and a
