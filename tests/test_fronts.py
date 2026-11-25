@@ -346,6 +346,25 @@ def test_a_cabinet_sized_by_its_drawers_inside(approval):
         assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (672, 672), inside
 
 
+def test_a_cabinet_sized_by_its_drawers_inside_keeps_it(approval):
+    # Sized by its drawers' inside, then side-mount slides changed to undermount in Woodwork
+    # settings and Rebuild cabinets with them: the boxes keep their inside width, and the
+    # cabinet's outside is worked out again around them (undermount needs 42 mm, not 2 x 24.7).
+    inside = lambda measure: round(boxes(measure)["Cabinet Drawer 1 Right"][0] - boxes(measure)["Cabinet Drawer 1 Left"][3], 3)
+    results = cli([plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 500, "drawer_depth": 400}),
+                   MEASURE, plugin(approval, "settings", {"slide_type": "under_full"}),
+                   plugin(approval, "rebuild", {"with": "settings", "scope": "all"}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {}),
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawers": 2, "sizing": "drawer", "drawer_width": 550}), MEASURE,
+                   plugin(approval, "settings", {"slide_type": "full"})])
+    before, after = results[0]["result"]["size"]["width"], boxes(results[4])["Cabinet Side R"][3] - boxes(results[4])["Cabinet Side L"][0]
+    assert inside(results[1]) == inside(results[4]) == 500, (inside(results[1]), inside(results[4]))
+    assert (before, round(after, 3)) == (500 + 2 * (12 + 12.7 + 18), 500 + 42 + 36), (before, after)
+    # Edit shows it by its inside: left as shown nothing changes; a new inside width is built
+    assert results[6]["result"]["edited"] is False, results[6]
+    assert inside(results[9]) == 550, inside(results[9])
+
+
 def test_drawer_box_finger_joints(approval):
     # Drawer box joints Finger (#131): the box's front and back as wide as the box, the four
     # corners interlocking (fingers 12 mm wide on 12 mm boards), the cut list noting them.
