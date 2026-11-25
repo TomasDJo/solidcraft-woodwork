@@ -1344,6 +1344,16 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
             if let Some(all) = reply.as_object_mut() {
                 all.extend(settings::matched_sizes(values, &design));
             }
+            // A cabinet picked: say that Edit picked changes it (0.5.0 RC: Cabinet with a
+            // cabinet picked made a new one where a change was meant). The hook cannot start
+            // Mode there: a reply that sets Mode's default is refused whole (0.49).
+            let picked = select::picked(values, &design);
+            let owner = picked.first().and_then(|b| select::owner(&design, b));
+            if let Some(name) = owner.filter(|_| values["mode"] != "edit") {
+                let hint =
+                    format!("{name} is picked: Edit picked changes it, New cabinet makes another");
+                reply["mode"] = json!({ "hint": hint });
+            }
         }
     }
     Ok(reply)

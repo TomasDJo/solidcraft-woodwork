@@ -522,3 +522,22 @@ fn cabinet_with_mode_edit_is_edit() {
     let err = execute("cabinet", &json!({"mode": "edit"}), &mut run).unwrap_err();
     assert!(err.contains("not part of a cabinet"), "{err}");
 }
+
+#[test]
+fn a_picked_cabinet_points_the_cabinet_dialog_at_edit_picked() {
+    let dialog_with = |selection: Value| {
+        let mut run = move |command: &str, _: Value| match command {
+            "document.inspect" => Ok(json!({"bodies": ["C Top", "C Side L"], "params": [],
+                "selection": selection})),
+            _ => Ok(json!({})),
+        };
+        dialog("cabinet", &json!({"mode": "new"}), &mut run).unwrap()
+    };
+    let reply = dialog_with(json!([{"type": "body", "name": "C Top"}]));
+    assert_eq!(
+        reply["mode"],
+        json!({"hint": "C is picked: Edit picked changes it, New cabinet makes another"})
+    );
+    // nothing picked: a new cabinet, as before
+    assert!(dialog_with(json!([])).get("mode").is_none());
+}
