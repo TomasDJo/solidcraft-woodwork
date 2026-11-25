@@ -45,7 +45,7 @@ component can hold its cabinets.
 
 | Field | What it does |
 |---|---|
-| **Mode** | New cabinet (the default) makes one; Edit picked changes the picked cabinet, see [Edit cabinet](#edit-cabinet). |
+| **Mode** | New cabinet (the default) makes one; Edit picked changes the picked cabinet, see [Edit cabinet](#edit-cabinet). With a cabinet picked, Mode says so: a picked side is also what Match selected and Place use, so the dialog does not switch by itself. |
 | **Kind** | Standard or a sink base: see [Sink base](#sink-base). |
 | **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
