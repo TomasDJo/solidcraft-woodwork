@@ -94,7 +94,9 @@ def plugin(approval, entry, params=None):
     if entry == "edit":
         wide = {k: params.pop(k) for k in DESIGN_WIDE if k in params}
         if wide:
-            reset = {k: DESIGN_WIDE[k] for k in wide}
+            if "plinth_setback" in wide:  # shown with a board or notch only
+                wide.setdefault("plinth_type", "board")
+            reset = {k: DESIGN_WIDE.get(k, "board") for k in wide}
             again = {"with": "settings", "scope": "all"}
             steps = [entry_step(approval, "settings", wide | {"units": "mm"})]
             if set(params) - {"selection"}:
