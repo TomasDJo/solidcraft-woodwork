@@ -157,6 +157,41 @@ pub fn copy<'a>(
 }
 
 /// Whether a cabinet made by `entry` (`cabinet` or `corner`) takes the Edit field `key`.
+/// A Woodwork setting that is not a field of the Cabinet dialog (joinery, hardware, the cut
+/// list's): refused, not left out without a word, as Edit changes only what is per cabinet.
+pub fn design_wide(entry: &str, params: &Value) -> Result<(), String> {
+    let stored = |k: &str| {
+        crate::settings::SECTIONS
+            .iter()
+            .any(|(_, keys)| keys.contains(&k))
+    };
+    let given = |v: &Value| !v.is_null() && v != "keep";
+    let wide: Vec<&String> = (params.as_object().into_iter().flatten())
+        .filter(|(k, v)| given(v) && !takes(entry, k) && stored(k))
+        .map(|(k, _)| k)
+        .collect();
+    if wide.is_empty() {
+        return Ok(());
+    }
+    // Woodwork settings' fields the Cabinet dialog has too (material, plinth, ...) come with
+    // every Edit from the dialog, so only those it lacks are refused.
+    let manifest: Value =
+        serde_json::from_str(include_str!("../../plugin.json")).unwrap_or_default();
+    let entries = manifest["runtime"]["entries"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let cabinet = entries.iter().find(|e| e["name"] == "cabinet");
+    let dialog =
+        |k: &str| cabinet.is_some_and(|c| c["input_schema"]["properties"].get(k).is_some());
+    match wide.into_iter().find(|k| !dialog(k)) {
+        Some(k) => Err(format!(
+            "`{k}` is a Woodwork setting, for the whole design: set it in Woodwork settings, then Apply settings to this cabinet"
+        )),
+        None => Ok(()),
+    }
+}
+
 pub fn takes(entry: &str, key: &str) -> bool {
     CABINETS.contains(&key)
         || match entry {

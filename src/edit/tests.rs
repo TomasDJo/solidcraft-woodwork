@@ -437,3 +437,18 @@ fn a_value_left_out_is_the_one_the_dialog_shows() {
         ["door_hinge"]
     );
 }
+#[test]
+fn a_design_wide_setting_is_refused_not_ignored() {
+    let why = design_wide("cabinet", &json!({"joints": "none"})).unwrap_err();
+    assert!(
+        why.contains("Woodwork setting") && why.contains("Apply settings"),
+        "{why}"
+    );
+    assert!(design_wide("corner", &json!({"finger_width": 20})).is_err());
+    // what the Cabinet dialog sends with every Edit, Keep, and the cabinet's own fields pass
+    assert!(design_wide(
+        "cabinet",
+        &json!({"joints": "keep", "material": "Oak", "plinth": "yes", "shelves": 2})
+    )
+    .is_ok());
+}

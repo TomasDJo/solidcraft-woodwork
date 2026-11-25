@@ -763,6 +763,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // the file is written now, for the next time.
             let file = run("_get_blob", json!({"name": edit::blob(&name)}));
             let unshown = file.as_ref().map_or(true, Value::is_null);
+            edit::design_wide(entry, params).map_err(|e| format!("`{name}`: {e}"))?;
             let mut changes = edit::taken(entry, params);
             if unshown {
                 changes = edit::unshown(&changes);

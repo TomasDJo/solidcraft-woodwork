@@ -21,7 +21,10 @@ def test_dowels_and_confirmat_follow_a_resize_and_edit(approval):
                    MEASURE, faces("D Bottom"), faces("C Side R"), plugin(approval, "cutlist"),
                    {"command": "parameters.change", "params": {"name": "D_depth", "expression": "900 mm"}},
                    MEASURE, plugin(approval, "cutlist"),
-                   select("D Top"), plugin(approval, "edit", {"joints": "none"}), MEASURE, plugin(approval, "cutlist"),
+                   select("D Top"),
+                   # joinery is design-wide: set in Woodwork settings, then applied to D alone
+                   setting(approval, {"joints": "none"}), plugin(approval, "rebuild", {"with": "settings", "selection": ["D Top"]}),
+                   setting(approval, {"joints": "confirmat"}), MEASURE, plugin(approval, "cutlist"),
                    {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
                   "--save", str(ROOT / "dist" / "joints.sc"))
     measure = results[3]

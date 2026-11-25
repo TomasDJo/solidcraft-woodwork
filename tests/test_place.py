@@ -52,7 +52,10 @@ def test_auto_goes_by_the_selected_board(approval):
                    plugin(approval, "corner", {"place": "auto", "name": "T", "selection": [{"type": "body", "name": "A Top"}]}),
                    pick(),
                    plugin(approval, "cabinet", {**auto, "name": "O"}),
-                   plugin(approval, "edit", {"joints": "confirmat", "selection": ["L Shelf 1"]}),
+                   # joinery is design-wide: set in Woodwork settings, then applied to L alone
+                   setting(approval, {"joints": "confirmat"}),
+                   plugin(approval, "rebuild", {"with": "settings", "selection": ["L Shelf 1"]}),
+                   setting(approval, {"joints": "none"}),
                    plugin(approval, "material", {"material": "Oak", "scope": "parts", "selection": ["R Top", "R Bottom"]}),
                    plugin(approval, "edit", {"shelves": 3, "selection": ["R Side L"]}),
                    MEASURE])
