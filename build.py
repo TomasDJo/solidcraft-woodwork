@@ -71,6 +71,10 @@ MOVED = {
     "worktop": {"material": ("worktop_material", "Oak"), "thickness": ("worktop_thickness", 38)},
 }
 
+# Fields Edit had that are design-wide now (Woodwork settings), with the setting's default.
+DESIGN_WIDE = {"joints": "dowels", "joints_inner": "dowels", "hardware_models": "on", "hinge_angle": "110",
+               "slide_type": "full", "reveal": 2, "plinth_setback": 50}
+
 
 def plugin(approval, entry, params=None):
     """A plugin.run step. The fields left out get their defaults, as in the dialog: from 0.46 an
@@ -85,6 +89,18 @@ def plugin(approval, entry, params=None):
         params = {"shape": "L-shaped", **params}
         if "doors" in params:
             params["corner_doors"] = params.pop("doors")
+    # Edit has only what is per cabinet: a design-wide field is Woodwork settings', then Rebuild
+    # cabinets with the settings for the picked one, and the setting back to its default.
+    if entry == "edit":
+        wide = {k: params.pop(k) for k in DESIGN_WIDE if k in params}
+        if wide:
+            reset = {k: DESIGN_WIDE[k] for k in wide}
+            again = {"with": "settings", "scope": "all"}
+            steps = [entry_step(approval, "settings", wide | {"units": "mm"})]
+            if set(params) - {"selection"}:
+                steps.append(entry_step(approval, "edit", params))
+            steps.append(entry_step(approval, "rebuild", again))
+            return (*steps, entry_step(approval, "settings", reset | {"units": "mm"}))
     moved = MOVED.get("cabinets" if entry in ("cabinet", "corner") else entry, {})
     setting = {}
     for field, (key, _) in moved.items():
@@ -131,7 +147,9 @@ def entry_step(approval, entry, params=None):
     # but these, which start at Keep.
     defaults = {key: field.get("default", []) for key, field in schema["properties"].items()
                 if ("default" in field or field["type"] == "array")
-                and (entry != "settings" or key in ("units", "material", "handles", "camera", "apply", "selection"))}
+                and (entry != "settings" or key in ("units", "material", "handles", "camera", "apply", "selection"))
+                # Edit's hook starts every field at the picked cabinet's value
+                and (entry != "edit" or key == "selection")}
     # Each field's conditional default when its rule holds, as the dialog does (sizes in inches).
     given = defaults | (params or {})
     for key, field in schema["properties"].items():

@@ -38,39 +38,38 @@ const SIZES: [&str; 23] = [
     "dado_depth",
 ];
 
-/// The Edit fields only a box cabinet takes, and only a corner cabinet: `merge` refuses them
-/// for the other kind and the dialog hook hides them. Shrink them as the two kinds catch up.
-const BOX_ONLY: [&str; 11] = [
+/// The Edit fields only a box cabinet takes, and only a corner cabinet: the dialog hook hides
+/// them for the other kind and a run leaves them out. Shrink them as the two kinds catch up.
+/// Edit has only what is per cabinet; what is design-wide (joinery, hardware, thickness,
+/// reveal, the plinth's height and set-back) is Woodwork settings' and Apply settings'.
+const BOX_ONLY: [&str; 8] = [
     "kind",
-    "joints_inner",
     "dividers",
     "doors",
     "drawers",
-    "drawers_height",
+    "drawer_height",
     "drawers_at",
     "door_hinge",
     "back",
-    "slide_length",
-    "slide_type",
 ];
-const CORNER_ONLY: [&str; 2] = ["corner_doors", "shape"];
+const CORNER_ONLY: [&str; 3] = ["corner_doors", "shape", "return"];
 /// The Edit fields both kinds of cabinet take.
-const CABINETS: [&str; 14] = [
-    "joints",
+const CABINETS: [&str; 12] = [
+    "width",
+    "height",
+    "depth",
     "shelves",
+    "shelf_pins",
     "handles",
     "handle_position",
     "plinth",
     "plinth_type",
-    "plinth_setback",
-    "reveal",
     "fronts",
     "wall_mount",
-    "hardware_models",
-    "hinge_angle",
-    "shelf_pins",
     "labels",
 ];
+/// Edit's sizes, read from the cabinet's parameters (`<Prefix>_<key>`, in mm) by the hook.
+pub const SHOWN_SIZES: [&str; 5] = ["width", "height", "depth", "return", "drawer_height"];
 
 /// The dialog hook's reply for Edit: the fields the selected cabinet does not take, hidden.
 /// A corner cabinet has a `<Prefix>_return` parameter. Nothing picked, or
@@ -109,28 +108,11 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
         "back",
         "kind",
         "shape",
-        "joints",
-        "joints_inner",
-        "hinge_angle",
-        "slide_type",
-        "slide_length",
-        "hardware_models",
     ];
-    let numbers = [
-        "shelves",
-        "dividers",
-        "doors",
-        "drawers",
-        "drawer_height",
-        "reveal",
-        "plinth_setback",
-    ];
+    let numbers = ["shelves", "dividers", "doors", "drawers", "drawer_height"];
     for key in choices.iter().chain(&numbers) {
         let field = match *key {
             "doors" if corner => "corner_doors",
-            // Edit's key, so its field sorts right after Drawers (the dialog sorts optional
-            // fields by key)
-            "drawer_height" => "drawers_height",
             k => k,
         };
         if let Some(v) = params.get(*key).filter(|v| v.is_string() || v.is_number()) {
@@ -143,7 +125,6 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
     }
     let plinth = params["plinth"].as_f64().unwrap_or(0.0) > 0.0;
     shown.insert("plinth".into(), json!(if plinth { "yes" } else { "no" }));
-    shown.entry("slide_length").or_insert(json!("auto"));
     shown
 }
 
@@ -152,19 +133,26 @@ pub fn blob(name: &str) -> String {
     format!("edit/{}.json", kit::prefix(name))
 }
 
-/// Edit's `changes` without the sizes left as its hook showed them (the value the cabinet was
-/// last built with, `remembered`): they are design parameters, which may have changed in
-/// Parameters since, and the hook cannot read those (10M fuel), so the design's stays.
-pub fn sizes_as_shown(changes: &Value, entry: &str, remembered: &Value) -> Value {
-    let kept = shown(entry, &remembered["params"]);
-    let mut changes = changes.clone();
-    if let Some(all) = changes.as_object_mut() {
-        all.retain(|k, v| {
-            let size = ["drawers_height", "reveal", "plinth_setback"].contains(&k.as_str());
-            !(size && kept.get(k).is_some_and(|was| same(was, v)))
-        });
+/// What Edit's file for the cabinet `name` keeps (`blob`): its `shown` values and its boards'
+/// first words (Side, Top, Drawer...) from their names `bodies`, so the hook knows a board of
+/// "Cabinet 2" (made before, no file of its own) is not one of "Cabinet"'s.
+pub fn copy<'a>(
+    entry: &str,
+    params: &Value,
+    name: &str,
+    bodies: impl Iterator<Item = &'a str>,
+) -> Value {
+    let mut parts: Vec<&str> = Vec::new();
+    for b in bodies {
+        let rest = b.strip_prefix(name).and_then(|r| r.strip_prefix(' '));
+        if let Some(w) = rest.and_then(|r| r.split(' ').next()) {
+            if !parts.contains(&w) {
+                parts.push(w);
+            }
+        }
     }
-    changes
+    let shown = shown(entry, params);
+    json!({"entry": entry, "units": params["units"], "shown": shown, "parts": parts})
 }
 
 /// Whether a cabinet made by `entry` (`cabinet` or `corner`) takes the Edit field `key`.
@@ -176,49 +164,49 @@ pub fn takes(entry: &str, key: &str) -> bool {
         }
 }
 
-/// The Edit fields a run changes: filled in, not Keep, not the selection.
-pub fn asked(changes: &Value) -> Vec<String> {
-    (changes.as_object().into_iter().flatten())
-        .filter(|(k, v)| !v.is_null() && *v != "keep" && *k != "selection")
-        .map(|(k, _)| k.clone())
-        .collect()
-}
-
-/// The Edit dialog's patch for the picked cabinets (each its entry and `shown` values): a
-/// field one of them does not take is hidden; one they all show the same gets that as its default;
-/// one that differs stays empty (unchanged), with a hint.
-pub fn fields(cabinets: &[(String, Map<String, Value>)]) -> Value {
+/// The Edit dialog's patch for one cabinet made by `entry`, as it is: each field it takes starts
+/// at its value (`shown`, the sizes from the design's parameters as `sizes`, in the cabinet's
+/// units), the other kind's fields hidden.
+pub fn fields(entry: &str, shown: &Map<String, Value>, sizes: &Map<String, Value>) -> Value {
     let mut reply = Map::new();
     for key in CABINETS.iter().chain(&BOX_ONLY).chain(&CORNER_ONLY) {
-        // A field shows only when every picked cabinet takes it: a box and a corner together
-        // show only the fields both take (#128: fewer fields).
-        let takers: Vec<_> = cabinets.iter().filter(|(e, _)| takes(e, key)).collect();
-        if takers.len() < cabinets.len() {
-            reply.insert(key.to_string(), json!({"visible": false}));
-            continue;
-        }
-        let mut values: Vec<&Value> = Vec::new();
-        for (_, shown) in &takers {
-            let v = shown.get(*key).unwrap_or(&Value::Null);
-            if !values
-                .iter()
-                .any(|w| same(w, v) && w.is_null() == v.is_null())
-            {
-                values.push(v);
-            }
-        }
-        match values.as_slice() {
-            [v] if !v.is_null() => {
-                reply.insert(key.to_string(), json!({"default": v}));
-            }
-            [_] => {}
-            _ => {
-                let hint = format!("differs: {} values", values.len());
-                reply.insert(key.to_string(), json!({"hint": hint}));
-            }
-        }
+        let value = sizes.get(*key).or(shown.get(*key)).cloned();
+        let patch = match (takes(entry, key), value.or_else(|| assumed(key))) {
+            (false, _) => json!({"visible": false}),
+            (true, Some(v)) => json!({ "default": v }),
+            (true, None) => continue,
+        };
+        reply.insert(key.to_string(), patch);
     }
     Value::Object(reply)
+}
+
+/// What a builder takes for an Edit field a cabinet does not remember (the Edit and Cabinet
+/// dialogs' defaults): every field the hook shows needs a value, as a run requires them all.
+fn assumed(key: &str) -> Option<Value> {
+    Some(match key {
+        "kind" => json!("standard"),
+        "shape" => json!("L-shaped"),
+        "door_hinge" | "drawers_at" => json!(if key == "door_hinge" { "left" } else { "top" }),
+        "corner_doors" | "handles" | "wall_mount" => json!("none"),
+        "doors" | "drawers" | "dividers" | "drawer_height" => json!(0),
+        "shelves" => json!(1),
+        "fronts" => json!("overlay"),
+        "handle_position" => json!("auto"),
+        "back" => json!("groove"),
+        "plinth_type" => json!("board"),
+        _ => return None,
+    })
+}
+
+/// The changes an Edit run makes to a cabinet made by `entry`: the fields it takes. The dialog
+/// sends the other kind's fields too, hidden, at their schema defaults.
+pub fn taken(entry: &str, changes: &Value) -> Value {
+    let mut changes = changes.clone();
+    if let Some(all) = changes.as_object_mut() {
+        all.retain(|k, _| k == "selection" || takes(entry, k));
+    }
+    changes
 }
 
 /// Whether two values are the same, a number however it is written (`2` and `2.0`), and a
@@ -233,19 +221,25 @@ pub fn same(a: &Value, b: &Value) -> bool {
     }
 }
 
-/// Whether merged `params` build the same cabinet as `base` (`merge` with no changes): an Edit
-/// that changes nothing is not built again.
-pub fn unchanged(params: &Value, base: &Value) -> bool {
+/// The values in which merged `params` differ from `base` (`merge` with no changes): an Edit
+/// that changes none is not built again.
+pub fn changed(params: &Value, base: &Value) -> Vec<String> {
     let (Some(p), Some(b)) = (params.as_object(), base.as_object()) else {
-        return false;
+        return vec!["params".into()];
     };
-    let keys = p.keys().chain(b.keys()).filter(|k| *k != "_existing");
-    keys.into_iter().all(|k| {
-        same(
-            p.get(k).unwrap_or(&Value::Null),
-            b.get(k).unwrap_or(&Value::Null),
-        )
-    })
+    let mut keys: Vec<&String> = p
+        .keys()
+        .chain(b.keys())
+        .filter(|k| *k != "_existing")
+        .collect();
+    keys.sort();
+    keys.dedup();
+    // a value left out is what the builder takes for it (the hook shows that)
+    let differs = |k: &&String| {
+        let at = |m: &Map<String, Value>| m.get(k.as_str()).cloned().or_else(|| assumed(k));
+        !same(&at(p).unwrap_or_default(), &at(b).unwrap_or_default())
+    };
+    keys.into_iter().filter(differs).cloned().collect()
 }
 
 /// What a cabinet's component remembers, as `component.metadata.set` takes it: the entry that
@@ -308,6 +302,7 @@ pub fn merge(
         count("drawers") > 0.0 && count("doors") > 0.0
     };
     let was_mixed = mixed(&params);
+    let was_height = params.get("drawer_height").cloned().unwrap_or(json!(0));
     for (key, value) in changes.as_object().into_iter().flatten() {
         // `selection` is the dialog's field: which cabinet, not a change to it
         if value.is_null() || value == "keep" || key == "selection" {
@@ -330,25 +325,24 @@ pub fn merge(
             }
             k if BOX_ONLY.contains(&k) => {
                 only(&["cabinet"], "box cabinet")?;
-                // Edit's `drawers_height` (named to sort after Drawers) is `drawer_height`
-                let to = if k == "drawers_height" {
-                    "drawer_height"
-                } else {
-                    k
-                };
-                (to, value.clone())
+                (k, value.clone())
+            }
+            "return" => {
+                only(&["corner"], "corner cabinet")?;
+                (key.as_str(), value.clone())
             }
             "shape" | "corner_doors" => {
                 only(&["corner"], "corner cabinet")?;
                 (key.strip_prefix("corner_").unwrap_or(key), value.clone())
             }
-            _ => return Err(format!("`{key}` cannot be edited")),
+            _ => return Err(format!("`{key}` cannot be edited: what is not per cabinet is Woodwork settings', for new cabinets and Apply settings")),
         };
         params.insert(to.into(), value);
     }
     // Beside doors a drawer height of 0 was kept as 150 mm: without the doors, back to 0 (all
-    // alike) unless the edit gives one.
-    if was_mixed && !mixed(&params) && changes["drawers_height"].is_null() {
+    // alike) unless the edit gives another one than the dialog showed.
+    let kept = changes["drawer_height"].is_null() || same(&changes["drawer_height"], &was_height);
+    if was_mixed && !mixed(&params) && kept {
         params.insert("drawer_height".into(), json!(0));
     }
     // Holes drilled by the Joinery function of 0.2.0 and before (`joinery` beside the values):

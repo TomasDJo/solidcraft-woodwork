@@ -131,7 +131,7 @@ def test_the_first_door_hinges_on_the_side_that_is_asked(approval):
         return box[0], box[3], round(hole, 3)
     assert door({"doors": 1}) == (-298, -280, 248), door({"doors": 1})
     assert door({"doors": 1, "door_hinge": "right"}) == (280, 298, -248), door({"doors": 1, "door_hinge": "right"})
-    turned = door({"doors": 1}, then=[select("Cabinet Top"), plugin(approval, "edit", {"door_hinge": "right"})])
+    turned = door({"doors": 1}, then=[select("Cabinet Top"), plugin(approval, "edit", {"doors": 1, "door_hinge": "right"})])
     assert turned == (280, 298, -248), turned
     three = {"width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"}
     opened = [door(three, f"Cabinet Door {n}", f"Cabinet Door {n} hinge") for n in (1, 2, 3)]

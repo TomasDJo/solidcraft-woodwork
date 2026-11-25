@@ -47,20 +47,8 @@ fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value,
     // What Edit's dialog shows for it, in a file of ours in the design (`edit::blob`), which its
     // hook can read (a read entry may not read component metadata: it counts as an edit
     // command). A file, not our main document: every hook parses that, with 10M fuel.
-    // Its boards' first words (Side, Top, Drawer...), so the hook knows a board of "Cabinet 2" (made before, no file of its
-    // own) is not one of "Cabinet"'s.
-    let shown = edit::shown(entry, params);
-    let mut parts: Vec<&str> = Vec::new();
-    for b in summary["bodies"].as_array().into_iter().flatten() {
-        let rest = b
-            .as_str()
-            .and_then(|b| b.strip_prefix(name)?.strip_prefix(' '));
-        let word = rest.and_then(|r| r.split(' ').next());
-        if let Some(w) = word.filter(|w| !parts.contains(w)) {
-            parts.push(w);
-        }
-    }
-    let copy = json!({"entry": entry, "units": params["units"], "shown": shown, "parts": parts});
+    let parts = summary["bodies"].as_array().into_iter().flatten();
+    let copy = edit::copy(entry, params, name, parts.filter_map(Value::as_str));
     run(
         "component.metadata.set",
         json!({"component": name, "values": remembered}),
@@ -767,11 +755,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             Ok(summary)
         }
         "edit" => {
-            // The picked cabinets, each built again where it stands with the fields that were
-            // changed (#128: one or several). A field a cabinet does not take skips it, and is
-            // refused only when none takes it. Their parameters stay, so what is linked to them
-            // still follows. Several are built while the run has time, as Apply to does.
-            let start = now();
+            // The picked cabinet, built again where it stands with the dialog's fields, which
+            // start as it is: left so, nothing is built. Its parameters stay, so what is linked
+            // to it still follows.
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
@@ -786,107 +772,46 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     }
                 }
             }
-            if names.is_empty() {
-                select::piece(&picked, &measure)?; // says why
-            }
-            let mut cabinets = Vec::new();
-            for name in &names {
-                let about = run("component.metadata", json!({"component": name}))?;
-                let entry = about["metadata"][edit::KEY]["entry"].as_str();
-                let entry = entry.unwrap_or_default().to_string();
-                cabinets.push((name.clone(), about, entry));
-            }
-            // A field no picked cabinet takes is refused, by `merge` as before.
-            let asked = edit::asked(params);
-            for key in &asked {
-                if !cabinets.iter().any(|(_, _, entry)| edit::takes(entry, key)) {
-                    let (name, about, _) = &cabinets[0];
-                    let one = json!({key.as_str(): params[key.as_str()].clone()});
-                    edit::merge(&about["metadata"][edit::KEY], &one, &design)
-                        .map_err(|e| format!("`{name}`: {e}"))?;
-                }
-            }
-            let (mut edited, mut unchanged, mut skipped, mut remaining) =
-                (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-            let mut summary = Value::Null;
-            let used = std::cell::Cell::new(0);
-            for (name, about, entry) in &cabinets {
-                let ours = &about["metadata"][edit::KEY];
-                let mut changes = params.clone();
-                for key in asked.iter().filter(|k| !edit::takes(entry, k)) {
-                    if let Some(all) = changes.as_object_mut() {
-                        all.remove(key.as_str());
-                    }
-                    let why = format!("a {entry} cabinet does not take it");
-                    skipped.push(json!({"cabinet": name, "field": key, "why": why}));
-                }
-                let changes = edit::sizes_as_shown(&changes, entry, ours);
-                let changes = settings::edit_plinth(&changes, ours, &design, stored);
-                let (entry, params) =
-                    edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
-                // The dialog shows the cabinets as they are: left as shown, nothing to build.
-                let (_, base) = edit::merge(ours, &json!({}), &design)?;
-                if edit::unchanged(&params, &base) {
-                    unchanged.push(name.clone());
-                    continue;
-                }
-                // Checked before anything is taken away.
-                let (commands, _) = build(&entry, &params)?;
-                let next = hardware::cost(&commands) + 40;
-                let elapsed = now().saturating_sub(start);
-                if !edited.is_empty() && !drawing::fits(elapsed, used.get(), next) {
-                    remaining.push(name.clone());
-                    continue;
-                }
-                let design = match edited.is_empty() {
-                    true => design.clone(),
-                    false => run(
-                        "document.inspect",
-                        json!({"bodies": false, "timeline": false}),
-                    )?,
-                };
-                let mut counted = |command: &str, args: Value| {
-                    used.set(used.get() + 1);
-                    run(command, args)
-                };
-                summary = rebuild(
-                    name,
-                    about,
-                    &entry,
-                    &params,
-                    &design,
-                    &measure,
-                    &mut counted,
+            let name = match names.as_slice() {
+                [] => select::piece(&picked, &measure)?, // says why
+                [one] => one.clone(),
+                _ => return Err("Edit changes one cabinet: pick a board of only one".into()),
+            };
+            let about = run("component.metadata", json!({"component": name}))?;
+            let ours = &about["metadata"][edit::KEY];
+            let entry = ours["entry"].as_str().unwrap_or_default();
+            // A cabinet made before Edit's file: the dialog could not show its values, so its
+            // fields were the defaults. Its file now, and nothing built.
+            let file = run("_get_blob", json!({"name": edit::blob(&name)}));
+            if file.as_ref().map_or(true, Value::is_null) {
+                let (_, now) = edit::merge(ours, &json!({}), &design)?;
+                let parts = select::parts(&measure, &name);
+                let parts = parts.iter().map(|b| b.as_str());
+                let copy = edit::copy(entry, &now, &name, parts);
+                run(
+                    "_put_blob",
+                    json!({"name": edit::blob(&name), "data": copy}),
                 )?;
-                edited.push(name.clone());
+                let message = format!(
+                    "{name}: made before Edit showed a cabinet's values; open Edit again to see them"
+                );
+                return Ok(json!({"name": name, "edited": false, "message": message}));
             }
-            // One cabinet: its summary, as before.
-            if cabinets.len() == 1 {
-                let name = &names[0];
-                return Ok(match edited.is_empty() {
-                    true => json!({"name": name, "edited": false,
-                                   "message": format!("{name}: nothing changed")}),
-                    false => {
-                        summary["edited"] = json!(true);
-                        summary
-                    }
-                });
+            let changes = edit::taken(entry, params);
+            let changes = settings::edit_plinth(&changes, ours, &design, stored);
+            let (entry, params) =
+                edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
+            // The dialog shows the cabinet as it is: left as shown, nothing to build.
+            let (_, base) = edit::merge(ours, &json!({}), &design)?;
+            let changed = edit::changed(&params, &base);
+            if changed.is_empty() {
+                let message = format!("{name}: nothing changed");
+                return Ok(json!({"name": name, "edited": false, "message": message}));
             }
-            let mut message = format!("{} cabinets built again", edited.len());
-            if !unchanged.is_empty() {
-                message += &format!("; {} unchanged", unchanged.len());
-            }
-            if !remaining.is_empty() {
-                let n = remaining.len();
-                message += &format!("; {n} left: run Edit again with them picked");
-            }
-            if !skipped.is_empty() {
-                message += &format!("; {} fields skipped (see skipped)", skipped.len());
-            }
-            Ok(
-                json!({"edited": !edited.is_empty(), "cabinets": edited, "unchanged": unchanged,
-                      "remaining": remaining, "skipped": skipped, "message": message}),
-            )
+            let mut summary = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
+            summary["edited"] = json!(true);
+            summary["changed"] = json!(changed);
+            Ok(summary)
         }
         "material" => {
             // A board material for the selected cabinet, or for just the selected parts.
@@ -1386,46 +1311,47 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
             .collect();
         // A board's cabinet: the longest of our files' names its name starts with, whose file
         // lists the board's first word (names alone would give "Cabinet 2"'s boards to "Cabinet").
-        let mut got: Vec<(&str, Value)> = Vec::new();
-        let mut owners: Vec<&str> = Vec::new();
-        for body in &picked {
-            let prefix = kit::prefix(body);
-            let mut owner: Option<&str> = None;
-            for &f in &files {
-                let longer = owner.is_none_or(|o| f.len() > o.len());
-                if !longer || !prefix.strip_prefix(f).is_some_and(|r| r.starts_with('_')) {
-                    continue;
-                }
-                if !got.iter().any(|(o, _)| *o == f) {
-                    let blob = run("_get_blob", json!({"name": format!("edit/{f}.json")}));
-                    got.push((f, blob.unwrap_or_default()));
-                }
-                let blob = &got.iter().find(|(o, _)| *o == f).unwrap().1;
-                // a file from before the boards' names were kept has no `parts`
-                let lists = blob.get("parts").is_none_or(|parts| {
-                    let word = prefix[f.len() + 1..].split('_').next();
-                    (parts.as_array().into_iter().flatten()).any(|p| p.as_str() == word)
-                });
-                if lists {
-                    owner = Some(f);
-                }
+        let Some(body) = picked.first() else {
+            return Ok(json!({}));
+        };
+        let prefix = kit::prefix(body);
+        let mut owner: Option<(&str, Value)> = None;
+        for &f in &files {
+            let longer = owner.as_ref().is_none_or(|(o, _)| f.len() > o.len());
+            if !longer || !prefix.strip_prefix(f).is_some_and(|r| r.starts_with('_')) {
+                continue;
             }
-            if let Some(owner) = owner.filter(|o| !owners.contains(o)) {
-                owners.push(owner);
+            let blob = run("_get_blob", json!({"name": format!("edit/{f}.json")}));
+            let blob = blob.unwrap_or_default();
+            // a file from before the boards' names were kept has no `parts`
+            let lists = blob.get("parts").is_none_or(|parts| {
+                let word = prefix[f.len() + 1..].split('_').next();
+                (parts.as_array().into_iter().flatten()).any(|p| p.as_str() == word)
+            });
+            if lists {
+                owner = Some((f, blob));
             }
         }
-        let mut cabinets = Vec::new();
-        for owner in owners {
-            let ours = &got.iter().find(|(o, _)| *o == owner).unwrap().1;
+        if let Some((f, ours)) = owner {
             if let (Some(entry), Some(shown)) = (ours["entry"].as_str(), ours["shown"].as_object())
             {
-                cabinets.push((entry.to_string(), shown.clone()));
+                // its sizes as they are in the design now, in the cabinet's units
+                let names: Vec<String> = (edit::SHOWN_SIZES.iter())
+                    .map(|k| format!("{f}_{k}"))
+                    .collect();
+                let found = run("_params", json!({ "names": names })).unwrap_or_default();
+                let scale = if ours["units"] == "in" { 25.4 } else { 1.0 };
+                let mut sizes = Map::new();
+                for (key, name) in edit::SHOWN_SIZES.iter().zip(&names) {
+                    if let Some(mm) = found[name].as_f64() {
+                        sizes.insert(key.to_string(), json!((mm / scale * 1e4).round() / 1e4));
+                    }
+                }
+                return Ok(edit::fields(entry, shown, &sizes));
             }
         }
-        if !cabinets.is_empty() {
-            return Ok(edit::fields(&cabinets));
-        }
-        // A cabinet made before has no file: only the other kind's fields are hidden, as before.
+        // A cabinet made before has no file: only the other kind's fields are hidden, and the
+        // run then writes its file (nothing built).
         let Ok(design) = read(run) else {
             return Ok(json!({}));
         };
@@ -1499,6 +1425,20 @@ mod guest {
                 .ok_or("no selection")?
                 .map_err(|e| e.to_string())?;
             return Ok(serde_json::json!({ "selection": selection }));
+        }
+        // Some parameters' values (mm) by name, from `document.inspect`'s reply without parsing it.
+        if command == "_params" {
+            let args2 = serde_json::json!({"bodies": false, "timeline": false});
+            let reply = craft::plugin::commands::run("document.inspect", &args2.to_string())
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            let mut found = serde_json::Map::new();
+            for name in args["names"].as_array().into_iter().flatten() {
+                let Some(name) = name.as_str() else { continue };
+                if let Some(v) = crate::kit::param_value(&reply, name) {
+                    found.insert(name.into(), v.into());
+                }
+            }
+            return Ok(serde_json::Value::Object(found));
         }
         // A job's step (`apply`): the operations panel's bar and name.
         if command == "_progress" {

@@ -57,10 +57,17 @@ def test_a_corner_cabinet_and_what_cannot_be_edited(approval):
                    plugin(approval, "edit", {"corner_doors": "hinged left", "shape": "diagonal"}),
                    MEASURE])
     assert "C Door" in boxes(results[3]) and "C Door return" not in boxes(results[3]), sorted(boxes(results[3]))
-    # a field of the other kind of cabinet, and a body that is no cabinet, are refused
-    for steps in ([plugin(approval, "corner", {"name": "C"}), select("C Top"), plugin(approval, "edit", {"dividers": 1})],
-                  [{"command": "solid.box", "params": {"length": "10 mm", "width": "10 mm", "height": "10 mm", "body_name": "Loose"}},
-                   select("Loose"), plugin(approval, "edit", {"shelves": 2})]):
+    # a field of the other kind of cabinet is left out (the dialog sends it, hidden)
+    results = cli([plugin(approval, "corner", {"name": "C"}), select("C Top"), plugin(approval, "edit", {"dividers": 1})])
+    assert results[2]["result"]["edited"] is False, results[2]
+    # a body that is no cabinet, two cabinets, and a design-wide field are refused
+    loose = {"command": "solid.box", "params": {"length": "10 mm", "width": "10 mm", "height": "10 mm", "body_name": "Loose"}}
+    both = {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in ("A Top", "B Top")]}}
+    joints = entry_step(approval, "edit", {"joints": "none"})
+    for steps in ([loose, select("Loose"), plugin(approval, "edit", {"shelves": 2})],
+                  [plugin(approval, "cabinet", {"name": "A"}), plugin(approval, "cabinet", {"name": "B", "place": "origin"}),
+                   both, plugin(approval, "edit", {"shelves": 2})],
+                  [plugin(approval, "cabinet", {"name": "A"}), select("A Top"), joints]):
         try:
             cli(steps)
         except subprocess.CalledProcessError:
@@ -99,19 +106,20 @@ def test_a_corner_that_followed_its_place_stays_that_corner(approval):
 
 
 def test_fronts_and_the_reveal_through_edit(approval):
-    # An overlay door made inset with a 3 mm reveal: 564 - 6 wide in the opening. The reveal is
-    # then a parameter: changed in the design the door follows, an edit of something else keeps
-    # it, and back to overlay the door laps the carcass by that reveal.
+    # An overlay door made inset with a 3 mm reveal (Woodwork settings', design-wide): 564 - 6
+    # wide in the opening. The reveal is then a parameter: changed in the design the door
+    # follows, an edit of something else keeps it, and back to overlay the door laps the
+    # carcass by that reveal.
     door = lambda measure: boxes(measure)["Cabinet Door"]
-    results = cli([plugin(approval, "cabinet", {"doors": 1}), select("Cabinet Top"),
-                   plugin(approval, "edit", {"fronts": "inset", "reveal": 3}), MEASURE,
+    results = cli([plugin(approval, "cabinet", {"doors": 1}), plugin(approval, "edit", {"reveal": 3}),
+                   select("Cabinet Top"), plugin(approval, "edit", {"fronts": "inset"}), MEASURE,
                    change("Cabinet_reveal", "2.5 mm"), MEASURE,
                    select("Cabinet Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
                    select("Cabinet Top"), plugin(approval, "edit", {"fronts": "overlay"}), MEASURE])
-    assert door(results[3]) == [-279, -280, 21, 279, -262, 699], door(results[3])
-    assert door(results[5]) == [-279.5, -280, 20.5, 279.5, -262, 699.5], door(results[5])
-    assert door(results[8]) == door(results[5]) and "Cabinet Shelf 2" in boxes(results[8]), door(results[8])
-    assert door(results[11]) == [-297.5, -300.5, 2.5, 297.5, -282.5, 717.5], door(results[11])
+    assert door(results[4]) == [-279, -280, 21, 279, -262, 699], door(results[4])
+    assert door(results[6]) == [-279.5, -280, 20.5, 279.5, -262, 699.5], door(results[6])
+    assert door(results[9]) == door(results[6]) and "Cabinet Shelf 2" in boxes(results[9]), door(results[9])
+    assert door(results[12]) == [-297.5, -300.5, 2.5, 297.5, -282.5, 717.5], door(results[12])
 
 
 def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
@@ -122,8 +130,8 @@ def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
                    plugin(approval, "edit", {"drawers": 1}), MEASURE,
                    change("Cabinet_drawer_height", "200 mm"), select("Cabinet Top"),
                    plugin(approval, "edit", {"shelves": 2}), MEASURE,
-                   select("Cabinet Top"), plugin(approval, "edit", {"drawers_height": 120}), MEASURE,
-                   select("Cabinet Top"), plugin(approval, "edit", {"drawers_at": "bottom"}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawers": 1, "drawer_height": 120}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"doors": 1, "drawers": 1, "drawers_at": "bottom"}), MEASURE,
                    drive("Cabinet Drawer 1 slide", 200), drive("Cabinet Door hinge", 90), MEASURE])
     front = lambda measure: boxes(measure)["Cabinet Drawer 1 Front"][2:6:3]
     door = lambda measure: boxes(measure)["Cabinet Door"][2:6:3]
@@ -139,12 +147,13 @@ def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
 
 
 def test_edit_left_as_shown_changes_nothing(approval):
-    # Edit's hook gives every field the picked cabinet's value (#128): run with nothing changed,
-    # the cabinet is not built again; one change still builds it.
+    # Edit's hook gives every field the picked cabinet's value, its sizes as they are in the
+    # design: run with nothing changed, the cabinet is not built again; one change still
+    # builds it.
     results = cli([plugin(approval, "cabinet", {"doors": 2, "drawers": 1, "plinth": 100}),
                    select("Cabinet Top"), plugin(approval, "edit", {}),
                    select("Cabinet Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
-                   select("Cabinet Top"), plugin(approval, "edit", {"drawers_height": 180}),
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawers": 1, "drawer_height": 180}),
                    select("Cabinet Top"), plugin(approval, "edit", {})])
     assert results[2]["result"]["edited"] is False, results[2]
     assert "nothing changed" in results[2]["result"]["message"], results[2]
@@ -152,22 +161,8 @@ def test_edit_left_as_shown_changes_nothing(approval):
     # an Edit's values, the drawer front height too, are where the next Edit starts (#129)
     assert results[7]["result"]["edited"] is True, results[7]
     assert results[9]["result"]["edited"] is False, results[9]
-
-
-def test_edit_two_cabinets_that_differ(approval):
-    # Two cabinets picked, one with two doors and one with one: Edit's hook shows their shared
-    # values and a hint where they differ; Shelves 2 changes both; Doors (box only) given with
-    # a corner picked too changes the box and skips the corner, and says so.
-    pick = lambda *names: {"command": "select.set", "params": {"items": [{"type": "body", "name": n} for n in names]}}
-    results = cli([plugin(approval, "cabinet", {"name": "A", "doors": 2}),
-                   plugin(approval, "cabinet", {"name": "B", "doors": 1, "place": "origin"}),
-                   pick("A Top", "B Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
-                   plugin(approval, "corner", {"name": "C", "place": "origin"}),
-                   pick("A Top", "C Top"), plugin(approval, "edit", {"doors": 1})])
-    reply = results[3]["result"]
-    assert sorted(reply["cabinets"]) == ["A", "B"], reply
-    box = boxes(results[4])
-    assert "A Shelf 2" in box and "B Shelf 2" in box, sorted(box)
-    reply = results[7]["result"]
-    assert reply["cabinets"] == ["A"], reply
-    assert reply["skipped"] == [{"cabinet": "C", "field": "doors", "why": "a corner cabinet does not take it"}], reply
+    # resized in Parameters: Edit starts at the new width
+    more = cli([plugin(approval, "cabinet", {"doors": 1}), change("Cabinet_width", "450 mm"),
+                select("Cabinet Top"), plugin(approval, "edit", {}), select("Cabinet Top"), plugin(approval, "edit", {"doors": 2}), MEASURE])
+    assert more[3]["result"]["edited"] is False, more[3]
+    assert boxes(more[6])["Cabinet Side R"][3] == 225, boxes(more[6])["Cabinet Side R"]

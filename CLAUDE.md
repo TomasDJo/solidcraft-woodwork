@@ -168,8 +168,7 @@ table says which).
   test helper sends schema defaults) but the hook answers the stored value or the default, so
   each size's `x-solidcraft-visible-when` on the method works; `build.plugin` sends Settings no
   number (the hook fills them). Slide length stays per cabinet: Auto at build (it goes by the
-  depth), chosen in Edit. Edit keeps `joints`, `joints_inner`, `hardware_models`,
-  `hinge_angle`, `slide_type`, `slide_length`; the sizes are Parameters. Tests: `designed` and
+  depth); a cabinet keeps what it was built with until Rebuild cabinets. Tests: `designed` and
   `setting` in `tests/helpers.py` (settings results left out, so indices stay the cabinets').
   Since then also `back`, `back_thickness` (box only), `fronts`, `handle_position`, `plinth`
   (the height, 100 mm by default), `plinth_type`, `plinth_setback`, `labels` (stored `yes`/`no`,
@@ -211,39 +210,33 @@ table says which).
   (`storage.get`, one command, only when it creates a material) and creates it see-through.
   Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Settings is
   an edit entry, so its preview shows the change.
-  `edit`'s hook also gives the fields the picked cabinets' current values (#128). A read entry may
-  not read `component.metadata` (an edit command), so `make` keeps each cabinet's `edit::shown`
-  (with `entry`, `units`) in a file of ours in the design, `edit/<Prefix>.json` (`edit::blob`,
-  the `_put_blob` pseudo-command, storage `put-blob`), not in our main document, which every
-  hook parses with 10M fuel (the Cabinet hook ran out at 30 cabinets with copies there). The Edit
-  hook stays light: the picks from the dialog's field (the design's selection, only when it is empty:
-  the `_selection` pseudo-command parses only `document.inspect`'s `selection`, as it sends every
-  parameter too; `selection.get` is an edit command to a read entry), the cabinets from our files' names (`storage.get`, owners by
-  `kit::prefix`), only the picked ones' files (`_get_blob`; a board is a cabinet's only if its file's `parts`
-  lists it, so "Cabinet 2" without a file never gets "Cabinet"'s), sizes included (as the last build or
-  Edit left them; a change in Parameters since shows only after the next Edit), and `edit::fields` gives the patch; reading a
-  30-cabinet design's names and parameters took most of the 10M. The release profile is
-  `opt-level = 3` (fewer instructions, so less fuel, than `s`). A cabinet made before has none: only the
-  other kind's fields are hidden, as before. A
-  field shows only when every picked cabinet takes it (`edit::takes`; a box and a corner show
-  what both take), gets their value as its
-  `default` when they all have the same, and a `hint` ("differs: 2 values") and no default when
-  they differ, so its conditions (`not doors eq 0`, `not drawers eq 0`, `not plinth eq no`)
-  work as in Cabinet. Edit takes several cabinets (`selection` without `maxItems`): each is
-  built again with the fields it takes (`skipped` names the others; a field none takes is
-  refused), none when `edit::unchanged` (numbers compared as numbers, absent as no/0), while
-  `drawing::fits`, as Apply to. Its numbers stay optional (empty: unchanged, which differing
-  values need), so they come after the choices, by key: Edit's drawer height is the key
-  `drawers_height` (`merge` makes it `drawer_height`) so that it sorts right after Drawers.
-  `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
-  the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
-  kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
-  refuses it there): its one command is
-  `document.inspect {bodies: "names", timeline: false}`; the picked board (the `selection`
-  value, else the design's selection) names the cabinet (`select::owner`), a corner one has
-  `<Prefix>_return`. Nothing picked or no cabinet: no reply. It gives no `default` (in Edit an
-  empty field is unchanged), and a failed read answers `{}`, as an error from the hook fails
-  `plugin.run`. A field the hook hides is still sent (`sends_field`), so the run is the same.
+  **Edit (one cabinet, its own fields).** Edit changes exactly one cabinet (`selection`
+  `maxItems` 1; more is refused) and has only what is per cabinet: sizes (width, height, depth,
+  a corner's return), kind or corner shape, doors, drawers with their height and side, shelves,
+  pins, dividers, hinge side, fronts, handles and position, back, plinth yes/no and type, wall
+  mount, labels (`edit::CABINETS`, `BOX_ONLY`, `CORNER_ONLY`). What is design-wide (joinery,
+  hardware, hinge opening, slide type, thickness, reveal, plinth height and set-back) is Woodwork
+  settings' and Rebuild cabinets'; `merge` refuses it (`build.plugin` turns such an Edit field into
+  Settings, Rebuild cabinets and the setting back). Every field is required with a default and
+  the hook starts each at the cabinet's value, so a run left as shown builds nothing
+  (`edit::changed`, numbers as numbers, a value left out as `edit::assumed`, what the builder
+  takes; a build lists `changed`). The other kind's fields are hidden and left out of the run
+  (`edit::taken`). A conditional field given to `plugin.run` needs its controllers given too
+  (`door_hinge` with `doors`): the host checks it against the schema defaults, not the hook's.
+  A read entry may not read `component.metadata` (an edit command), so `make` keeps each
+  cabinet's `edit::copy` (`edit::shown`, `entry`, `units`, its boards' first words `parts`) in a
+  file of ours, `edit/<Prefix>.json` (`edit::blob`, the `_put_blob` pseudo-command), not in our
+  main document, which every hook parses with 10M fuel. The hook stays light: the pick from the
+  field (else the design's selection, `_selection`: only `document.inspect`'s `selection` is
+  parsed, as the reply has every parameter; `selection.get` is an edit command to a read
+  entry), the cabinet from our files' names (`storage.get`; a board is a cabinet's only if its
+  file's `parts` lists its first word, so "Cabinet 2" without a file never gets "Cabinet"'s),
+  that file (`_get_blob`), and its sizes as they are now (`_params`: `kit::param_value` finds
+  `<Prefix>_width`... in the reply's text, in mm, without parsing it), then `edit::fields`.
+  The release profile is `opt-level = 3` (less fuel than `s`). A cabinet made before has no
+  file: the hook only hides the other kind's fields (`edit::hidden`, one
+  `document.inspect {bodies: "names"}`), and the run writes the file and builds nothing ("open
+  Edit again"), as its fields were the defaults. A failed read answers `{}`.
 
 ## Layout
 
@@ -735,7 +728,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   refused there. `cabinet::build` counts a copy as 2 commands, a cut as 2 more plus one
   `component.list`, and the definitions it copies (`hardware::cost`); over 230 it builds the
   cabinet again with `off` and says so (`hardware_models` in the summary).
-  **Slide length** (`slide_length`, Edit only, `edit::BOX_ONLY`; a new cabinet is always auto): `hardware::SLIDES`,
+  **Slide length** (`slide_length`, no field: auto at build, a value an older cabinet remembers kept): `hardware::SLIDES`,
   250, 270, 300 to 650 mm and 10 to 28 in; `auto` is the longest of the cabinet's unit
   (`Kit::unit`) within the box depth less `SLIDE_CLEAR` (3 mm), and a chosen one that does not
   fit is refused (`hardware::slide_length`, read in `cabinet::input` as `Input::slide`, mm and

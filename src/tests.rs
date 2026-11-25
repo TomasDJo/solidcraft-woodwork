@@ -381,12 +381,9 @@ fn a_cabinet_keeps_its_edit_values_in_a_small_file_not_in_our_document() {
         "{}",
         blobs[0]["data"]
     );
-    // the Edit hook with 30 cabinets picked in its field: our files' names and a file each,
-    // never the whole design (whose names and parameters take most of the hook's 10M fuel)
+    // the Edit hook in a 30-cabinet design: our files' names, the picked cabinet's file and its
+    // sizes, never the whole design (whose names and parameters take most of the hook's 10M fuel)
     let mut asked = Vec::new();
-    let picks: Vec<Value> = (0..30)
-        .map(|i| json!({"type": "body", "name": format!("K{i} Side L")}))
-        .collect();
     let files: Vec<Value> = (0..30)
         .map(|i| json!({"name": format!("edit/K{i}.json")}))
         .collect();
@@ -394,10 +391,9 @@ fn a_cabinet_keeps_its_edit_values_in_a_small_file_not_in_our_document() {
         asked.push(command.to_string());
         Ok(json!({"blobs": files, "entry": "cabinet", "shown": {"doors": 1}}))
     };
-    let reply = dialog("edit", &json!({"selection": picks}), &mut run).unwrap();
-    assert_eq!(asked.iter().filter(|c| *c == "_get_blob").count(), 30);
-    assert_eq!(asked.iter().filter(|c| *c == "storage.get").count(), 1);
-    assert!(!asked.iter().any(|c| c == "document.inspect"));
+    let pick = json!({"selection": [{"type": "body", "name": "K12 Side L"}]});
+    let reply = dialog("edit", &pick, &mut run).unwrap();
+    assert_eq!(asked, ["storage.get", "_get_blob", "_params"]);
     assert_eq!(reply["doors"], json!({"default": 1}));
 }
 
@@ -431,6 +427,8 @@ fn edit_hook(files: &[(String, Value)], picks: &[&str]) -> Value {
             .find(|(n, _)| args["name"] == n.as_str())
             .map(|(_, d)| d.clone())
             .unwrap_or_default()),
+        // the sizes as they are in the design now
+        "_params" => Ok(json!({"C_width": 450.0, "C_drawer_height": 180.0})),
         _ => Ok(json!({"bodies": [], "selection": []})),
     };
     dialog("edit", &json!({"selection": picks}), &mut run).unwrap()
@@ -447,7 +445,9 @@ fn the_edit_hook_starts_at_what_the_last_edit_built() {
     let reply = edit_hook(&[file], &["C Top"]);
     assert_eq!(reply["drawers"], json!({"default": 1}), "{reply}");
     assert_eq!(reply["doors"], json!({"default": 1}));
-    assert_eq!(reply["drawers_height"], json!({"default": 180}));
+    assert_eq!(reply["drawer_height"], json!({"default": 180.0}));
+    assert_eq!(reply["width"], json!({"default": 450.0}));
+    assert_eq!(reply["return"], json!({"visible": false}));
 }
 
 #[test]
@@ -461,4 +461,39 @@ fn a_cabinet_without_a_file_never_takes_another_cabinets() {
         edit_hook(&[file], &["Cabinet Top"])["drawers"],
         json!({"default": 2})
     );
+}
+
+#[test]
+fn edit_changes_one_cabinet_and_first_writes_the_file_of_one_made_before() {
+    let side = |name: &str, x: f64| json!({"name": name, "bbox": {"min": [x, -280, 0], "max": [x + 18.0, 280, 720]}});
+    let edit = |picks: Value, file: Value| {
+        let mut called: Vec<String> = Vec::new();
+        let mut run = |command: &str, _: Value| {
+            called.push(command.to_string());
+            Ok(match command {
+                "document.inspect" => json!({"selection": picks, "params": []}),
+                "inspect.measure" => {
+                    json!({"bodies": [side("A Side L", 0.0), side("B Side L", 900.0)]})
+                }
+                "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet",
+                    "params": {"name": "A", "doors": 1}}}}),
+                "_get_blob" => file.clone(),
+                _ => json!({}),
+            })
+        };
+        let reply = execute("edit", &json!({"doors": 2}), &mut run);
+        (called, reply)
+    };
+    let (_, reply) = edit(
+        json!([{"name": "A Side L"}, {"name": "B Side L"}]),
+        json!({}),
+    );
+    assert!(reply.unwrap_err().starts_with("Edit changes one cabinet"));
+    // made before Edit's file: its fields were the defaults, so nothing is built, and the file
+    // is written for the next time
+    let (called, reply) = edit(json!([{"name": "A Side L"}]), Value::Null);
+    let reply = reply.unwrap();
+    assert_eq!(reply["edited"], false, "{reply}");
+    assert!(called.contains(&"_put_blob".to_string()));
+    assert!(!called.contains(&"component.delete".to_string()));
 }

@@ -255,7 +255,7 @@ def test_wall_mount_edit(approval):
                    {"command": "parameters.change", "params": {"name": "A_cleat_height", "expression": "100 mm"}},
                    MEASURE,
                    select("A Side L"),
-                   plugin(approval, "edit", {"wall_mount": "keep", "shelves": 2}),
+                   plugin(approval, "edit", {"shelves": 2}),
                    MEASURE,
                    select("A Side L"),
                    plugin(approval, "edit", {"wall_mount": "none"}),

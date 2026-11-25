@@ -165,3 +165,13 @@ fn a_cabinet_prefix_is_never_the_hardwares() {
     assert_eq!(prefix("HWB"), "HWB");
     assert_eq!(prefix("1 Base"), "c_1_Base");
 }
+
+#[test]
+fn a_parameter_value_is_found_in_the_reply_text() {
+    let reply = r#"{"params": [{"expression": "C_width", "name": "D_width", "unit": "mm", "value": 600.0},
+        {"comment": "", "name": "C_width", "unit": "mm", "value": 450.5}, {"name": "C_height", "value": 7.2e2}]}"#;
+    assert_eq!(param_value(reply, "C_width"), Some(450.5));
+    assert_eq!(param_value(reply, "D_width"), Some(600.0));
+    assert_eq!(param_value(reply, "C_height"), Some(720.0));
+    assert_eq!(param_value(reply, "C_depth"), None);
+}
