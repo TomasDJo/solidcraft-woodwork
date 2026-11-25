@@ -584,14 +584,21 @@ the design as it was. A job has no Preview.
 - **Build again**: **With the settings** gives each cabinet the design-wide settings stored now,
   taking only what that cabinet uses: a corner cabinet takes no drawer or inside settings.
   Material, thickness and reveal count only when they are stored. A cabinet that already has the
-  settings is skipped. It never changes what is the cabinet's own:
-  - **Per cabinet, kept:** sizes, shape and kind, doors, drawers and where they are, shelves,
-    shelf pins, dividers, door hinge side, plinth Yes or No, wall mount, handles, handle
-    position, fronts, back, plinth type and labels (what the Cabinet or Edit dialog sets).
+  settings is skipped. It never changes what you chose for a cabinet:
   - **Design-wide, applied:** board material and thickness, reveal, joinery and its sizes,
     hardware (models, hinge opening, slide type, fasteners), back, drawer and cleat thicknesses,
-    and the plinth height and set-back (only on a cabinet with a plinth). **As made** builds each with its own values
-  and sizes from Parameters, for example after updating Woodwork.
+    and the plinth height and set-back (only on a cabinet with a plinth).
+  - **Per cabinet with a default in Settings:** plinth Yes or No, plinth type, handles, handle
+    position, fronts, back and labels. A cabinet that still has the default it was made with
+    follows the new setting (all cabinets made on board plinths get legs); one with a value of
+    its own keeps it (a wall cabinet made without a plinth keeps none). A value set by hand that
+    is the same as the default then counts as the default, and follows. A cabinet made before
+    Woodwork 0.5.0 is taken as made with the built-in defaults.
+  - **Per cabinet only, kept:** sizes, shape and kind, doors, drawers and where they are,
+    shelves, shelf pins, dividers, door hinge side and wall mount.
+
+  **As made** builds each with its own values and sizes from Parameters, for example after
+  updating Woodwork.
 
 The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why
 (already has these settings, or not part of a cabinet).

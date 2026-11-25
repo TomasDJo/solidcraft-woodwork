@@ -264,13 +264,13 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
     // no plinth: it keeps none
     assert_eq!(p["plinth"], 0.0);
     assert_eq!(apply("cabinet", &p, &stored), None);
-    // with one: the settings' height, but its own type (per cabinet)
+    // with one: the settings' height and type (it had the default type)
     let mut on = built.clone();
     on["plinth"] = json!(100.0);
     let (p, _) = apply("cabinet", &on, &stored).unwrap();
     assert_eq!(
         (&p["plinth"], &p["plinth_type"]),
-        (&json!(120.0), &json!("board"))
+        (&json!(120.0), &json!("legs"))
     );
     // a corner takes no drawers' or inside settings
     let mut corner = json!({"units": "mm", "plinth": 0.0});
@@ -283,16 +283,45 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
 }
 
 #[test]
-fn apply_keeps_what_is_set_per_cabinet() {
-    let stored = json!({"document": {"settings": {"handles": "knob", "fronts": "inset",
-        "back": "none", "handle_position": "top", "labels": "yes", "joints": "confirmat"}}});
+fn apply_follows_changed_defaults_and_keeps_what_was_chosen() {
+    // made with the built-in defaults, pull handles and no plinth chosen for it
     let mut built = json!({"units": "mm", "plinth": 0.0, "handles": "pull", "wall_mount": "cleat"});
     design("cabinet", &mut built, &json!({}));
-    let (p, changed) = apply("cabinet", &built, &stored).unwrap();
-    assert_eq!(changed, ["joints"]);
-    for key in PER_CABINET.into_iter().chain(["wall_mount", "plinth"]) {
+    built["_defaults"] = defaults("cabinet", &json!("mm"), &json!({}));
+    let stored = json!({"document": {"settings": {"handles": "knob", "fronts": "inset",
+        "back": "none", "handle_position": "top", "labels": "yes", "plinth_type": "legs",
+        "joints": "confirmat"}}});
+    let (p, mut changed) = apply("cabinet", &built, &stored).unwrap();
+    changed.sort();
+    // what still had the old default follows the settings
+    assert_eq!(
+        changed,
+        ["back", "fronts", "handle_position", "joints", "labels"]
+    );
+    assert_eq!(
+        (&p["fronts"], &p["labels"]),
+        (&json!("inset"), &json!(true))
+    );
+    // its own values stay: pull handles, no plinth (so its plinth type too), the cleat
+    for key in ["handles", "plinth", "plinth_type", "wall_mount"] {
         assert_eq!(p[key], built[key], "{key}");
     }
+    assert_eq!(p["_defaults"], defaults("cabinet", &json!("mm"), &stored));
+    // one with the default plinth takes the new plinth type
+    let mut base = built.clone();
+    base["plinth"] = json!(100.0);
+    let (p, _) = apply("cabinet", &base, &stored).unwrap();
+    assert_eq!(
+        (&p["plinth"], &p["plinth_type"]),
+        (&json!(100.0), &json!("legs"))
+    );
+    // one made before 0.5.0 (no `_defaults`) is taken as made with the built-in defaults
+    let mut old = base.clone();
+    old.as_object_mut().unwrap().remove("_defaults");
+    assert_eq!(
+        apply("cabinet", &old, &stored).unwrap().0["plinth_type"],
+        "legs"
+    );
 }
 
 #[test]

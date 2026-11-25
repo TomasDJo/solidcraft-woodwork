@@ -178,6 +178,23 @@ def test_apply_settings_keeps_what_is_per_cabinet(approval):
     assert box["B Bottom"][2] == 120, box["B Bottom"]
 
 
+def test_apply_settings_follows_a_changed_default(approval):
+    # A, B and C on the default board plinth, W a wall cabinet with no plinth chosen. Settings
+    # Plinth type Legs, then Apply settings to all: the three still had the old default, so they
+    # get legs; W keeps no plinth (not the default when it was made).
+    light = {"shelves": 0, "depth": 300}
+    script = [plugin(approval, "cabinet", {"name": n, "plinth": "yes", "place": "origin", **light}) for n in "ABC"]
+    script += [plugin(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin", **light}),
+               setting(approval, {"plinth_type": "legs"}), plugin(approval, "rebuild", {}), MEASURE]
+    results = cli(script)
+    reply = results[5]["result"]
+    assert all("plinth_type" in reply["changed"][n] for n in "ABC"), reply
+    box = boxes(results[6])
+    for n in "ABC":
+        assert f"{n} Leg 1" in box and f"{n} Plinth" not in box, sorted(box)
+    assert box["W Bottom"][2] == 0 and not any(b.startswith("W Leg") for b in box), box["W Bottom"]
+
+
 def test_apply_hardware_models_both_ways(approval):
     # A with doors and a drawer, models shown. Settings Hardware models None, applied with a
     # hinge model picked (what a user clicks to turn the models off): no HW copies left in A,

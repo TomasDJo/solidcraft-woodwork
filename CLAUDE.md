@@ -287,13 +287,17 @@ materials, place, links), with a `_progress` pseudo-command per cabinet that the
 turns into `control.progress`. The reply: `applied`, `changed` (each cabinet's fields that
 changed), `skipped` (with `why`) and `message`. A cabinet without a plinth keeps its plinth type
 and set-back too, so it is skipped when nothing else differs.
-Apply settings never overwrites what is per cabinet (`settings::PER_CABINET` and every
-non-setting field): per cabinet are sizes, shape/kind, doors, drawers, drawers at, shelves,
-shelf pins, dividers, door hinge, plinth Yes/No, wall mount, and the settings the Cabinet or
-Edit dialog sets per cabinet: handles, handle position, fronts, back, plinth type, labels.
-Design-wide (applied): material, thickness, reveal, joinery and its sizes, hardware models,
-hinge angle, slide type, fastener models, back/drawer/cleat thicknesses, plinth height and
-set-back (on a cabinet with a plinth).
+Apply settings never overwrites what was chosen for a cabinet. Design-wide (applied):
+material, thickness, reveal, joinery and its sizes, hardware models, hinge angle, slide type,
+fastener models, back/drawer/cleat thicknesses, plinth height and set-back (on a cabinet with a
+plinth). Per cabinet with a Settings default (`settings::PER_CABINET`): plinth Yes/No (by its
+height), plinth type, handles, handle position, fronts, back, labels: it follows the new setting
+only when the cabinet's value equals the default it was made with, which it remembers as
+`_defaults` in its params (`settings::defaults`, set when made, updated by Apply settings; a
+cabinet made before 0.5.0 has none: the built-in defaults). A hand-set value equal to that
+default counts as the default and follows (the ambiguous case). Per cabinet only (never a
+setting, kept): sizes, shape/kind, doors, drawers, drawers at, shelves, shelf pins, dividers,
+door hinge, wall mount.
 **One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
 `diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
 a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or

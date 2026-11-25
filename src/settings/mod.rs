@@ -265,80 +265,123 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
     changes
 }
 
-/// A built cabinet's `params` (`edit::merge`'s, sizes from the design's parameters) with what
-/// Fields a cabinet keeps as it has them when Apply settings builds it again: its own layout
-/// (sizes, kind, fronts, drawers, shelves, plinth Yes or No, wall mount, ... are not settings at
-/// all) and the settings Edit or the Cabinet dialog set per cabinet.
-pub const PER_CABINET: [&str; 6] = [
+/// The per-cabinet fields that Settings also gives a default (Plinth's Yes or No through its
+/// height). A cabinet whose value is not the default it was built with chose its own, which
+/// Apply settings keeps; one that has that default follows the settings.
+pub const PER_CABINET: [&str; 7] = [
     "handles",
     "fronts",
     "back",
+    "plinth",
     "plinth_type",
     "handle_position",
     "labels",
 ];
 
+/// What the `PER_CABINET` fields of a cabinet made now with `stored` would be, as its params
+/// hold them (labels a flag, the plinth a height, handles the dialog's None when not stored).
+/// A cabinet remembers it as `_defaults` (`lib.rs`), so Apply settings knows later which of its
+/// values were the defaults then.
+pub fn defaults(entry: &str, units: &Value, stored: &Value) -> Value {
+    let mut fresh = json!({"units": units});
+    design(entry, &mut fresh, stored);
+    let handles = &stored["document"]["settings"]["handles"];
+    fresh["handles"] = if handles.is_string() {
+        handles.clone()
+    } else {
+        json!("none")
+    };
+    let mut out = Map::new();
+    for key in PER_CABINET {
+        if let Some(v) = fresh.get(key) {
+            out.insert(key.into(), v.clone());
+        }
+    }
+    Value::Object(out)
+}
+
+fn same(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Number(a), Value::Number(b)) => {
+            (a.as_f64().unwrap_or(0.0) - b.as_f64().unwrap_or(0.0)).abs() < 1e-6
+        }
+        (a, b) => a == b,
+    }
+}
+
 /// Woodwork settings hold now, for Apply settings; `None` when it already has them.
-/// Only the design-wide settings: those stored or default, and the dialogs' defaults (material,
-/// thickness, reveal) only when stored; never a `PER_CABINET` field. Only what the cabinet's
-/// `entry` takes (a corner has no drawers, no inside joinery, no back choice), and the plinth's
-/// height and set-back only when it has one: a cabinet without one keeps none. With the params,
-/// the fields that change.
+/// The design-wide settings, stored or default, and the dialogs' defaults (material, thickness,
+/// reveal) only when stored. A `PER_CABINET` field follows the settings only when the cabinet
+/// still has the default it was made with (`_defaults`, else the built-in ones for a cabinet
+/// made before 0.5.0): a value of its own is kept. Plinth by Yes or No: a cabinet without one
+/// where the default had one keeps none; one with a plinth takes the settings' height and
+/// set-back. A value the same as the old default counts as following it, even when it was set by
+/// hand. Only what the cabinet's `entry` takes (a corner has no drawers, no inside joinery, no
+/// back choice). With the params (their `_defaults` now the settings'), the fields that change.
 pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<String>)> {
     let settings = &stored["document"]["settings"];
+    let before = match params.get("_defaults") {
+        Some(d) if d.is_object() => d.clone(),
+        _ => defaults(entry, &params["units"], &json!({})),
+    };
+    let now = defaults(entry, &params["units"], stored);
     let mut wanted = json!({"units": params["units"]});
     if settings["material"].is_string() {
         wanted["material"] = settings["material"].clone();
     }
-    let has_plinth = params["plinth"].as_f64().unwrap_or(0.0) > 0.0;
     for (key, field, def, to) in table() {
         let field = if field.is_empty() { key } else { field };
-        let plinth = matches!(key, "plinth" | "plinth_type" | "plinth_setback");
         if to == To::Hook && settings[key].is_number() {
             wanted[field] = match def {
                 Def::Length(..) => json!(rounded(mm(settings, key) / unit(params))),
                 _ => json!(mm(settings, key)),
             };
-        } else if plinth && has_plinth {
-            wanted[field] = match def {
-                Def::Choice(d) => json!(settings[key].as_str().unwrap_or(d)),
-                _ => json!(rounded(mm(settings, key) / unit(params))),
-            };
         }
     }
-    // without a plinth its type and set-back stay as they are
-    if !has_plinth {
+    let on = |v: &Value| v.as_f64().unwrap_or(0.0) > 0.0;
+    let has_plinth = on(&params["plinth"]);
+    for key in PER_CABINET {
+        let follows = match key {
+            "plinth" => has_plinth == on(&before["plinth"]),
+            _ => params
+                .get(key)
+                .is_none_or(|v| before.get(key).is_some_and(|b| same(v, b))),
+        };
+        let value = match (key, follows) {
+            ("plinth", false) if has_plinth && on(&now["plinth"]) => Some(&now["plinth"]),
+            // (a default that did not change leaves the value as it is, even when absent)
+            (_, true)
+                if !before
+                    .get(key)
+                    .zip(now.get(key))
+                    .is_some_and(|(b, n)| same(b, n)) =>
+            {
+                now.get(key)
+            }
+            _ => None,
+        };
+        if let Some(v) = value.or(params.get(key)) {
+            wanted[key] = v.clone();
+        }
+    }
+    // a cabinet left without a plinth keeps its type and set-back as they are
+    if !on(&wanted["plinth"]) {
         for key in ["plinth_type", "plinth_setback"] {
             if let Some(v) = params.get(key) {
                 wanted[key] = v.clone();
             }
         }
     }
-    // the rest as a new cabinet gets them (Plinth given, so `design` leaves it)
-    wanted["plinth"] = wanted
-        .get("plinth")
-        .cloned()
-        .unwrap_or(params["plinth"].clone());
     design(entry, &mut wanted, stored);
-    if let Some(wanted) = wanted.as_object_mut() {
-        for key in PER_CABINET {
-            wanted.remove(key);
-        }
-    }
     let mut out = params.clone();
     let mut changed = Vec::new();
     for (key, value) in wanted.as_object().into_iter().flatten() {
-        let same = match (&out[key.as_str()], value) {
-            (Value::Number(a), Value::Number(b)) => {
-                (a.as_f64().unwrap_or(0.0) - b.as_f64().unwrap_or(0.0)).abs() < 1e-6
-            }
-            (a, b) => a == b,
-        };
-        if !same {
+        if !same(&out[key.as_str()], value) {
             out[key.as_str()] = value.clone();
             changed.push(key.clone());
         }
     }
+    out["_defaults"] = now;
     (!changed.is_empty()).then_some((out, changed))
 }
 

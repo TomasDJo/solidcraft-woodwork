@@ -670,6 +670,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             };
             let mut params = params.clone();
             settings::design(entry, &mut params, stored);
+            // The settings' defaults for its per-cabinet fields now, which it remembers: Apply
+            // settings later changes only those it still has (`settings::apply`).
+            params["_defaults"] = settings::defaults(entry, &params["units"], stored);
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
