@@ -73,8 +73,16 @@ fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
     assert_eq!(mm["joint_spacing"], json!({"default": 250.0}));
     assert_eq!(mm["hinge_angle"], json!({"default": "165"}));
     assert_eq!(mm["slide_type"], json!({"default": "full"}));
-    // material keeps its Keep
-    assert!(mm.get("material").is_none());
+    // the stored material, the Cabinet dialog's handles and the camera's Fit: never Keep
+    assert_eq!(mm["material"], json!({"default": "MDF"}));
+    assert_eq!(mm["handles"], json!({"default": "none"}));
+    assert_eq!(mm["camera"], json!({"default": "fit"}));
+    let empty = fields(
+        "settings",
+        &json!({"section": "all"}),
+        &json!({"document": null}),
+    );
+    assert_eq!(empty["material"], json!({"default": "Birch plywood"}));
     assert_eq!(mm.as_object().unwrap().len(), table().len(), "{mm}");
     assert_eq!(mm["plinth"], json!({"default": 100.0}));
     assert_eq!(mm["kerf"], json!({"default": 4.0}));
@@ -329,7 +337,10 @@ fn a_section_shows_its_fields_and_hides_the_rest_still_sent() {
         joinery["plinth"],
         json!({"default": 100.0, "visible": false})
     );
-    assert_eq!(joinery["material"], json!({"visible": false}));
+    assert_eq!(
+        joinery["material"],
+        json!({"default": "Birch plywood", "visible": false})
+    );
     assert!(joinery.get("units").is_none());
     let all = fields("settings", &json!({"section": "all"}), &json!({}));
     assert!(all
@@ -341,8 +352,6 @@ fn a_section_shows_its_fields_and_hides_the_rest_still_sent() {
     let mut keys: Vec<&str> = SECTIONS.iter().flat_map(|s| s.1.iter().copied()).collect();
     let mut wanted = kept();
     keys.sort();
-    wanted.retain(|k| *k != "handles");
-    wanted.push("handles");
     wanted.sort();
     assert_eq!(keys, wanted);
     // Section is no setting: it is not stored

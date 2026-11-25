@@ -39,6 +39,9 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
     let mut all = vec![
         ("thickness", "", Length(18.0, 3.175, 50.0), Hook),
         ("reveal", "", Mm(2.0, 0.5, 6.0), Hook),
+        // the Cabinet dialog's defaults, so Settings starts at them (not Keep) when none is stored
+        ("material", "", Choice("Birch plywood"), Hook),
+        ("handles", "", Choice("none"), Hook),
         ("joints", "", Choice("dowels"), Cabinets),
         ("joints_inner", "", Choice("dowels"), Box),
         ("biscuit", "", Choice("20"), Cabinets),
@@ -74,6 +77,7 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ),
         // no cabinet's: our board materials' opacity (`material::see_through`)
         ("see_through", "", Choice("off"), Nothing),
+        ("camera", "", Choice("fit"), Nothing),
     ];
     for (key, mm) in joint::SIZES {
         let (low, high) = joint::range(key);
@@ -105,9 +109,7 @@ fn default(key: &str) -> Option<Value> {
 
 /// Every field Settings keeps.
 fn kept() -> Vec<&'static str> {
-    let mut all = vec!["material", "handles", "camera"];
-    all.extend(table().into_iter().map(|s| s.0));
-    all
+    table().into_iter().map(|s| s.0).collect()
 }
 
 /// The `storage.patch` merge patch for the Settings dialog's values: only the fields that were
