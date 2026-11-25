@@ -1250,6 +1250,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
 pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     if entry == "cabinet" && values["mode"] == "edit" {
         let mut reply = dialog("edit", values, run)?;
+        if reply.get("problem").is_none() {
+            reply["problem"] = json!({"visible": false});
+        }
         // Cabinet's Shape: a box stays a box (greyed), a corner a corner
         if reply["corner_doors"]["visible"] == false {
             reply["shape"] = json!({"default": "box", "enabled": false});
@@ -1344,6 +1347,7 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
                     let (field, why) = settings::problem(&why, entry == "corner");
                     let hint = format!("{why}: nothing is changed or previewed until this is");
                     reply[settings::on_cabinet(field)]["hint"] = json!(hint);
+                    reply["problem"] = settings::problem_row(Some(&hint));
                 }
                 return Ok(reply);
             }
@@ -1373,20 +1377,26 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
             true => corner::checked(&p),
             false => cabinet::checked(&p),
         };
-        if let Err(why) = checked {
+        let hint = checked.err().map(|why| {
             let (field, why) = settings::problem(&why, corner);
             let hint = format!("{why}: nothing is made or previewed until this is changed");
             reply[settings::on_cabinet(field)]["hint"] = json!(hint);
-        }
+            hint
+        });
+        reply["problem"] = settings::problem_row(hint.as_deref());
     }
     // Woodwork settings: a size out of bounds, or settings a new cabinet would refuse, said on
     // the field of this dialog it is about (another section's is not shown here).
     if entry == "settings" || entry.starts_with("settings-") {
-        if let Some((field, why)) = settings::trouble(values, &stored) {
+        let trouble = settings::trouble(values, &stored);
+        let hint = trouble.map(|(field, why)| {
+            let hint = format!("{why}: new cabinets would be refused");
             if let Some(patch) = reply.get_mut(&field).filter(|f| f.is_object()) {
-                patch["hint"] = json!(format!("{why}: new cabinets would be refused"));
+                patch["hint"] = json!(hint);
             }
-        }
+            hint
+        });
+        reply["problem"] = settings::problem_row(hint.as_deref());
     }
     // Match selected: Yes when a cabinet is picked, hidden when none is. A second read, a few
     // ms on the sample kitchen; if it fails, the field stays as it is.
