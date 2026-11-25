@@ -43,8 +43,11 @@ const SIZES: [&str; 24] = [
 /// them for the other kind and a run leaves them out. Shrink them as the two kinds catch up.
 /// Edit has only what is per cabinet; what is design-wide (joinery, hardware, thickness,
 /// reveal, the plinth's height and set-back) is Woodwork settings' and Apply settings'.
-const BOX_ONLY: [&str; 8] = [
+const BOX_ONLY: [&str; 11] = [
     "kind",
+    "sizing",
+    "drawer_width",
+    "drawer_depth",
     "dividers",
     "doors",
     "drawers",
@@ -109,8 +112,17 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
         "back",
         "kind",
         "shape",
+        "sizing",
     ];
-    let numbers = ["shelves", "dividers", "doors", "drawers", "drawer_height"];
+    let numbers = [
+        "shelves",
+        "dividers",
+        "doors",
+        "drawers",
+        "drawer_height",
+        "drawer_width",
+        "drawer_depth",
+    ];
     for key in choices.iter().chain(&numbers) {
         let field = match *key {
             "doors" if corner => "corner_doors",
@@ -200,6 +212,7 @@ fn assumed(key: &str) -> Option<Value> {
         "handle_position" => json!("auto"),
         "back" => json!("groove"),
         "plinth_type" => json!("board"),
+        "sizing" => json!("outside"),
         _ => return None,
     })
 }
@@ -217,6 +230,8 @@ pub fn unshown(changes: &Value) -> Value {
             "plinth" => json!("yes"),
             "shelf_pins" => json!(false),
             "labels" => json!("no"),
+            "drawer_width" => json!(500),
+            "drawer_depth" => json!(450),
             _ => return assumed(key),
         })
     };

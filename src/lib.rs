@@ -266,6 +266,15 @@ fn rebuild(
     // The cabinets held to this one lose their link with it: found now, held again after.
     let joints = run("joint.list", json!({}))?;
     let hanging = edit::hanging(&tree, &joints, &name);
+    // Sized by its drawers' inside: its outside again from that, whatever changed the boxes.
+    let mut params = params.clone();
+    if entry == "cabinet" && params["sizing"] == "drawer" {
+        match params["drawers"].as_f64().unwrap_or(0.0) > 0.0 {
+            true => cabinet::from_drawers(&mut params)?,
+            false => params["sizing"] = json!("outside"),
+        }
+    }
+    let params = &params;
     run("component.activate", json!({"component": parent}))?;
     let gone = run("component.delete", json!({"component": name}))?;
     let (mut summary, made) = make(entry, params, design, run)?;

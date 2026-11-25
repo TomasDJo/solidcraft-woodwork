@@ -1160,7 +1160,7 @@ fn a_cabinet_sized_from_its_drawers_inside() {
     from_drawers(&mut p).unwrap();
     assert_eq!(
         (&p["width"], &p["depth"], &p["sizing"]),
-        (&json!(757.4), &json!(724.0), &json!("outside"))
+        (&json!(757.4), &json!(724.0), &json!("drawer"))
     );
     let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
     assert!((input.shelf_d - 10.0 - 2.0 * 12.0 - 672.0).abs() < 1e-9);

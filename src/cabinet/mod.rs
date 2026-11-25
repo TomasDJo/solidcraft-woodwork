@@ -57,8 +57,9 @@ struct Cabinet<'a> {
 }
 
 /// Sizing by the drawers' inside (`sizing: drawer`): the width and depth that give the boxes
-/// `drawer_width` x `drawer_depth` inside, written into `p` as an ordinary outside size, so
-/// the cabinet is remembered, edited and resized by that.
+/// `drawer_width` x `drawer_depth` inside, written into `p` as its outside size. `sizing`
+/// stays, so the cabinet remembers it: Edit and Apply settings work its outside out again
+/// (`rebuild`), and its drawers keep their inside whatever changed (slides, boards, reveal).
 pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     // Match selected gives the sizes (the dialog hides Sizing then): outside sizing.
     if p["sizing"] != "drawer" || !p["_match"].is_null() {
@@ -103,7 +104,6 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     let round = |mm: f64| (mm / scale * 1e6).round() / 1e6;
     p["width"] = json!(round(w));
     p["depth"] = json!(round(d));
-    p["sizing"] = json!("outside");
     Ok(())
 }
 

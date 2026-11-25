@@ -47,7 +47,9 @@ table says which).
   script, or remembered by Edit) as absent instead of refusing. Cabinet: Dividers with
   drawers (`cabinet::input`: none beside drawers or on a sink base; drawers beside doors on a
   sink base dropped); Sizing with Match selected (`from_drawers`: outside sizing); Width and
-  Depth with drawer sizing (they are worked out). Height, Depth, Thickness and Plinth are
+  Depth with drawer sizing (they are worked out; `sizing: drawer` and the inside sizes are
+  remembered, and `rebuild` runs `from_drawers` again, so Edit and Apply settings keep the
+  boxes' inside, and Edit shows Size by and the inside sizes, not the outside). Height, Depth, Thickness and Plinth are
   greyed, not hidden, with Match selected (`x-solidcraft-enabled-when`, 0.49: shown, still
   sent; `Kit` takes the selected cabinet's), and the Cabinet hook fills them with the picked
   cabinet's values and the hint "Match selected takes it from <name>" (`settings::matched_sizes`,
@@ -200,7 +202,7 @@ table says which).
   `new` by default, never switched by what is picked, as a picked side means Match selected):
   `execute` and `dialog` turn it into the internal `edit` (no entry of its own any more;
   `build.entry_step` sends `edit` so). New-only fields (name, match, place, units, thickness,
-  material, corner, boards, sizing, reveal) show with `mode eq new`, Edit-only ones (fronts,
+  material, corner, boards, reveal) show with `mode eq new`, Edit-only ones (fronts,
   handle position, back, plinth type, labels) with `mode eq edit`; a box's Shape is greyed on Box
   by the hook (`enabled: false`), and a corner refuses Box. Shelf pin holes is Cabinet's tick box
   (old files' `yes` read as true). Edit changes exactly one cabinet (`selection`
