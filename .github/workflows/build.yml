@@ -50,6 +50,10 @@ jobs:
           dirname "$cli" >> "$GITHUB_PATH"
 
       - name: Unit tests, package, end-to-end tests
+        # Two at a time: SolidCraft 0.49's booleans are much slower than 0.48's, and with four
+        # runs sharing the runner's CPUs a cabinet's run passed the 30 s plugin limit.
+        env:
+          WOODWORK_TEST_JOBS: 2
         run: python build.py
 
       - uses: actions/upload-artifact@v4
