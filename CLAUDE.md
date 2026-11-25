@@ -356,6 +356,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
 
 - **Versions move slowly.** Bump only the last digit, in both `plugin.json` and `Cargo.toml`,
   unless the user decides on a bigger step (0.2.0). 0.1.0 was the first public release.
+- **No backwards compatibility yet:** older designs and scripts may need rebuilding; don't add
+  migration code unless asked.
 - **Every fix and every function has a test that fails without it.** A bug gets a regression
   test in the same commit as its fix: a unit test in the module's `tests.rs` for the logic,
   and a case in `tests/` when the bug showed in real geometry (a joint turning the wrong
