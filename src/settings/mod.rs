@@ -418,8 +418,93 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
         };
         reply.insert(key.clone(), field);
     }
+    // Settings' Section shows one group of fields: the others hidden by the hook, which (unlike
+    // a schema condition) still sends them, so a script's values are all used and the dialog's
+    // hidden ones are the stored values, which `patch` leaves out.
+    if own {
+        let shown = values["section"].as_str().unwrap_or("all");
+        for (section, keys) in SECTIONS {
+            if shown == "all" || shown == section {
+                continue;
+            }
+            for key in keys {
+                let field = reply.entry(key.to_string()).or_insert(json!({}));
+                field["visible"] = json!(false);
+            }
+        }
+    }
     Value::Object(reply)
 }
+
+/// Settings' sections (its field `section`, the same in the manifest) and their fields. Units
+/// and Apply to show in every section.
+pub const SECTIONS: [(&str, &[&str]); 7] = [
+    (
+        "general",
+        &["material", "thickness", "back", "back_thickness", "labels"],
+    ),
+    (
+        "fronts",
+        &[
+            "fronts",
+            "reveal",
+            "handles",
+            "handle_position",
+            "hinge_angle",
+        ],
+    ),
+    (
+        "drawers",
+        &["drawer_thickness", "drawer_bottom", "slide_type"],
+    ),
+    (
+        "plinth",
+        &[
+            "plinth",
+            "plinth_type",
+            "plinth_setback",
+            "cleat_height",
+            "cleat_thickness",
+        ],
+    ),
+    (
+        "joinery",
+        &[
+            "joints",
+            "joints_inner",
+            "joint_spacing",
+            "joint_edge",
+            "dowel_d",
+            "dowel_length",
+            "dado_depth",
+            "biscuit",
+            "cam_d",
+            "cam_bolt",
+            "pocket_face",
+        ],
+    ),
+    (
+        "cutlist",
+        &[
+            "banding",
+            "cut_sizes",
+            "sheet",
+            "kerf",
+            "trim",
+            "worktop_material",
+            "worktop_thickness",
+        ],
+    ),
+    (
+        "display",
+        &[
+            "hardware_models",
+            "fastener_models",
+            "see_through",
+            "camera",
+        ],
+    ),
+];
 
 #[cfg(test)]
 mod tests;

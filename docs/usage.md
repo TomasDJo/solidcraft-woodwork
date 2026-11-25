@@ -496,6 +496,14 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 
 ## Woodwork settings
 
+**Section**, at the top, shows one group of the settings at a time: General (material, board
+thickness, back, labels), Doors and fronts (fronts, reveal, handles, hinge opening), Drawers
+(box boards, slide type), Plinth and wall mount, Joinery (the methods and their sizes), Cut list
+and worktop, Display (hardware and fastener models, see-through boards, camera), or All. Units
+shows in every section. The settings of the other sections are not changed by a run: they keep
+what is stored. A script may leave Section out; every field it gives is used whatever the
+section.
+
 The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
 holes, plinth height and plinth type. Set the ones you want and run it; Keep or an empty field
 leaves what is stored, and the result shows everything stored now. The Cabinet and Corner

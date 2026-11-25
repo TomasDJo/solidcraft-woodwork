@@ -206,3 +206,15 @@ def test_rebuild_job_takes_more_than_one_run(approval):
     assert elapsed > 30, elapsed
     again = results[2]["result"]
     assert again["applied"] == ["C0"] and "as they were made" in again["message"], again
+
+
+def test_sections_hide_fields_but_keep_their_values(approval):
+    # Section shows one group; the hook hides the rest without leaving them out. A run in the
+    # Display section changes the camera and keeps the stored joinery and plinth; a script that
+    # names a field of another section still sets it.
+    results = cli([setting(approval, {"joints": "confirmat", "plinth": 150}),
+                   setting(approval, {"section": "display", "camera": "leave"}),
+                   setting(approval, {"section": "general", "joints": "cam"})])
+    stored = results[1]["result"]["settings"]
+    assert stored == {"joints": "confirmat", "plinth": 150, "camera": "leave"}, stored
+    assert results[2]["result"]["settings"]["joints"] == "cam", results[2]

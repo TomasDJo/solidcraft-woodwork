@@ -60,7 +60,11 @@ fn fields_are_defaults_in_the_dialogs_unit() {
 fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
     let stored = json!({"document": {"settings": {"material": "MDF", "reveal": 3,
         "joints": "cam", "dowel_d": 10, "hinge_angle": "165"}}});
-    let mm = fields("settings", &json!({"units": "mm"}), &stored);
+    let mm = fields(
+        "settings",
+        &json!({"units": "mm", "section": "all"}),
+        &stored,
+    );
     assert_eq!(mm["thickness"], json!({"default": 18.0}));
     assert_eq!(mm["reveal"], json!({"default": 3.0}));
     assert_eq!(mm["joints"], json!({"default": "cam"}));
@@ -313,4 +317,39 @@ fn match_selected_shows_the_picked_cabinets_sizes() {
     assert_eq!(sizes["plinth"], json!({"default": "yes", "hint": hint}));
     assert_eq!(sizes["height"]["default"], 28.346457);
     assert!(matched_sizes(&json!({"selection": []}), &design).is_empty());
+}
+
+#[test]
+fn a_section_shows_its_fields_and_hides_the_rest_still_sent() {
+    let joinery = fields("settings", &json!({"section": "joinery"}), &json!({}));
+    assert!(joinery["joints"].get("visible").is_none());
+    assert_eq!(joinery["joints"]["default"], "dowels");
+    // hidden, but with its value: the hook hides without leaving it out
+    assert_eq!(
+        joinery["plinth"],
+        json!({"default": 100.0, "visible": false})
+    );
+    assert_eq!(joinery["material"], json!({"visible": false}));
+    assert!(joinery.get("units").is_none());
+    let all = fields("settings", &json!({"section": "all"}), &json!({}));
+    assert!(all
+        .as_object()
+        .unwrap()
+        .values()
+        .all(|f| f.get("visible").is_none()));
+    // every setting and Settings' own keep-choices are in one section
+    let mut keys: Vec<&str> = SECTIONS.iter().flat_map(|s| s.1.iter().copied()).collect();
+    let mut wanted = kept();
+    keys.sort();
+    wanted.retain(|k| *k != "handles");
+    wanted.push("handles");
+    wanted.sort();
+    assert_eq!(keys, wanted);
+    // Section is no setting: it is not stored
+    let patched = patch(
+        &json!({"section": "joinery", "joints": "none"}),
+        &Value::Null,
+    )
+    .unwrap();
+    assert_eq!(patched, json!({"settings": {"joints": "none"}}));
 }
