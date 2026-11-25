@@ -694,3 +694,32 @@ fn placing_measures_only_the_picked_cabinet_and_lands_where_a_full_measure_put_i
     assert_eq!(placed, "right of A");
     assert_eq!(moved["translate"][0], json!(300.0 + 300.0));
 }
+
+#[test]
+fn edit_picked_shows_a_refused_change_in_the_problem_row() {
+    // Cabinet A, 900 wide with two dividers and three doors, kept in its Edit file; the dialog
+    // in Edit picked asks for four doors (more than one per compartment)
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "storage.get" => json!({"blobs": [{"name": "edit/A.json"}]}),
+            "_get_blob" => json!({"entry": "cabinet", "units": "mm", "parts": ["Side"],
+                "shown": {"doors": 3, "dividers": 2, "shelves": 1, "kind": "standard"}}),
+            "_params" => json!({"A_width": 900.0, "A_height": 720.0, "A_depth": 560.0}),
+            _ => json!({}),
+        })
+    };
+    let picked = json!([{"type": "body", "name": "A Side L"}]);
+    let values = json!({"mode": "edit", "selection": picked, "doors": 4, "dividers": 2});
+    let reply = dialog("cabinet", &values, &mut run).unwrap();
+    let text = reply["problem"]["value"].as_str().unwrap_or_default();
+    assert!(text.contains("dividers + 1 = 3 here"), "{reply}");
+    assert_eq!(reply["problem"]["visible"], true);
+    // as it is: no problem, the row hidden
+    let values = json!({"mode": "edit", "selection": picked, "doors": 3, "dividers": 2});
+    let reply = dialog("cabinet", &values, &mut run).unwrap();
+    assert_eq!(
+        reply["problem"],
+        json!({"default": "None", "visible": false}),
+        "{reply}"
+    );
+}
