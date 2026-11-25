@@ -589,8 +589,9 @@ the design as it was. A job has no Preview.
 
 - **Cabinets**: a part of each cabinet to build again (any board, a hinge or slide model
   too); several parts of one cabinet count once. Empty: all box and corner cabinets in the
-  design. The field's count is of parts; the note under it names the cabinets they are ("Applies
-  to 3 cabinets: Base 1, Base 2, Wall 1") and any part that is no cabinet's. The dialog fills it
+  design. The field's count is of parts; the greyed **Applies to** row under it (and the field's
+  tooltip) names the cabinets they are ("3 cabinets: Base 1, Base 2, Wall 1", or all cabinets)
+  and any part that is no cabinet's. The dialog fills it
   with what is selected when it opens; a script passes the parts in `selection` (the design's
   selection is not used).
 - **Build again**: **With the settings** gives each cabinet the design-wide settings stored now,
