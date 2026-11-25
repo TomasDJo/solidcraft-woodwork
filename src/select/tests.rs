@@ -157,3 +157,33 @@ fn a_cabinet_goes_against_the_side_it_is_placed_on() {
     );
     assert_eq!(corner.seat("right", 400.0, 560.0), ([650.0, 170.0, 0.0], 0));
 }
+
+#[test]
+fn picked_parts_resolve_to_their_cabinets_once_and_the_hint_says_so() {
+    let cabinets: Vec<String> = ["Base", "Base 2", "Wall 1", "1"]
+        .map(crate::kit::prefix)
+        .into();
+    let picked: Vec<String> = [
+        "Base Side L",
+        "Base Door",
+        "Base 2 Top",
+        "HW hinge (Wall 1:1/Wall 1 Door:1/HW hinge:2)",
+        "HW hinge",
+        "Worktop",
+        "1 Shelf 1",
+    ]
+    .map(String::from)
+    .into();
+    let (found, skipped) = cabinets_of(&cabinets, &picked);
+    assert_eq!(found, ["Base", "Base 2", "Wall 1", "1"]);
+    assert_eq!(skipped, ["HW hinge", "Worktop"]);
+    assert_eq!(
+        applies_to(&cabinets, &picked),
+        "Applies to 4 cabinets: Base, Base 2, Wall 1, 1; not part of a cabinet: HW hinge, Worktop"
+    );
+    assert_eq!(
+        applies_to(&cabinets, &picked[..2]),
+        "Applies to 1 cabinet: Base"
+    );
+    assert_eq!(applies_to(&cabinets, &[]), "Applies to all cabinets");
+}

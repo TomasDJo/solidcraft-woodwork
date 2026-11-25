@@ -178,7 +178,6 @@ fn apply(
     let names_only = body_names(run)?;
     // The cabinets of the picked bodies: a board, or a hinge or slide model's copy (`HW hinge
     // (A:1/A Door:1/HW hinge:2)`, which measures do not show: the first name on its path).
-    let (mut names, mut skipped) = (Vec::new(), Vec::new());
     let bodies = match all {
         // every cabinet: its Side L
         true => (names_only["bodies"].as_array().into_iter().flatten())
@@ -187,19 +186,15 @@ fn apply(
             .collect(),
         false => select::picked(params, &design),
     };
-    for body in bodies {
-        let model = (body.strip_prefix("HW "))
-            .and_then(|b| b.split_once('(')?.1.split_once(':'))
-            .map(|(cabinet, _)| cabinet.to_string());
-        match select::owner(&names_only, &body)
-            .map(String::from)
-            .or(model)
-        {
-            Some(owner) if !names.contains(&owner) => names.push(owner),
-            Some(_) => {}
-            None => skipped.push(json!({"picked": body, "why": "not part of a cabinet"})),
-        }
-    }
+    // as the dialog hook says it (`select::applies_to`)
+    let cabinets: Vec<String> = (names_only["bodies"].as_array().into_iter().flatten())
+        .filter_map(|b| b["name"].as_str()?.strip_suffix(" Side L"))
+        .map(kit::prefix)
+        .collect();
+    let (names, skipped) = select::cabinets_of(&cabinets, &bodies);
+    let mut skipped: Vec<Value> = (skipped.into_iter())
+        .map(|body| json!({"picked": body, "why": "not part of a cabinet"}))
+        .collect();
     // Measured only what is built again: its boards' materials, and its panels.
     let measure = measured(names_only, &names, run)?;
     let mut todo = Vec::new();
@@ -1415,6 +1410,21 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
         return Ok(edit::hidden(values, &design));
     }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
+    // Apply settings: which cabinets the picked parts are, from our files' names (`storage.get`,
+    // small: no design read for the 10M fuel), as the run resolves them.
+    if entry == "rebuild" {
+        let files: Vec<String> = (stored["blobs"].as_array().into_iter().flatten())
+            .filter_map(|b| {
+                b["name"]
+                    .as_str()?
+                    .strip_prefix("edit/")?
+                    .strip_suffix(".json")
+            })
+            .map(String::from)
+            .collect();
+        let picked = select::picked(values, &Value::Null);
+        return Ok(json!({"selection": {"hint": select::applies_to(&files, &picked)}}));
+    }
     let mut reply = settings::fields(entry, values, &stored);
     // A combination the build refuses (Doors 3 without dividers, ...), said at once on its
     // field, as the preview then shows nothing: the build's own checks of the fields, with the

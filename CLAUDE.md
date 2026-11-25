@@ -290,10 +290,13 @@ type, title, description, `maxItems` and the conditions, and the menu then says 
 be run from the agent or CLI" (0.49.0, `selection_field`). `test_manifest` checks it.
 **Apply settings** (entry `rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
 host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply(params, stored, all,
-settings)`: the cabinets of the bodies in its `selection` field, or every cabinet's `Side L` when
-it is empty (not the design's selection, which tests and scripts leave behind); for a hinge or
-slide model's copy, which measures hide, the first name of its `(A:1/...)` path; box and corner
-only. Each one's `edit::merge` with no changes (sizes from Parameters), then `settings::apply`
+settings)`: the cabinets of the bodies in its `selection` field ("Picked parts"), or every
+cabinet's `Side L` when it is empty (not the design's selection, which tests and scripts leave
+behind), by `select::cabinets_of` (cabinet name prefixes; a hinge or slide model's copy, which
+measures hide, the first name of its `(A:1/...)` path); box and corner only. Its dialog hook
+puts `select::applies_to` on the field as a hint, with the prefixes from our files' names
+(`storage.get`, no design read for the 10M fuel), so the dialog names the same cabinets as the
+run (a cabinet made before it had a file, pre-0.5.0, shows as no cabinet's there). Each one's `edit::merge` with no changes (sizes from Parameters), then `settings::apply`
 (what the settings give it now: the design-wide ones stored or default, the hook's four only
 stored, the plinth's only on a cabinet with one, and only what its entry takes; `None` when it
 has them all) or as made, then `rebuild` (Edit's path, shared: delete, `make`, panels,
