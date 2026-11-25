@@ -290,7 +290,7 @@ type, title, description, `maxItems` and the conditions, and the menu then says 
 be run from the agent or CLI" (0.49.0, `selection_field`). `test_manifest` checks it.
 **Apply settings** (entry `rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
 host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply(params, stored, all,
-settings)`: the cabinets of the bodies in its `selection` field ("Picked parts"), or every
+settings)`: the cabinets of the bodies in its `selection` field (Cabinets, any part of each), or every
 cabinet's `Side L` when it is empty (not the design's selection, which tests and scripts leave
 behind), by `select::cabinets_of` (cabinet name prefixes; a hinge or slide model's copy, which
 measures hide, the first name of its `(A:1/...)` path); box and corner only. Its dialog hook

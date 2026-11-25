@@ -587,7 +587,7 @@ and the materials of single parts you changed), as a long job: no 30 s limit, a 
 operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and Cancel, which leaves
 the design as it was. A job has no Preview.
 
-- **Picked parts**: a part of each cabinet to build again (any board, a hinge or slide model
+- **Cabinets**: a part of each cabinet to build again (any board, a hinge or slide model
   too); several parts of one cabinet count once. Empty: all box and corner cabinets in the
   design. The field's count is of parts; the note under it names the cabinets they are ("Applies
   to 3 cabinets: Base 1, Base 2, Wall 1") and any part that is no cabinet's. The dialog fills it
