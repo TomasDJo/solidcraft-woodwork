@@ -158,6 +158,25 @@ def test_apply_settings_to_picked(approval):
     assert "applied" not in results[10]["result"] and boxes(results[11])["B Side L"] == before["B Side L"], results[10]
 
 
+def test_apply_settings_keeps_what_is_per_cabinet(approval):
+    # W, a wall cabinet on a French cleat without a plinth, and B, a base cabinet with one and
+    # pull handles. Settings with confirmat, a 120 plinth and knobs, then Apply settings to all
+    # (none picked): both get confirmat, B the 120 plinth; W keeps no plinth and its cleat, B
+    # its pull handles (handles are per cabinet).
+    light = {"shelves": 0, "depth": 300}
+    results = cli([plugin(approval, "cabinet", {"name": "W", "plinth": "no", "wall_mount": "cleat", "place": "origin", **light}),
+                   plugin(approval, "cabinet", {"name": "B", "plinth": "yes", "doors": 1, "handles": "pull", "place": "origin", **light}),
+                   setting(approval, {"joints": "confirmat", "plinth": 120, "handles": "knob"}),
+                   plugin(approval, "rebuild", {}), MEASURE])
+    reply = results[3]["result"]
+    assert sorted(reply["applied"]) == ["B", "W"], reply
+    assert "joints" in reply["changed"]["W"] and "joints" in reply["changed"]["B"], reply["changed"]
+    assert "plinth" not in reply["changed"]["W"] and "handles" not in reply["changed"]["B"], reply["changed"]
+    box = boxes(results[4])
+    assert box["W Bottom"][2] == 0 and "W Cleat" in box and "W Wall cleat" in box, box["W Bottom"]
+    assert box["B Bottom"][2] == 120, box["B Bottom"]
+
+
 def test_apply_hardware_models_both_ways(approval):
     # A with doors and a drawer, models shown. Settings Hardware models None, applied with a
     # hinge model picked (what a user clicks to turn the models off): no HW copies left in A,

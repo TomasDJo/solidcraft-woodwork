@@ -546,10 +546,16 @@ the design as it was. A job has no Preview.
 - **Cabinets**: a board of each cabinet to build again (any part, a hinge or slide model too).
   Empty: all box and corner cabinets in the design. The dialog fills it with what is selected
   when it opens; a script passes the cabinets in `selection` (the design's selection is not used).
-- **Build again**: **With the settings** gives each cabinet the settings stored now, taking only
-  what that cabinet uses: a cabinet without a plinth keeps none, a corner cabinet takes no drawer
-  or inside settings. Material, thickness, reveal and handles count only when they are stored. A
-  cabinet that already has the settings is skipped. **As made** builds each with its own values
+- **Build again**: **With the settings** gives each cabinet the design-wide settings stored now,
+  taking only what that cabinet uses: a corner cabinet takes no drawer or inside settings.
+  Material, thickness and reveal count only when they are stored. A cabinet that already has the
+  settings is skipped. It never changes what is the cabinet's own:
+  - **Per cabinet, kept:** sizes, shape and kind, doors, drawers and where they are, shelves,
+    shelf pins, dividers, door hinge side, plinth Yes or No, wall mount, handles, handle
+    position, fronts, back, plinth type and labels (what the Cabinet or Edit dialog sets).
+  - **Design-wide, applied:** board material and thickness, reveal, joinery and its sizes,
+    hardware (models, hinge opening, slide type, fasteners), back, drawer and cleat thicknesses,
+    and the plinth height and set-back (only on a cabinet with a plinth). **As made** builds each with its own values
   and sizes from Parameters, for example after updating Woodwork.
 
 The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why

@@ -257,18 +257,29 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
 }
 
 /// A built cabinet's `params` (`edit::merge`'s, sizes from the design's parameters) with what
+/// Fields a cabinet keeps as it has them when Apply settings builds it again: its own layout
+/// (sizes, kind, fronts, drawers, shelves, plinth Yes or No, wall mount, ... are not settings at
+/// all) and the settings Edit or the Cabinet dialog set per cabinet.
+pub const PER_CABINET: [&str; 6] = [
+    "handles",
+    "fronts",
+    "back",
+    "plinth_type",
+    "handle_position",
+    "labels",
+];
+
 /// Woodwork settings hold now, for Apply settings; `None` when it already has them.
-/// The design-wide settings count stored or default, and the dialogs' defaults (material,
-/// thickness, reveal, handles) only when stored. Only what the cabinet's `entry` takes (a
-/// corner has no drawers, no inside joinery, no back choice), and the plinth's only when it has
-/// one: a cabinet without one keeps none. With the params, the fields that change.
+/// Only the design-wide settings: those stored or default, and the dialogs' defaults (material,
+/// thickness, reveal) only when stored; never a `PER_CABINET` field. Only what the cabinet's
+/// `entry` takes (a corner has no drawers, no inside joinery, no back choice), and the plinth's
+/// height and set-back only when it has one: a cabinet without one keeps none. With the params,
+/// the fields that change.
 pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<String>)> {
     let settings = &stored["document"]["settings"];
     let mut wanted = json!({"units": params["units"]});
-    for key in ["material", "handles"] {
-        if settings[key].is_string() {
-            wanted[key] = settings[key].clone();
-        }
+    if settings["material"].is_string() {
+        wanted["material"] = settings["material"].clone();
     }
     let has_plinth = params["plinth"].as_f64().unwrap_or(0.0) > 0.0;
     for (key, field, def, to) in table() {
@@ -300,6 +311,11 @@ pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<
         .cloned()
         .unwrap_or(params["plinth"].clone());
     design(entry, &mut wanted, stored);
+    if let Some(wanted) = wanted.as_object_mut() {
+        for key in PER_CABINET {
+            wanted.remove(key);
+        }
+    }
     let mut out = params.clone();
     let mut changed = Vec::new();
     for (key, value) in wanted.as_object().into_iter().flatten() {

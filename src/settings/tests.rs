@@ -246,13 +246,13 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
     // no plinth: it keeps none
     assert_eq!(p["plinth"], 0.0);
     assert_eq!(apply("cabinet", &p, &stored), None);
-    // with one: the settings' height and type
+    // with one: the settings' height, but its own type (per cabinet)
     let mut on = built.clone();
     on["plinth"] = json!(100.0);
     let (p, _) = apply("cabinet", &on, &stored).unwrap();
     assert_eq!(
         (&p["plinth"], &p["plinth_type"]),
-        (&json!(120.0), &json!("legs"))
+        (&json!(120.0), &json!("board"))
     );
     // a corner takes no drawers' or inside settings
     let mut corner = json!({"units": "mm", "plinth": 0.0});
@@ -262,6 +262,19 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
         p.get("slide_type").is_none() && p.get("joints_inner").is_none(),
         "{p}"
     );
+}
+
+#[test]
+fn apply_keeps_what_is_set_per_cabinet() {
+    let stored = json!({"document": {"settings": {"handles": "knob", "fronts": "inset",
+        "back": "none", "handle_position": "top", "labels": "yes", "joints": "confirmat"}}});
+    let mut built = json!({"units": "mm", "plinth": 0.0, "handles": "pull", "wall_mount": "cleat"});
+    design("cabinet", &mut built, &json!({}));
+    let (p, changed) = apply("cabinet", &built, &stored).unwrap();
+    assert_eq!(changed, ["joints"]);
+    for key in PER_CABINET.into_iter().chain(["wall_mount", "plinth"]) {
+        assert_eq!(p[key], built[key], "{key}");
+    }
 }
 
 #[test]
