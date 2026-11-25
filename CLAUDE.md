@@ -603,7 +603,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   2 patterns a cabinet. The cut list notes the boards (`cutlist::fingered`, `_fingered`).
   Over a plinth board or notch (`closed_bottom` in `Joinery::new`) the bottom's joints take the
   third scope, `BOTTOM`: `none`, butted, unless `finger_bottom` is yes
-  (Settings and Edit), as its fingers would be closed mortises; no other board has them (the top
+  (Woodwork settings, design-wide), as its fingers would be closed mortises; no other board has them (the top
   and a sink base's rails are flush with the sides' tops). Absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
