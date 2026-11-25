@@ -550,7 +550,7 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
 
 ## Rebuild cabinets
 
-Builds cabinets again where they stand, as a long job (SolidCraft 0.48 or later): no 30 s
+Builds cabinets again where they stand, as a long job: no 30 s
 limit, a row in the operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and
 Cancel, which leaves the design as it was. A job has no Preview.
 
