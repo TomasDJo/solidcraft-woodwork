@@ -723,3 +723,34 @@ fn edit_picked_shows_a_refused_change_in_the_problem_row() {
         "{reply}"
     );
 }
+
+#[test]
+fn mode_auto_shows_the_problem_row_when_editing_and_when_new() {
+    // Cabinet A, 900 wide with two dividers and three doors; Mode Auto with its door picked
+    // edits it (`select::auto`), and four doors are more than one per compartment
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => json!({"bodies": [{"name": "A Side L"}, {"name": "A Side R"},
+                {"name": "A Door 1"}]}),
+            "storage.get" => json!({"blobs": [{"name": "edit/A.json"}]}),
+            "_get_blob" => json!({"entry": "cabinet", "units": "mm", "parts": ["Side", "Door"],
+                "shown": {"doors": 3, "dividers": 2, "shelves": 1, "kind": "standard"}}),
+            "_params" => json!({"A_width": 900.0, "A_height": 720.0, "A_depth": 560.0}),
+            _ => json!({}),
+        })
+    };
+    let door = json!([{"type": "body", "name": "A Door 1"}]);
+    let values = json!({"mode": "auto", "selection": door, "doors": 4, "dividers": 2});
+    let reply = dialog("cabinet", &values, &mut run).unwrap();
+    let hint = reply["mode"]["hint"].as_str().unwrap_or_default();
+    assert!(hint.contains("editing A"), "{reply}");
+    let text = reply["problem"]["value"].as_str().unwrap_or_default();
+    assert!(text.contains("dividers + 1 = 3 here"), "{reply}");
+    assert_eq!(reply["problem"]["visible"], true, "{reply}");
+    // Auto with nothing picked is a new cabinet: three doors and no dividers are refused there
+    let values = json!({"mode": "auto", "shape": "box", "doors": 3, "dividers": 0});
+    let reply = dialog("cabinet", &values, &mut run).unwrap();
+    assert_eq!(reply["mode"]["hint"], "Auto: a new cabinet", "{reply}");
+    let text = reply["problem"]["value"].as_str().unwrap_or_default();
+    assert!(text.contains("dividers + 1 = 1 here"), "{reply}");
+}
