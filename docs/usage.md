@@ -14,7 +14,7 @@ without doors.
 - [Changing sizes](#changing-sizes)
 - [Edit cabinet](#edit-cabinet)
 - [Material](#material)
-- [Rebuild cabinets](#rebuild-cabinets)
+- [Apply settings to all cabinets](#apply-settings-to-all-cabinets)
 - [Panel](#panel)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
@@ -548,7 +548,7 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
 - Nothing is cleared: to go back to a default, set it to that value.
 - The dialog does not remember the last values you used; only what Woodwork settings stored.
 
-## Rebuild cabinets
+## Apply settings to all cabinets
 
 Builds cabinets again where they stand, as a long job: no 30 s
 limit, a row in the operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and

@@ -48,13 +48,17 @@ def test_choices_have_titles(approval):
             at = (entry["name"], name)
             # A keyword the dialog cannot draw leaves the entry with Run turned off.
             assert set(field) <= DRAWN, (at, set(field) - DRAWN)
+            # A selection field with any other keyword, `default` too, has no dialog (0.49:
+            # "This entry needs to be run from the agent or CLI").
+            if field["type"] == "array":
+                assert set(field) <= {"type", "title", "description", "maxItems", WHEN}, at
             # A field shown only when it applies (0.46). Hidden, it is left out of Run and not
             # required; it still has a default for when it shows, as `required` orders it.
             # Its controllers are sibling scalar fields, and each value one they can have. A
             # hidden controller matches neither `eq` nor `in`, so `not` over a controller that
             # can hide comes true when it hides: write such a test as an `in` list instead.
             if WHEN in field:
-                assert name not in schema["required"] or "default" in field, at
+                assert name not in schema["required"] or "default" in field or field["type"] == "array", at
                 for leaf, negated in conditions(field[WHEN]):
                     controller = schema["properties"][leaf["field"]]
                     assert leaf["field"] != name and controller["type"] in ("string", "boolean", "number", "integer"), at

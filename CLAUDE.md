@@ -229,7 +229,10 @@ from the app first (selection, measurements, the active component) is fetched in
 passed in.
 
 Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing`, `settings` and `rebuild`, all edit.
-**Rebuild cabinets** (`rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
+A selection field (an array) has no `default`: the app's dialog refuses one with any keyword but
+type, title, description, `maxItems` and the conditions, and the menu then says "This entry needs to
+be run from the agent or CLI" (0.49.0, `selection_field`). `test_manifest` checks it.
+**Apply settings to all cabinets** (entry `rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
 host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply` with `Apply {all,
 settings, job}`: every cabinet's `Side L` or the picked ones, `settings::apply` or as made, no
 `drawing::fits` stop, and a `_progress` pseudo-command per cabinet that the guest's `run` turns

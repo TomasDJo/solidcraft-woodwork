@@ -188,13 +188,13 @@
       },
         {
           "name": "rebuild", "effect": "edit", "job": true,
-          "slots": [{"kind": "menu", "name": "Rebuild cabinets"}, {"kind": "ribbon", "name": "Rebuild cabinets"}],
+          "slots": [{"kind": "menu", "name": "Apply settings to all cabinets"}, {"kind": "ribbon", "name": "Apply settings to all cabinets"}],
           "input_schema": {"type": "object", "x-solidcraft-icon": "icons/rebuild.svg",
           "required": ["with", "scope", "selection"],
           "properties": {
             "with": { "type": "string", "title": "Build again", "description": "Each cabinet built again where it stands, as a long job with progress and Cancel (SolidCraft 0.48).", "default": "settings", "oneOf": [{"const": "settings", "title": "With the settings", "description": "The Woodwork settings stored now, where a cabinet's differ."}, {"const": "made", "title": "As made", "description": "Each with its own values, sizes from Parameters: after a Woodwork update."}] },
             "scope": { "type": "string", "title": "Cabinets", "description": "Every box and corner cabinet in the design, or the picked ones.", "default": "all", "oneOf": [{"const": "all", "title": "All"}, {"const": "selected", "title": "Picked"}] },
-            "selection": { "type": "array", "title": "Picked cabinets", "description": "A board of each cabinet to build again.", "default": [], "x-solidcraft-visible-when": {"field": "scope", "eq": "selected"} }
+            "selection": { "type": "array", "title": "Picked cabinets", "description": "A board of each cabinet to build again.", "x-solidcraft-visible-when": {"field": "scope", "eq": "selected"} }
           }}
         },
       {
