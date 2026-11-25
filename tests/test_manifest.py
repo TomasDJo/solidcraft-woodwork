@@ -100,14 +100,24 @@ def test_choices_have_titles(approval):
             assert field["default"] in values, at
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
-    assert choices == 60, choices
+    assert choices == 59, choices
     # SolidCraft 0.45 refuses a manifest over 64 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
     assert json.loads(packed) == manifest and len(packed) < 64 * 1024, len(packed)
-    # Each function names its icon, and the package has it.
+    # The settings dropdown (`runtime.ribbon_groups`, SolidCraft 0.50): one Model-tab button
+    # listing exactly the settings' section entries, each with a menu slot of its own.
+    sections = [e["name"] for e in manifest["runtime"]["entries"] if e["name"].startswith("settings-")]
+    assert sections == [f"settings-{s}" for s in ("general", "fronts", "drawers", "plinth", "joinery", "cutlist", "display")]
+    assert manifest["runtime"]["ribbon_groups"] == [
+        {"label": "Woodwork settings", "icon": "icons/settings.svg", "entries": sections}], manifest["runtime"]["ribbon_groups"]
+    titles = ["General", "Doors and fronts", "Drawers", "Plinth / toe kick and wall mount", "Joinery", "Cut list and worktop", "Display"]
+    slots = {e["name"]: e.get("slots") for e in manifest["runtime"]["entries"] if e["name"].startswith("settings")}
+    assert slots == {"settings": None} | {s: [{"kind": "menu", "name": f"Settings: {t}"}] for s, t in zip(sections, titles)}, slots
+    # Each function names its icon, and the package has it (the settings' dialogs share one).
     for entry in manifest["runtime"]["entries"]:
         icon = entry["input_schema"]["x-solidcraft-icon"]
-        assert icon == f"icons/{entry['name']}.svg" and (PKG / icon).is_file(), icon
+        own = "settings" if entry["name"].startswith("settings") else entry["name"]
+        assert icon == f"icons/{own}.svg" and (PKG / icon).is_file(), icon
     # The plugin still gets the value, not the title.
     results = cli([plugin(approval, "corner", {"shape": "diagonal", "doors": "hinged right"}), MEASURE])
     assert "Cabinet Door" in boxes(results[1]), boxes(results[1])

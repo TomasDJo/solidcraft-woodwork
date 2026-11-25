@@ -537,7 +537,10 @@ pub fn trouble(values: &Value, stored: &Value) -> Option<(String, String)> {
 /// Settings dialog gets every setting with a default, stored or the default, and no hint.
 pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     let mut reply = Map::new();
-    let own = entry == "settings";
+    // Settings is a dialog per section (`settings-<section>`): the hook answers that section's
+    // fields only, as a reply naming another field is ignored whole.
+    let section = entry.strip_prefix("settings-");
+    let own = entry == "settings" || section.is_some();
     if !own && !matches!(entry, "cabinet" | "corner") {
         return Value::Object(reply);
     }
@@ -555,10 +558,9 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     } else {
         settings.retain(|key, _| FIELDS.contains(&key.as_str()));
     }
-    // Settings' sizes are in Units, which only General (and All) show; the other sections use
-    // the stored one, said in each size's hint
-    let shown = values["section"].as_str().unwrap_or("all");
-    let with_units = matches!(shown, "general" | "all") || !own;
+    // Settings' sizes are in Units, which only General (and the scripts' entry) has; the other
+    // sections use the stored one, said in each size's hint
+    let with_units = matches!(section, None | Some("general"));
     let stored_units = stored["document"]["settings"]["units"]
         .as_str()
         .unwrap_or("mm");
@@ -586,34 +588,25 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
         };
         reply.insert(key.clone(), field);
     }
-    // Settings' Section shows one group of fields: the others hidden by the hook, which (unlike
-    // a schema condition) still sends them, so a script's values are all used and the dialog's
-    // hidden ones are the stored values, which `patch` leaves out.
-    if own {
-        reply.insert(
-            "section".into(),
-            json!({"hint": "Pick a group to see its settings"}),
-        );
-        // a divider row under Section, greyed and never stored (filled for a script)
-        reply.insert("divider".into(), json!({ "default": DIVIDER }));
-        for (section, keys) in SECTIONS {
-            if shown == "all" || shown == section {
-                continue;
-            }
-            for key in keys {
-                let field = reply.entry(key.to_string()).or_insert(json!({}));
-                field["visible"] = json!(false);
-            }
+    if let Some(section) = section {
+        let keys = SECTIONS
+            .iter()
+            .find(|s| s.0 == section)
+            .map_or(&[][..], |s| s.1);
+        reply.retain(|key, _| keys.contains(&key.as_str()));
+        // Finger-joint the bottom too only matters over a board or notch plinth; Plinth type is
+        // in another dialog, so the stored one decides (a schema condition can't name it).
+        let plinth = stored["document"]["settings"]["plinth_type"].as_str();
+        if section == "joinery" && matches!(plinth, Some("legs" | "casters")) {
+            let field = reply.entry("finger_bottom").or_insert(json!({}));
+            field["visible"] = json!(false);
         }
     }
     Value::Object(reply)
 }
 
-/// The divider row under Settings' Section: a greyed field, its value never stored.
-pub const DIVIDER: &str = "────────────────────";
-
-/// Settings' sections (its field `section`, the same in the manifest) and their fields. Apply
-/// to shows in every section.
+/// Settings' sections, an entry each (`settings-<section>`, the same fields in the manifest).
+/// The entry `settings` (no dialog, for scripts) takes them all, and Apply to.
 pub const SECTIONS: [(&str, &[&str]); 7] = [
     (
         "general",

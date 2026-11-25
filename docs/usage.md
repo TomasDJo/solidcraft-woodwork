@@ -291,7 +291,7 @@ as the cabinet is made:
   the slanted front, so they are butted to the two ends. Over a plinth board or notched sides the sides reach below the bottom, where its
   fingers would be closed mortises through the sides (a CNC job): the bottom is then butted (as
   Joinery None) and keeps its own width, unless **Finger-joint
-  the bottom too** (Woodwork settings; shown only with a board or notch plinth) is Yes. On legs or casters, or with no plinth, the
+  the bottom too** (Woodwork settings, Joinery; hidden while the stored plinth type is legs or casters) is Yes. On legs or casters, or with no plinth, the
   bottom is finger-jointed as the top. The top is always flush with the sides' top edges.
   **Drawer box joints** (Woodwork settings): Finger joints give the drawer boxes the same
   at their four corners, the box's front and back running through the sides, fingers as wide as
@@ -525,15 +525,16 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 
 ## Woodwork settings
 
-**Show settings for**, at the top, picks one group of the settings to show below it (a divider
-row parts it from them): General (units, material, board thickness, back, labels), Doors and
-fronts (fronts, reveal, handles, hinge opening), Drawers (box boards, slide type), Plinth / toe kick and
-wall mount, Joinery (the methods and their sizes), Cut list and worktop, Display (hardware and
-fastener models, see-through boards, camera), or All. Units is in General and is kept: the
-other groups give their sizes in it, and each size's hint says which. The settings of the other
-groups are not changed by a run: they keep what is stored. A script may leave the group out;
-every field it gives is used whatever the group, and its sizes are in the `units` it gives (else
-the stored one).
+Woodwork settings is a dialog per group: **Settings: General** (units, material, board
+thickness, back, labels), **Doors and fronts** (fronts, reveal, handles, hinge opening),
+**Drawers** (box boards, box joints, slide type), **Plinth / toe kick and wall mount**,
+**Joinery** (the methods and their sizes), **Cut list and worktop**, and **Display** (hardware
+and fastener models, see-through boards, camera). On the Model tab they are under one
+**Woodwork settings** button: click it, or its arrow, and pick a group. Each is also in the
+**Plugins > Woodwork** menu. A run of one changes only its own settings; the others keep what
+is stored. Units is in General and is kept: the other dialogs give their sizes in it, and each
+size's hint says which. A script uses `woodwork.settings`, which takes any of the settings, its
+sizes in the `units` it gives (else the stored one).
 
 The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
 holes, plinth height and plinth type. Set the ones you want and run it; Keep or an empty field
