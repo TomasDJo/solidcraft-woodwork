@@ -6,7 +6,8 @@ fn patch_keeps_only_what_was_set_in_mm() {
         "handles": "keep", "plinth_type": "keep"});
     assert_eq!(
         patch(&params, &Value::Null).unwrap(),
-        json!({"settings": {"material": "MDF", "thickness": 19.05, "reveal": 3.0}})
+        // Units is kept too: the other sections use it
+        json!({"settings": {"material": "MDF", "thickness": 19.05, "reveal": 3.0, "units": "in"}})
     );
     let params = json!({"units": "mm", "plinth": 150, "plinth_type": "legs"});
     assert_eq!(
@@ -60,7 +61,11 @@ fn fields_are_defaults_in_the_dialogs_unit() {
 fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
     let stored = json!({"document": {"settings": {"material": "MDF", "reveal": 3,
         "joints": "cam", "dowel_d": 10, "hinge_angle": "165"}}});
-    let mm = fields("settings", &json!({"units": "mm"}), &stored);
+    let mm = fields(
+        "settings",
+        &json!({"units": "mm", "section": "all"}),
+        &stored,
+    );
     assert_eq!(mm["thickness"], json!({"default": 18.0}));
     assert_eq!(mm["reveal"], json!({"default": 3.0}));
     assert_eq!(mm["joints"], json!({"default": "cam"}));
@@ -69,9 +74,18 @@ fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
     assert_eq!(mm["joint_spacing"], json!({"default": 250.0}));
     assert_eq!(mm["hinge_angle"], json!({"default": "165"}));
     assert_eq!(mm["slide_type"], json!({"default": "full"}));
-    // material keeps its Keep
-    assert!(mm.get("material").is_none());
-    assert_eq!(mm.as_object().unwrap().len(), table().len(), "{mm}");
+    // the stored material, the Cabinet dialog's handles and the camera's Fit: never Keep
+    assert_eq!(mm["material"], json!({"default": "MDF"}));
+    assert_eq!(mm["handles"], json!({"default": "none"}));
+    assert_eq!(mm["camera"], json!({"default": "fit"}));
+    let empty = fields(
+        "settings",
+        &json!({"section": "all"}),
+        &json!({"document": null}),
+    );
+    assert_eq!(empty["material"], json!({"default": "Birch plywood"}));
+    // every setting, Section's hint and the divider
+    assert_eq!(mm.as_object().unwrap().len(), table().len() + 2, "{mm}");
     assert_eq!(mm["plinth"], json!({"default": 100.0}));
     assert_eq!(mm["kerf"], json!({"default": 4.0}));
     assert_eq!(mm["worktop_material"], json!({"default": "Oak"}));
@@ -124,7 +138,7 @@ fn patch_leaves_out_numbers_as_stored_or_default() {
     let params = json!({"units": "in", "plinth": 3.937008, "reveal": 2, "thickness": 0.75});
     assert_eq!(
         patch(&params, &stored).unwrap(),
-        json!({"settings": {"thickness": 19.05}})
+        json!({"settings": {"thickness": 19.05, "units": "in"}})
     );
 }
 
@@ -159,7 +173,11 @@ fn joinery_is_design_wide_not_a_cabinet_default() {
         json!({"settings": {}})
     );
     let inch = patch(&json!({"units": "in", "dowel_d": 0.25}), &Value::Null).unwrap();
-    assert_eq!(inch, json!({"settings": {"dowel_d": 6.35}}));
+    assert_eq!(inch, json!({"settings": {"dowel_d": 6.35, "units": "in"}}));
+    // a section without Units gives its sizes in the stored one
+    let stored_in = json!({"document": {"settings": {"units": "in"}}});
+    let section = patch(&json!({"dowel_d": 0.25}), &stored_in).unwrap();
+    assert_eq!(section, json!({"settings": {"dowel_d": 6.35}}));
     assert!(patch(&json!({"dowel_d": 25}), &Value::Null).is_err());
 }
 
@@ -310,4 +328,68 @@ fn match_selected_is_yes_with_a_cabinet_picked_and_hidden_otherwise() {
     let selected =
         json!({"bodies": ["A Side L"], "selection": [{"type": "body", "name": "A Side L"}]});
     assert_eq!(matching(&json!({}), &selected), yes);
+}
+
+#[test]
+fn match_selected_shows_the_picked_cabinets_sizes() {
+    let design = json!({"bodies": ["Cabinet 2 Side L", "Cabinet 2 Top"], "selection": [],
+        "params": [{"name": "Cabinet_2_height", "value": 720.0},
+            {"name": "Cabinet_2_depth", "value": 560.0},
+            {"name": "Cabinet_2_thickness", "value": 19.05},
+            {"name": "Cabinet_2_plinth", "value": 100.0}]});
+    let pick = json!({"units": "in", "selection": [{"type": "body", "name": "Cabinet 2 Top"}]});
+    let sizes = matched_sizes(&pick, &design);
+    let hint = "Match selected takes it from Cabinet 2";
+    assert_eq!(sizes["thickness"], json!({"default": 0.75, "hint": hint}));
+    assert_eq!(sizes["plinth"], json!({"default": "yes", "hint": hint}));
+    assert_eq!(sizes["height"]["default"], 28.346457);
+    assert!(matched_sizes(&json!({"selection": []}), &design).is_empty());
+}
+
+#[test]
+fn a_section_shows_its_fields_and_hides_the_rest_still_sent() {
+    let joinery = fields("settings", &json!({"section": "joinery"}), &json!({}));
+    assert!(joinery["joints"].get("visible").is_none());
+    assert_eq!(joinery["joints"]["default"], "dowels");
+    // hidden, but with its value: the hook hides without leaving it out
+    // a size outside General says its unit, set there
+    assert_eq!(
+        joinery["plinth"],
+        json!({"default": 100.0, "hint": "In mm, as set in General", "visible": false})
+    );
+    let stored_in = json!({"document": {"settings": {"units": "in", "dowel_d": 6.35}}});
+    let inch = fields(
+        "settings",
+        &json!({"section": "joinery", "units": "mm"}),
+        &stored_in,
+    );
+    assert_eq!(inch["dowel_d"]["default"], 0.25);
+    assert_eq!(inch["units"], json!({"default": "in", "visible": false}));
+    assert_eq!(inch["section"]["hint"], "Pick a group to see its settings");
+    assert_eq!(inch["divider"]["default"], DIVIDER);
+    assert_eq!(
+        joinery["material"],
+        json!({"default": "Birch plywood", "visible": false})
+    );
+    // Units shows only in General
+    assert_eq!(joinery["units"], json!({"default": "mm", "visible": false}));
+    let all = fields("settings", &json!({"section": "all"}), &json!({}));
+    assert!(all
+        .as_object()
+        .unwrap()
+        .values()
+        .all(|f| f.get("visible").is_none()));
+    // every setting and Settings' own keep-choices are in one section
+    let mut keys: Vec<&str> = SECTIONS.iter().flat_map(|s| s.1.iter().copied()).collect();
+    let mut wanted = kept();
+    keys.sort();
+    wanted.sort();
+    assert_eq!(keys, wanted);
+    // Section is no setting: it is not stored
+    let patched = patch(
+        &json!({"section": "joinery", "joints": "none"}),
+        &Value::Null,
+    )
+    .unwrap();
+    assert_eq!(patched, json!({"settings": {"joints": "none"}}));
 }

@@ -21,7 +21,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   doors, or diagonal with one door, overlay or inset.
 - **Place**, in both: a new cabinet goes against the one you selected and is held to it, so
   a run stays together when a cabinet changes size.
-- **Edit cabinet**: change shelves, doors, drawers and more on a cabinet that is already made.
+- **Edit cabinet** (Cabinet, Mode Edit picked): change the sizes, shelves, doors, drawers and more of one cabinet that is already made.
 - **Joinery**: chosen in Woodwork settings for the whole design: dowels, confirmat or plain screws, cam locks, pocket screws, biscuits or a dado, counted in the cut list.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
 - **Woodwork settings**: what is the same for the whole design (joinery, hardware, back, fronts, plinth, cut list sheets, worktop), kept in the design; Apply settings builds cabinets again with them.

@@ -16,7 +16,7 @@ mod doors;
 mod input;
 
 use crate::fittings::{self, PinRows, LEG_INSET, PIN_SETBACK, PITCH};
-use crate::joint::{Joinery, Joint, CARCASS};
+use crate::joint::{Joinery, Joint, BOTTOM, CARCASS};
 use crate::kit::{mm, Kit};
 use crate::Commands;
 pub use input::hand;
@@ -94,7 +94,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let ed = kit.parameter("depth", d, "depth of both legs");
     let eh = kit.parameter("height", h, "outside height, plinth included");
     let et = kit.parameter("thickness", t, "panel thickness");
-    let joinery = Joinery::new(&kit, p, (t, &et), false)?;
+    // Over a plinth board or notch the ends and backs reach below the bottom (`BOTTOM`).
+    let closed = plinth > 0.0 && !matches!(plinth_type, "legs" | "casters");
+    let joinery = Joinery::new(&kit, p, (t, &et), false, closed)?;
     // ponytail: no dado on a corner cabinet: its L-shaped boards (notch, chamfer picked by
     // point) and the backs would all have to grow into the grooves.
     crate::kit::check(
@@ -262,16 +264,32 @@ impl Corner<'_> {
             Some(_) => format!("{et} + {tm}"),
             None => et.clone(),
         };
+        // Finger joints: the back runs through the back return and the back leg's end to
+        // their outsides, the back return through the return's end (`fingered`).
+        let grow = |yes: bool| if yes { et.to_string() } else { zero.clone() };
+        let (left, right) = (
+            grow(self.fingered("Back return", "Back")),
+            grow(self.fingered(back_end, "Back")),
+        );
+        let front = grow(self.fingered(return_end, "Back return"));
         panel(
             "Back",
-            [&back_x, &off(format!("{eb} - {et}")), &back_z],
-            [&off(format!("{ea} - 2*{et}")), et, &back_h],
+            [
+                &format!("{back_x} - {left}"),
+                &off(format!("{eb} - {et}")),
+                &back_z,
+            ],
+            [
+                &off(format!("{ea} - 2*{et} + {left} + {right}")),
+                et,
+                &back_h,
+            ],
             None,
         );
         panel(
             "Back return",
-            [&tm, et, &back_z],
-            [et, &off(format!("{eb} - {et}")), &back_h],
+            [&tm, &format!("{et} - {front}"), &back_z],
+            [et, &off(format!("{eb} - {et} + {front}")), &back_h],
             None,
         );
         // The mount boards under the top: along the back wall from the side wall to the back
@@ -351,15 +369,50 @@ impl Corner<'_> {
                     format!("{eb} - {ed} - {et}"),
                 ],
             };
+            // Finger joints: the bottom and top run through the uprights round them to their
+            // outsides, and leave the corners where two uprights meet (`fingered`).
+            let piece = format!("{part} return");
+            let front_board = if self.split {
+                piece.as_str()
+            } else {
+                part.as_str()
+            };
+            let ext = |face: &str, end: &str| match self.fingered(face, end) {
+                true => et.to_string(),
+                false => zero.clone(),
+            };
+            let (el, er, eb_, ef) = (
+                ext("Back return", part),
+                ext(back_end, part),
+                ext("Back", part),
+                ext(return_end, front_board),
+            );
+            let fingers = [&el, &er, &eb_, &ef].iter().any(|e| **e != zero);
             if self.split {
                 // Two rectangles, joined along the back leg's front edge: the back leg's
                 // board over the whole width, and the return's in front of it.
                 let leg = format!("{} - {w0}", notch[0]); // inside depth of both legs
                 let joint = format!("{et} + {}", notch[2]);
                 let wide = inner(ea);
-                panel(part, [&w0, &joint, z], [&wide, &leg, et], None);
-                let piece = format!("{part} return");
-                panel(&piece, [&w0, et, z], [&leg, &notch[2], et], None);
+                match fingers {
+                    true => {
+                        let x0 = format!("{w0} - {el}");
+                        let size = [format!("{wide} + {el} + {er}"), format!("{leg} + {eb_}")];
+                        panel(part, [&x0, &joint, z], [&size[0], &size[1], et], None);
+                        let y0 = format!("{et} - {ef}");
+                        let size = [format!("{leg} + {el}"), format!("{} + {ef}", notch[2])];
+                        panel(&piece, [&x0, &y0, z], [&size[0], &size[1], et], None);
+                        let far = format!("{joint} + {leg} + {eb_} - {et}");
+                        let right = format!("{w0} + {wide} + {er} - {et}");
+                        self.corner(part, z, (&el, &eb_), [&x0, &far], "back left");
+                        self.corner(part, z, (&er, &eb_), [&right, &far], "back right");
+                        self.corner(&piece, z, (&el, &ef), [&x0, &y0], "front left");
+                    }
+                    false => {
+                        panel(part, [&w0, &joint, z], [&wide, &leg, et], None);
+                        panel(&piece, [&w0, et, z], [&leg, &notch[2], et], None);
+                    }
+                }
                 let targets = [format!("{name} {part}"), format!("{name} {piece}")];
                 let ends = [
                     format!("{w0} + {}", mm(DOWEL_INSET)),
@@ -381,7 +434,35 @@ impl Corner<'_> {
                 }
                 continue;
             }
-            panel(part, [&w0, et, z], [&inner(ea), &inner(eb), et], None);
+            if fingers {
+                // grown on its fingered edges; the open corner's notch from the front edge
+                let x0 = format!("{w0} - {el}");
+                let y0 = format!("{et} - {ef}");
+                let wide = format!("{} + {el} + {er}", inner(ea));
+                let deep = format!("{} + {ef} + {eb_}", inner(eb));
+                panel(part, [&x0, &y0, z], [&wide, &deep, et], None);
+                let far = format!("{y0} + {deep} - {et}");
+                let right = format!("{x0} + {wide} - {et}");
+                self.corner(part, z, (&el, &eb_), [&x0, &far], "back left");
+                self.corner(part, z, (&er, &eb_), [&right, &far], "back right");
+                self.corner(part, z, (&el, &ef), [&x0, &y0], "front left");
+                if !self.diagonal {
+                    let x1 = format!("{x0} + {wide}");
+                    let size = [
+                        format!("{x1} - ({})", notch[0]),
+                        format!("{eb} - {ed} - ({y0})"),
+                    ];
+                    panel(
+                        &format!("{part} notch"),
+                        [&notch[0], &y0, z],
+                        [&size[0], &size[1], et],
+                        Some(&[format!("{name} {part}")]),
+                    );
+                    continue;
+                }
+            } else {
+                panel(part, [&w0, et, z], [&inner(ea), &inner(eb), et], None);
+            }
             if self.diagonal {
                 // The board's upright edge at the open corner, cut back to the front.
                 let edge = [
@@ -489,6 +570,58 @@ impl Corner<'_> {
         }
     }
 
+    /// Whether the joint of `end` into `face` is finger jointed: the method says finger (the
+    /// bottom's, `BOTTOM`, over a plinth), and the joint is a corner, open at both boards'
+    /// edges. Else it is butted (`none`): with a wall mount the backs stand on the bottom, under
+    /// the top, and against the middle of the back leg's and the return's ends (through
+    /// mortises), and the diagonal's bottom and top keep their front edges for the chamfer.
+    fn fingered(&self, face: &str, end: &str) -> bool {
+        let scope = match end.starts_with("Bottom") {
+            true => BOTTOM,
+            false => CARCASS,
+        };
+        if self.joinery.method(scope) != "finger" {
+            return false;
+        }
+        let mount = self.emount.is_some();
+        let (back_end, return_end) = self.ends();
+        let ends = face == back_end || face == return_end;
+        match end {
+            "Back" if face == "Back return" => true,
+            "Back" | "Back return" => !mount && ends,
+            e if e.starts_with("Bottom") || e.starts_with("Top") => match ends {
+                true => !self.diagonal,
+                false => !mount && (face == "Back" || face == "Back return"),
+            },
+            _ => false,
+        }
+    }
+
+    /// Cuts a board's corner square, a board thick each way, at `[x, y]` (left corner
+    /// coordinates) where both its edges there are grown into finger joints (`grown`): two
+    /// uprights meet there, finger jointed to each other.
+    fn corner(
+        &self,
+        part: &str,
+        z: &str,
+        grown: (&String, &String),
+        [x, y]: [&String; 2],
+        what: &str,
+    ) {
+        let zero = mm(0.0);
+        if *grown.0 == zero || *grown.1 == zero {
+            return;
+        }
+        let et = self.et.as_str();
+        let cut = [format!("{} {part}", self.kit.name)];
+        self.panel(
+            &format!("{part} corner {what}"),
+            [x, y, z],
+            [et, et, et],
+            Some(&cut),
+        );
+    }
+
     /// The carcass's joints (`joints`): the backs' ends into the ends and the back return,
     /// and the bottom and top into the four upright panels round them; with a wall mount the
     /// bottom and top reach the walls and the backs stand on the bottom, under the top. A split
@@ -540,7 +673,16 @@ impl Corner<'_> {
                 single: false,
                 between: false,
             };
-            self.joinery.joint(CARCASS, &joint);
+            // finger joints where they can be made, else butted (`fingered`)
+            let scope = match end.starts_with("Bottom") {
+                true => BOTTOM,
+                false => CARCASS,
+            };
+            let method = match self.joinery.method(scope) {
+                "finger" if !self.fingered(face, end) => "none",
+                m => m,
+            };
+            self.joinery.joint_by(method, &joint);
         };
         let (x, y, up) = ([1, 0, 0], [0, 1, 0], [0, 0, 1]);
         let back_y = format!("{eb} - {tm} - {et}/2"); // the Back's middle

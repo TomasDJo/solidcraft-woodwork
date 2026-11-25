@@ -131,7 +131,7 @@ def test_the_first_door_hinges_on_the_side_that_is_asked(approval):
         return box[0], box[3], round(hole, 3)
     assert door({"doors": 1}) == (-298, -280, 248), door({"doors": 1})
     assert door({"doors": 1, "door_hinge": "right"}) == (280, 298, -248), door({"doors": 1, "door_hinge": "right"})
-    turned = door({"doors": 1}, then=[select("Cabinet Top"), plugin(approval, "edit", {"door_hinge": "right"})])
+    turned = door({"doors": 1}, then=[select("Cabinet Top"), plugin(approval, "edit", {"doors": 1, "door_hinge": "right"})])
     assert turned == (280, 298, -248), turned
     three = {"width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"}
     opened = [door(three, f"Cabinet Door {n}", f"Cabinet Door {n} hinge") for n in (1, 2, 3)]
@@ -344,3 +344,17 @@ def test_a_cabinet_sized_by_its_drawers_inside(approval):
         box = boxes(measure)
         inside = box["Cabinet Drawer 1 Bottom"]
         assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (672, 672), inside
+
+
+def test_drawer_box_finger_joints(approval):
+    # Drawer box joints Finger (#131): the box's front and back as wide as the box, the four
+    # corners interlocking (fingers 12 mm wide on 12 mm boards), the cut list noting them.
+    results = designed(approval, {"drawer_joints": "finger"},
+                       [plugin(approval, "cabinet", {"drawers": 1}), MEASURE, plugin(approval, "cutlist")])
+    box = boxes(results[1])
+    left, front = box["Cabinet Drawer 1 Left"], box["Cabinet Drawer 1 Box front"]
+    assert round(front[0], 3) == round(left[0], 3), (front, left)
+    full = (front[3] - front[0]) * (front[4] - front[1]) * (front[5] - front[2])
+    assert volume(results[1], "Cabinet Drawer 1 Box front") < full - 1000, full
+    notes = [p.get("note", "") for p in results[2]["result"]["parts"]]
+    assert any("finger jointed" in n for n in notes), results[2]["result"]["parts"]

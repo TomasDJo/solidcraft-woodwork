@@ -71,6 +71,10 @@ MOVED = {
     "worktop": {"material": ("worktop_material", "Oak"), "thickness": ("worktop_thickness", 38)},
 }
 
+# Fields Edit had that are design-wide now (Woodwork settings), with the setting's default.
+DESIGN_WIDE = {"joints": "dowels", "joints_inner": "dowels", "hardware_models": "on", "hinge_angle": "110",
+               "slide_type": "full", "reveal": 2, "plinth_setback": 50}
+
 
 def plugin(approval, entry, params=None):
     """A plugin.run step. The fields left out get their defaults, as in the dialog: from 0.46 an
@@ -85,6 +89,20 @@ def plugin(approval, entry, params=None):
         params = {"shape": "L-shaped", **params}
         if "doors" in params:
             params["corner_doors"] = params.pop("doors")
+    # Edit has only what is per cabinet: a design-wide field is Woodwork settings', then Rebuild
+    # cabinets with the settings for the picked one, and the setting back to its default.
+    if entry == "edit":
+        wide = {k: params.pop(k) for k in DESIGN_WIDE if k in params}
+        if wide:
+            if "plinth_setback" in wide:  # shown with a board or notch only
+                wide.setdefault("plinth_type", "board")
+            reset = {k: DESIGN_WIDE.get(k, "board") for k in wide}
+            again = {"with": "settings", "scope": "all"}
+            steps = [entry_step(approval, "settings", wide | {"units": "mm"})]
+            if set(params) - {"selection"}:
+                steps.append(entry_step(approval, "edit", params))
+            steps.append(entry_step(approval, "rebuild", again))
+            return (*steps, entry_step(approval, "settings", reset | {"units": "mm"}))
     moved = MOVED.get("cabinets" if entry in ("cabinet", "corner") else entry, {})
     setting = {}
     for field, (key, _) in moved.items():
@@ -124,7 +142,13 @@ def holds(condition, values):
 
 
 def entry_step(approval, entry, params=None):
-    """The plugin.run step itself, with the schema's defaults."""
+    """The plugin.run step itself, with the schema's defaults. Edit is Cabinet with Mode Edit
+    picked, whose hook starts every field at the picked cabinet's value."""
+    if entry == "edit":
+        params = {"mode": "edit", "selection": [], **(params or {})}
+        if isinstance(params.get("shelf_pins"), str):  # Cabinet's is a tick box
+            params["shelf_pins"] = params["shelf_pins"] == "yes"
+        return {"command": "plugin.run", "params": {"path": str(PKG), "approval": approval, "entry": "cabinet", "params": params}}
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     schema = next(e["input_schema"] for e in manifest["runtime"]["entries"] if e["name"] == entry)
     # Woodwork settings' hook starts its fields at the stored values, as for plugin.run: all

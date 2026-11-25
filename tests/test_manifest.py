@@ -4,6 +4,7 @@ import json
 from helpers import *
 
 DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems", "x-solidcraft-visible-when",
+         "x-solidcraft-enabled-when",
          "x-solidcraft-defaults"}
 WHEN = "x-solidcraft-visible-when"
 
@@ -65,6 +66,12 @@ def test_choices_have_titles(approval):
                     values = [leaf["eq"]] if "eq" in leaf else leaf["in"]
                     assert values and all(fits(controller, v) for v in values), (at, leaf)
                     assert not (negated and WHEN in controller), (at, leaf)
+            # Greyed while a condition is false (0.49, `x-solidcraft-enabled-when`): still sent,
+            # over sibling scalar fields with values they can have.
+            for leaf, _ in conditions(field.get("x-solidcraft-enabled-when", {"all": []})):
+                controller = schema["properties"][leaf["field"]]
+                values = [leaf["eq"]] if "eq" in leaf else leaf["in"]
+                assert leaf["field"] != name and all(fits(controller, v) for v in values), (at, leaf)
             # A conditional default (0.46): a size's inch default when Units is Inches, or a
             # corner cabinet's when Shape is a corner, until the field is changed. Each rule a
             # sound condition over sibling fields, and a value the field can have.
@@ -92,7 +99,7 @@ def test_choices_have_titles(approval):
             assert field["default"] in values, at
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
-    assert choices == 71, choices
+    assert choices == 60, choices
     # SolidCraft 0.45 refuses a manifest over 64 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
     assert json.loads(packed) == manifest and len(packed) < 64 * 1024, len(packed)

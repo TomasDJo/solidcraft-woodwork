@@ -5,6 +5,7 @@ use super::Cabinet;
 use crate::fittings;
 use crate::hardware;
 use crate::kit::mm;
+use serde_json::json;
 
 pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
                              // The box stays a panel thickness and this much inside its front's lower and upper edge: the
@@ -47,6 +48,7 @@ pub fn build(cabinet: &Cabinet) {
         box_t,
         runner,
         under,
+        box_fingers: fingers,
         ..
     } = cabinet.input;
     let sink = kind == "sink";
@@ -168,16 +170,56 @@ pub fn build(cabinet: &Cabinet) {
             [&right, &y, &bz],
             [&bt, &box_d, &box_h],
         );
+        // With finger joints (#131) the box's front and back run through the sides to the
+        // outside, as wide as the box.
+        let (end_x, end_w) = match fingers {
+            true => (x.clone(), box_w.clone()),
+            false => (inner_x.clone(), inner_w.clone()),
+        };
         panel(
             &format!("{drawer} Box front"),
-            [&inner_x, &y, &bz],
-            [&inner_w, &bt, &box_h],
+            [&end_x, &y, &bz],
+            [&end_w, &bt, &box_h],
         );
         panel(
             &format!("{drawer} Box back"),
-            [&inner_x, &back_y, &bz],
-            [&inner_w, &bt, &box_h],
+            [&end_x, &back_y, &bz],
+            [&end_w, &bt, &box_h],
         );
+        if fingers {
+            // The four upright corners: an odd count of fingers as wide as the boards are
+            // thick, the sides keeping the outer ones; one box cut per board at each corner and
+            // two patterns up the box, shared by the four (as `joint::finger` does the shell).
+            let half = format!("floor(({box_h}) / (2*{bt}))");
+            let w = format!("(({box_h}) / (2*{half} + 1))");
+            let (mut sides, mut ends) = (Vec::new(), Vec::new());
+            for (side, sx) in [("Left", x.clone()), ("Right", right.clone())] {
+                for (end, ey) in [("Box front", y.clone()), ("Box back", back_y.clone())] {
+                    for (board, other, first, list) in [
+                        (side, end, w.clone(), &mut sides),
+                        (end, side, mm(0.0), &mut ends),
+                    ] {
+                        let target = [format!("{} {drawer} {board}", kit.name)];
+                        let part = format!("{drawer} {board} finger {other}");
+                        let z0 = format!("{bz} + {first}");
+                        kit.panel(&part, [&sx, &ey, &z0], [&bt, &bt, &w], Some(&target));
+                        list.push(format!("{} {part}", kit.name));
+                    }
+                }
+            }
+            for (k, (features, count)) in [(sides, half.clone()), (ends, format!("({half} + 1)"))]
+                .into_iter()
+                .enumerate()
+            {
+                kit.push((
+                    "solid.pattern.rectangular",
+                    json!({
+                        "features": features, "name": format!("{} {drawer} fingers {}", kit.name, k + 1),
+                        "dir1": [0, 0, 1], "count1": count, "spacing1": format!("2*{w}"),
+                    }),
+                ));
+            }
+        }
         // The slide (or runner): straight out of the front, as far as its type travels.
         let travel = cabinet.input.slide_type.1;
         let back_mm = if inset { t } else { -reveal };

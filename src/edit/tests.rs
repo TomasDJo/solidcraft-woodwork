@@ -29,7 +29,7 @@ fn an_edit_keeps_what_is_not_changed() {
         "A",
     );
     let changes = json!({"shelves": 3, "doors": null, "handles": "keep", "shelf_pins": "yes",
-        "labels": "no", "door_hinge": "right", "hardware_models": "off"});
+        "labels": "no", "door_hinge": "right"});
     let (entry, params) = merge(&made[KEY], &changes, &design()).unwrap();
     assert_eq!(entry, "cabinet");
     assert_eq!(params["shelves"], 3);
@@ -38,7 +38,6 @@ fn an_edit_keeps_what_is_not_changed() {
     assert_eq!(params["shelf_pins"], true);
     assert_eq!(params["labels"], false);
     assert_eq!(params["door_hinge"], "right");
-    assert_eq!(params["hardware_models"], "off");
     // the width is the design's, where it was changed since, and its parameter is kept
     assert_eq!(params["width"], 800.0);
     assert_eq!(
@@ -106,7 +105,11 @@ fn a_field_of_the_other_kind_of_cabinet_is_refused() {
     let cabinet = remember("cabinet", &json!({}), "A");
     assert!(merge(&cabinet[KEY], &json!({"shape": "diagonal"}), &design()).is_err());
     assert!(merge(&cabinet[KEY], &json!({"corner_doors": "none"}), &design()).is_err());
-    assert!(merge(&cabinet[KEY], &json!({"width": 5}), &design()).is_err());
+    // design-wide: Woodwork settings and Apply settings change it
+    assert!(merge(&cabinet[KEY], &json!({"joints": "dowels"}), &design()).is_err());
+    assert!(merge(&cabinet[KEY], &json!({"reveal": 3}), &design()).is_err());
+    let (_, params) = merge(&cabinet[KEY], &json!({"width": 500}), &design()).unwrap();
+    assert_eq!(params["width"], 500);
     // made before cabinets remembered, or not by this plugin
     assert!(merge(&Value::Null, &json!({}), &design()).is_err());
 }
@@ -181,22 +184,21 @@ fn fronts_and_the_reveal_survive_an_edit() {
     );
     // the reveal changed in the design since: the design's value wins, the fronts are kept
     let design = json!({"params": [{"name": "A_reveal", "value": 2.5}]});
-    let keep = json!({"fronts": "keep", "reveal": null, "shelves": 2});
+    let keep = json!({"fronts": "keep", "shelves": 2});
     let (_, params) = merge(&made[KEY], &keep, &design).unwrap();
     assert_eq!(
         (&params["fronts"], &params["reveal"]),
         (&json!("inset"), &json!(2.5))
     );
     assert_eq!(params["_existing"]["reveal"], 2.5);
-    let change = json!({"fronts": "overlay", "reveal": 1.5});
+    let change = json!({"fronts": "overlay"});
     let (_, params) = merge(&made[KEY], &change, &design).unwrap();
     assert_eq!(
         (&params["fronts"], &params["reveal"]),
-        (&json!("overlay"), &json!(1.5))
+        (&json!("overlay"), &json!(2.5))
     );
-    // a corner takes a reveal and its fronts too
+    // a corner takes its fronts too
     let corner = remember("corner", &json!({}), "A");
-    assert!(merge(&corner[KEY], &json!({"reveal": 3}), &design).is_ok());
     let (_, params) = merge(&corner[KEY], &json!({"fronts": "inset"}), &design).unwrap();
     assert_eq!(params["fronts"], "inset");
 }
@@ -235,12 +237,10 @@ fn the_plinth_set_back_survives_an_edit() {
     let made = remember("cabinet", &json!({"units": "in", "plinth_setback": 3}), "A");
     let (_, params) = merge(&made[KEY], &json!({}), &design()).unwrap();
     assert_eq!(params["plinth_setback"], 3);
-    let (_, params) = merge(&made[KEY], &json!({"plinth_setback": 4}), &design()).unwrap();
-    assert_eq!(params["plinth_setback"], 4);
     // the parameter, where the user may have changed it, in the cabinet's unit
     let design = json!({"params": [{"name": "A_plinth_setback", "value": 101.6}]});
     let (_, params) = merge(&made[KEY], &json!({}), &design).unwrap();
-    assert_eq!(params["plinth_setback"], 4.0);
+    assert_eq!(params["plinth_setback"], 4.0); // Woodwork settings' field, not Edit's
     assert_eq!(params["_existing"]["plinth_setback"], 101.6);
 }
 
@@ -342,8 +342,8 @@ fn joinery_sizes_come_from_parameters_and_counts_only_tell_kit() {
     let design = json!({"params": [
         {"name": "K_joint_spacing", "value": 120.0}, {"name": "K_dowels", "value": 20.0}
     ]});
-    let (_, params) = merge(&remembered, &json!({"joints": "confirmat"}), &design).unwrap();
-    assert_eq!(params["joints"], "confirmat");
+    let (_, params) = merge(&remembered, &json!({"shelves": 2}), &design).unwrap();
+    assert_eq!(params["joints"], "dowels");
     assert_eq!(params["joint_spacing"], 120.0);
     assert!(params.get("dowels").is_none());
     assert_eq!(params["_existing"]["dowels"], 20.0);
@@ -358,7 +358,82 @@ fn holes_from_the_old_joinery_function_become_the_same_joint_at_build() {
         "joinery": "confirmat"});
     let (_, params) = merge(&remembered, &json!({}), &json!({})).unwrap();
     assert_eq!(params["joints"], "confirmat");
-    // the edit's own choice wins, none too
-    let (_, params) = merge(&remembered, &json!({"joints": "none"}), &json!({})).unwrap();
-    assert_eq!(params["joints"], "none");
+}
+
+#[test]
+fn the_dialog_shows_the_cabinet_as_it_is_and_unchanged_builds_nothing() {
+    let made = remember(
+        "cabinet",
+        &json!({"doors": 2, "drawers": 1, "shelf_pins": true,
+        "plinth": 100, "plinth_type": "legs", "fronts": "inset", "drawer_height": 140}),
+        "A",
+    );
+    let design = json!({"params": [{"name": "A_drawer_height", "value": 160.0}]});
+    let (entry, base) = merge(&made[KEY], &json!({}), &design).unwrap();
+    let shown = shown(&entry, &base);
+    assert_eq!(shown["doors"], 2);
+    assert_eq!(shown["drawer_height"], 160.0); // from the design, not what it remembered
+    assert_eq!(
+        (&shown["shelf_pins"], &shown["plinth"]),
+        (&json!(true), &json!("yes"))
+    );
+    assert_eq!(shown["fronts"], "inset");
+    assert_eq!(shown["labels"], "no");
+    // a corner's doors are its corner_doors
+    let corner = remember("corner", &json!({"doors": "hinged left"}), "C");
+    let (entry, params) = merge(&corner[KEY], &json!({}), &json!({"params": []})).unwrap();
+    assert_eq!(edit_shown_doors(&entry, &params), json!("hinged left"));
+    // the dialog's values sent back as they are: nothing to build; one change: something
+    let mut asis = Map::new();
+    for (k, v) in &shown {
+        asis.insert(k.clone(), v.clone());
+    }
+    asis.insert("doors".into(), json!(2.0)); // a number written another way is the same
+    asis.insert("plinth".into(), json!(100)); // `settings::edit_plinth` turns Yes into the height
+    let (_, params) = merge(&made[KEY], &Value::Object(asis.clone()), &design).unwrap();
+    assert!(changed(&params, &base).is_empty());
+    asis.insert("drawers".into(), json!(2));
+    let (_, params) = merge(&made[KEY], &Value::Object(asis), &design).unwrap();
+    assert_eq!(changed(&params, &base), ["drawers"]);
+}
+
+#[test]
+fn one_cabinet_shows_its_values_and_hides_the_other_kinds_fields() {
+    let kept = shown(
+        "cabinet",
+        &json!({"doors": 1, "drawers": 1, "fronts": "overlay", "joints": "dowels"}),
+    );
+    let sizes = json!({"width": 450.0, "drawer_height": 180.0});
+    let reply = fields("cabinet", &kept, sizes.as_object().unwrap());
+    assert_eq!(reply["drawers"], json!({"default": 1}));
+    assert_eq!(reply["width"], json!({"default": 450.0}));
+    assert_eq!(reply["drawer_height"], json!({"default": 180.0}));
+    assert_eq!(reply["corner_doors"], json!({"visible": false}));
+    assert_eq!(reply["return"], json!({"visible": false}));
+    assert!(reply.get("joints").is_none()); // design-wide: not Edit's
+    let corner = shown("corner", &json!({"doors": "hinged left"}));
+    let reply = fields("corner", &corner, &Map::new());
+    assert_eq!(reply["corner_doors"], json!({"default": "hinged left"}));
+    assert_eq!(reply["doors"], json!({"visible": false}));
+    // a run leaves out the other kind's fields, which the dialog sends hidden
+    let changes = taken(
+        "corner",
+        &json!({"doors": 0, "corner_doors": "none", "selection": []}),
+    );
+    assert_eq!(changes, json!({"corner_doors": "none", "selection": []}));
+}
+
+fn edit_shown_doors(entry: &str, params: &Value) -> Value {
+    shown(entry, params)["corner_doors"].clone()
+}
+
+#[test]
+fn a_value_left_out_is_the_one_the_dialog_shows() {
+    // two doors: Cabinet has no hinge side for them, so none is remembered; Edit shows Left
+    let base = json!({"doors": 2});
+    assert!(changed(&json!({"doors": 2, "door_hinge": "left"}), &base).is_empty());
+    assert_eq!(
+        changed(&json!({"doors": 2, "door_hinge": "right"}), &base),
+        ["door_hinge"]
+    );
 }

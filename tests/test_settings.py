@@ -24,7 +24,8 @@ def test_settings(approval):
                    plugin(approval, "corner", {"name": "C", "material": "Oak", "thickness": 18, "plinth": "no"}),
                    MEASURE])
     stored = results[1].get("result", results[1])["settings"]
-    assert stored == {"material": "MDF", "thickness": 25.4, "plinth_type": "legs"}, stored  # 100 is the default
+    # 100 is the default; Units is kept for the other sections
+    assert stored == {"material": "MDF", "thickness": 25.4, "plinth_type": "legs", "units": "in"}, stored
     box = boxes(results[5])
     material = {b["name"]: b["material"] for b in results[5]["bodies"]}
     # A from the settings: MDF, 25.4 mm sides, on 100 mm legs (Plinth Yes).
@@ -222,3 +223,15 @@ def test_rebuild_job_takes_more_than_one_run(approval):
     assert elapsed > 30, elapsed
     again = results[2]["result"]
     assert again["applied"] == ["C0"] and "as they were made" in again["message"], again
+
+
+def test_sections_hide_fields_but_keep_their_values(approval):
+    # Section shows one group; the hook hides the rest without leaving them out. A run in the
+    # Display section changes the camera and keeps the stored joinery and plinth; a script that
+    # names a field of another section still sets it.
+    results = cli([setting(approval, {"joints": "confirmat", "plinth": 150}),
+                   setting(approval, {"section": "display", "camera": "leave"}),
+                   setting(approval, {"section": "general", "joints": "cam"})])
+    stored = results[1]["result"]["settings"]
+    assert stored == {"joints": "confirmat", "plinth": 150, "camera": "leave"}, stored
+    assert results[2]["result"]["settings"]["joints"] == "cam", results[2]

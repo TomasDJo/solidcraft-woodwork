@@ -288,7 +288,7 @@ fn settings_patch_then_show_and_the_hook_names_our_data() {
 }
 
 #[test]
-fn the_edit_hook_reads_body_names_once_and_never_fails() {
+fn the_edit_hook_reads_body_names_and_the_picked_cabinets_and_never_fails() {
     let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
         asked.push(json!([command, args]));
@@ -298,9 +298,15 @@ fn the_edit_hook_reads_body_names_once_and_never_fails() {
         )
     };
     let reply = dialog("edit", &json!({}), &mut run).unwrap();
+    // the design's selection (the field is empty), our files (none here), so only the other
+    // kind hidden
     assert_eq!(
         asked,
-        [json!(["document.inspect", {"bodies": "names", "timeline": false}])]
+        [
+            json!(["_selection", {}]),
+            json!(["storage.get", {"plugin": "woodwork"}]),
+            json!(["document.inspect", {"bodies": "names", "timeline": false}])
+        ]
     );
     assert_eq!(reply["doors"], json!({"visible": false}));
     // no default anywhere: in Edit an empty field means unchanged
@@ -350,4 +356,169 @@ fn see_through_boards_change_our_materials_and_new_ones() {
     assert_eq!(made["opacity"], 0.35);
     // off: solid again
     assert_eq!(material::opacity(&json!({})), 1.0);
+}
+
+#[test]
+fn a_cabinet_keeps_its_edit_values_in_a_small_file_not_in_our_document() {
+    // Every hook parses our main document with 10M fuel (the Cabinet dialog ran out at 30
+    // cabinets when each kept its values there): a cabinet run writes none of it, and its Edit
+    // values go to a file of its own, small.
+    let mut called = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        called.push((command.to_string(), args));
+        Ok(json!({}))
+    };
+    execute("cabinet", &json!({"name": "K 2", "drawers": 2}), &mut run).unwrap();
+    assert!(!called.iter().any(|(c, _)| c == "storage.patch"));
+    let blobs: Vec<&Value> = (called.iter())
+        .filter(|(c, _)| c == "_put_blob")
+        .map(|(_, a)| a)
+        .collect();
+    assert_eq!(blobs.len(), 1);
+    assert_eq!(blobs[0]["name"], "edit/K_2.json");
+    assert!(
+        blobs[0]["data"].to_string().len() < 1500,
+        "{}",
+        blobs[0]["data"]
+    );
+    // the Edit hook in a 30-cabinet design: our files' names, the picked cabinet's file and its
+    // sizes, never the whole design (whose names and parameters take most of the hook's 10M fuel)
+    let mut asked = Vec::new();
+    let files: Vec<Value> = (0..30)
+        .map(|i| json!({"name": format!("edit/K{i}.json")}))
+        .collect();
+    let mut run = |command: &str, _: Value| {
+        asked.push(command.to_string());
+        Ok(json!({"blobs": files, "entry": "cabinet", "shown": {"doors": 1}}))
+    };
+    let pick = json!({"selection": [{"type": "body", "name": "K12 Side L"}]});
+    let reply = dialog("edit", &pick, &mut run).unwrap();
+    assert_eq!(asked, ["storage.get", "_get_blob", "_params"]);
+    assert_eq!(reply["doors"], json!({"default": 1}));
+}
+
+/// What `make` wrote to a cabinet's file (`_put_blob`), for a run of `entry` with `params`.
+fn kept_file(entry: &str, params: Value) -> (String, Value) {
+    let mut put = None;
+    let mut run = |command: &str, args: Value| {
+        if command == "_put_blob" {
+            put = Some((
+                args["name"].as_str().unwrap().to_string(),
+                args["data"].clone(),
+            ));
+        }
+        Ok(json!({}))
+    };
+    execute(entry, &params, &mut run).unwrap();
+    put.unwrap()
+}
+
+/// The Edit hook's reply for boards picked in its field, with these files in the design.
+fn edit_hook(files: &[(String, Value)], picks: &[&str]) -> Value {
+    let picks: Vec<Value> = (picks.iter())
+        .map(|b| json!({"type": "body", "name": b}))
+        .collect();
+    let mut run = |command: &str, args: Value| match command {
+        "storage.get" => {
+            let names: Vec<Value> = files.iter().map(|(n, _)| json!({"name": n})).collect();
+            Ok(json!({"blobs": names}))
+        }
+        "_get_blob" => Ok((files.iter())
+            .find(|(n, _)| args["name"] == n.as_str())
+            .map(|(_, d)| d.clone())
+            .unwrap_or_default()),
+        // the sizes as they are in the design now
+        "_params" => Ok(json!({"C_width": 450.0, "C_drawer_height": 180.0})),
+        _ => Ok(json!({"bodies": [], "selection": []})),
+    };
+    dialog("edit", &json!({"selection": picks}), &mut run).unwrap()
+}
+
+#[test]
+fn the_edit_hook_starts_at_what_the_last_edit_built() {
+    // An Edit builds the cabinet again through `make` with the merged values, which writes its
+    // file: the next Edit starts at them, the drawer front height too (#129: it was left empty).
+    let file = kept_file(
+        "cabinet",
+        json!({"name": "C", "drawers": 1, "doors": 1, "drawer_height": 180, "plinth": 100}),
+    );
+    let reply = edit_hook(&[file], &["C Top"]);
+    assert_eq!(reply["drawers"], json!({"default": 1}), "{reply}");
+    assert_eq!(reply["doors"], json!({"default": 1}));
+    assert_eq!(reply["drawer_height"], json!({"default": 180.0}));
+    assert_eq!(reply["width"], json!({"default": 450.0}));
+    assert_eq!(reply["return"], json!({"visible": false}));
+}
+
+#[test]
+fn a_cabinet_without_a_file_never_takes_another_cabinets() {
+    // "Cabinet 2" made before has no file; "Cabinet"'s name starts its boards' names, but its
+    // file does not list them (#129: Edit showed Drawers 2 for a cabinet with 1).
+    let file = kept_file("cabinet", json!({"name": "Cabinet", "drawers": 2}));
+    let reply = edit_hook(std::slice::from_ref(&file), &["Cabinet 2 Top"]);
+    assert!(reply.get("drawers").is_none(), "{reply}");
+    assert_eq!(
+        edit_hook(&[file], &["Cabinet Top"])["drawers"],
+        json!({"default": 2})
+    );
+}
+
+#[test]
+fn edit_changes_one_cabinet_and_first_writes_the_file_of_one_made_before() {
+    let side = |name: &str, x: f64| json!({"name": name, "bbox": {"min": [x, -280, 0], "max": [x + 18.0, 280, 720]}});
+    let edit = |picks: Value, file: Value| {
+        let mut called: Vec<String> = Vec::new();
+        let mut run = |command: &str, _: Value| {
+            called.push(command.to_string());
+            Ok(match command {
+                "document.inspect" => json!({"selection": picks, "params": []}),
+                "inspect.measure" => {
+                    json!({"bodies": [side("A Side L", 0.0), side("B Side L", 900.0)]})
+                }
+                "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet",
+                    "params": {"name": "A", "doors": 1, "shelves": 3}}}}),
+                "component.list" => json!({"components": [{"id": 1, "name": "A",
+                    "occurrences": [{"id": 2, "parent": 0, "transform": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}]}]}),
+                "_get_blob" => file.clone(),
+                _ => json!({}),
+            })
+        };
+        // as the dialog sends it: every field, at its default where nothing could be shown
+        let dialog = json!({"doors": 2, "shelves": 1, "width": 600, "drawers": 0, "handles": "none",
+            "plinth": "yes", "shelf_pins": false, "labels": "no", "fronts": "overlay"});
+        let reply = execute("edit", &dialog, &mut run);
+        (called, reply)
+    };
+    let (_, reply) = edit(
+        json!([{"name": "A Side L"}, {"name": "B Side L"}]),
+        json!({}),
+    );
+    assert!(reply.unwrap_err().starts_with("Edit changes one cabinet"));
+    // made before Edit's file: the dialog could not show its values, so a field at its default
+    // is unchanged (3 shelves stay); Doors 2 is built in the same run, and the file written
+    let (called, reply) = edit(json!([{"name": "A Side L"}]), Value::Null);
+    let reply = reply.unwrap();
+    assert_eq!(reply["edited"], true, "{reply}");
+    assert_eq!(reply["changed"], json!(["doors"]));
+    assert!(called.contains(&"_put_blob".to_string()));
+    assert!(called.contains(&"component.delete".to_string()));
+}
+
+#[test]
+fn cabinet_with_mode_edit_is_edit() {
+    // the dialog: a box cabinet's fields as it is, its Shape greyed on Box
+    let file = kept_file("cabinet", json!({"name": "C", "doors": 1}));
+    let mut run = |command: &str, _: Value| match command {
+        "storage.get" => Ok(json!({"blobs": [{"name": file.0}]})),
+        "_get_blob" => Ok(file.1.clone()),
+        _ => Ok(json!({})),
+    };
+    let pick = json!({"mode": "edit", "selection": [{"type": "body", "name": "C Top"}]});
+    let reply = dialog("cabinet", &pick, &mut run).unwrap();
+    assert_eq!(reply["doors"], json!({"default": 1}), "{reply}");
+    assert_eq!(reply["shape"], json!({"default": "box", "enabled": false}));
+    // the run: Edit's (a board that is no cabinet's is refused as Edit refuses it)
+    let mut run = |_: &str, _: Value| Ok(json!({"selection": [{"name": "Loose"}], "bodies": []}));
+    let err = execute("cabinet", &json!({"mode": "edit"}), &mut run).unwrap_err();
+    assert!(err.contains("not part of a cabinet"), "{err}");
 }

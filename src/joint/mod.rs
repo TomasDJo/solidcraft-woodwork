@@ -17,8 +17,9 @@ use serde_json::{json, Value};
 use std::cell::RefCell;
 
 /// The methods, as the dialog's `joints` field gives them. `none` leaves the boards butted.
-pub const METHODS: [&str; 8] = [
+pub const METHODS: [&str; 9] = [
     "none",
+    "finger",
     "dowels",
     "confirmat",
     "screws",
@@ -32,7 +33,7 @@ const SPACED: [&str; 6] = ["dowels", "confirmat", "screws", "biscuit", "cam", "p
 
 /// The sizes a method can take: Woodwork settings' field, which is also the parameter
 /// `<Prefix>_<key>`, and its default in mm.
-pub const SIZES: [(&str, f64); 7] = [
+pub const SIZES: [(&str, f64); 8] = [
     ("joint_spacing", 250.0),
     ("joint_edge", 50.0),
     ("dowel_d", 8.0),
@@ -40,6 +41,8 @@ pub const SIZES: [(&str, f64); 7] = [
     ("dado_depth", 6.0),
     ("cam_d", 15.0),
     ("cam_bolt", 35.0),
+    // 0: as wide as the boards are thick (`<Prefix>_finger_width` is then `<Prefix>_thickness`)
+    ("finger_width", 0.0),
 ];
 
 /// The parameters that count the fasteners for the cut list, `<Prefix>_<key>`: 0 once an edit
@@ -78,6 +81,7 @@ pub fn range(key: &str) -> (f64, f64) {
         "dado_depth" => (0.5, 25.0),
         "cam_d" => (10.0, 35.0),
         "cam_bolt" => (20.0, 80.0),
+        "finger_width" => (0.0, 200.0),
         _ => (10.0, 150.0),
     }
 }
@@ -110,7 +114,7 @@ pub struct Joint {
 pub struct Joinery<'a> {
     kit: &'a Kit,
     t: String,
-    methods: [String; 2],
+    methods: [String; 3], // CARCASS, INNER, BOTTOM
     sizes: Vec<(&'static str, String)>,
     counts: RefCell<Vec<(&'static str, String)>>,
     cuts: RefCell<Commands>,
@@ -135,15 +139,26 @@ struct Row {
     models: Vec<String>,
 }
 
-/// Which of a cabinet's two methods a joint takes: the carcass's, or the inside's.
+/// Which of a cabinet's methods a joint takes: the carcass's, the inside's, or the bottom's
+/// (the carcass's, but not finger joints where they would be closed mortises: `Joinery::new`).
 pub const CARCASS: usize = 0;
 pub const INNER: usize = 1;
+pub const BOTTOM: usize = 2;
 
 impl<'a> Joinery<'a> {
     /// Reads `joints` (the carcass) and `joints_inner` (dividers and the rail, when `inner`
     /// has any) and makes the parameters their sizes need. A cabinet that remembers no method
     /// (made before joinery was chosen at build) has none. `t` is the boards' thickness.
-    pub fn new(kit: &'a Kit, p: &Value, t: (f64, &str), inner: bool) -> Result<Self, String> {
+    /// `closed_bottom`: the sides reach below the bottom (a plinth board or notched sides), where
+    /// finger joints would be closed mortises through the sides: the bottom is then butted
+    /// (`none`) unless `finger_bottom` is yes (`BOTTOM`).
+    pub fn new(
+        kit: &'a Kit,
+        p: &Value,
+        t: (f64, &str),
+        inner: bool,
+        closed_bottom: bool,
+    ) -> Result<Self, String> {
         let method = |key: &str| -> Result<String, String> {
             let v = p.get(key).and_then(Value::as_str).unwrap_or("none");
             check(
@@ -157,13 +172,19 @@ impl<'a> Joinery<'a> {
             true => method("joints_inner")?,
             false => "none".into(),
         };
-        let uses = |m: &str| carcass == m || inside == m;
+        let fingered = matches!(p.get("finger_bottom"), Some(v) if v == "yes" || v == true);
+        let bottom = match carcass == "finger" && closed_bottom && !fingered {
+            true => "none".to_string(), // butted, the plugin's default joint
+            false => carcass.clone(),
+        };
+        let uses = |m: &str| carcass == m || inside == m || bottom == m;
         let mut sizes = Vec::new();
         for (key, default) in SIZES {
             let needed = match key {
                 "joint_spacing" | "joint_edge" => SPACED.iter().any(|m| uses(m)),
                 "dado_depth" => uses("dado"),
                 "cam_d" | "cam_bolt" => uses("cam"),
+                "finger_width" => uses("finger"),
                 _ => uses("dowels"),
             };
             if !needed {
@@ -184,6 +205,15 @@ impl<'a> Joinery<'a> {
                 "a dowel must be at least 4 mm thinner than the boards and more than twice as long as it is thick",
             )?;
         }
+        // Finger joints are for the outer shell (and drawer boxes), not dividers or shelves.
+        check(
+            inside != "finger",
+            "`joints_inner`: finger joints are for the shell, not dividers, the rail or shelves",
+        )?;
+        check(
+            size("finger_width").is_none_or(|w| w == 0.0 || w >= 3.0),
+            "`finger_width` must be 0 (as thick as the boards) or 3 mm or more",
+        )?;
         check(
             size("dado_depth").is_none_or(|g| g <= t.0 - 3.0),
             "`dado_depth` must leave 3 mm of the board behind the groove",
@@ -205,6 +235,7 @@ impl<'a> Joinery<'a> {
             "dado_depth" => "depth of the grooves the boards sit in",
             "cam_d" => "cam lock diameter",
             "cam_bolt" => "cam lock bolt length",
+            "finger_width" => "finger joints' finger width",
             _ => "dowel length",
         };
         let biscuit = p.get("biscuit").and_then(Value::as_str).unwrap_or("20");
@@ -221,12 +252,22 @@ impl<'a> Joinery<'a> {
             _ => return Err("`pocket_face` must be outside or inside".into()),
         };
         let sizes = (sizes.into_iter())
-            .map(|(key, v)| (key, kit.parameter(key, v, comment(key))))
+            .map(|(key, v)| {
+                let id = match (key, v) {
+                    // auto: the boards' thickness, which it follows
+                    ("finger_width", 0.0) => {
+                        let thick = format!("{}_thickness", kit.prefix);
+                        kit.parameter_as(key, t.0, comment(key), thick)
+                    }
+                    _ => kit.parameter(key, v, comment(key)),
+                };
+                (key, id)
+            })
             .collect();
         Ok(Joinery {
             kit,
             t: t.1.to_string(),
-            methods: [carcass, inside],
+            methods: [carcass, inside, bottom],
             sizes,
             counts: RefCell::default(),
             cuts: RefCell::default(),
@@ -245,7 +286,12 @@ impl<'a> Joinery<'a> {
 
     /// How much longer a board is at each end that sits in a groove (a dado), for `scope`.
     pub fn extension(&self, scope: usize) -> Option<&str> {
-        (self.method(scope) == "dado").then(|| self.size("dado_depth"))
+        match self.method(scope) {
+            "dado" => Some(self.size("dado_depth")),
+            // through the face board to its outside, where the fingers interleave
+            "finger" => Some(&self.t),
+            _ => None,
+        }
     }
 
     fn size(&self, key: &str) -> &str {
@@ -271,7 +317,7 @@ impl<'a> Joinery<'a> {
     }
 
     /// The cuts of one joint by `method`.
-    fn joint_by(&self, method: &str, j: &Joint) {
+    pub fn joint_by(&self, method: &str, j: &Joint) {
         let method = method.to_string();
         let (spacing, edge) = (self.size("joint_spacing"), self.size("joint_edge"));
         let count = format!("max(2, ceil(({} - 2*{edge}) / {spacing}) + 1)", j.run);
@@ -430,6 +476,55 @@ impl<'a> Joinery<'a> {
                 self.fastener(|_| {});
                 features.push(feature);
                 item
+            }
+            "finger" => {
+                // The end board reaches through the face board to its outside (`extension`):
+                // an odd count of equal fingers along the corner, the face board's at both
+                // edges (#131). Each board loses the other's fingers: one box cut and a pattern
+                // per board, shared with every joint of the same run (`Row`).
+                let fw = self.size("finger_width");
+                let half = format!("floor(({}) / (2*{fw}))", j.run);
+                let w = format!("(({}) / (2*{half} + 1))", j.run);
+                let pitch = format!("2*{w}");
+                for (target, other, first, count) in [
+                    (&face, &end, w.clone(), half.clone()),
+                    (&end, &face, mm(0.0), format!("({half} + 1)")),
+                ] {
+                    let (corner, size) = finger(j, t, &w, &first);
+                    let corner = self.kit.at(&corner[0], &corner[1], &corner[2]);
+                    let short = |board: &str| {
+                        board
+                            .strip_prefix(&format!("{} ", self.kit.name))
+                            .unwrap_or(board)
+                            .to_string()
+                    };
+                    let feature = format!("{target} finger {}", short(other));
+                    self.cuts.borrow_mut().push((
+                        "solid.box",
+                        json!({
+                            "length": size[0], "width": size[1], "height": size[2],
+                            "corner": corner, "operation": "cut", "targets": [target],
+                            "name": feature,
+                        }),
+                    ));
+                    let mut rows = self.rows.borrow_mut();
+                    let n = rows.len() + 1;
+                    match rows
+                        .iter_mut()
+                        .find(|r| r.along == j.along && r.count == count)
+                    {
+                        Some(row) => row.features.push(feature),
+                        None => rows.push(Row {
+                            name: format!("{} fingers {n}", self.kit.name),
+                            along: j.along,
+                            count,
+                            pitch: pitch.clone(),
+                            features: vec![feature],
+                            models: vec![],
+                        }),
+                    }
+                }
+                return;
             }
             "dado" => {
                 // The end board's own volume where it reaches into the face board: a groove
@@ -591,6 +686,31 @@ impl<'a> Joinery<'a> {
         }
         cuts
     }
+}
+
+/// One finger's box at a joint (`finger` in `Joinery::joint_by`): where the two boards overlap
+/// (the face board's thickness `t` from the joint's plane outward, the end board's thickness
+/// across), `w` long along the row from `first` on. Its corner and size.
+fn finger(j: &Joint, t: &str, w: &str, first: &str) -> ([String; 3], [String; 3]) {
+    let mut corner = j.at.clone();
+    let mut size = [t.to_string(), t.to_string(), t.to_string()];
+    for i in 0..3 {
+        if j.into[i] != 0 {
+            // outward of the plane, into the face board
+            if j.into[i] > 0 {
+                corner[i] = format!("{} - {t}", j.at[i]);
+            }
+        } else if j.along[i] != 0 {
+            size[i] = w.to_string();
+            corner[i] = match j.along[i] > 0 {
+                true => format!("{} + {first}", j.at[i]),
+                false => format!("{} - {first} - {w}", j.at[i]),
+            };
+        } else {
+            corner[i] = format!("{} - {t}/2", j.at[i]);
+        }
+    }
+    (corner, size)
 }
 
 /// `at` moved `by` the way `dir` points.
