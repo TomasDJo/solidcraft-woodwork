@@ -75,14 +75,13 @@ const CABINETS: [&str; 12] = [
 /// Cabinet's fields only a new cabinet takes, and only Edit picked: with Mode Auto the hook
 /// hides the other group (still sent then: a new cabinet drops `EDIT_ONLY`, Edit takes only
 /// its own fields).
-pub const NEW_ONLY: [&str; 12] = [
+/// Size by and the drawer inside sizes are both's: Edit shows a drawer-sized cabinet by them,
+/// and Width and Depth show or hide by Size by in either mode.
+pub const NEW_ONLY: [&str; 9] = [
     "corner",
     "boards",
     "units",
     "thickness",
-    "sizing",
-    "drawer_width",
-    "drawer_depth",
     "reveal",
     "material",
     "place",

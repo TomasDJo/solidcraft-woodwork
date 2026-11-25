@@ -563,6 +563,8 @@ fn mode_auto_goes_by_what_is_picked_in_the_dialog_and_the_run() {
     );
     assert_eq!(reply["doors"], json!({"default": 2}), "{reply}");
     assert_eq!(reply["name"], json!({"visible": false}));
+    // Size by stays, so Width and Depth show or hide by it, as in Edit picked
+    assert!(reply["sizing"].get("visible").is_none(), "{reply}");
     let reply = dialog_with("C Side L");
     assert_eq!(
         reply["mode"],
