@@ -39,8 +39,7 @@ table says which).
   "drawers 1 to 8" as an `in` list. Mutual conditions are a cycle and refused (drawers and
   doors cannot hide each other). No stored values. `x-solidcraft-defaults` gives each size an
   inch default when Units is Inches (`{when: {field: units, eq: in}, value}`), shown until the
-  user changes the field; `build.plugin` applies it as the dialog does. `x-solidcraft-enabled-when`
-  and `x-solidcraft-when` exist but are not used.
+  user changes the field; `build.plugin` applies it as the dialog does. `x-solidcraft-when` exists but is not used.
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
   **Fields that cannot combine are hidden, and not used:** a field that another one makes
@@ -48,8 +47,11 @@ table says which).
   script, or remembered by Edit) as absent instead of refusing. Cabinet: Dividers with
   drawers (`cabinet::input`: none beside drawers or on a sink base; drawers beside doors on a
   sink base dropped); Sizing with Match selected (`from_drawers`: outside sizing); Width and
-  Depth with drawer sizing (they are worked out); Height, Depth, Thickness and Plinth with
-  Match selected (`Kit` takes the selected cabinet's). Edit, where Keep and differing values
+  Depth with drawer sizing (they are worked out). Height, Depth, Thickness and Plinth are
+  greyed, not hidden, with Match selected (`x-solidcraft-enabled-when`, 0.49: shown, still
+  sent; `Kit` takes the selected cabinet's), and the Cabinet hook fills them with the picked
+  cabinet's values and the hint "Match selected takes it from <name>" (`settings::matched_sizes`,
+  from the same `document.inspect` as `matching`). Edit, where Keep and differing values
   leave a field shown: Dividers with drawers, Shelves and Shelf pins on a drawers-only
   cabinet, Slide length without drawers, Fronts, Reveal and Handles without doors and drawers
   (all as `not` over the number, so an empty number shows them), Handle position with handles

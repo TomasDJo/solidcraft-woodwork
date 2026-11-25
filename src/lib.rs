@@ -1442,6 +1442,9 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
         );
         if let Ok(design) = design {
             reply["match"] = settings::matching(values, &design);
+            if let Some(all) = reply.as_object_mut() {
+                all.extend(settings::matched_sizes(values, &design));
+            }
         }
     }
     Ok(reply)

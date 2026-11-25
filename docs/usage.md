@@ -414,7 +414,8 @@ model while the dialog is open, and the preview follows. Edit cabinet, Material 
 have the same field.
 
 **Match selected** shows only when a cabinet's board is picked, and then starts at Yes: the new
-cabinet takes the picked one's height, depth, thickness and plinth, linked. With nothing picked
+cabinet takes the picked one's height, depth, thickness and plinth, linked. While it is on, those four fields show the picked cabinet's values, greyed: change them on
+that cabinet, or turn Match selected off. With nothing picked
 it is hidden and not used. A script still says `match` (`selected` with nothing selected makes
 the cabinet unmatched); one that leaves it out gets Yes when a cabinet is selected.
 

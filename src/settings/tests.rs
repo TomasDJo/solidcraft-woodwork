@@ -298,3 +298,19 @@ fn match_selected_is_yes_with_a_cabinet_picked_and_hidden_otherwise() {
         json!({"bodies": ["A Side L"], "selection": [{"type": "body", "name": "A Side L"}]});
     assert_eq!(matching(&json!({}), &selected), yes);
 }
+
+#[test]
+fn match_selected_shows_the_picked_cabinets_sizes() {
+    let design = json!({"bodies": ["Cabinet 2 Side L", "Cabinet 2 Top"], "selection": [],
+        "params": [{"name": "Cabinet_2_height", "value": 720.0},
+            {"name": "Cabinet_2_depth", "value": 560.0},
+            {"name": "Cabinet_2_thickness", "value": 19.05},
+            {"name": "Cabinet_2_plinth", "value": 100.0}]});
+    let pick = json!({"units": "in", "selection": [{"type": "body", "name": "Cabinet 2 Top"}]});
+    let sizes = matched_sizes(&pick, &design);
+    let hint = "Match selected takes it from Cabinet 2";
+    assert_eq!(sizes["thickness"], json!({"default": 0.75, "hint": hint}));
+    assert_eq!(sizes["plinth"], json!({"default": "yes", "hint": hint}));
+    assert_eq!(sizes["height"]["default"], 28.346457);
+    assert!(matched_sizes(&json!({"selection": []}), &design).is_empty());
+}

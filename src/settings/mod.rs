@@ -343,6 +343,41 @@ pub fn matching(values: &Value, design: &Value) -> Value {
     }
 }
 
+/// The sizes Match selected takes from the picked cabinet, as the Cabinet hook's patch for those
+/// fields (greyed while it is on, `x-solidcraft-enabled-when`): its height, depth, thickness
+/// (its parameters, in the dialog's unit) and plinth (Yes when it has one), with a hint naming
+/// it. Nothing when no cabinet is picked. `design` as for `matching`.
+pub fn matched_sizes(values: &Value, design: &Value) -> Map<String, Value> {
+    let mut reply = Map::new();
+    let picked = crate::select::picked(values, design);
+    let Some(cabinet) = picked.first().and_then(|b| crate::select::owner(design, b)) else {
+        return reply;
+    };
+    let prefix = kit::prefix(cabinet);
+    let param = |key: &str| {
+        let all = design["params"].as_array().into_iter().flatten();
+        let id = format!("{prefix}_{key}");
+        all.into_iter()
+            .find(|p| p["name"] == id.as_str())
+            .and_then(|p| p["value"].as_f64())
+    };
+    let unit = if values["units"] == "in" { 25.4 } else { 1.0 };
+    let hint = format!("Match selected takes it from {cabinet}");
+    for key in ["height", "depth", "thickness"] {
+        if let Some(mm) = param(key) {
+            reply.insert(
+                key.into(),
+                json!({"default": rounded(mm / unit), "hint": hint}),
+            );
+        }
+    }
+    if let Some(mm) = param("plinth") {
+        let plinth = if mm > 0.0 { "yes" } else { "no" };
+        reply.insert("plinth".into(), json!({"default": plinth, "hint": hint}));
+    }
+    reply
+}
+
 /// The dialog hook's reply for `entry` with the dialog's `values`, from `storage.get`'s
 /// reply: each stored setting as the field's default, lengths in the dialog's unit. The
 /// Settings dialog gets every setting with a default, stored or the default, and no hint.
