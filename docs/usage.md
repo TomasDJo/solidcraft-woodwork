@@ -276,7 +276,7 @@ as the cabinet is made:
   refuses it. Over a plinth board or notched sides the sides reach below the bottom, where its
   fingers would be closed mortises through the sides (a CNC job): the bottom is then butted (as
   Joinery None) and keeps its own width, unless **Finger-joint
-  the bottom too** (Woodwork settings, Edit) is Yes. On legs or casters, or with no plinth, the
+  the bottom too** (Woodwork settings, Edit; shown only with a board or notch plinth) is Yes. On legs or casters, or with no plinth, the
   bottom is finger-jointed as the top. The top is always flush with the sides' top edges.
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
