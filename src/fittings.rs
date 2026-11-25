@@ -2,6 +2,7 @@
 //! the screw holes for knobs and pulls. Sizes are common-practice values.
 
 use crate::kit::{mm, Kit};
+use crate::Commands;
 use serde_json::{json, Value};
 
 pub const PITCH: f64 = 32.0; // 32 mm system: shelf pin holes
@@ -76,6 +77,49 @@ pub fn pin_rows(kit: &Kit, top_row: &str, rows: PinRows) -> [(&'static str, Valu
             }),
         ),
     ]
+}
+
+/// The pin rows of all a cabinet's panels (`pin_rows`' pairs, in order) with one pattern for the
+/// panels whose rows match (same count, pitch and rows across): a feature less per panel, and
+/// a pattern feature costs time. The holes come first, then the patterns, named `<Cabinet> pin
+/// rows` (` 2`, ... for a second set), or the panel's own when it matches no other.
+pub fn shared_pin_rows(kit: &Kit, drill: Commands) -> Commands {
+    let key = |args: &Value| {
+        let mut key = args.clone();
+        if let Some(k) = key.as_object_mut() {
+            k.remove("features");
+            k.remove("name");
+        }
+        key
+    };
+    let (mut holes, mut patterns): (Commands, Vec<(Value, Value)>) = (Vec::new(), Vec::new());
+    for (command, args) in drill {
+        if command != "solid.pattern.rectangular" {
+            holes.push((command, args));
+            continue;
+        }
+        let features = args["features"].as_array().cloned().unwrap_or_default();
+        match patterns.iter_mut().find(|p| p.0 == key(&args)) {
+            Some((_, merged)) => {
+                if let Some(all) = merged["features"].as_array_mut() {
+                    all.extend(features);
+                }
+            }
+            None => patterns.push((key(&args), args)),
+        }
+    }
+    let mut shared = 0;
+    for (_, mut args) in patterns {
+        if args["features"].as_array().is_some_and(|f| f.len() > 1) {
+            shared += 1;
+            args["name"] = json!(match shared {
+                1 => format!("{} pin rows", kit.name),
+                n => format!("{} pin rows {n}", kit.name),
+            });
+        }
+        holes.push(("solid.pattern.rectangular", args));
+    }
+    holes
 }
 
 // Every hole is a cylinder cut out of the one board it is for, not `solid.hole`: that keeps

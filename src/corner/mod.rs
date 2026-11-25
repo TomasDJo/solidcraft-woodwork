@@ -897,7 +897,7 @@ impl Corner<'_> {
             };
             drill.extend(fittings::pin_rows(kit, top_row, rows));
         }
-        drill
+        fittings::shared_pin_rows(kit, drill)
     }
 }
 

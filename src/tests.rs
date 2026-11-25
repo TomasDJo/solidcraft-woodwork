@@ -569,3 +569,59 @@ fn the_cabinet_dialog_says_at_once_what_the_build_would_refuse() {
         "{reply}"
     );
 }
+
+#[test]
+fn placing_measures_only_the_picked_cabinet_and_lands_where_a_full_measure_put_it() {
+    let body = |name: &str, x: f64| {
+        json!({"name": name, "material": "Oak", "volume_mm3": 18.0 * 560.0 * 720.0,
+        "bbox": {"min": [x, -280, 0], "max": [x + 18.0, 280, 720]}})
+    };
+    let all = json!([
+        body("A Side L", -300.0),
+        body("A Side R", 282.0),
+        body("A Top", -282.0),
+        body("Z Side L", 2000.0),
+        body("Z Side R", 2582.0)
+    ]);
+    // `narrow`: the app as it is (names only, or just the bodies asked for); else every body
+    // measured whatever is asked, as the full `inspect.measure` the run made before
+    let place = |narrow: bool| {
+        let (mut moved, mut asked) = (Value::Null, Vec::new());
+        let mut run = |command: &str, args: Value| {
+            if command == "occurrence.move" {
+                moved = args.clone();
+            }
+            Ok(match command {
+                "document.inspect" => json!({"selection": [{"name": "A Side R"}]}),
+                "inspect.measure" if narrow && args["names_only"] == true => {
+                    let names = all
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|b| json!({"name": b["name"]}));
+                    json!({"bodies": names.collect::<Vec<_>>()})
+                }
+                "inspect.measure" if narrow => {
+                    asked.push(args["bodies"].clone());
+                    let wanted = args["bodies"].as_array().unwrap();
+                    let bodies = all
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter(|b| wanted.contains(&b["name"]));
+                    json!({"bodies": bodies.cloned().collect::<Vec<_>>()})
+                }
+                "inspect.measure" => json!({"bodies": all}),
+                _ => json!({}),
+            })
+        };
+        let reply = execute("cabinet", &json!({"place": "auto"}), &mut run).unwrap();
+        (reply["placed"].clone(), moved, asked)
+    };
+    let (placed, moved, asked) = place(true);
+    assert_eq!(asked, [json!(["A Side L", "A Side R", "A Top"])]);
+    let (full_placed, full_moved, _) = place(false);
+    assert_eq!((&placed, &moved), (&full_placed, &full_moved));
+    assert_eq!(placed, "right of A");
+    assert_eq!(moved["translate"][0], json!(300.0 + 300.0));
+}

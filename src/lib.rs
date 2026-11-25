@@ -175,13 +175,13 @@ fn apply(
         "document.inspect",
         json!({"bodies": false, "timeline": false}),
     )?;
-    let measure = run("inspect.measure", json!({}))?;
+    let names_only = body_names(run)?;
     // The cabinets of the picked bodies: a board, or a hinge or slide model's copy (`HW hinge
     // (A:1/A Door:1/HW hinge:2)`, which measures do not show: the first name on its path).
     let (mut names, mut skipped) = (Vec::new(), Vec::new());
     let bodies = match all {
         // every cabinet: its Side L
-        true => (measure["bodies"].as_array().into_iter().flatten())
+        true => (names_only["bodies"].as_array().into_iter().flatten())
             .filter_map(|b| b["name"].as_str().filter(|n| n.ends_with(" Side L")))
             .map(String::from)
             .collect(),
@@ -191,12 +191,17 @@ fn apply(
         let model = (body.strip_prefix("HW "))
             .and_then(|b| b.split_once('(')?.1.split_once(':'))
             .map(|(cabinet, _)| cabinet.to_string());
-        match select::owner(&measure, &body).map(String::from).or(model) {
+        match select::owner(&names_only, &body)
+            .map(String::from)
+            .or(model)
+        {
             Some(owner) if !names.contains(&owner) => names.push(owner),
             Some(_) => {}
             None => skipped.push(json!({"picked": body, "why": "not part of a cabinet"})),
         }
     }
+    // Measured only what is built again: its boards' materials, and its panels.
+    let measure = measured(names_only, &names, run)?;
     let mut todo = Vec::new();
     for name in names {
         let about = run("component.metadata", json!({"component": name}))?;
@@ -314,7 +319,10 @@ fn rebuild(
     // cabinets that were held to it, to the new one.
     let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
     let was = &about["metadata"][edit::KEY]["link"];
-    let measure = run("inspect.measure", json!({}))?;
+    // This cabinet and the one it was held to: what the links read.
+    let mut linked = vec![name.clone()];
+    linked.extend(was["to"].as_str().map(String::from));
+    let measure = measured(body_names(run)?, &linked, run)?;
     let mut held = false;
     if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
         if let Ok(other) = select::named(&measure, to) {
@@ -602,6 +610,55 @@ fn now() -> u64 {
     0
 }
 
+/// Every body's name, from `inspect.measure`'s `names_only`: nothing is measured. A whole
+/// kitchen's full measure takes over a second, this a few ms. What `select` finds by name
+/// (`owner`, `parts`, `piece`) reads it as it is.
+fn body_names(run: Run) -> Result<Value, String> {
+    run("inspect.measure", json!({"names_only": true}))
+}
+
+/// `names` (`body_names`) with the bodies of `cabinets` measured (boxes, materials, volumes),
+/// the others by name only: what placing, Edit, a panel, a worktop and Apply settings read.
+fn measured(names: Value, cabinets: &[String], run: Run) -> Result<Value, String> {
+    // each body once: the app refuses a name given twice
+    let mut wanted: Vec<String> = Vec::new();
+    for body in cabinets.iter().flat_map(|c| select::parts(&names, c)) {
+        if !wanted.contains(&body) {
+            wanted.push(body);
+        }
+    }
+    if wanted.is_empty() {
+        return Ok(names);
+    }
+    let mut measure = run("inspect.measure", json!({"bodies": wanted}))?;
+    let done: Vec<Value> = (measure["bodies"].as_array().into_iter().flatten())
+        .map(|b| b["name"].clone())
+        .collect();
+    let rest = (names["bodies"].as_array().into_iter().flatten())
+        .filter(|b| !done.contains(&b["name"]))
+        .cloned();
+    let rest: Vec<Value> = rest.collect();
+    match measure["bodies"].as_array_mut() {
+        Some(bodies) => bodies.extend(rest),
+        None => measure["bodies"] = json!(rest),
+    }
+    Ok(measure)
+}
+
+/// `measured` for the cabinets of the `picked` bodies.
+fn picked_measure(picked: &[String], run: Run) -> Result<Value, String> {
+    let names = body_names(run)?;
+    let mut owners: Vec<String> = Vec::new();
+    for body in picked {
+        if let Some(owner) = select::owner(&names, body).map(String::from) {
+            if !owners.contains(&owner) {
+                owners.push(owner);
+            }
+        }
+    }
+    measured(names, &owners, run)
+}
+
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     // Cabinet's Mode Edit picked is Edit (one dialog for a new cabinet and a change to one).
     let entry = match entry == "cabinet" && params["mode"] == "edit" {
@@ -682,7 +739,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // but still sends a value it had.
             let matching = matching && !picked.is_empty();
             let measure = match matching || place != "origin" {
-                true => run("inspect.measure", json!({}))?,
+                true => picked_measure(&picked, run)?,
                 false => Value::Null,
             };
             if place == "auto" {
@@ -752,8 +809,8 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
-            let measure = run("inspect.measure", json!({}))?;
             let picked = select::picked(params, &design);
+            let measure = picked_measure(&picked, run)?;
             let mut names: Vec<String> = Vec::new();
             for body in &picked {
                 if let Some(owner) = select::owner(&measure, body).map(String::from) {
@@ -810,8 +867,8 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let bodies = match params["scope"].as_str().unwrap_or("cabinet") {
                 "parts" => picked,
                 "cabinet" => {
-                    let measure = run("inspect.measure", json!({}))?;
-                    select::parts(&measure, &select::piece(&picked, &measure)?)
+                    let names = body_names(run)?;
+                    select::parts(&names, &select::piece(&picked, &names)?)
                 }
                 _ => return Err("scope must be cabinet or parts".into()),
             };
@@ -829,8 +886,8 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
-            let measure = run("inspect.measure", json!({}))?;
             let picked = select::picked(params, &design);
+            let measure = picked_measure(&picked, run)?;
             let name = select::cabinet(&picked, &measure)?.name;
             let board = picked[0].get(name.len() + 1..).unwrap_or_default();
             let side = panel::side(params, board)?;
@@ -874,7 +931,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
-            let measure = run("inspect.measure", json!({}))?;
+            let names = body_names(run)?;
             let tree = run("component.list", json!({}))?;
             let components: Vec<&str> = (tree["components"].as_array().into_iter().flatten())
                 .filter_map(|c| c["name"].as_str())
@@ -896,7 +953,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let (mut cabinets, mut old) = (Vec::<String>::new(), Vec::<String>::new());
             let (mut kept, mut any_cabinet) = (None, false);
             for body in select::picked(params, &design) {
-                if let Some(cabinet) = select::owner(&measure, &body) {
+                if let Some(cabinet) = select::owner(&names, &body) {
                     cabinets.push(cabinet.to_string());
                     any_cabinet = true;
                     continue;
@@ -948,7 +1005,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 }
             };
             params["name"] = json!(name);
-            // A cabinet deleted since a worktop remembered it is left out.
+            // Only the cabinets under it are measured. A cabinet deleted since a worktop
+            // remembered it is left out.
+            let measure = measured(names, &cabinets, run)?;
             cabinets.retain(|c| select::named(&measure, c).is_ok());
             let mut seen = std::collections::BTreeSet::new();
             cabinets.retain(|c| seen.insert(c.clone()));

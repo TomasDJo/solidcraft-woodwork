@@ -82,10 +82,24 @@ fn options_add_parts() {
 
     let p = json!({"shelf_pins": true, "doors": 2, "height": 1200});
     let (commands, summary) = build(&p).unwrap();
-    assert_eq!(count(&commands, "solid.pattern.rectangular"), 2);
+    // one pattern copies both sides' pins (a feature each costs time), after both seeds
+    assert_eq!(count(&commands, "solid.pattern.rectangular"), 1);
+    let rows = named(&commands, "Cabinet pin rows");
+    assert_eq!(
+        rows["features"],
+        json!(["Cabinet Side L pins", "Cabinet Side R pins"])
+    );
+    let at = |name: &str| commands.iter().position(|c| c.1["name"] == name).unwrap();
+    assert!(at("Cabinet Side R pins") < at("Cabinet pin rows"));
     // pin seeds, 3 cups per tall door and a plate's 2 screw holes beside each
     assert_eq!(count(&commands, "solid.cylinder"), 2 + 2 * 3 * 3);
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 8);
+    // a divider's pins too
+    let p = json!({"shelf_pins": true, "dividers": 1});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(count(&commands, "solid.pattern.rectangular"), 1);
+    let rows = named(&commands, "Cabinet pin rows");
+    assert_eq!(rows["features"].as_array().unwrap().len(), 3);
 }
 
 #[test]
@@ -710,7 +724,7 @@ fn drawers_over_doors() {
             "Cabinet_plinth + Cabinet_thickness"
         )
     );
-    let pins = named(&commands, "Cabinet Side L pin rows");
+    let pins = named(&commands, "Cabinet pin rows");
     assert!(pins["count1"].as_str().unwrap().contains(&rail));
     assert_eq!(
         named(&commands, "Cabinet Drawer 1 slide")["at"]["point"][2],

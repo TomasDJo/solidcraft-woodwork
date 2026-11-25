@@ -632,7 +632,7 @@ impl Cabinet<'_> {
             };
             drill.extend(fittings::pin_rows(kit, top_row, rows));
         }
-        drill
+        fittings::shared_pin_rows(kit, drill)
     }
 
     /// Where the shelves' part starts (the bottom panel's top face, the base of the pin rows'
