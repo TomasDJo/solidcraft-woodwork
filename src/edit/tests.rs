@@ -448,12 +448,15 @@ fn edit_shown_doors(entry: &str, params: &Value) -> Value {
 }
 
 #[test]
-fn the_kept_values_leave_out_the_sizes_in_parameters() {
-    let kept = shown(
+fn a_size_left_as_shown_keeps_the_design_parameter() {
+    // The hook shows the drawer height the cabinet was last built with; left so, the design's
+    // parameter (perhaps changed in Parameters since) stays; another value is a change.
+    let ours =
+        json!({"entry": "cabinet", "params": {"drawers": 1, "drawer_height": 180, "reveal": 3}});
+    let left = sizes_as_shown(
+        &json!({"drawers_height": 180, "reveal": 2, "drawers": 1}),
         "cabinet",
-        &json!({"drawers": 2, "drawer_height": 140, "reveal": 2}),
+        &ours,
     );
-    let now = without_sizes(&kept);
-    assert_eq!(now["drawers"], 2);
-    assert!(now.get("drawers_height").is_none() && now.get("reveal").is_none());
+    assert_eq!(left, json!({"reveal": 2, "drawers": 1}));
 }

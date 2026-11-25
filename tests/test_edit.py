@@ -143,10 +143,15 @@ def test_edit_left_as_shown_changes_nothing(approval):
     # the cabinet is not built again; one change still builds it.
     results = cli([plugin(approval, "cabinet", {"doors": 2, "drawers": 1, "plinth": 100}),
                    select("Cabinet Top"), plugin(approval, "edit", {}),
-                   select("Cabinet Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE])
+                   select("Cabinet Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawers_height": 180}),
+                   select("Cabinet Top"), plugin(approval, "edit", {})])
     assert results[2]["result"]["edited"] is False, results[2]
     assert "nothing changed" in results[2]["result"]["message"], results[2]
     assert results[4]["result"]["edited"] is True and "Cabinet Shelf 2" in boxes(results[5]), results[4]
+    # an Edit's values, the drawer front height too, are where the next Edit starts (#129)
+    assert results[7]["result"]["edited"] is True, results[7]
+    assert results[9]["result"]["edited"] is False, results[9]
 
 
 def test_edit_two_cabinets_that_differ(approval):

@@ -47,8 +47,20 @@ fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value,
     // What Edit's dialog shows for it, in a file of ours in the design (`edit::blob`), which its
     // hook can read (a read entry may not read component metadata: it counts as an edit
     // command). A file, not our main document: every hook parses that, with 10M fuel.
+    // Its boards' first words (Side, Top, Drawer...), so the hook knows a board of "Cabinet 2" (made before, no file of its
+    // own) is not one of "Cabinet"'s.
     let shown = edit::shown(entry, params);
-    let copy = json!({"entry": entry, "units": params["units"], "shown": shown});
+    let mut parts: Vec<&str> = Vec::new();
+    for b in summary["bodies"].as_array().into_iter().flatten() {
+        let rest = b
+            .as_str()
+            .and_then(|b| b.strip_prefix(name)?.strip_prefix(' '));
+        let word = rest.and_then(|r| r.split(' ').next());
+        if let Some(w) = word.filter(|w| !parts.contains(w)) {
+            parts.push(w);
+        }
+    }
+    let copy = json!({"entry": entry, "units": params["units"], "shown": shown, "parts": parts});
     run(
         "component.metadata.set",
         json!({"component": name, "values": remembered}),
@@ -808,6 +820,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     let why = format!("a {entry} cabinet does not take it");
                     skipped.push(json!({"cabinet": name, "field": key, "why": why}));
                 }
+                let changes = edit::sizes_as_shown(&changes, entry, ours);
                 let changes = settings::edit_plinth(&changes, ours, &design, stored);
                 let (entry, params) =
                     edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
@@ -1355,14 +1368,11 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
                 json!({"bodies": "names", "timeline": false}),
             )
         };
-        // the design's selection without its bodies' names, which only the fallback needs
+        // the design's selection alone (`_selection`)
         let picked = match field.is_empty() {
-            true => run(
-                "document.inspect",
-                json!({"bodies": false, "timeline": false}),
-            )
-            .map(|d| select::picked(values, &d))
-            .unwrap_or_default(),
+            true => run("_selection", json!({}))
+                .map(|d| select::picked(values, &d))
+                .unwrap_or_default(),
             false => field,
         };
         let stored = run("storage.get", json!({"plugin": "woodwork"})).unwrap_or_default();
@@ -1374,26 +1384,42 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
                     .strip_suffix(".json")
             })
             .collect();
+        // A board's cabinet: the longest of our files' names its name starts with, whose file
+        // lists the board's first word (names alone would give "Cabinet 2"'s boards to "Cabinet").
+        let mut got: Vec<(&str, Value)> = Vec::new();
         let mut owners: Vec<&str> = Vec::new();
         for body in &picked {
-            let body = kit::prefix(body);
-            let owner = (files.iter())
-                .filter(|f| {
-                    body.strip_prefix(**f)
-                        .is_some_and(|rest| rest.starts_with('_'))
-                })
-                .max_by_key(|f| f.len());
-            if let Some(&owner) = owner.filter(|o| !owners.contains(o)) {
+            let prefix = kit::prefix(body);
+            let mut owner: Option<&str> = None;
+            for &f in &files {
+                let longer = owner.is_none_or(|o| f.len() > o.len());
+                if !longer || !prefix.strip_prefix(f).is_some_and(|r| r.starts_with('_')) {
+                    continue;
+                }
+                if !got.iter().any(|(o, _)| *o == f) {
+                    let blob = run("_get_blob", json!({"name": format!("edit/{f}.json")}));
+                    got.push((f, blob.unwrap_or_default()));
+                }
+                let blob = &got.iter().find(|(o, _)| *o == f).unwrap().1;
+                // a file from before the boards' names were kept has no `parts`
+                let lists = blob.get("parts").is_none_or(|parts| {
+                    let word = prefix[f.len() + 1..].split('_').next();
+                    (parts.as_array().into_iter().flatten()).any(|p| p.as_str() == word)
+                });
+                if lists {
+                    owner = Some(f);
+                }
+            }
+            if let Some(owner) = owner.filter(|o| !owners.contains(o)) {
                 owners.push(owner);
             }
         }
         let mut cabinets = Vec::new();
         for owner in owners {
-            let ours = run("_get_blob", json!({"name": format!("edit/{owner}.json")}));
-            let ours = ours.unwrap_or_default();
+            let ours = &got.iter().find(|(o, _)| *o == owner).unwrap().1;
             if let (Some(entry), Some(shown)) = (ours["entry"].as_str(), ours["shown"].as_object())
             {
-                cabinets.push((entry.to_string(), edit::without_sizes(shown)));
+                cabinets.push((entry.to_string(), shown.clone()));
             }
         }
         if !cabinets.is_empty() {
@@ -1455,6 +1481,21 @@ mod guest {
             let bytes = craft::plugin::storage::get_blob(Some("woodwork"), name, 0, 16 * 1024)
                 .map_err(|e| format!("{command}: {e:?}"))?;
             return Ok(serde_json::from_slice(&bytes).unwrap_or_default());
+        }
+        // The design's selection, from `document.inspect`, whose other keys are not parsed: they
+        // are every parameter (78 KB in a 30-cabinet design), costly for the 10M fuel of a hook.
+        if command == "_selection" {
+            let args = serde_json::json!({"bodies": false, "timeline": false});
+            let reply = craft::plugin::commands::run("document.inspect", &args.to_string())
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            let at = reply.rfind("\"selection\"").ok_or("no selection")?;
+            let rest = reply[at + 11..].trim_start().trim_start_matches(':');
+            let mut values = serde_json::Deserializer::from_str(rest).into_iter();
+            let selection: serde_json::Value = values
+                .next()
+                .ok_or("no selection")?
+                .map_err(|e| e.to_string())?;
+            return Ok(serde_json::json!({ "selection": selection }));
         }
         // A job's step (`apply`): the operations panel's bar and name.
         if command == "_progress" {

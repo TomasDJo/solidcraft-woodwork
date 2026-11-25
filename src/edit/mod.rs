@@ -152,15 +152,19 @@ pub fn blob(name: &str) -> String {
     format!("edit/{}.json", kit::prefix(name))
 }
 
-/// The Edit values `make` kept for a cabinet, without the sizes that are design parameters (drawer
-/// height, reveal, plinth set-back): they may have changed in Parameters since, and the hook
-/// does not read the design's parameters (10M fuel), so they stay empty, which is unchanged.
-pub fn without_sizes(shown: &Map<String, Value>) -> Map<String, Value> {
-    let mut shown = shown.clone();
-    for key in ["drawers_height", "reveal", "plinth_setback"] {
-        shown.remove(key);
+/// Edit's `changes` without the sizes left as its hook showed them (the value the cabinet was
+/// last built with, `remembered`): they are design parameters, which may have changed in
+/// Parameters since, and the hook cannot read those (10M fuel), so the design's stays.
+pub fn sizes_as_shown(changes: &Value, entry: &str, remembered: &Value) -> Value {
+    let kept = shown(entry, &remembered["params"]);
+    let mut changes = changes.clone();
+    if let Some(all) = changes.as_object_mut() {
+        all.retain(|k, v| {
+            let size = ["drawers_height", "reveal", "plinth_setback"].contains(&k.as_str());
+            !(size && kept.get(k).is_some_and(|was| same(was, v)))
+        });
     }
-    shown
+    changes
 }
 
 /// Whether a cabinet made by `entry` (`cabinet` or `corner`) takes the Edit field `key`.

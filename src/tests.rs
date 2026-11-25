@@ -303,7 +303,7 @@ fn the_edit_hook_reads_body_names_and_the_picked_cabinets_and_never_fails() {
     assert_eq!(
         asked,
         [
-            json!(["document.inspect", {"bodies": false, "timeline": false}]),
+            json!(["_selection", {}]),
             json!(["storage.get", {"plugin": "woodwork"}]),
             json!(["document.inspect", {"bodies": "names", "timeline": false}])
         ]
@@ -399,4 +399,66 @@ fn a_cabinet_keeps_its_edit_values_in_a_small_file_not_in_our_document() {
     assert_eq!(asked.iter().filter(|c| *c == "storage.get").count(), 1);
     assert!(!asked.iter().any(|c| c == "document.inspect"));
     assert_eq!(reply["doors"], json!({"default": 1}));
+}
+
+/// What `make` wrote to a cabinet's file (`_put_blob`), for a run of `entry` with `params`.
+fn kept_file(entry: &str, params: Value) -> (String, Value) {
+    let mut put = None;
+    let mut run = |command: &str, args: Value| {
+        if command == "_put_blob" {
+            put = Some((
+                args["name"].as_str().unwrap().to_string(),
+                args["data"].clone(),
+            ));
+        }
+        Ok(json!({}))
+    };
+    execute(entry, &params, &mut run).unwrap();
+    put.unwrap()
+}
+
+/// The Edit hook's reply for boards picked in its field, with these files in the design.
+fn edit_hook(files: &[(String, Value)], picks: &[&str]) -> Value {
+    let picks: Vec<Value> = (picks.iter())
+        .map(|b| json!({"type": "body", "name": b}))
+        .collect();
+    let mut run = |command: &str, args: Value| match command {
+        "storage.get" => {
+            let names: Vec<Value> = files.iter().map(|(n, _)| json!({"name": n})).collect();
+            Ok(json!({"blobs": names}))
+        }
+        "_get_blob" => Ok((files.iter())
+            .find(|(n, _)| args["name"] == n.as_str())
+            .map(|(_, d)| d.clone())
+            .unwrap_or_default()),
+        _ => Ok(json!({"bodies": [], "selection": []})),
+    };
+    dialog("edit", &json!({"selection": picks}), &mut run).unwrap()
+}
+
+#[test]
+fn the_edit_hook_starts_at_what_the_last_edit_built() {
+    // An Edit builds the cabinet again through `make` with the merged values, which writes its
+    // file: the next Edit starts at them, the drawer front height too (#129: it was left empty).
+    let file = kept_file(
+        "cabinet",
+        json!({"name": "C", "drawers": 1, "doors": 1, "drawer_height": 180, "plinth": 100}),
+    );
+    let reply = edit_hook(&[file], &["C Top"]);
+    assert_eq!(reply["drawers"], json!({"default": 1}), "{reply}");
+    assert_eq!(reply["doors"], json!({"default": 1}));
+    assert_eq!(reply["drawers_height"], json!({"default": 180}));
+}
+
+#[test]
+fn a_cabinet_without_a_file_never_takes_another_cabinets() {
+    // "Cabinet 2" made before has no file; "Cabinet"'s name starts its boards' names, but its
+    // file does not list them (#129: Edit showed Drawers 2 for a cabinet with 1).
+    let file = kept_file("cabinet", json!({"name": "Cabinet", "drawers": 2}));
+    let reply = edit_hook(std::slice::from_ref(&file), &["Cabinet 2 Top"]);
+    assert!(reply.get("drawers").is_none(), "{reply}");
+    assert_eq!(
+        edit_hook(&[file], &["Cabinet Top"])["drawers"],
+        json!({"default": 2})
+    );
 }

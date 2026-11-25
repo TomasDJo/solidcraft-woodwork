@@ -187,10 +187,12 @@ table says which).
   (with `entry`, `units`) in a file of ours in the design, `edit/<Prefix>.json` (`edit::blob`,
   the `_put_blob` pseudo-command, storage `put-blob`), not in our main document, which every
   hook parses with 10M fuel (the Cabinet hook ran out at 30 cabinets with copies there). The Edit
-  hook stays light: the picks from the dialog's field (the design's selection, read without body
-  names, only when it is empty), the cabinets from our files' names (`storage.get`, owners by
-  `kit::prefix`), only the picked ones' files (`_get_blob`), the sizes that are parameters left
-  out (`edit::without_sizes`: empty, unchanged), and `edit::fields` gives the patch; reading a
+  hook stays light: the picks from the dialog's field (the design's selection, only when it is empty:
+  the `_selection` pseudo-command parses only `document.inspect`'s `selection`, as it sends every
+  parameter too; `selection.get` is an edit command to a read entry), the cabinets from our files' names (`storage.get`, owners by
+  `kit::prefix`), only the picked ones' files (`_get_blob`; a board is a cabinet's only if its file's `parts`
+  lists it, so "Cabinet 2" without a file never gets "Cabinet"'s), sizes included (as the last build or
+  Edit left them; a change in Parameters since shows only after the next Edit), and `edit::fields` gives the patch; reading a
   30-cabinet design's names and parameters took most of the 10M. The release profile is
   `opt-level = 3` (fewer instructions, so less fuel, than `s`). A cabinet made before has none: only the
   other kind's fields are hidden, as before. A
