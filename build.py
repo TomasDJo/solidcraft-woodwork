@@ -97,7 +97,7 @@ def plugin(approval, entry, params=None):
             if "plinth_setback" in wide:  # shown with a board or notch only
                 wide.setdefault("plinth_type", "board")
             reset = {k: DESIGN_WIDE.get(k, "board") for k in wide}
-            again = {"with": "settings", "scope": "all"}
+            again = {"with": "settings"}  # no cabinets picked in its field: all of them
             steps = [entry_step(approval, "settings", wide | {"units": "mm"})]
             if set(params) - {"selection"}:
                 steps.append(entry_step(approval, "edit", params))
