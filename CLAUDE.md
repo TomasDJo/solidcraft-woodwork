@@ -602,7 +602,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   repeated every `2w` by two shared rows (`<Name> fingers <n>`) for the whole shell: 8 cuts and
   2 patterns a cabinet. The cut list notes the boards (`cutlist::fingered`, `_fingered`).
   Over a plinth board or notch (`closed_bottom` in `Joinery::new`) the bottom's joints take the
-  third scope, `BOTTOM`: the inside's method (biscuits for none) unless `finger_bottom` is yes
+  third scope, `BOTTOM`: `none`, butted, unless `finger_bottom` is yes
   (Settings and Edit), as its fingers would be closed mortises; no other board has them (the top
   and a sink base's rails are flush with the sides' tops). Absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and

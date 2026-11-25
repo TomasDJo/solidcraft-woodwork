@@ -150,8 +150,8 @@ impl<'a> Joinery<'a> {
     /// has any) and makes the parameters their sizes need. A cabinet that remembers no method
     /// (made before joinery was chosen at build) has none. `t` is the boards' thickness.
     /// `closed_bottom`: the sides reach below the bottom (a plinth board or notched sides), where
-    /// finger joints would be closed mortises through the sides: the bottom then takes the
-    /// inside's method (biscuits when that is none) unless `finger_bottom` is yes (`BOTTOM`).
+    /// finger joints would be closed mortises through the sides: the bottom is then butted
+    /// (`none`) unless `finger_bottom` is yes (`BOTTOM`).
     pub fn new(
         kit: &'a Kit,
         p: &Value,
@@ -174,10 +174,7 @@ impl<'a> Joinery<'a> {
         };
         let fingered = matches!(p.get("finger_bottom"), Some(v) if v == "yes" || v == true);
         let bottom = match carcass == "finger" && closed_bottom && !fingered {
-            true => match method("joints_inner")?.as_str() {
-                "none" | "finger" => "biscuit".to_string(),
-                m => m.to_string(),
-            },
+            true => "none".to_string(), // butted, the plugin's default joint
             false => carcass.clone(),
         };
         let uses = |m: &str| carcass == m || inside == m || bottom == m;
