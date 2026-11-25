@@ -6,7 +6,8 @@ fn patch_keeps_only_what_was_set_in_mm() {
         "handles": "keep", "plinth_type": "keep"});
     assert_eq!(
         patch(&params, &Value::Null).unwrap(),
-        json!({"settings": {"material": "MDF", "thickness": 19.05, "reveal": 3.0}})
+        // Units is kept too: the other sections use it
+        json!({"settings": {"material": "MDF", "thickness": 19.05, "reveal": 3.0, "units": "in"}})
     );
     let params = json!({"units": "mm", "plinth": 150, "plinth_type": "legs"});
     assert_eq!(
@@ -83,7 +84,8 @@ fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
         &json!({"document": null}),
     );
     assert_eq!(empty["material"], json!({"default": "Birch plywood"}));
-    assert_eq!(mm.as_object().unwrap().len(), table().len(), "{mm}");
+    // every setting, Section's hint and the divider
+    assert_eq!(mm.as_object().unwrap().len(), table().len() + 2, "{mm}");
     assert_eq!(mm["plinth"], json!({"default": 100.0}));
     assert_eq!(mm["kerf"], json!({"default": 4.0}));
     assert_eq!(mm["worktop_material"], json!({"default": "Oak"}));
@@ -136,7 +138,7 @@ fn patch_leaves_out_numbers_as_stored_or_default() {
     let params = json!({"units": "in", "plinth": 3.937008, "reveal": 2, "thickness": 0.75});
     assert_eq!(
         patch(&params, &stored).unwrap(),
-        json!({"settings": {"thickness": 19.05}})
+        json!({"settings": {"thickness": 19.05, "units": "in"}})
     );
 }
 
@@ -171,7 +173,11 @@ fn joinery_is_design_wide_not_a_cabinet_default() {
         json!({"settings": {}})
     );
     let inch = patch(&json!({"units": "in", "dowel_d": 0.25}), &Value::Null).unwrap();
-    assert_eq!(inch, json!({"settings": {"dowel_d": 6.35}}));
+    assert_eq!(inch, json!({"settings": {"dowel_d": 6.35, "units": "in"}}));
+    // a section without Units gives its sizes in the stored one
+    let stored_in = json!({"document": {"settings": {"units": "in"}}});
+    let section = patch(&json!({"dowel_d": 0.25}), &stored_in).unwrap();
+    assert_eq!(section, json!({"settings": {"dowel_d": 6.35}}));
     assert!(patch(&json!({"dowel_d": 25}), &Value::Null).is_err());
 }
 
@@ -333,15 +339,27 @@ fn a_section_shows_its_fields_and_hides_the_rest_still_sent() {
     assert!(joinery["joints"].get("visible").is_none());
     assert_eq!(joinery["joints"]["default"], "dowels");
     // hidden, but with its value: the hook hides without leaving it out
+    // a size outside General says its unit, set there
     assert_eq!(
         joinery["plinth"],
-        json!({"default": 100.0, "visible": false})
+        json!({"default": 100.0, "hint": "In mm, as set in General", "visible": false})
     );
+    let stored_in = json!({"document": {"settings": {"units": "in", "dowel_d": 6.35}}});
+    let inch = fields(
+        "settings",
+        &json!({"section": "joinery", "units": "mm"}),
+        &stored_in,
+    );
+    assert_eq!(inch["dowel_d"]["default"], 0.25);
+    assert_eq!(inch["units"], json!({"default": "in", "visible": false}));
+    assert_eq!(inch["section"]["hint"], "Pick a group to see its settings");
+    assert_eq!(inch["divider"]["default"], DIVIDER);
     assert_eq!(
         joinery["material"],
         json!({"default": "Birch plywood", "visible": false})
     );
-    assert!(joinery.get("units").is_none());
+    // Units shows only in General
+    assert_eq!(joinery["units"], json!({"default": "mm", "visible": false}));
     let all = fields("settings", &json!({"section": "all"}), &json!({}));
     assert!(all
         .as_object()

@@ -59,14 +59,19 @@ table says which).
   with a plinth height of 0. Not expressed: Settings' Back against a Cabinet's Wall mount (two
   dialogs), Edit's Wall mount against Back (an option, not a field), Picked cabinets with Apply
   No (a keyword on the reserved `selection` may turn Run off).
-  **Settings' sections (#128 step 2):** the field `section` (General, Doors and fronts,
-  Drawers, Plinth and wall mount, Joinery, Cut list and worktop, Display, All; not stored)
-  shows one group. The hook hides the other groups' fields (`settings::SECTIONS`, the same
-  lists as the manifest's options, `{visible: false}` with the field's default), not a schema
-  condition: a field the hook hides is still sent, so a script's fields are all used whatever
-  its section (a condition would leave them out of `plugin.run`), and the dialog's hidden
-  fields carry the stored values, which `patch` leaves out. Units and Apply to show in every
-  section. The fields' own conditions (a joinery size on its method, ...) stay in the schema.
+  **Settings' sections (#128 step 2):** the field `section` ("Show settings for": General,
+  Doors and fronts, Drawers, Plinth and wall mount, Joinery, Cut list and worktop, Display, All;
+  not stored; the hook's hint "Pick a group to see its settings") shows one group, under a
+  divider row (`divider`: a string field greyed by an `x-solidcraft-enabled-when` that is never
+  true, its default a line, `settings::DIVIDER`, given by the hook for scripts and never stored).
+  The hook hides the other groups' fields (`settings::SECTIONS`, the same lists as the
+  manifest's options, `{visible: false}` with the field's default), not a schema condition: a
+  field the hook hides is still sent, so a script's fields are all used whatever its section (a
+  condition would leave them out of `plugin.run`), and the dialog's hidden fields carry the
+  stored values, which `patch` leaves out. `units` is a setting now, in General: the other
+  sections' sizes are in the stored unit (the hook scales by it and hints "In mm, as set in
+  General"; `patch` takes it when the run gives no `units`). Apply to shows in every section.
+  The fields' own conditions (a joinery size on its method, ...) stay in the schema.
   **Field order:** the most used first, and a conditional field right after the field that
   controls it, directly below it (drawer height and Drawers at under Drawers, the door hinge and
   hinge angle under Doors, plinth type and set-back under Plinth, slide length under slide type, a joinery method's sizes after it,

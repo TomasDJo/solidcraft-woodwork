@@ -78,6 +78,8 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         // no cabinet's: our board materials' opacity (`material::see_through`)
         ("see_through", "", Choice("off"), Nothing),
         ("camera", "", Choice("fit"), Nothing),
+        // the unit Settings' sizes are given in, set in General and used by the other sections
+        ("units", "", Choice("mm"), Nothing),
     ];
     for (key, mm) in joint::SIZES {
         let (low, high) = joint::range(key);
@@ -116,7 +118,10 @@ fn kept() -> Vec<&'static str> {
 /// set (empty or `keep` leaves the stored value), lengths in mm. A value the same as the
 /// stored one, or the default when none is, is left out: the hook fills omitted keys.
 pub fn patch(params: &Value, stored: &Value) -> Result<Value, String> {
-    let unit = if params["units"] == "in" { 25.4 } else { 1.0 };
+    // a dialog without Units (a section other than General) gives its sizes in the stored one
+    let units = params["units"].as_str();
+    let units = units.or(stored["document"]["settings"]["units"].as_str());
+    let unit = if units == Some("in") { 25.4 } else { 1.0 };
     let mut set = Map::new();
     for key in kept() {
         let value = &params[key];
@@ -403,7 +408,18 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     } else {
         settings.retain(|key, _| FIELDS.contains(&key.as_str()));
     }
-    let unit = if values["units"] == "in" { 25.4 } else { 1.0 };
+    // Settings' sizes are in Units, which only General (and All) show; the other sections use
+    // the stored one, said in each size's hint
+    let shown = values["section"].as_str().unwrap_or("all");
+    let with_units = matches!(shown, "general" | "all") || !own;
+    let stored_units = stored["document"]["settings"]["units"]
+        .as_str()
+        .unwrap_or("mm");
+    let units = match with_units {
+        true => values["units"].as_str().unwrap_or(stored_units),
+        false => stored_units,
+    };
+    let unit = if units == "in" { 25.4 } else { 1.0 };
     for (key, value) in &settings {
         let value = match (bounds(key), value.as_f64()) {
             (Some((min, max, scaled)), Some(mm)) if (min..=max).contains(&mm) => {
@@ -413,7 +429,10 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
             (Some(_), _) => continue,
             _ => value.clone(),
         };
-        let field = if own {
+        let field = if own && !with_units && bounds(key).is_some_and(|b| b.2) {
+            let name = if units == "in" { "inches" } else { "mm" };
+            json!({ "default": value, "hint": format!("In {name}, as set in General") })
+        } else if own {
             json!({ "default": value })
         } else {
             json!({"default": value, "hint": "From Woodwork settings"})
@@ -424,7 +443,12 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     // a schema condition) still sends them, so a script's values are all used and the dialog's
     // hidden ones are the stored values, which `patch` leaves out.
     if own {
-        let shown = values["section"].as_str().unwrap_or("all");
+        reply.insert(
+            "section".into(),
+            json!({"hint": "Pick a group to see its settings"}),
+        );
+        // a divider row under Section, greyed and never stored (filled for a script)
+        reply.insert("divider".into(), json!({ "default": DIVIDER }));
         for (section, keys) in SECTIONS {
             if shown == "all" || shown == section {
                 continue;
@@ -438,12 +462,22 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     Value::Object(reply)
 }
 
-/// Settings' sections (its field `section`, the same in the manifest) and their fields. Units
-/// and Apply to show in every section.
+/// The divider row under Settings' Section: a greyed field, its value never stored.
+pub const DIVIDER: &str = "────────────────────";
+
+/// Settings' sections (its field `section`, the same in the manifest) and their fields. Apply
+/// to shows in every section.
 pub const SECTIONS: [(&str, &[&str]); 7] = [
     (
         "general",
-        &["material", "thickness", "back", "back_thickness", "labels"],
+        &[
+            "units",
+            "material",
+            "thickness",
+            "back",
+            "back_thickness",
+            "labels",
+        ],
     ),
     (
         "fronts",

@@ -24,7 +24,8 @@ def test_settings(approval):
                    plugin(approval, "corner", {"name": "C", "material": "Oak", "thickness": 18, "plinth": "no"}),
                    MEASURE])
     stored = results[1].get("result", results[1])["settings"]
-    assert stored == {"material": "MDF", "thickness": 25.4, "plinth_type": "legs"}, stored  # 100 is the default
+    # 100 is the default; Units is kept for the other sections
+    assert stored == {"material": "MDF", "thickness": 25.4, "plinth_type": "legs", "units": "in"}, stored
     box = boxes(results[5])
     material = {b["name"]: b["material"] for b in results[5]["bodies"]}
     # A from the settings: MDF, 25.4 mm sides, on 100 mm legs (Plinth Yes).
