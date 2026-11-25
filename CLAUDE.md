@@ -157,21 +157,7 @@ table says which).
   Settings back to the defaults) that `build.cli` runs as one step (`flat`), and gives a cabinet
   without a plinth Plinth No; it sends Settings only `units`, `material`, `handles`, `camera`
   (the hook fills the rest).
-  **Apply to** (`settings`' `apply: yes` and its `selection`, several bodies; `apply` is No by
-  default because the dialog fills `selection` with whatever is selected, which must not
-  rebuild a cabinet by itself; only the field, not the design's selection, which tests and
-  scripts leave behind): `lib.rs` `apply` reads the picked cabinets
-  (`select::owner`, or for a hinge or slide model's copy, which measures hide, the first name of
-  its `(A:1/...)` path; box and corner only), takes each one's `edit::merge` with no changes (sizes
-  from Parameters) and `settings::apply` (what the settings give it now: the design-wide ones
-  stored or default, the hook's four only stored, the plinth's only on a cabinet with one, and
-  only what its entry takes; `None` when it has them all), then `rebuild` (Edit's path, shared:
-  delete, `make`, panels, materials, place, links) while `drawing::fits` (20 s by `clock.now`,
-  the commands counted, the next one's `hardware::cost` + 40), at least one. The reply adds
-  `applied`, `changed` (each cabinet's fields that changed), `remaining`, `skipped` (with
-  `why`) and `message`. A cabinet without a plinth keeps its plinth type and set-back too, so
-  it is skipped when nothing else differs. The preview runs it too, so a dialog with cabinets
-  picked previews every change slowly.
+  Settings only stores (no `apply` or `selection` field: Apply settings builds cabinets again).
   **See-through boards** (`see_through`, in `CHOICES` but no cabinet's: `design` skips it): each
   Settings run gives our design materials (`material.list`'s `user: true`, of `BOARDS`) the
   stored opacity, `SEE_THROUGH` 0.35 or 1, by `material.edit` of each that differs. It takes
@@ -232,11 +218,19 @@ Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `dr
 A selection field (an array) has no `default`: the app's dialog refuses one with any keyword but
 type, title, description, `maxItems` and the conditions, and the menu then says "This entry needs to
 be run from the agent or CLI" (0.49.0, `selection_field`). `test_manifest` checks it.
-**Apply settings to all cabinets** (entry `rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
-host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply` with `Apply {all,
-settings, job}`: every cabinet's `Side L` or the picked ones, `settings::apply` or as made, no
-`drawing::fits` stop, and a `_progress` pseudo-command per cabinet that the guest's `run` turns
-into `control.progress`. Settings' Apply to selected is the same `apply` within one run.
+**Apply settings** (entry `rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
+host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply(params, stored, all,
+settings)`: the cabinets of the bodies in its `selection` field, or every cabinet's `Side L` when
+it is empty (not the design's selection, which tests and scripts leave behind); for a hinge or
+slide model's copy, which measures hide, the first name of its `(A:1/...)` path; box and corner
+only. Each one's `edit::merge` with no changes (sizes from Parameters), then `settings::apply`
+(what the settings give it now: the design-wide ones stored or default, the hook's four only
+stored, the plinth's only on a cabinet with one, and only what its entry takes; `None` when it
+has them all) or as made, then `rebuild` (Edit's path, shared: delete, `make`, panels,
+materials, place, links), with a `_progress` pseudo-command per cabinet that the guest's `run`
+turns into `control.progress`. The reply: `applied`, `changed` (each cabinet's fields that
+changed), `skipped` (with `why`) and `message`. A cabinet without a plinth keeps its plinth type
+and set-back too, so it is skipped when nothing else differs.
 **One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
 `diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
 a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or

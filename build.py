@@ -131,7 +131,7 @@ def entry_step(approval, entry, params=None):
     # but these, which start at Keep.
     defaults = {key: field.get("default", []) for key, field in schema["properties"].items()
                 if ("default" in field or field["type"] == "array")
-                and (entry != "settings" or key in ("units", "material", "handles", "camera", "apply", "selection"))}
+                and (entry != "settings" or key in ("units", "material", "handles", "camera"))}
     # Each field's conditional default when its rule holds, as the dialog does (sizes in inches).
     given = defaults | (params or {})
     for key, field in schema["properties"].items():

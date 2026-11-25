@@ -153,28 +153,11 @@ fn component(
     Ok((summary, made))
 }
 
-/// How `apply` goes: over every cabinet or the picked ones, with the settings or as each was
-/// made, and as a job (0.48: no 30 s, progress per cabinet) or within one ordinary run.
-#[derive(Clone, Copy)]
-struct Apply {
-    all: bool,
-    settings: bool,
-    job: bool,
-}
-
-/// Settings' Apply to selected, and the Rebuild job: each picked cabinet (a box or corner
-/// cabinet), or every one, built again (`rebuild`) with the settings where its values differ
-/// (`settings::apply`), or as it was made. An ordinary run does as many as fit in its time and
-/// commands (`drawing::fits`), at least one; the reply names those `applied` and those
-/// `remaining`, which the next run with them picked does. A job does them all, reporting each
-/// as `_progress` (`control.progress` in the guest).
-fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, String> {
-    let start = now();
-    let used = std::cell::Cell::new(0);
-    let mut run = |command: &str, args: Value| {
-        used.set(used.get() + 1);
-        run(command, args)
-    };
+/// Apply settings (the `rebuild` job, 0.48: no 30 s): each picked cabinet (a box or corner
+/// cabinet), or every one with none picked (`all`), built again (`rebuild`) with the settings
+/// where its values differ (`settings::apply`), or as it was made (`settings` false), each
+/// reported as `_progress` (`control.progress` in the guest).
+fn apply(params: &Value, stored: &Value, all: bool, settings: bool, run: Run) -> Result<Value, String> {
     let design = run(
         "document.inspect",
         json!({"bodies": false, "timeline": false}),
@@ -183,7 +166,7 @@ fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, 
     // The cabinets of the picked bodies: a board, or a hinge or slide model's copy (`HW hinge
     // (A:1/A Door:1/HW hinge:2)`, which measures do not show: the first name on its path).
     let (mut names, mut skipped) = (Vec::new(), Vec::new());
-    let bodies = match how.all {
+    let bodies = match all {
         // every cabinet: its Side L
         true => (measure["bodies"].as_array().into_iter().flatten())
             .filter_map(|b| b["name"].as_str().filter(|n| n.ends_with(" Side L")))
@@ -214,7 +197,7 @@ fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, 
         };
         let entry = entry.to_string();
         let (_, base) = edit::merge(ours, &json!({}), &design)?;
-        match how.settings {
+        match settings {
             false => todo.push((name, about, entry, base, vec![])),
             true => match settings::apply(&entry, &base, stored) {
                 Some((params, changed)) => todo.push((name, about, entry, params, changed)),
@@ -222,54 +205,40 @@ fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, 
             },
         }
     }
-    let (mut applied, mut remaining, mut changes) = (Vec::new(), Vec::new(), Map::new());
+    let (mut applied, mut changes) = (Vec::new(), Map::new());
     let count = todo.len();
     for (i, (name, about, entry, params, changed)) in todo.into_iter().enumerate() {
-        let (commands, _) = build(&entry, &params)?;
-        let next = hardware::cost(&commands) + 40;
-        let elapsed = now().saturating_sub(start);
-        if !how.job && !applied.is_empty() && !drawing::fits(elapsed, used.get(), next) {
-            remaining.push(name);
-            continue;
-        }
-        if how.job {
-            let message = format!("{name} ({} of {count})", i + 1);
-            run(
-                "_progress",
-                json!({"fraction": i as f64 / count as f64, "message": message}),
-            )?;
-        }
+        let message = format!("{name} ({} of {count})", i + 1);
+        run(
+            "_progress",
+            json!({"fraction": i as f64 / count as f64, "message": message}),
+        )?;
         let design = run(
             "document.inspect",
             json!({"bodies": false, "timeline": false}),
         )?;
-        rebuild(&name, &about, &entry, &params, &design, &measure, &mut run)?;
+        rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
         changes.insert(name.clone(), json!(changed));
         applied.push(name);
     }
-    let with = if how.settings {
+    let with = if settings {
         "with the settings"
     } else {
         "as they were made"
     };
     let mut message = format!("{} cabinets built again {with}", applied.len());
-    if !remaining.is_empty() {
-        let n = remaining.len();
-        message += &format!("; {n} left: run Settings again with them picked");
-    }
     if !skipped.is_empty() {
         message += &format!("; {} skipped (see skipped)", skipped.len());
     }
     Ok(
-        json!({"applied": applied, "changed": changes, "remaining": remaining,
-              "skipped": skipped, "message": message}),
+        json!({"applied": applied, "changed": changes, "skipped": skipped, "message": message}),
     )
 }
 
 /// Builds the cabinet `name` again from `params` (`edit::merge`'s), where it stands: the same
 /// name, place, links, the materials of the boards that had another than the rest, and its
 /// panels. `about` is its `component.metadata`, `design` and `measure` read before. Edit, and
-/// Settings' Apply to selected.
+/// Apply settings.
 fn rebuild(
     name: &str,
     about: &Value,
@@ -1194,37 +1163,16 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let stored = run("storage.get", json!({}))?;
             // See-through boards: our materials made so, or solid again, now.
             let changed = material::see_through(run, material::opacity(&stored))?;
-            let mut reply =
-                json!({"settings": stored["document"]["settings"], "see_through": changed});
-            // Apply to picked cabinets Yes: the cabinets picked in its field (not the design's
-            // selection, which a script may have left) built again with these settings. Only
-            // then, as the dialog fills the field with whatever is selected when it opens.
-            let picked = params["selection"]
-                .as_array()
-                .is_some_and(|p| !p.is_empty());
-            if params["apply"] == "yes" && picked {
-                let how = Apply {
-                    all: false,
-                    settings: true,
-                    job: false,
-                };
-                let applied = apply(params, &stored, how, run)?;
-                if let (Some(all), Some(more)) = (reply.as_object_mut(), applied.as_object()) {
-                    all.extend(more.clone());
-                }
-            }
-            Ok(reply)
+            // Settings only stores them: Apply settings builds cabinets again with them.
+            Ok(json!({"settings": stored["document"]["settings"], "see_through": changed}))
         }
-        // The job (0.48): every cabinet, or the picked ones, built again with the settings or
-        // as each was made, with progress per cabinet and no 30 s limit.
+        // Apply settings (a job, 0.48): the cabinets picked in its field, or every one when it
+        // is empty (not the design's selection, which a script may have left), built again with
+        // the settings or as each was made, with progress per cabinet and no 30 s limit.
         "rebuild" => {
             let stored = run("storage.get", json!({}))?;
-            let how = Apply {
-                all: params["scope"] != "selected",
-                settings: params["with"] != "made",
-                job: true,
-            };
-            apply(params, &stored, how, run)
+            let all = params["selection"].as_array().is_none_or(|p| p.is_empty());
+            apply(params, &stored, all, params["with"] != "made", run)
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }

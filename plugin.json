@@ -188,13 +188,12 @@
       },
         {
           "name": "rebuild", "effect": "edit", "job": true,
-          "slots": [{"kind": "menu", "name": "Apply settings to all cabinets"}, {"kind": "ribbon", "name": "Apply settings to all cabinets"}],
+          "slots": [{"kind": "menu", "name": "Apply settings"}, {"kind": "ribbon", "name": "Apply settings"}],
           "input_schema": {"type": "object", "x-solidcraft-icon": "icons/rebuild.svg",
-          "required": ["with", "scope", "selection"],
+          "required": ["with", "selection"],
           "properties": {
             "with": { "type": "string", "title": "Build again", "description": "Each cabinet built again where it stands, as a long job with progress and Cancel (SolidCraft 0.48).", "default": "settings", "oneOf": [{"const": "settings", "title": "With the settings", "description": "The Woodwork settings stored now, where a cabinet's differ."}, {"const": "made", "title": "As made", "description": "Each with its own values, sizes from Parameters: after a Woodwork update."}] },
-            "scope": { "type": "string", "title": "Cabinets", "description": "Every box and corner cabinet in the design, or the picked ones.", "default": "all", "oneOf": [{"const": "all", "title": "All"}, {"const": "selected", "title": "Picked"}] },
-            "selection": { "type": "array", "title": "Picked cabinets", "description": "A board of each cabinet to build again.", "x-solidcraft-visible-when": {"field": "scope", "eq": "selected"} }
+            "selection": { "type": "array", "title": "Cabinets", "description": "A board of each cabinet to build again. Empty: all cabinets." }
           }}
         },
       {
@@ -204,7 +203,7 @@
         "slots": [{ "kind": "menu", "name": "Woodwork settings" }, { "kind": "ribbon", "name": "Woodwork settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
-          "required": ["units", "material", "thickness", "back", "back_thickness", "fronts", "reveal", "handles", "handle_position", "plinth", "plinth_type", "plinth_setback", "labels", "cleat_height", "cleat_thickness", "drawer_thickness", "drawer_bottom", "joints", "joints_inner", "joint_spacing", "joint_edge", "dowel_d", "dowel_length", "dado_depth", "biscuit", "cam_d", "cam_bolt", "pocket_face", "hardware_models", "fastener_models", "hinge_angle", "slide_type", "banding", "cut_sizes", "sheet", "kerf", "trim", "worktop_material", "worktop_thickness", "see_through", "camera", "apply", "selection"],
+          "required": ["units", "material", "thickness", "back", "back_thickness", "fronts", "reveal", "handles", "handle_position", "plinth", "plinth_type", "plinth_setback", "labels", "cleat_height", "cleat_thickness", "drawer_thickness", "drawer_bottom", "joints", "joints_inner", "joint_spacing", "joint_edge", "dowel_d", "dowel_length", "dado_depth", "biscuit", "cam_d", "cam_bolt", "pocket_face", "hardware_models", "fastener_models", "hinge_angle", "slide_type", "banding", "cut_sizes", "sheet", "kerf", "trim", "worktop_material", "worktop_thickness", "see_through", "camera"],
           "properties": {
             "units": { "type": "string", "title": "Units", "description": "Unit of the sizes below; kept in mm.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
             "material": { "type": "string", "title": "Material", "description": "New cabinets' material; Keep leaves it.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
@@ -246,9 +245,7 @@
             "worktop_material": { "type": "string", "title": "Worktop material", "description": "What a new worktop is made of.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}, {"const": "none", "title": "None"}] },
             "worktop_thickness": { "type": "number", "title": "Worktop thickness", "description": "A new worktop's thickness; 38 mm is usual in a kitchen.", "default": 38, "minimum": 0.125, "maximum": 200 },
             "see_through": { "type": "string", "title": "See-through boards", "description": "Boards you can see through, to look at the joints and fittings inside; Oak stays solid.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "off", "title": "Off"}, {"const": "on", "title": "On"}] },
-            "camera": { "type": "string", "title": "Camera after a run", "description": "Whether a run frames what it built; Keep leaves it.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "fit", "title": "Fit: frame the result"}, {"const": "leave", "title": "Leave as it is"}] },
-            "apply": { "type": "string", "title": "Apply to picked cabinets", "description": "Yes builds the cabinets picked below again with these settings; No only stores them for new cabinets.", "default": "no", "oneOf": [{"const": "no", "title": "No"}, {"const": "yes", "title": "Yes"}] },
-            "selection": { "type": "array", "title": "Picked cabinets", "description": "A board of each cabinet to build again, with Apply to picked cabinets Yes." }
+            "camera": { "type": "string", "title": "Camera after a run", "description": "Whether a run frames what it built; Keep leaves it.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "fit", "title": "Fit: frame the result"}, {"const": "leave", "title": "Leave as it is"}] }
           }
         }
       }

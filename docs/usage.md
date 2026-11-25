@@ -14,7 +14,7 @@ without doors.
 - [Changing sizes](#changing-sizes)
 - [Edit cabinet](#edit-cabinet)
 - [Material](#material)
-- [Apply settings to all cabinets](#apply-settings-to-all-cabinets)
+- [Apply settings](#apply-settings)
 - [Panel](#panel)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
@@ -519,21 +519,9 @@ carcass method (dowels for a dado). A script cannot give them to `woodwork.cabin
 choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `back`,
 `plinth_setback` with `plinth_type`).
 
-- **Apply to picked cabinets** (No by default) and **Picked cabinets**: changing the settings
-  does not change the cabinets already made. Set Apply to Yes, pick a board of each cabinet to
-  bring up to date and run: the settings
-  are stored and each picked cabinet is built again with them, where it stands (the same name,
-  links, panels and the materials of single parts you changed), taking only what that cabinet
-  uses: a cabinet without a plinth keeps none, a corner cabinet takes no drawer or inside
-  settings. Material, thickness, reveal and handles count only when they are stored. A cabinet
-  that already has the settings is skipped. One run builds as many as fit in SolidCraft's 30 s
-  and 256 commands (at least one); the result says how many are left, and running it again with
-  the same cabinets picked does the rest. With No the settings are only stored, whatever is
-  picked (the dialog fills the field with what is selected when it opens). Any part of a
-  cabinet can be picked, a hinge or slide model too. The result names each cabinet built again
-  with the settings that changed on it (`changed`), and each one skipped and why (`skipped`:
-  already has these settings, or not part of a cabinet). A script passes
-  `"apply": "yes"` and the cabinets in `selection` (the design's selection is not used).
+- Changing the settings does not change the cabinets already made: Settings only stores them.
+  **Apply settings** builds cabinets again with them (it was Settings' Apply to picked cabinets
+  before).
 - The settings are kept in the design (SolidCraft 0.46, `storage@0.1`), not for you as a user:
   a new design starts with none.
 - **Camera after a run**: Fit (the default) frames the result after a cabinet, corner, edit or
@@ -548,20 +536,24 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
 - Nothing is cleared: to go back to a default, set it to that value.
 - The dialog does not remember the last values you used; only what Woodwork settings stored.
 
-## Apply settings to all cabinets
+## Apply settings
 
-Builds cabinets again where they stand, as a long job: no 30 s
-limit, a row in the operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and
-Cancel, which leaves the design as it was. A job has no Preview.
+Builds cabinets again with the Woodwork settings, where they stand (the same name, links, panels
+and the materials of single parts you changed), as a long job: no 30 s limit, a row in the
+operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and Cancel, which leaves
+the design as it was. A job has no Preview.
 
-- **Build again**: **With the settings** gives each cabinet the Woodwork settings stored now,
-  where its own differ, as Settings' Apply to picked cabinets does but for any number of
-  cabinets (Settings stops after about 20 s and lists the rest). **As made** builds each with
-  its own values and sizes from Parameters, for example after updating Woodwork.
-- **Cabinets**: **All** box and corner cabinets in the design, or the **Picked** ones (a board
-  of each).
+- **Cabinets**: a board of each cabinet to build again (any part, a hinge or slide model too).
+  Empty: all box and corner cabinets in the design. The dialog fills it with what is selected
+  when it opens; a script passes the cabinets in `selection` (the design's selection is not used).
+- **Build again**: **With the settings** gives each cabinet the settings stored now, taking only
+  what that cabinet uses: a cabinet without a plinth keeps none, a corner cabinet takes no drawer
+  or inside settings. Material, thickness, reveal and handles count only when they are stored. A
+  cabinet that already has the settings is skipped. **As made** builds each with its own values
+  and sizes from Parameters, for example after updating Woodwork.
 
-The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why.
+The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why
+(already has these settings, or not part of a cabinet).
 
 ## Panel
 

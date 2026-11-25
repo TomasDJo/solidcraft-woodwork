@@ -24,7 +24,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Edit cabinet**: change shelves, doors, drawers and more on a cabinet that is already made.
 - **Joinery**: chosen in Woodwork settings for the whole design: dowels, confirmat or plain screws, cam locks, pocket screws, biscuits or a dado, counted in the cut list.
 - **Material**: birch plywood, MDF, white melamine or oak, for a cabinet or just its doors.
-- **Woodwork settings**: what is the same for the whole design (joinery, hardware, back, fronts, plinth, cut list sheets, worktop), kept in the design, and applied to picked cabinets on request.
+- **Woodwork settings**: what is the same for the whole design (joinery, hardware, back, fronts, plinth, cut list sheets, worktop), kept in the design; Apply settings builds cabinets again with them.
 - **Panel**: an end panel or a filler on one end of a cabinet, following its sizes.
 - **Worktop**: over the selected cabinets, straight or round corners (butt or mitre), with dog holes, a sink or router plate cut-out, and a benchtop tool set flush on a shelf in the cabinet below.
 - **Drawing**: a shop drawing sheet per cabinet, A3, with front, right and iso views, its width, height and depth, and its boards.
@@ -48,7 +48,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.49+ | next | Tested on every change, on 0.49.0; needs 0.49 or later. Apply settings to all cabinets is a long job (no 30 s limit, progress per cabinet, Cancel). |
+| 0.49+ | next | Tested on every change, on 0.49.0; needs 0.49 or later. Apply settings is a long job (no 30 s limit, progress per cabinet, Cancel). |
 | 0.47 | 0.4.0 | Tested on every change, on 0.47.0; works on 0.46 too. Joinery, hardware and more defaults are design-wide Woodwork settings, one Cabinet dialog makes box and corner cabinets, and hinges, slides and fasteners can be shown as models. |
 | 0.46 | 0.3.0 | Tested on every change, on 0.46.1. The dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults, and Edit shows only what the picked cabinet takes. |
 | 0.45 | 0.2.0 | Tested on every change, on 0.45.0. The view is framed after a cabinet is added, a placed cabinet is previewed where it goes, and agents get each function as a tool. |

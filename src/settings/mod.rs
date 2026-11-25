@@ -257,7 +257,7 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
 }
 
 /// A built cabinet's `params` (`edit::merge`'s, sizes from the design's parameters) with what
-/// Woodwork settings hold now, for Settings' Apply to selected; `None` when it already has them.
+/// Woodwork settings hold now, for Apply settings; `None` when it already has them.
 /// The design-wide settings count stored or default, and the dialogs' defaults (material,
 /// thickness, reveal, handles) only when stored. Only what the cabinet's `entry` takes (a
 /// corner has no drawers, no inside joinery, no back choice), and the plinth's only when it has
