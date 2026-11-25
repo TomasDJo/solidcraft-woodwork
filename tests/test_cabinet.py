@@ -20,6 +20,8 @@ def test_carcass_pins_and_doors(approval):
     # and of the hinge plate's 4 screw holes on the pins' line, the 1 that is not a pin hole
     # (822, over the top row; 182, 214 and 790 are pin holes)
     assert side["face_types"]["cylinder"] == 40 + 1, side["face_types"]
+    # one pattern copies both sides' pins
+    assert bodies["Cabinet Side R"]["face_types"]["cylinder"] == 40 + 1, bodies["Cabinet Side R"]["face_types"]
     assert bodies["Cabinet Door L"]["face_types"]["cylinder"] == 2
     # centred on the origin, standing on Z = 0
     assert [round(v, 6) for v in side["bbox"]["min"]] == [-400, -200, 0], side["bbox"]
@@ -43,6 +45,7 @@ def test_dividers_and_a_resize(approval):
     assert round(shelf["max"][0] - shelf["min"][0], 6) == 376, shelf
     # clear height 684: pin rows 2..19, front and rear
     assert bodies["Cabinet Divider 1"]["face_types"]["cylinder"] == 36
+    assert bodies["Cabinet Divider 2"]["face_types"]["cylinder"] == 36
     assert bodies["Cabinet Side L"]["face_types"]["cylinder"] == 36
 
     # Resize through the parameters: the whole cabinet follows.

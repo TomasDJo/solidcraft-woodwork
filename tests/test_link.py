@@ -106,3 +106,25 @@ def test_edit_and_joinery_keep_the_links(approval):
         # only the first of the run is grounded; the others are held to it
         grounded = {c["name"]: c["occurrences"][0]["grounded"] for c in results[14]["components"] if c["name"] in "ABC"}
         assert grounded == {"A": True, "B": False, "C": False}, (edited, grounded)
+
+
+def test_only_the_picked_cabinet_is_measured(approval):
+    # Placing, a panel, Material and Edit measure only the picked cabinet's boards (a kitchen's
+    # whole measure takes over a second): with another cabinet in the design, everything lands
+    # where it did when every board was measured.
+    away = [{"command": "occurrence.ground", "params": {"occurrence": "Z:1", "grounded": False}},
+            {"command": "occurrence.move", "params": {"occurrence": "Z:1", "translate": [3000, 0, 0]}}]
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "Z"}), *away, plugin(approval, "cabinet", {"name": "A"}),
+        select("A Side R"), plugin(approval, "panel", {"kind": "end"}),
+        select("A Top"), plugin(approval, "material", {"material": "Oak", "scope": "cabinet"}),
+        select("A Top"), plugin(approval, "cabinet", {"name": "B", "place": "right"}),
+        select("B Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE])
+    box, measure = boxes(results[-1]), results[-1]
+    # B stands beyond A's end panel, not linked to A (the link holds the two sides' seats)
+    placed = results[9]["result"]
+    assert placed["placed"] == "right of A" and placed["linked"] is False, placed
+    assert box["A End panel R"][0] == 300 and box["B Side L"][0] == box["A End panel R"][3], (box["A End panel R"], box["B Side L"])
+    assert box["Z Side L"][0] == 2700 and "B Shelf 2" in box, box["Z Side L"]
+    material = {b["name"]: b.get("material") for b in measure["bodies"]}
+    assert material["A Top"] == material["A End panel R"] == "Oak" and material["Z Top"] != "Oak", material
