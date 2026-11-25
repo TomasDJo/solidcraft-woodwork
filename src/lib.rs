@@ -1320,6 +1320,27 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
     }
 }
 
+/// What the build would refuse in the Cabinet dialog's own fields (`values`), with the
+/// design-wide settings of `storage.get`'s reply filled in as the run does, as the field it is
+/// about and the reason: the build's checks (`cabinet::checked`, `corner::checked`), no design
+/// read. A corner shape is the corner builder's, its doors `corner_doors`.
+fn form_problem(values: &Value, stored: &Value) -> Option<(&'static str, String)> {
+    let corner = matches!(values["shape"].as_str(), Some("L-shaped" | "diagonal"));
+    let mut p = values.clone();
+    if let (true, Some(all)) = (corner, p.as_object_mut()) {
+        if let Some(doors) = all.remove("corner_doors") {
+            all.insert("doors".into(), doors);
+        }
+    }
+    settings::design(if corner { "corner" } else { "cabinet" }, &mut p, stored);
+    let checked = match corner {
+        true => corner::checked(&p),
+        false => cabinet::checked(&p),
+    };
+    let (field, why) = settings::problem(&checked.err()?, corner);
+    Some((settings::on_cabinet(field), why))
+}
+
 /// The dialog hook (`dialog@0.1`): the Cabinet and Corner dialogs' defaults from Woodwork
 /// settings. It runs outside a plugin run, so `storage.get` names our plugin. Edit's: the
 /// fields the selected cabinet does not take, hidden.
@@ -1348,8 +1369,16 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     }
     if entry == "cabinet" && values["mode"] == "edit" {
         let mut reply = dialog("edit", values, run)?;
+        // A cabinet without Edit's file (made before 0.5.0): its change is checked on the
+        // dialog's own fields, as a new cabinet's (the file's check sets the row otherwise).
         if reply.get("problem").is_none() {
-            reply["problem"] = settings::problem_row(None);
+            let stored = run("storage.get", json!({"plugin": "woodwork"})).unwrap_or_default();
+            let hint = form_problem(values, &stored).map(|(field, why)| {
+                let hint = format!("{why}: nothing is changed or previewed until this is");
+                reply[field]["hint"] = json!(hint);
+                hint
+            });
+            reply["problem"] = settings::problem_row(hint.as_deref());
         }
         // Cabinet's Shape: a box stays a box (greyed), a corner a corner
         if reply["corner_doors"]["visible"] == false {
@@ -1441,12 +1470,15 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
                     }
                 };
                 let changes = edit::unshown(&edit::taken(entry, values));
+                let mut hint = None;
                 if let (Ok(()), Err(why)) = (checked(&json!({})), checked(&changes)) {
                     let (field, why) = settings::problem(&why, entry == "corner");
-                    let hint = format!("{why}: nothing is changed or previewed until this is");
-                    reply[settings::on_cabinet(field)]["hint"] = json!(hint);
-                    reply["problem"] = settings::problem_row(Some(&hint));
+                    let text = format!("{why}: nothing is changed or previewed until this is");
+                    reply[settings::on_cabinet(field)]["hint"] = json!(text);
+                    hint = Some(text);
                 }
+                // set either way: the cabinet has a file, so its check is the one
+                reply["problem"] = settings::problem_row(hint.as_deref());
                 return Ok(reply);
             }
         }
@@ -1478,22 +1510,9 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     // field, as the preview then shows nothing: the build's own checks of the fields, with the
     // design-wide settings filled in as the run does (no design read).
     if entry == "cabinet" {
-        let corner = matches!(values["shape"].as_str(), Some("L-shaped" | "diagonal"));
-        let mut p = values.clone();
-        if let (true, Some(all)) = (corner, p.as_object_mut()) {
-            if let Some(doors) = all.remove("corner_doors") {
-                all.insert("doors".into(), doors);
-            }
-        }
-        settings::design(if corner { "corner" } else { "cabinet" }, &mut p, &stored);
-        let checked = match corner {
-            true => corner::checked(&p),
-            false => cabinet::checked(&p),
-        };
-        let hint = checked.err().map(|why| {
-            let (field, why) = settings::problem(&why, corner);
+        let hint = form_problem(values, &stored).map(|(field, why)| {
             let hint = format!("{why}: nothing is made or previewed until this is changed");
-            reply[settings::on_cabinet(field)]["hint"] = json!(hint);
+            reply[field]["hint"] = json!(hint);
             hint
         });
         reply["problem"] = settings::problem_row(hint.as_deref());
