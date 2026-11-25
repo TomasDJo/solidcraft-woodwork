@@ -157,7 +157,13 @@ fn component(
 /// cabinet), or every one with none picked (`all`), built again (`rebuild`) with the settings
 /// where its values differ (`settings::apply`), or as it was made (`settings` false), each
 /// reported as `_progress` (`control.progress` in the guest).
-fn apply(params: &Value, stored: &Value, all: bool, settings: bool, run: Run) -> Result<Value, String> {
+fn apply(
+    params: &Value,
+    stored: &Value,
+    all: bool,
+    settings: bool,
+    run: Run,
+) -> Result<Value, String> {
     let design = run(
         "document.inspect",
         json!({"bodies": false, "timeline": false}),
@@ -230,9 +236,7 @@ fn apply(params: &Value, stored: &Value, all: bool, settings: bool, run: Run) ->
     if !skipped.is_empty() {
         message += &format!("; {} skipped (see skipped)", skipped.len());
     }
-    Ok(
-        json!({"applied": applied, "changed": changes, "skipped": skipped, "message": message}),
-    )
+    Ok(json!({"applied": applied, "changed": changes, "skipped": skipped, "message": message}))
 }
 
 /// Builds the cabinet `name` again from `params` (`edit::merge`'s), where it stands: the same
