@@ -42,6 +42,18 @@ table says which).
   user changes the field; `build.plugin` applies it as the dialog does. `x-solidcraft-when` exists but is not used.
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
+  **A refused combination is said at once (0.5.0):** the Cabinet hook runs the build's checks of
+  the fields (`cabinet::checked`, `corner::checked`: `Kit::new` and `input::read`, a few us; a
+  whole build costs too much of the hook's fuel), on the dialog's values with the design-wide
+  settings filled in as the run does (no design read), and puts the refusal as the hint of the
+  field it is about (`settings::problem`, by the message's words, else Shape; `on_cabinet` for
+  a setting's field, as a reply naming a field the schema lacks is ignored whole). Edit picked:
+  on the cabinet's file (`shown` and the sizes, through `edit::merge` of the change), only when
+  the cabinet as it is passes. Woodwork settings: `settings::trouble` (a `patch` refusal on its
+  field, or a standard cabinet's check with the changed settings), on a field of that dialog
+  only. The 0.49 hook has no way to turn Run off or mark a field invalid (only `visible`,
+  `enabled`, `choices`, `default`, `value`, `hint`), and integers take no `choices`, so Doors
+  cannot be limited: the hint it is.
   **Fields that cannot combine are hidden, and not used:** a field that another one makes
   meaningless gets a condition, and the build takes a stale value of it (still sent by a
   script, or remembered by Edit) as absent instead of refusing. Cabinet: Dividers with

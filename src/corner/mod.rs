@@ -62,6 +62,11 @@ struct Corner<'a> {
     emount: Option<[String; 2]>,
 }
 
+/// The build's checks of the fields, without making anything: the dialog hook's.
+pub fn checked(p: &Value) -> Result<(), String> {
+    input::read(&Kit::new(p)?, p).map(|_| ())
+}
+
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let kit = Kit::new(p)?;
     let Input {

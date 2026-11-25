@@ -422,3 +422,44 @@ fn a_section_shows_its_fields_and_hides_the_rest_still_sent() {
     .unwrap();
     assert_eq!(patched, json!({"settings": {"joints": "none"}}));
 }
+
+#[test]
+fn a_refusal_names_the_field_it_is_about() {
+    let field = |why: &str, corner: bool| problem(why, corner).0;
+    assert_eq!(
+        field(
+            "doors must be 0, 1, 2 or one per compartment (dividers + 1 = 1 here)",
+            false
+        ),
+        "doors"
+    );
+    assert_eq!(
+        field("doors must be none, hinged left or hinged right", true),
+        "corner_doors"
+    );
+    assert_eq!(field("too low for that many drawers", false), "height");
+    assert_eq!(
+        field("doors with hinge cups need panels of 16 mm or more", false),
+        "thickness"
+    );
+    assert_eq!(field("dividers must be 0 to 10", false), "dividers");
+    assert_eq!(
+        field("height is too small for the plinth and shelves", false),
+        "height"
+    );
+    assert_eq!(
+        field("width is too small for the panels and dividers", false),
+        "width"
+    );
+    assert_eq!(field("something new", false), "shape");
+    // a setting's field is said on the Cabinet field it belongs to
+    assert_eq!(
+        on_cabinet(field("cleat thickness must be 6 to 50 mm", false)),
+        "wall_mount"
+    );
+    assert_eq!(problem("depth is too small", false).1, "Depth is too small");
+    // a size out of bounds is said on its own field
+    let (f, _) = trouble(&json!({"thickness": 60}), &json!({})).unwrap();
+    assert_eq!(f, "thickness");
+    assert!(trouble(&json!({"thickness": 19}), &json!({})).is_none());
+}

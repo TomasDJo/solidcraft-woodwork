@@ -249,7 +249,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     // More than two doors need a divider behind every hinge.
     check(
         [0.0, 1.0, 2.0, dividers + 1.0].contains(&doors),
-        "doors must be 0, 1, 2 or one per compartment (dividers + 1)",
+        &format!(
+            "doors must be 0, 1, 2 or one per compartment (dividers + 1 = {} here)",
+            dividers + 1.0
+        ),
     )?;
     // Room for a box behind each front (an inset one beside doors stays clear of the rail
     // as an overlay one does), and the width of the box between the slides.

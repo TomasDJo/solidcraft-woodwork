@@ -446,6 +446,92 @@ pub fn matched_sizes(values: &Value, design: &Value) -> Map<String, Value> {
     reply
 }
 
+/// Where the dialog shows a build's refusal `why` (`cabinet::checked`, `corner::checked`): the field
+/// it is about, by its words, else Shape (the first field); `corner` for a corner cabinet, whose
+/// doors are `corner_doors`. With the reason, capitalised, for the hint.
+pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
+    let words = why.to_lowercase();
+    let doors = if corner { "corner_doors" } else { "doors" };
+    let field = [
+        ("drawer front height", "drawer_height"),
+        // Woodwork settings' own fields
+        ("back thickness", "back_thickness"),
+        ("drawer box", "drawer_thickness"),
+        ("cleat thickness", "cleat_thickness"),
+        ("cleat", "cleat_height"),
+        ("panels of", "thickness"),
+        ("height is too small", "height"),
+        ("width is too small", "width"),
+        ("too low", "height"),
+        ("too shallow", "depth"),
+        ("too narrow", "width"),
+        ("door_hinge", "door_hinge"),
+        ("door", doors),
+        ("drawer", "drawers"),
+        ("sink base", "kind"),
+        ("divider", "dividers"),
+        ("shelf pin", "shelf_pins"),
+        ("shel", "shelves"),
+        ("handle", "handles"),
+        ("reveal", "reveal"),
+        ("return", "return"),
+        ("height", "height"),
+        ("depth", "depth"),
+        ("width", "width"),
+        ("sizes", "width"),
+        ("thickness", "thickness"),
+        ("plinth", "plinth"),
+        ("caster", "plinth"),
+        ("cleat", "wall_mount"),
+        ("rail", "wall_mount"),
+        ("wall mount", "wall_mount"),
+        ("name", "name"),
+    ];
+    let field = (field.iter())
+        .find(|(w, _)| words.contains(w))
+        .map_or("shape", |f| f.1);
+    let mut why = why.to_string();
+    if let Some(first) = why.get(..1) {
+        why.replace_range(..1, &first.to_uppercase());
+    }
+    (field, why)
+}
+
+/// `problem`'s field as a Cabinet dialog field: a setting's (the cleat, the back's or the drawer
+/// boxes' thickness) is no field there, and a reply naming one would be ignored whole.
+pub fn on_cabinet(field: &'static str) -> &'static str {
+    match field {
+        "cleat_height" | "cleat_thickness" => "wall_mount",
+        "back_thickness" | "drawer_thickness" => "shape",
+        f => f,
+    }
+}
+
+/// What a new cabinet would make of Woodwork settings changed by the dialog's `values`: the
+/// first refusal of `patch` (a size out of bounds, on its field) or of the build's checks of a
+/// standard cabinet with them (`cabinet::checked`), as the field it is about and the reason.
+pub fn trouble(values: &Value, stored: &Value) -> Option<(String, String)> {
+    let patched = match patch(values, stored) {
+        Ok(p) => p,
+        Err(why) => {
+            let field = why.split('`').nth(1).unwrap_or("units").to_string();
+            return Some((field, why));
+        }
+    };
+    let mut after = stored["document"]["settings"].clone();
+    if !after.is_object() {
+        after = json!({});
+    }
+    for (k, v) in patched["settings"].as_object().into_iter().flatten() {
+        after[k] = v.clone();
+    }
+    let mut p = json!({"plinth": "yes"});
+    design("cabinet", &mut p, &json!({"document": {"settings": after}}));
+    let why = crate::cabinet::checked(&p).err()?;
+    let (field, why) = problem(&why, false);
+    Some((field.to_string(), why))
+}
+
 /// The dialog hook's reply for `entry` with the dialog's `values`, from `storage.get`'s
 /// reply: each stored setting as the field's default, lengths in the dialog's unit. The
 /// Settings dialog gets every setting with a default, stored or the default, and no hint.

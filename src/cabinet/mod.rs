@@ -107,6 +107,14 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     Ok(())
 }
 
+/// The build's checks of the fields, without making anything: the dialog hook's (a whole build
+/// costs too much of its fuel).
+pub fn checked(p: &Value) -> Result<(), String> {
+    let mut p = p.clone();
+    from_drawers(&mut p)?;
+    input::read(&Kit::new(&p)?, &p).map(|_| ())
+}
+
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let kit = Kit::new(p)?;
     let input = input::read(&kit, p)?;

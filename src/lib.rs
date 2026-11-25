@@ -1323,7 +1323,29 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
                         sizes.insert(key.to_string(), json!((mm / scale * 1e4).round() / 1e4));
                     }
                 }
-                return Ok(edit::fields(entry, shown, &sizes));
+                let mut reply = edit::fields(entry, shown, &sizes);
+                // A change the build would refuse, said on its field (as for a new cabinet);
+                // only when the cabinet as it is passes, so a field the change does not touch is
+                // never blamed.
+                let mut now = shown.clone();
+                now.extend(sizes);
+                now.insert("name".into(), json!(f));
+                now.insert("units".into(), ours["units"].clone());
+                let remembered = json!({"entry": entry, "params": now});
+                let checked = |changes: &Value| {
+                    let (entry, p) = edit::merge(&remembered, changes, &json!({}))?;
+                    match entry.as_str() {
+                        "corner" => corner::checked(&p),
+                        _ => cabinet::checked(&p),
+                    }
+                };
+                let changes = edit::unshown(&edit::taken(entry, values));
+                if let (Ok(()), Err(why)) = (checked(&json!({})), checked(&changes)) {
+                    let (field, why) = settings::problem(&why, entry == "corner");
+                    let hint = format!("{why}: nothing is changed or previewed until this is");
+                    reply[settings::on_cabinet(field)]["hint"] = json!(hint);
+                }
+                return Ok(reply);
             }
         }
         // A cabinet made before has no file: only the other kind's fields are hidden, and the
@@ -1335,6 +1357,37 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
     let mut reply = settings::fields(entry, values, &stored);
+    // A combination the build refuses (Doors 3 without dividers, ...), said at once on its
+    // field, as the preview then shows nothing: the build's own checks of the fields, with the
+    // design-wide settings filled in as the run does (no design read).
+    if entry == "cabinet" {
+        let corner = matches!(values["shape"].as_str(), Some("L-shaped" | "diagonal"));
+        let mut p = values.clone();
+        if let (true, Some(all)) = (corner, p.as_object_mut()) {
+            if let Some(doors) = all.remove("corner_doors") {
+                all.insert("doors".into(), doors);
+            }
+        }
+        settings::design(if corner { "corner" } else { "cabinet" }, &mut p, &stored);
+        let checked = match corner {
+            true => corner::checked(&p),
+            false => cabinet::checked(&p),
+        };
+        if let Err(why) = checked {
+            let (field, why) = settings::problem(&why, corner);
+            let hint = format!("{why}: nothing is made or previewed until this is changed");
+            reply[settings::on_cabinet(field)]["hint"] = json!(hint);
+        }
+    }
+    // Woodwork settings: a size out of bounds, or settings a new cabinet would refuse, said on
+    // the field of this dialog it is about (another section's is not shown here).
+    if entry == "settings" || entry.starts_with("settings-") {
+        if let Some((field, why)) = settings::trouble(values, &stored) {
+            if let Some(patch) = reply.get_mut(&field).filter(|f| f.is_object()) {
+                patch["hint"] = json!(format!("{why}: new cabinets would be refused"));
+            }
+        }
+    }
     // Match selected: Yes when a cabinet is picked, hidden when none is. A second read, a few
     // ms on the sample kitchen; if it fails, the field stays as it is.
     if entry == "cabinet" {

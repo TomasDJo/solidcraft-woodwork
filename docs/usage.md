@@ -32,6 +32,15 @@ without doors.
 | ![Plinth types: board, notched sides, legs and casters.](images/plinths.png) | |
 | *Plinth types: board, notched sides, legs and casters.* | |
 
+**A combination that cannot be made is said at once.** When the fields do not go together (three
+doors without the two dividers behind them, more drawers than the height holds, a depth too
+small), the preview shows nothing and the field it is about says why in its hint, such as Doors:
+"Doors must be 0, 1, 2 or one per compartment (dividers + 1 = 1 here): nothing is made or
+previewed until this is changed". Edit picked does the same for a change, and Woodwork settings
+for settings a new cabinet would refuse (casters on a plinth lower than 50 mm). The dialog's Run
+stays on: SolidCraft gives a plugin no way to turn it off, and a Run then fails with the same
+reason.
+
 One dialog for every cabinet: **Shape** is a Box (below) or a corner cabinet, L-shaped or
 diagonal (see [Corner cabinets](#corner-cabinets)); the dialog shows only the fields of the
 shape chosen, and a corner starts at its own sizes (900 wide, 900 return). Corner

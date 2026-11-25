@@ -541,3 +541,31 @@ fn a_picked_cabinet_points_the_cabinet_dialog_at_edit_picked() {
     // nothing picked: a new cabinet, as before
     assert!(dialog_with(json!([])).get("mode").is_none());
 }
+
+#[test]
+fn the_cabinet_dialog_says_at_once_what_the_build_would_refuse() {
+    // an app with nothing stored and nothing picked
+    let mut run = |_: &str, _: Value| Ok(json!({}));
+    let reply = dialog("cabinet", &json!({"shape": "box", "doors": 3}), &mut run).unwrap();
+    let hint = reply["doors"]["hint"].as_str().unwrap();
+    assert!(hint.contains("dividers + 1 = 1 here"), "{hint}");
+    assert!(hint.contains("nothing is made or previewed"), "{hint}");
+    // a corner's doors are Doors there; a fine cabinet gets no hint
+    let ok = dialog("cabinet", &json!({"shape": "box", "doors": 2}), &mut run).unwrap();
+    assert!(ok["doors"].get("hint").is_none(), "{ok}");
+    let low = dialog(
+        "cabinet",
+        &json!({"shape": "box", "height": 100, "drawers": 4}),
+        &mut run,
+    );
+    let low = low.unwrap();
+    assert!(low["height"]["hint"].is_string(), "{low}");
+    // Woodwork settings: casters on a plinth too low for them, said on the plinth's height
+    let values = json!({"plinth": 40, "plinth_type": "casters"});
+    let reply = dialog("settings", &values, &mut run).unwrap();
+    let hint = reply["plinth"]["hint"].as_str().unwrap_or_default();
+    assert!(
+        hint.contains("Casters need a plinth") && hint.contains("new cabinets"),
+        "{reply}"
+    );
+}
