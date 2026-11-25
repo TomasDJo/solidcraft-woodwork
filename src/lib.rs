@@ -660,11 +660,6 @@ fn picked_measure(picked: &[String], run: Run) -> Result<Value, String> {
 }
 
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
-    // Cabinet's Mode Edit picked is Edit (one dialog for a new cabinet and a change to one).
-    let entry = match entry == "cabinet" && params["mode"] == "edit" {
-        true => "edit",
-        false => entry,
-    };
     // The hardware models are not boards nor part of a footprint: no function sees them.
     let mut run = |command: &str, args: Value| {
         let mut reply = run(command, args)?;
@@ -674,6 +669,33 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
         Ok(reply)
     };
     let run: Run = &mut run;
+    // Cabinet's Mode Edit picked is Edit (one dialog for a new cabinet and a change to one);
+    // Auto goes by what is picked (`select::auto`, as the dialog hook does).
+    let mut params = params.clone();
+    let mut entry = match entry == "cabinet" && params["mode"] == "edit" {
+        true => "edit",
+        false => entry,
+    };
+    if entry == "cabinet" && params["mode"] == "auto" {
+        let design = run(
+            "document.inspect",
+            json!({"bodies": false, "timeline": false}),
+        )?;
+        let measure = run("inspect.measure", json!({}))?;
+        let picked = select::picked(&params, &design);
+        match select::auto(&measure, &picked) {
+            select::Auto::Edit(..) => entry = "edit",
+            _ => {
+                // the Edit fields the dialog hid but sent: a new cabinet takes the settings'
+                if let Some(all) = params.as_object_mut() {
+                    for key in edit::EDIT_ONLY {
+                        all.remove(key);
+                    }
+                }
+            }
+        }
+    }
+    let params = &params;
     // Woodwork settings: the design-wide joinery and hardware of a new cabinet, and the camera.
     let ends = matches!(entry, "cabinet" | "corner" | "edit" | "worktop");
     let stored = match ends || entry == "cutlist" {
@@ -1307,6 +1329,28 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
 /// settings. It runs outside a plugin run, so `storage.get` names our plugin. Edit's: the
 /// fields the selected cabinet does not take, hidden.
 pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
+    // Mode Auto with a door, front, shelf... picked: Edit picked's fields, the new cabinet's
+    // hidden (`select::auto`, as the run decides).
+    let mut read = None;
+    if entry == "cabinet" && values["mode"] == "auto" {
+        let design = run(
+            "document.inspect",
+            json!({"bodies": "names", "timeline": false}),
+        );
+        let picked = (design.as_ref()).map_or(vec![], |d| select::picked(values, d));
+        let auto = (design.as_ref()).map_or(select::Auto::New, |d| select::auto(d, &picked));
+        if let select::Auto::Edit(..) = auto {
+            let mut edit = values.clone();
+            edit["mode"] = json!("edit");
+            let mut reply = dialog("cabinet", &edit, run)?;
+            for key in edit::NEW_ONLY {
+                reply[key] = json!({"visible": false});
+            }
+            reply["mode"] = json!({ "hint": auto.hint() });
+            return Ok(reply);
+        }
+        read = Some(design.clone()); // read once: the new cabinet's fields below use it too
+    }
     if entry == "cabinet" && values["mode"] == "edit" {
         let mut reply = dialog("edit", values, run)?;
         // Cabinet's Shape: a box stays a box (greyed), a corner a corner
@@ -1450,24 +1494,25 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
     // Match selected: Yes when a cabinet is picked, hidden when none is. A second read, a few
     // ms on the sample kitchen; if it fails, the field stays as it is.
     if entry == "cabinet" {
-        let design = run(
-            "document.inspect",
-            json!({"bodies": "names", "timeline": false}),
-        );
+        let design = read.unwrap_or_else(|| {
+            run(
+                "document.inspect",
+                json!({"bodies": "names", "timeline": false}),
+            )
+        });
         if let Ok(design) = design {
             reply["match"] = settings::matching(values, &design);
             if let Some(all) = reply.as_object_mut() {
                 all.extend(settings::matched_sizes(values, &design));
             }
-            // A cabinet picked: say that Edit picked changes it (0.5.0 RC: Cabinet with a
-            // cabinet picked made a new one where a change was meant). The hook cannot start
-            // Mode there: a reply that sets Mode's default is refused whole (0.49).
-            let picked = select::picked(values, &design);
-            let owner = picked.first().and_then(|b| select::owner(&design, b));
-            if let Some(name) = owner.filter(|_| values["mode"] != "edit") {
-                let hint =
-                    format!("{name} is picked: Edit picked changes it, New cabinet makes another");
-                reply["mode"] = json!({ "hint": hint });
+            // Mode Auto, a new cabinet (`select::auto`): the Edit fields hidden, and the
+            // hint says so. (The hook cannot set Mode: a reply that does is refused whole.)
+            if values["mode"] == "auto" {
+                let picked = select::picked(values, &design);
+                reply["mode"] = json!({"hint": select::auto(&design, &picked).hint()});
+                for key in edit::EDIT_ONLY {
+                    reply[key] = json!({"visible": false});
+                }
             }
         }
     }

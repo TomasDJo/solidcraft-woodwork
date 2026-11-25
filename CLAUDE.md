@@ -216,9 +216,12 @@ table says which).
   `build.entry_step` sends `edit` so). New-only fields (name, match, place, units, thickness,
   material, corner, boards, reveal) show with `mode eq new`, Edit-only ones (fronts,
   handle position, back, plinth type, labels) with `mode eq edit`; a box's Shape is greyed on Box
-  by the hook (`enabled: false`), and a corner refuses Box. In New with a cabinet picked the
-  hook hints at Edit picked on Mode (a reply that sets Mode's default is refused whole by 0.49,
-  so it cannot start there). Shelf pin holes is Cabinet's tick box
+  by the hook (`enabled: false`), and a corner refuses Box. Mode `auto` (the default) is decided by
+  `select::auto` in both the hook and `execute`: a door, front, shelf, divider or drawer part
+  picked is Edit (the hook answers Edit's patch with `edit::NEW_ONLY` hidden), a carcass board
+  (Side, Top, Bottom, Back) or nothing is New (`edit::EDIT_ONLY` hidden; hidden fields are still
+  sent, so `execute` drops them); Mode's hint says which. The hook cannot set Mode itself (a
+  reply that does is refused whole by 0.49). `build.entry_step` sends Cabinet `mode: new`. Shelf pin holes is Cabinet's tick box
   (old files' `yes` read as true). Edit changes exactly one cabinet (`selection`
   `maxItems` 1; more is refused) and has only what is per cabinet: sizes (width, height, depth,
   a corner's return), kind or corner shape, doors, drawers with their height and side, shelves,

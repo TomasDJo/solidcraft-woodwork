@@ -524,24 +524,85 @@ fn cabinet_with_mode_edit_is_edit() {
 }
 
 #[test]
-fn a_picked_cabinet_points_the_cabinet_dialog_at_edit_picked() {
-    let dialog_with = |selection: Value| {
+fn mode_auto_goes_by_what_is_picked_in_the_dialog_and_the_run() {
+    let names = json!({"bodies": ["C Side L", "C Top", "C Door", "C Drawer 1 Front", "C Shelf 1"]});
+    let pick = |b: &str| vec![b.to_string()];
+    assert_eq!(
+        select::auto(&names, &pick("C Door")),
+        select::Auto::Edit("C", "a door")
+    );
+    assert_eq!(
+        select::auto(&names, &pick("C Drawer 1 Front")).hint(),
+        "Auto: editing C (a drawer front is picked)"
+    );
+    assert_eq!(
+        select::auto(&names, &pick("C Side L")).hint(),
+        "Auto: a new cabinet next to C"
+    );
+    assert_eq!(select::auto(&names, &[]).hint(), "Auto: a new cabinet");
+    // the dialog: a door picked shows Edit's fields, prefilled, the new cabinet's hidden; a
+    // side picked shows the new cabinet's, Edit's hidden
+    let file = kept_file("cabinet", json!({"name": "C", "doors": 2}));
+    let dialog_with = |body: &str| {
+        let (file, body) = (file.clone(), body.to_string());
         let mut run = move |command: &str, _: Value| match command {
-            "document.inspect" => Ok(json!({"bodies": ["C Top", "C Side L"], "params": [],
-                "selection": selection})),
+            "storage.get" => Ok(json!({"blobs": [{"name": file.0}]})),
+            "_get_blob" => Ok(file.1.clone()),
+            "document.inspect" | "_selection" => {
+                Ok(json!({"bodies": ["C Side L", "C Top", "C Door L"],
+                "params": [], "selection": [{"type": "body", "name": body}]}))
+            }
             _ => Ok(json!({})),
         };
-        dialog("cabinet", &json!({"mode": "new"}), &mut run).unwrap()
+        dialog("cabinet", &json!({"mode": "auto"}), &mut run).unwrap()
     };
-    let reply = dialog_with(json!([{"type": "body", "name": "C Top"}]));
+    let reply = dialog_with("C Door L");
     assert_eq!(
         reply["mode"],
-        json!({"hint": "C is picked: Edit picked changes it, New cabinet makes another"})
+        json!({"hint": "Auto: editing C (a door is picked)"})
     );
-    // nothing picked: a new cabinet, as before
-    assert!(dialog_with(json!([])).get("mode").is_none());
+    assert_eq!(reply["doors"], json!({"default": 2}), "{reply}");
+    assert_eq!(reply["name"], json!({"visible": false}));
+    let reply = dialog_with("C Side L");
+    assert_eq!(
+        reply["mode"],
+        json!({"hint": "Auto: a new cabinet next to C"})
+    );
+    assert_eq!(reply["fronts"], json!({"visible": false}));
+    assert!(reply["name"].get("visible").is_none(), "{reply}");
+    // the run decides the same: a door picked edits C (a board of no cabinet is refused as
+    // Edit refuses it), a side picked makes a new cabinet
+    let run_with = |body: &str| {
+        let body = body.to_string();
+        let mut called = Vec::new();
+        let mut run = |command: &str, _: Value| {
+            called.push(command.to_string());
+            Ok(match command {
+                "document.inspect" => json!({"selection": [{"name": body}], "params": []}),
+                "inspect.measure" => {
+                    json!({"bodies": [{"name": "C Side L"}, {"name": "C Door L"}]})
+                }
+                _ => json!({}),
+            })
+        };
+        let reply = execute(
+            "cabinet",
+            &json!({"mode": "auto", "place": "origin", "fronts": "inset"}),
+            &mut run,
+        );
+        (called, reply)
+    };
+    let (called, _) = run_with("C Door L");
+    assert!(
+        called.contains(&"component.metadata".to_string()),
+        "{called:?}"
+    );
+    let (called, reply) = run_with("Loose");
+    assert!(
+        reply.is_ok() && !called.contains(&"component.metadata".to_string()),
+        "{called:?}"
+    );
 }
-
 #[test]
 fn the_cabinet_dialog_says_at_once_what_the_build_would_refuse() {
     // an app with nothing stored and nothing picked

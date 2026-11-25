@@ -72,6 +72,24 @@ const CABINETS: [&str; 12] = [
     "wall_mount",
     "labels",
 ];
+/// Cabinet's fields only a new cabinet takes, and only Edit picked: with Mode Auto the hook
+/// hides the other group (still sent then: a new cabinet drops `EDIT_ONLY`, Edit takes only
+/// its own fields).
+pub const NEW_ONLY: [&str; 12] = [
+    "corner",
+    "boards",
+    "units",
+    "thickness",
+    "sizing",
+    "drawer_width",
+    "drawer_depth",
+    "reveal",
+    "material",
+    "place",
+    "match",
+    "name",
+];
+pub const EDIT_ONLY: [&str; 5] = ["fronts", "handle_position", "back", "plinth_type", "labels"];
 /// Edit's sizes, read from the cabinet's parameters (`<Prefix>_<key>`, in mm) by the hook.
 pub const SHOWN_SIZES: [&str; 5] = ["width", "height", "depth", "return", "drawer_height"];
 

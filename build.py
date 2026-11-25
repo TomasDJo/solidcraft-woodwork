@@ -163,6 +163,9 @@ def entry_step(approval, entry, params=None):
             if holds(rule["when"], given):
                 defaults[key] = rule["value"]
                 break
+    # Cabinet's Mode Auto goes by what is picked: the tests say New unless they test Auto.
+    if entry == "cabinet":
+        defaults["mode"] = "new"
     # The tests name their parts after the plugin's own fallback name, not the dialog's.
     if "name" in defaults and entry != "worktop":
         defaults["name"] = "Cabinet"
