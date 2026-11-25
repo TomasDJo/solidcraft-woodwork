@@ -119,10 +119,10 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
             shown.insert(field.into(), v.clone());
         }
     }
-    for key in ["shelf_pins", "labels"] {
-        let yes = params[key].as_bool().unwrap_or(false);
-        shown.insert(key.into(), json!(if yes { "yes" } else { "no" }));
-    }
+    // Cabinet's Shelf pin holes is a tick box, Labels yes or no (as in Woodwork settings)
+    shown.insert("shelf_pins".into(), json!(params["shelf_pins"] == true));
+    let labels = params["labels"] == true;
+    shown.insert("labels".into(), json!(if labels { "yes" } else { "no" }));
     let plinth = params["plinth"].as_f64().unwrap_or(0.0) > 0.0;
     shown.insert("plinth".into(), json!(if plinth { "yes" } else { "no" }));
     shown
@@ -170,7 +170,11 @@ pub fn takes(entry: &str, key: &str) -> bool {
 pub fn fields(entry: &str, shown: &Map<String, Value>, sizes: &Map<String, Value>) -> Value {
     let mut reply = Map::new();
     for key in CABINETS.iter().chain(&BOX_ONLY).chain(&CORNER_ONLY) {
-        let value = sizes.get(*key).or(shown.get(*key)).cloned();
+        let mut value = sizes.get(*key).or(shown.get(*key)).cloned();
+        // a file from before Shelf pin holes was a tick box
+        if *key == "shelf_pins" {
+            value = value.map(|v| json!(v == true || v == "yes"));
+        }
         let patch = match (takes(entry, key), value.or_else(|| assumed(key))) {
             (false, _) => json!({"visible": false}),
             (true, Some(v)) => json!({ "default": v }),
@@ -270,7 +274,7 @@ pub fn changed(params: &Value, base: &Value) -> Vec<String> {
 /// are not part of that.
 pub fn remember(entry: &str, params: &Value, name: &str) -> Value {
     let mut params = params.as_object().cloned().unwrap_or_default();
-    for key in ["place", "match", "selection", "_match", "_existing"] {
+    for key in ["place", "match", "selection", "_match", "_existing", "mode"] {
         params.remove(key);
     }
     params.insert("name".into(), json!(name));
@@ -340,7 +344,7 @@ pub fn merge(
         let (to, value) = match key.as_str() {
             "shelf_pins" | "labels" => {
                 only(&cabinets, "cabinet")?;
-                (key.as_str(), json!(value == "yes"))
+                (key.as_str(), json!(value == "yes" || value == true))
             }
             k if CABINETS.contains(&k) => {
                 only(&cabinets, "cabinet")?;
@@ -356,6 +360,9 @@ pub fn merge(
             }
             "shape" | "corner_doors" => {
                 only(&["corner"], "corner cabinet")?;
+                if value == "box" {
+                    return Err("a corner cabinet stays a corner cabinet".into());
+                }
                 (key.strip_prefix("corner_").unwrap_or(key), value.clone())
             }
             _ => return Err(format!("`{key}` cannot be edited: what is not per cabinet is Woodwork settings', for new cabinets and Apply settings")),

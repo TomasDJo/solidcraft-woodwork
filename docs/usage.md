@@ -45,6 +45,7 @@ component can hold its cabinets.
 
 | Field | What it does |
 |---|---|
+| **Mode** | New cabinet (the default) makes one; Edit picked changes the picked cabinet, see [Edit cabinet](#edit-cabinet). |
 | **Kind** | Standard or a sink base: see [Sink base](#sink-base). |
 | **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
@@ -451,8 +452,9 @@ The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
 
 ## Edit cabinet
 
-Changes one cabinet after it is made. Select any part of it: the dialog opens showing that
-cabinet as it is, each field at its current value (the sizes as they are in Parameters), and
+Changes one cabinet after it is made: the Cabinet dialog with **Mode** on **Edit picked** (New
+cabinet is the default; picking a side alone does not switch it, as a picked side is what Match
+selected and Place use). Select any part of the cabinet: the fields show that cabinet as it is, each field at its current value (the sizes as they are in Parameters), and
 only the fields that apply show (no doors: no hinge side; no drawers: no drawer height or
 Drawers at; no plinth: no plinth type). Change what should change; with nothing changed the
 cabinet is not built again. The fields are the cabinet's own: width, height, depth (and a
@@ -465,7 +467,9 @@ whole design (joinery, hardware models, hinge opening, slide type, board thickne
 the plinth's height and set-back) is changed in [Woodwork settings](#woodwork-settings), then
 Rebuild cabinets. Drawers added to a cabinet with doors go at the top unless Drawers at says
 Bottom; an edit that takes the doors away from a cabinet with drawers makes the drawers all
-alike again unless it gives another drawer front height.
+alike again unless it gives another drawer front height. Name, Match selected, Place and what
+only a new cabinet takes (units, board thickness, material, the drawer sizing) are hidden:
+renaming would cut the cabinets matched to it loose.
 
 A corner cabinet shows its doors, shape and return instead of the kind, dividers, doors,
 hinge side, drawers and back. A cabinet made before Woodwork kept its values for Edit opens

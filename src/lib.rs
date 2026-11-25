@@ -621,6 +621,11 @@ fn now() -> u64 {
 }
 
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
+    // Cabinet's Mode Edit picked is Edit (one dialog for a new cabinet and a change to one).
+    let entry = match entry == "cabinet" && params["mode"] == "edit" {
+        true => "edit",
+        false => entry,
+    };
     // The hardware models are not boards nor part of a footprint: no function sees them.
     let mut run = |command: &str, args: Value| {
         let mut reply = run(command, args)?;
@@ -1276,6 +1281,14 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
 /// settings. It runs outside a plugin run, so `storage.get` names our plugin. Edit's: the
 /// fields the selected cabinet does not take, hidden.
 pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
+    if entry == "cabinet" && values["mode"] == "edit" {
+        let mut reply = dialog("edit", values, run)?;
+        // Cabinet's Shape: a box stays a box (greyed), a corner a corner
+        if reply["corner_doors"]["visible"] == false {
+            reply["shape"] = json!({"default": "box", "enabled": false});
+        }
+        return Ok(reply);
+    }
     if entry == "edit" {
         // Kept light, as the hook has 10M fuel and reading a 30-cabinet design's body names and
         // parameters takes most of it: the picked boards from the dialog's field (the design's

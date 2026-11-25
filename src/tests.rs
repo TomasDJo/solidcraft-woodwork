@@ -503,3 +503,22 @@ fn edit_changes_one_cabinet_and_first_writes_the_file_of_one_made_before() {
     assert!(called.contains(&"_put_blob".to_string()));
     assert!(called.contains(&"component.delete".to_string()));
 }
+
+#[test]
+fn cabinet_with_mode_edit_is_edit() {
+    // the dialog: a box cabinet's fields as it is, its Shape greyed on Box
+    let file = kept_file("cabinet", json!({"name": "C", "doors": 1}));
+    let mut run = |command: &str, _: Value| match command {
+        "storage.get" => Ok(json!({"blobs": [{"name": file.0}]})),
+        "_get_blob" => Ok(file.1.clone()),
+        _ => Ok(json!({})),
+    };
+    let pick = json!({"mode": "edit", "selection": [{"type": "body", "name": "C Top"}]});
+    let reply = dialog("cabinet", &pick, &mut run).unwrap();
+    assert_eq!(reply["doors"], json!({"default": 1}), "{reply}");
+    assert_eq!(reply["shape"], json!({"default": "box", "enabled": false}));
+    // the run: Edit's (a board that is no cabinet's is refused as Edit refuses it)
+    let mut run = |_: &str, _: Value| Ok(json!({"selection": [{"name": "Loose"}], "bodies": []}));
+    let err = execute("cabinet", &json!({"mode": "edit"}), &mut run).unwrap_err();
+    assert!(err.contains("not part of a cabinet"), "{err}");
+}

@@ -210,7 +210,14 @@ table says which).
   (`storage.get`, one command, only when it creates a material) and creates it see-through.
   Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Settings is
   an edit entry, so its preview shows the change.
-  **Edit (one cabinet, its own fields).** Edit changes exactly one cabinet (`selection`
+  **Edit (one cabinet, its own fields).** Edit is Cabinet with `mode` `edit` ("Edit picked";
+  `new` by default, never switched by what is picked, as a picked side means Match selected):
+  `execute` and `dialog` turn it into the internal `edit` (no entry of its own any more;
+  `build.entry_step` sends `edit` so). New-only fields (name, match, place, units, thickness,
+  material, corner, boards, sizing, reveal) show with `mode eq new`, Edit-only ones (fronts,
+  handle position, back, plinth type, labels) with `mode eq edit`; a box's Shape is greyed on Box
+  by the hook (`enabled: false`), and a corner refuses Box. Shelf pin holes is Cabinet's tick box
+  (old files' `yes` read as true). Edit changes exactly one cabinet (`selection`
   `maxItems` 1; more is refused) and has only what is per cabinet: sizes (width, height, depth,
   a corner's return), kind or corner shape, doors, drawers with their height and side, shelves,
   pins, dividers, hinge side, fronts, handles and position, back, plinth yes/no and type, wall

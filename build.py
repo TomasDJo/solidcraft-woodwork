@@ -142,16 +142,20 @@ def holds(condition, values):
 
 
 def entry_step(approval, entry, params=None):
-    """The plugin.run step itself, with the schema's defaults."""
+    """The plugin.run step itself, with the schema's defaults. Edit is Cabinet with Mode Edit
+    picked, whose hook starts every field at the picked cabinet's value."""
+    if entry == "edit":
+        params = {"mode": "edit", "selection": [], **(params or {})}
+        if isinstance(params.get("shelf_pins"), str):  # Cabinet's is a tick box
+            params["shelf_pins"] = params["shelf_pins"] == "yes"
+        return {"command": "plugin.run", "params": {"path": str(PKG), "approval": approval, "entry": "cabinet", "params": params}}
     manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
     schema = next(e["input_schema"] for e in manifest["runtime"]["entries"] if e["name"] == entry)
     # Woodwork settings' hook starts its fields at the stored values, as for plugin.run: all
     # but these, which start at Keep.
     defaults = {key: field.get("default", []) for key, field in schema["properties"].items()
                 if ("default" in field or field["type"] == "array")
-                and (entry != "settings" or key in ("units", "material", "handles", "camera", "apply", "selection"))
-                # Edit's hook starts every field at the picked cabinet's value
-                and (entry != "edit" or key == "selection")}
+                and (entry != "settings" or key in ("units", "material", "handles", "camera", "apply", "selection"))}
     # Each field's conditional default when its rule holds, as the dialog does (sizes in inches).
     given = defaults | (params or {})
     for key, field in schema["properties"].items():

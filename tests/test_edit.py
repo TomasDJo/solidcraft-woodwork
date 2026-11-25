@@ -25,7 +25,7 @@ def test_shelves_and_handles_on_a_cabinet_that_was_moved_and_resized(approval):
                    *move("A:1", [0, 500, 300]),
                    change("A_width", "800 mm"),
                    select("A Top"),
-                   plugin(approval, "edit", {"shelves": 3, "handles": "pull", "shelf_pins": "yes"}),
+                   plugin(approval, "edit", {"shelves": 3, "doors": 2, "handles": "pull", "shelf_pins": "yes"}),
                    MEASURE,
                    change("A_height", "900 mm"),
                    MEASURE,
@@ -130,7 +130,7 @@ def test_drawers_with_doors_and_the_drawer_height_through_edit(approval):
                    plugin(approval, "edit", {"drawers": 1}), MEASURE,
                    change("Cabinet_drawer_height", "200 mm"), select("Cabinet Top"),
                    plugin(approval, "edit", {"shelves": 2}), MEASURE,
-                   select("Cabinet Top"), plugin(approval, "edit", {"drawers": 1, "drawer_height": 120}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {"doors": 1, "drawers": 1, "drawer_height": 120}), MEASURE,
                    select("Cabinet Top"), plugin(approval, "edit", {"doors": 1, "drawers": 1, "drawers_at": "bottom"}), MEASURE,
                    drive("Cabinet Drawer 1 slide", 200), drive("Cabinet Door hinge", 90), MEASURE])
     front = lambda measure: boxes(measure)["Cabinet Drawer 1 Front"][2:6:3]
@@ -153,7 +153,7 @@ def test_edit_left_as_shown_changes_nothing(approval):
     results = cli([plugin(approval, "cabinet", {"doors": 2, "drawers": 1, "plinth": 100}),
                    select("Cabinet Top"), plugin(approval, "edit", {}),
                    select("Cabinet Top"), plugin(approval, "edit", {"shelves": 2}), MEASURE,
-                   select("Cabinet Top"), plugin(approval, "edit", {"drawers": 1, "drawer_height": 180}),
+                   select("Cabinet Top"), plugin(approval, "edit", {"doors": 2, "drawers": 1, "drawer_height": 180}),
                    select("Cabinet Top"), plugin(approval, "edit", {})])
     assert results[2]["result"]["edited"] is False, results[2]
     assert "nothing changed" in results[2]["result"]["message"], results[2]

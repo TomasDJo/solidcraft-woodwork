@@ -375,7 +375,7 @@ fn the_dialog_shows_the_cabinet_as_it_is_and_unchanged_builds_nothing() {
     assert_eq!(shown["drawer_height"], 160.0); // from the design, not what it remembered
     assert_eq!(
         (&shown["shelf_pins"], &shown["plinth"]),
-        (&json!("yes"), &json!("yes"))
+        (&json!(true), &json!("yes"))
     );
     assert_eq!(shown["fronts"], "inset");
     assert_eq!(shown["labels"], "no");
