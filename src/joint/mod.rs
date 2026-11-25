@@ -114,7 +114,7 @@ pub struct Joint {
 pub struct Joinery<'a> {
     kit: &'a Kit,
     t: String,
-    methods: [String; 2],
+    methods: [String; 3], // CARCASS, INNER, BOTTOM
     sizes: Vec<(&'static str, String)>,
     counts: RefCell<Vec<(&'static str, String)>>,
     cuts: RefCell<Commands>,
@@ -139,15 +139,26 @@ struct Row {
     models: Vec<String>,
 }
 
-/// Which of a cabinet's two methods a joint takes: the carcass's, or the inside's.
+/// Which of a cabinet's methods a joint takes: the carcass's, the inside's, or the bottom's
+/// (the carcass's, but not finger joints where they would be closed mortises: `Joinery::new`).
 pub const CARCASS: usize = 0;
 pub const INNER: usize = 1;
+pub const BOTTOM: usize = 2;
 
 impl<'a> Joinery<'a> {
     /// Reads `joints` (the carcass) and `joints_inner` (dividers and the rail, when `inner`
     /// has any) and makes the parameters their sizes need. A cabinet that remembers no method
     /// (made before joinery was chosen at build) has none. `t` is the boards' thickness.
-    pub fn new(kit: &'a Kit, p: &Value, t: (f64, &str), inner: bool) -> Result<Self, String> {
+    /// `closed_bottom`: the sides reach below the bottom (a plinth board or notched sides), where
+    /// finger joints would be closed mortises through the sides: the bottom then takes the
+    /// inside's method (biscuits when that is none) unless `finger_bottom` is yes (`BOTTOM`).
+    pub fn new(
+        kit: &'a Kit,
+        p: &Value,
+        t: (f64, &str),
+        inner: bool,
+        closed_bottom: bool,
+    ) -> Result<Self, String> {
         let method = |key: &str| -> Result<String, String> {
             let v = p.get(key).and_then(Value::as_str).unwrap_or("none");
             check(
@@ -161,7 +172,15 @@ impl<'a> Joinery<'a> {
             true => method("joints_inner")?,
             false => "none".into(),
         };
-        let uses = |m: &str| carcass == m || inside == m;
+        let fingered = matches!(p.get("finger_bottom"), Some(v) if v == "yes" || v == true);
+        let bottom = match carcass == "finger" && closed_bottom && !fingered {
+            true => match method("joints_inner")?.as_str() {
+                "none" | "finger" => "biscuit".to_string(),
+                m => m.to_string(),
+            },
+            false => carcass.clone(),
+        };
+        let uses = |m: &str| carcass == m || inside == m || bottom == m;
         let mut sizes = Vec::new();
         for (key, default) in SIZES {
             let needed = match key {
@@ -251,7 +270,7 @@ impl<'a> Joinery<'a> {
         Ok(Joinery {
             kit,
             t: t.1.to_string(),
-            methods: [carcass, inside],
+            methods: [carcass, inside, bottom],
             sizes,
             counts: RefCell::default(),
             cuts: RefCell::default(),

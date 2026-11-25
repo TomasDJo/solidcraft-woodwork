@@ -600,8 +600,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   finger on, `<end> finger <face>` from the first, `w = run / (2*floor(run/(2*fw)) + 1)` with
   `fw` the parameter `<Prefix>_finger_width` (auto, 0: the expression `<Prefix>_thickness`),
   repeated every `2w` by two shared rows (`<Name> fingers <n>`) for the whole shell: 8 cuts and
-  2 patterns a cabinet. The cut list notes the boards (`cutlist::fingered`, `_fingered`);
-  absent is `none`, so a cabinet made before rebuilds as it was.
+  2 patterns a cabinet. The cut list notes the boards (`cutlist::fingered`, `_fingered`).
+  Over a plinth board or notch (`closed_bottom` in `Joinery::new`) the bottom's joints take the
+  third scope, `BOTTOM`: the inside's method (biscuits for none) unless `finger_bottom` is yes
+  (Settings and Edit), as its fingers would be closed mortises; no other board has them (the top
+  and a sink base's rails are flush with the sides' tops). Absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
   rail into the sides, rows along the shelves' depth from `ein`; and without shelf pins (`input.fixed`)

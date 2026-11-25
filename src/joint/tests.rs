@@ -673,3 +673,38 @@ fn finger_joints_interleave_at_the_shell_corners_in_shared_rows() {
         .contains("finger"));
     assert!(crate::cabinet::build(&json!({"joints": "finger", "finger_width": 2})).is_err());
 }
+
+#[test]
+fn over_a_plinth_the_bottom_is_not_finger_jointed_unless_asked() {
+    // a plinth board: the sides reach the floor below the bottom, where fingers would be
+    // closed mortises; the bottom takes the inside's method, biscuits when that is none
+    let p = json!({"name": "K", "joints": "finger", "joints_inner": "none", "plinth": 100,
+        "plinth_type": "board"});
+    let (commands, _) = crate::cabinet::build(&p).unwrap();
+    assert_eq!(named(&commands, "K Bottom finger"), 0);
+    assert_eq!(named(&commands, "finger Bottom"), 0);
+    assert!(commands
+        .iter()
+        .any(|c| c.1["name"] == "K joint Side L Bottom biscuit"));
+    // its own width, not through the sides; the top still fingered through them
+    assert_eq!(
+        find(&commands, "K Bottom")["length"],
+        "(K_width - 2*K_thickness)"
+    );
+    assert!(named(&commands, "K Top finger Side L") > 0);
+    // the inside's method when it has one
+    let dowels = json!({"name": "K", "joints": "finger", "joints_inner": "dowels", "plinth": 100});
+    let (commands, _) = crate::cabinet::build(&dowels).unwrap();
+    assert!(commands
+        .iter()
+        .any(|c| c.1["name"] == "K joint Side R Bottom dowels"));
+    // asked for: fingers as before; on legs or with no plinth too
+    for p in [
+        json!({"name": "K", "joints": "finger", "plinth": 100, "finger_bottom": "yes"}),
+        json!({"name": "K", "joints": "finger", "plinth": 100, "plinth_type": "legs"}),
+        json!({"name": "K", "joints": "finger"}),
+    ] {
+        let (commands, _) = crate::cabinet::build(&p).unwrap();
+        assert!(named(&commands, "K Bottom finger Side L") > 0, "{p}");
+    }
+}

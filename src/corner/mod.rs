@@ -94,7 +94,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let ed = kit.parameter("depth", d, "depth of both legs");
     let eh = kit.parameter("height", h, "outside height, plinth included");
     let et = kit.parameter("thickness", t, "panel thickness");
-    let joinery = Joinery::new(&kit, p, (t, &et), false)?;
+    let joinery = Joinery::new(&kit, p, (t, &et), false, false)?;
     // ponytail: no dado on a corner cabinet: its L-shaped boards (notch, chamfer picked by
     // point) and the backs would all have to grow into the grooves.
     crate::kit::check(

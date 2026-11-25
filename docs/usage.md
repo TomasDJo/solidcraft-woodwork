@@ -273,7 +273,11 @@ as the cabinet is made:
   the corner, so the count follows a resize. The cut list gives the bottom and top at their size over
   the fingers (a 600 mm cabinet's bottom is 600) with the note "finger jointed"; the layouts
   and DXF draw rectangles. Glue them; nothing to buy. Not for Joinery inside; a corner cabinet
-  refuses it.
+  refuses it. Over a plinth board or notched sides the sides reach below the bottom, where its
+  fingers would be closed mortises through the sides (a CNC job): the bottom then takes Joinery
+  inside's method (biscuits when that is None) and keeps its own width, unless **Finger-joint
+  the bottom too** (Woodwork settings, Edit) is Yes. On legs or casters, or with no plinth, the
+  bottom is finger-jointed as the top. The top is always flush with the sides' top edges.
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
 **Joinery inside** does the same for fixed shelves (without **Shelf pin holes** the shelves are
