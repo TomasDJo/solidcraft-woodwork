@@ -24,7 +24,8 @@ def test_settings(approval):
                    plugin(approval, "corner", {"name": "C", "material": "Oak", "thickness": 18, "plinth": "no"}),
                    MEASURE])
     stored = results[1].get("result", results[1])["settings"]
-    assert stored == {"material": "MDF", "thickness": 25.4, "plinth_type": "legs"}, stored  # 100 is the default
+    # 100 is the default; Units is kept for the other sections
+    assert stored == {"material": "MDF", "thickness": 25.4, "plinth_type": "legs", "units": "in"}, stored
     box = boxes(results[5])
     material = {b["name"]: b["material"] for b in results[5]["bodies"]}
     # A from the settings: MDF, 25.4 mm sides, on 100 mm legs (Plinth Yes).
@@ -128,40 +129,74 @@ def test_plinth_fronts_cut_list_and_worktop_from_the_settings(approval):
     assert round(worktop[5] - worktop[2], 3) == 30, worktop
 
 
-def test_apply_to_selected(approval):
-    # A, B and W made with the defaults; Settings with 19 mm boards and biscuits applied to A
-    # and W: they are built again with them, in place, B is not. W, a wall unit without a
-    # plinth, keeps none though the settings have one. Run again: nothing left to do. Shallow
-    # cabinets without shelves and biscuits (one cut a row) keep the apply run well under the
-    # app's 30 s on CI: confirmat in full-size cabinets took 7 s here, about 3 times that on CI.
+def test_apply_settings_to_picked(approval):
+    # A, B and W made with the defaults; Settings with 19 mm boards and biscuits, then Apply
+    # settings with A and W picked: they are built again with them, in place, B is not. W, a
+    # wall unit without a plinth, keeps none though the settings have one. Run again: nothing
+    # left to do. Settings alone only stores them.
     def pick(*names):
         return [{"type": "body", "name": n} for n in names]
-    new = {"thickness": 19, "joints": "biscuit", "plinth": 120, "apply": "yes"}
+    new = {"thickness": 19, "joints": "biscuit", "plinth": 120}
     light = {"shelves": 0, "depth": 300}
     results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": "yes", **light}), select("A Side R"),
                    plugin(approval, "cabinet", {"name": "B", "place": "right", "plinth": "yes", **light}),
                    plugin(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin", **light}),
-                   MEASURE,
-                   setting(approval, {**new, "selection": pick("A Top", "W Side L")}),
+                   MEASURE, setting(approval, new),
+                   plugin(approval, "rebuild", {"selection": pick("A Top", "W Side L")}),
                    MEASURE, plugin(approval, "cutlist"),
-                   setting(approval, {**new, "selection": pick("A Top", "W Side L")}),
-                   # B picked but Apply No (the dialog fills the field with the selection): only stored
-                   setting(approval, {"thickness": 25, "selection": pick("B Top")}), MEASURE])
-    before, after = boxes(results[4]), boxes(results[6])
-    reply = results[5]["result"]
-    assert sorted(reply["applied"]) == ["A", "W"] and reply["remaining"] == [], reply
+                   plugin(approval, "rebuild", {"selection": pick("A Top", "W Side L")}),
+                   setting(approval, {"thickness": 25}), MEASURE])
+    before, after = boxes(results[4]), boxes(results[7])
+    reply = results[6]["result"]
+    assert sorted(reply["applied"]) == ["A", "W"], reply
     width = lambda box, name: round(box[f"{name} Side L"][3] - box[f"{name} Side L"][0], 3)
     assert width(after, "A") == width(after, "W") == 19 and width(after, "B") == 18, after
     assert after["A Bottom"][2] == 120 and after["W Bottom"][2] == 0, (after["A Bottom"], after["W Bottom"])
     assert after["B Side L"] == before["B Side L"] and after["A Side L"][0] == before["A Side L"][0]
-    hardware = {h["item"]: h["qty"] for h in results[7]["result"]["hardware"]}
+    hardware = {h["item"]: h["qty"] for h in results[8]["result"]["hardware"]}
     assert hardware["Biscuit, #20"] == 16 and "Dowel, 8 x 35 mm" in hardware, hardware
-    assert results[8]["result"]["applied"] == [], results[8]
-    assert "applied" not in results[9]["result"] and boxes(results[10])["B Side L"] == before["B Side L"], results[9]
+    assert results[9]["result"]["applied"] == [], results[9]
+    assert "applied" not in results[10]["result"] and boxes(results[11])["B Side L"] == before["B Side L"], results[10]
+
+
+def test_apply_settings_keeps_what_is_per_cabinet(approval):
+    # W, a wall cabinet on a French cleat without a plinth, and B, a base cabinet with one and
+    # pull handles. Settings with confirmat, a 120 plinth and knobs, then Apply settings to all
+    # (none picked): both get confirmat, B the 120 plinth; W keeps no plinth and its cleat, B
+    # its pull handles (handles are per cabinet).
+    light = {"shelves": 0, "depth": 300}
+    results = cli([plugin(approval, "cabinet", {"name": "W", "plinth": "no", "wall_mount": "cleat", "place": "origin", **light}),
+                   plugin(approval, "cabinet", {"name": "B", "plinth": "yes", "doors": 1, "handles": "pull", "place": "origin", **light}),
+                   setting(approval, {"joints": "confirmat", "plinth": 120, "handles": "knob"}),
+                   plugin(approval, "rebuild", {}), MEASURE])
+    reply = results[3]["result"]
+    assert sorted(reply["applied"]) == ["B", "W"], reply
+    assert "joints" in reply["changed"]["W"] and "joints" in reply["changed"]["B"], reply["changed"]
+    assert "plinth" not in reply["changed"]["W"] and "handles" not in reply["changed"]["B"], reply["changed"]
+    box = boxes(results[4])
+    assert box["W Bottom"][2] == 0 and "W Cleat" in box and "W Wall cleat" in box, box["W Bottom"]
+    assert box["B Bottom"][2] == 120, box["B Bottom"]
+
+
+def test_apply_settings_follows_a_changed_default(approval):
+    # A, B and C on the default board plinth, W a wall cabinet with no plinth chosen. Settings
+    # Plinth type Legs, then Apply settings to all: the three still had the old default, so they
+    # get legs; W keeps no plinth (not the default when it was made).
+    light = {"shelves": 0, "depth": 300}
+    script = [plugin(approval, "cabinet", {"name": n, "plinth": "yes", "place": "origin", **light}) for n in "ABC"]
+    script += [plugin(approval, "cabinet", {"name": "W", "plinth": "no", "place": "origin", **light}),
+               setting(approval, {"plinth_type": "legs"}), plugin(approval, "rebuild", {}), MEASURE]
+    results = cli(script)
+    reply = results[5]["result"]
+    assert all("plinth_type" in reply["changed"][n] for n in "ABC"), reply
+    box = boxes(results[6])
+    for n in "ABC":
+        assert f"{n} Leg 1" in box and f"{n} Plinth" not in box, sorted(box)
+    assert box["W Bottom"][2] == 0 and not any(b.startswith("W Leg") for b in box), box["W Bottom"]
 
 
 def test_apply_hardware_models_both_ways(approval):
-    # A with doors and a drawer, models shown. Settings Hardware models None applied with a
+    # A with doors and a drawer, models shown. Settings Hardware models None, applied with a
     # hinge model picked (what a user clicks to turn the models off): no HW copies left in A,
     # and the reply names the change. Shown again with a board picked: they come back. Once
     # more: A already has the settings, skipped and said so.
@@ -171,24 +206,24 @@ def test_apply_hardware_models_both_ways(approval):
                "--save", str(ROOT / "dist" / "apply-models.sc"))
     hinge = next(n for n in copies(made, 1) if n.startswith("HW hinge ("))
     on = [{"type": "body", "name": "A Side L"}]
-    results = cli([setting(approval, {"hardware_models": "off", "apply": "yes", "selection": [{"type": "body", "name": hinge}]}),
-                   MEASURE,
-                   setting(approval, {"hardware_models": "on", "apply": "yes", "selection": on}), MEASURE,
-                   setting(approval, {"hardware_models": "on", "apply": "yes", "selection": on})],
+    results = cli([setting(approval, {"hardware_models": "off"}),
+                   plugin(approval, "rebuild", {"selection": [{"type": "body", "name": hinge}]}), MEASURE,
+                   setting(approval, {"hardware_models": "on"}), plugin(approval, "rebuild", {"selection": on}), MEASURE,
+                   plugin(approval, "rebuild", {"selection": on})],
                   "--in", str(ROOT / "dist" / "apply-models.sc"))
-    off = results[0]["result"]
+    off = results[1]["result"]
     assert off["applied"] == ["A"] and off["changed"]["A"] == ["hardware_models"], off
-    assert not copies(results, 1), copies(results, 1)
-    assert results[2]["result"]["applied"] == ["A"] and copies(results, 3), results[2]["result"]
-    again = results[4]["result"]
+    assert not copies(results, 2), copies(results, 2)
+    assert results[4]["result"]["applied"] == ["A"] and copies(results, 5), results[4]["result"]
+    again = results[6]["result"]
     assert again["applied"] == [] and again["skipped"] == [{"cabinet": "A", "why": "already has these settings"}], again
     assert "1 skipped" in again["message"], again["message"]
 
 
 def test_rebuild_job_takes_more_than_one_run(approval):
-    # Rebuild cabinets (a 0.48 job): twelve corner cabinets made without joinery get confirmat
-    # from the settings in one run, which takes longer than an ordinary run's 30 s (Settings'
-    # Apply to stops after 20 s); then As made builds them again as they now are.
+    # Apply settings (a 0.48 job), none picked: all twelve corner cabinets, made without
+    # joinery, get confirmat from the settings in one run, which takes longer than an ordinary
+    # run's 30 s; then As made builds the picked one again as it now is.
     import time
     saved = ROOT / "dist" / "rebuild-job.sc"
     script = [setting(approval, {"joints": "none", "hardware_models": "off"})]
@@ -196,13 +231,24 @@ def test_rebuild_job_takes_more_than_one_run(approval):
     cli(script, "--save", str(saved))
     start = time.time()
     results = cli([setting(approval, {"joints": "confirmat"}), plugin(approval, "rebuild", {}),
-                   plugin(approval, "rebuild", {"with": "made", "scope": "selected",
-                                                "selection": [{"type": "body", "name": "C0 Top"}]}),
+                   plugin(approval, "rebuild", {"with": "made", "selection": [{"type": "body", "name": "C0 Top"}]}),
                    {"command": "joint.list", "params": {}}], "--in", str(saved))
     elapsed = time.time() - start
     reply = results[1]["result"]
-    assert len(reply["applied"]) == 12 and reply["remaining"] == [], reply
+    assert len(reply["applied"]) == 12, reply
     assert all(c == ["joints"] for c in reply["changed"].values()), reply["changed"]
     assert elapsed > 30, elapsed
     again = results[2]["result"]
     assert again["applied"] == ["C0"] and "as they were made" in again["message"], again
+
+
+def test_sections_hide_fields_but_keep_their_values(approval):
+    # Section shows one group; the hook hides the rest without leaving them out. A run in the
+    # Display section changes the camera and keeps the stored joinery and plinth; a script that
+    # names a field of another section still sets it.
+    results = cli([setting(approval, {"joints": "confirmat", "plinth": 150}),
+                   setting(approval, {"section": "display", "camera": "leave"}),
+                   setting(approval, {"section": "general", "joints": "cam"})])
+    stored = results[1]["result"]["settings"]
+    assert stored == {"joints": "confirmat", "plinth": 150, "camera": "leave"}, stored
+    assert results[2]["result"]["settings"]["joints"] == "cam", results[2]

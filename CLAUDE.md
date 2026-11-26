@@ -1,6 +1,6 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.48+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.49+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
 
 **Woodwork targets the latest SolidCraft release.** Raise the minimum version freely when a new
@@ -13,7 +13,9 @@ table says which).
 
 - A plugin is a folder with `plugin.json` and one WebAssembly **component**. It exports
   `execute(entry, params_json)` and can only call the app's ordinary commands through
-  `commands.run` (the same commands MCP and `solidcraft-cli` use). Interface: `wit/plugin.wit`.
+  `commands.run` (the same commands MCP and `solidcraft-cli` use). Interface: `wit/plugin.wit`,
+  upstream's `craft:plugin@0.2.0` (as in SolidCraft 0.49.0) with our world `woodwork` at its end (commands, log,
+  control, files, clock, storage; exports entry and dialog-provider). wit-bindgen 0.63 parses it.
 - The manifest lists the entries, a JSON schema per entry, and every command id the plugin
   calls. A command that is not listed is refused. Entry names: lowercase letters, digits,
   hyphens (no underscores).
@@ -37,12 +39,61 @@ table says which).
   "drawers 1 to 8" as an `in` list. Mutual conditions are a cycle and refused (drawers and
   doors cannot hide each other). No stored values. `x-solidcraft-defaults` gives each size an
   inch default when Units is Inches (`{when: {field: units, eq: in}, value}`), shown until the
-  user changes the field; `build.plugin` applies it as the dialog does. `x-solidcraft-enabled-when`
-  and `x-solidcraft-when` exist but are not used.
+  user changes the field; `build.plugin` applies it as the dialog does. `x-solidcraft-when` exists but is not used.
   A field's `description` (and an option's) is its hover tooltip: every field has one, one or two
   plain sentences for a hobbyist who does not know the trade words.
+  **A refused combination is said at once (0.5.0):** the Cabinet hook runs the build's checks of
+  the fields (`cabinet::checked`, `corner::checked`: `Kit::new` and `input::read`, a few us; a
+  whole build costs too much of the hook's fuel), on the dialog's values with the design-wide
+  settings filled in as the run does (no design read), and puts the refusal as the hint of the
+  field it is about (`settings::problem`, by the message's words, else Shape; `on_cabinet` for
+  a setting's field, as a reply naming a field the schema lacks is ignored whole). Edit picked:
+  on the cabinet's file (`shown` and the sizes, through `edit::merge` of the change), only when
+  the cabinet as it is passes. Woodwork settings: `settings::trouble` (a `patch` refusal on its
+  field, or a standard cabinet's check with the changed settings), on a field of that dialog
+  only. The 0.49 hook has no way to turn Run off or mark a field invalid (only `visible`,
+  `enabled`, `choices`, `default`, `value`, `hint`), and integers take no `choices`, so Doors
+  cannot be limited. A hook `hint` is only the field's hover tooltip in 0.49 (`plugin_menu.rs`
+  `apply_hook_reply`: `field.tip`, drawn by `with_row_label_tooltip`), so nothing showed until
+  the mouse was on Doors. A Problem row (a greyed text field near the top showing the reason)
+  was tried and removed for 0.5.0: an Edit into a refused combination did not show it in the
+  app, and SolidCraft's own preview errors (tangency-labs/solidcraft#22297) are to say it
+  instead. The hook does run on every change (120 ms after the last).
+  **Fields that cannot combine are hidden, and not used:** a field that another one makes
+  meaningless gets a condition, and the build takes a stale value of it (still sent by a
+  script, or remembered by Edit) as absent instead of refusing. Cabinet: Dividers with
+  drawers (`cabinet::input`: none beside drawers or on a sink base; drawers beside doors on a
+  sink base dropped); Sizing with Match selected (`from_drawers`: outside sizing); Width and
+  Depth with drawer sizing (they are worked out; `sizing: drawer` and the inside sizes are
+  remembered, and `rebuild` runs `from_drawers` again, so Edit and Apply settings keep the
+  boxes' inside, and Edit shows Size by and the inside sizes, not the outside). Height, Depth, Thickness and Plinth are
+  greyed, not hidden, with Match selected (`x-solidcraft-enabled-when`, 0.49: shown, still
+  sent; `Kit` takes the selected cabinet's), and the Cabinet hook fills them with the picked
+  cabinet's values and the hint "Match selected takes it from <name>" (`settings::matched_sizes`,
+  from the same `document.inspect` as `matching`). Edit, where Keep and differing values
+  leave a field shown: Dividers with drawers, Shelves and Shelf pins on a drawers-only
+  cabinet, Slide length without drawers, Fronts, Reveal and Handles without doors and drawers
+  (all as `not` over the number, so an empty number shows them), Handle position with handles
+  None or hidden. Settings: Handle position with handles None, Plinth type (and so its set-back)
+  with a plinth height of 0. Not expressed: Settings' Back against a Cabinet's Wall mount (two
+  dialogs), Edit's Wall mount against Back (an option, not a field), Picked cabinets with Apply
+  No (a keyword on the reserved `selection` may turn Run off).
+  **Settings' sections (#128 step 2):** the field `section` ("Show settings for": General,
+  Doors and fronts, Drawers, Plinth / toe kick and wall mount, Joinery, Cut list and worktop, Display, All;
+  not stored; the hook's hint "Pick a group to see its settings") shows one group, under a
+  divider row (`divider`: a string field greyed by an `x-solidcraft-enabled-when` that is never
+  true, its default a line, `settings::DIVIDER`, given by the hook for scripts and never stored).
+  The hook hides the other groups' fields (`settings::SECTIONS`, the same lists as the
+  manifest's options, `{visible: false}` with the field's default), not a schema condition: a
+  field the hook hides is still sent, so a script's fields are all used whatever its section (a
+  condition would leave them out of `plugin.run`), and the dialog's hidden fields carry the
+  stored values, which `patch` leaves out. `units` is a setting now, in General: the other
+  sections' sizes are in the stored unit (the hook scales by it and hints "In mm, as set in
+  General"; `patch` takes it when the run gives no `units`). Apply to shows in every section.
+  The fields' own conditions (a joinery size on its method, ...) stay in the schema.
   **Field order:** the most used first, and a conditional field right after the field that
-  controls it (drawer height and Drawers at after Drawers, a joinery method's sizes after it,
+  controls it, directly below it (drawer height and Drawers at under Drawers, the door hinge and
+  hinge angle under Doors, plinth type and set-back under Plinth, slide length under slide type, a joinery method's sizes after it,
   the filler width after the panel's kind, the cut list's diagrams after its format). A field
   that may be left empty cannot be required, so it comes last whatever it controls: Edit's
   numbers (shelves, doors, drawers...) and the cut list's Save as. Settings' numbers have
@@ -136,8 +187,7 @@ table says which).
   test helper sends schema defaults) but the hook answers the stored value or the default, so
   each size's `x-solidcraft-visible-when` on the method works; `build.plugin` sends Settings no
   number (the hook fills them). Slide length stays per cabinet: Auto at build (it goes by the
-  depth), chosen in Edit. Edit keeps `joints`, `joints_inner`, `hardware_models`,
-  `hinge_angle`, `slide_type`, `slide_length`; the sizes are Parameters. Tests: `designed` and
+  depth); a cabinet keeps what it was built with until Rebuild cabinets. Tests: `designed` and
   `setting` in `tests/helpers.py` (settings results left out, so indices stay the cabinets').
   Since then also `back`, `back_thickness` (box only), `fronts`, `handle_position`, `plinth`
   (the height, 100 mm by default), `plinth_type`, `plinth_setback`, `labels` (stored `yes`/`no`,
@@ -155,21 +205,7 @@ table says which).
   Settings back to the defaults) that `build.cli` runs as one step (`flat`), and gives a cabinet
   without a plinth Plinth No; it sends Settings only `units`, `material`, `handles`, `camera`
   (the hook fills the rest).
-  **Apply to** (`settings`' `apply: yes` and its `selection`, several bodies; `apply` is No by
-  default because the dialog fills `selection` with whatever is selected, which must not
-  rebuild a cabinet by itself; only the field, not the design's selection, which tests and
-  scripts leave behind): `lib.rs` `apply` reads the picked cabinets
-  (`select::owner`, or for a hinge or slide model's copy, which measures hide, the first name of
-  its `(A:1/...)` path; box and corner only), takes each one's `edit::merge` with no changes (sizes
-  from Parameters) and `settings::apply` (what the settings give it now: the design-wide ones
-  stored or default, the hook's four only stored, the plinth's only on a cabinet with one, and
-  only what its entry takes; `None` when it has them all), then `rebuild` (Edit's path, shared:
-  delete, `make`, panels, materials, place, links) while `drawing::fits` (20 s by `clock.now`,
-  the commands counted, the next one's `hardware::cost` + 40), at least one. The reply adds
-  `applied`, `changed` (each cabinet's fields that changed), `remaining`, `skipped` (with
-  `why`) and `message`. A cabinet without a plinth keeps its plinth type and set-back too, so
-  it is skipped when nothing else differs. The preview runs it too, so a dialog with cabinets
-  picked previews every change slowly.
+  Settings only stores (no `apply` or `selection` field: Apply settings builds cabinets again).
   **See-through boards** (`see_through`, in `CHOICES` but no cabinet's: `design` skips it): each
   Settings run gives our design materials (`material.list`'s `user: true`, of `BOARDS`) the
   stored opacity, `SEE_THROUGH` 0.35 or 1, by `material.edit` of each that differs. It takes
@@ -179,15 +215,45 @@ table says which).
   (`storage.get`, one command, only when it creates a material) and creates it see-through.
   Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Settings is
   an edit entry, so its preview shows the change.
-  `edit` has the hook to hide the other kind's fields (`edit::hidden`, `{visible: false}`,
-  the lists `edit::BOX_ONLY` and `CORNER_ONLY` that `merge` checks too, to shrink as the
-  kinds catch up; `wall_mount` is shown for a corner, as it is coming, but `merge` still
-  refuses it there): its one command is
-  `document.inspect {bodies: "names", timeline: false}`; the picked board (the `selection`
-  value, else the design's selection) names the cabinet (`select::owner`), a corner one has
-  `<Prefix>_return`. Nothing picked or no cabinet: no reply. It gives no `default` (in Edit an
-  empty field is unchanged), and a failed read answers `{}`, as an error from the hook fails
-  `plugin.run`. A field the hook hides is still sent (`sends_field`), so the run is the same.
+  **Edit (one cabinet, its own fields).** Edit is Cabinet with `mode` `edit` ("Edit picked";
+  `new` by default, never switched by what is picked, as a picked side means Match selected):
+  `execute` and `dialog` turn it into the internal `edit` (no entry of its own any more;
+  `build.entry_step` sends `edit` so). New-only fields (name, match, place, units, thickness,
+  material, corner, boards, reveal) show with `mode eq new`, Edit-only ones (fronts,
+  handle position, back, plinth type, labels) with `mode eq edit`; a box's Shape is greyed on Box
+  by the hook (`enabled: false`), and a corner refuses Box. Mode `auto` (the default) is decided by
+  `select::auto` in both the hook and `execute`: a door, front, shelf, divider or drawer part
+  picked is Edit (the hook answers Edit's patch with `edit::NEW_ONLY` hidden), a carcass board
+  (Side, Top, Bottom, Back) or nothing is New (`edit::EDIT_ONLY` hidden; hidden fields are still
+  sent, so `execute` drops them); Mode's hint says which. The hook cannot set Mode itself (a
+  reply that does is refused whole by 0.49). `build.entry_step` sends Cabinet `mode: new`. Shelf pin holes is Cabinet's tick box
+  (old files' `yes` read as true). Edit changes exactly one cabinet (`selection`
+  `maxItems` 1; more is refused) and has only what is per cabinet: sizes (width, height, depth,
+  a corner's return), kind or corner shape, doors, drawers with their height and side, shelves,
+  pins, dividers, hinge side, fronts, handles and position, back, plinth yes/no and type, wall
+  mount, labels (`edit::CABINETS`, `BOX_ONLY`, `CORNER_ONLY`). What is design-wide (joinery,
+  hardware, hinge opening, slide type, thickness, reveal, plinth height and set-back) is Woodwork
+  settings' and Rebuild cabinets'; `merge` refuses it (`build.plugin` turns such an Edit field into
+  Settings, Rebuild cabinets and the setting back). Every field is required with a default and
+  the hook starts each at the cabinet's value, so a run left as shown builds nothing
+  (`edit::changed`, numbers as numbers, a value left out as `edit::assumed`, what the builder
+  takes; a build lists `changed`). The other kind's fields are hidden and left out of the run
+  (`edit::taken`). A conditional field given to `plugin.run` needs its controllers given too
+  (`door_hinge` with `doors`): the host checks it against the schema defaults, not the hook's.
+  A read entry may not read `component.metadata` (an edit command), so `make` keeps each
+  cabinet's `edit::copy` (`edit::shown`, `entry`, `units`, its boards' first words `parts`) in a
+  file of ours, `edit/<Prefix>.json` (`edit::blob`, the `_put_blob` pseudo-command), not in our
+  main document, which every hook parses with 10M fuel. The hook stays light: the pick from the
+  field (else the design's selection, `_selection`: only `document.inspect`'s `selection` is
+  parsed, as the reply has every parameter; `selection.get` is an edit command to a read
+  entry), the cabinet from our files' names (`storage.get`; a board is a cabinet's only if its
+  file's `parts` lists its first word, so "Cabinet 2" without a file never gets "Cabinet"'s),
+  that file (`_get_blob`), and its sizes as they are now (`_params`: `kit::param_value` finds
+  `<Prefix>_width`... in the reply's text, in mm, without parsing it), then `edit::fields`.
+  The release profile is `opt-level = 3` (less fuel than `s`). A cabinet made before has no
+  file: the hook only hides the other kind's fields (`edit::hidden`, one
+  `document.inspect {bodies: "names"}`), and the run writes the file and takes a field at the
+  dialog's default as unchanged (`edit::unshown`; a change to exactly the default is lost that once). A failed read answers `{}`.
 
 ## Layout
 
@@ -227,11 +293,38 @@ from the app first (selection, measurements, the active component) is fetched in
 passed in.
 
 Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing`, `settings` and `rebuild`, all edit.
-**Rebuild cabinets** (`rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
-host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply` with `Apply {all,
-settings, job}`: every cabinet's `Side L` or the picked ones, `settings::apply` or as made, no
-`drawing::fits` stop, and a `_progress` pseudo-command per cabinet that the guest's `run` turns
-into `control.progress`. Settings' Apply to selected is the same `apply` within one run.
+A selection field (an array) has no `default`: the app's dialog refuses one with any keyword but
+type, title, description, `maxItems` and the conditions, and the menu then says "This entry needs to
+be run from the agent or CLI" (0.49.0, `selection_field`). `test_manifest` checks it.
+**Apply settings** (entry `rebuild`, `"job": true`, SolidCraft 0.48): a long job (10 min, about a million
+host calls, no Preview, Cancel leaves the design as it was). `lib.rs` `apply(params, stored, all,
+settings)`: the cabinets of the bodies in its `selection` field (Cabinets, any part of each), or every
+cabinet's `Side L` when it is empty (not the design's selection, which tests and scripts leave
+behind), by `select::cabinets_of` (cabinet name prefixes; a hinge or slide model's copy, which
+measures hide, the first name of its `(A:1/...)` path); box and corner only. Its dialog hook
+puts `select::applies_to` on the field as a hint, with the prefixes from our files' names
+(`storage.get`, no design read for the 10M fuel), so the dialog names the same cabinets as the
+run; a board of a cabinet made before it had a file (pre-0.5.0) by its name before its board
+word (`select::BOARD_WORDS`: `Base 1 Door 2` is `Base 1`'s). Only a body with neither, such as
+a hardware model's definition, is "not part of a cabinet". Each one's `edit::merge` with no changes (sizes from Parameters), then `settings::apply`
+(what the settings give it now: the design-wide ones stored or default, the hook's four only
+stored, the plinth's only on a cabinet with one, and only what its entry takes; `None` when it
+has them all) or as made, then `rebuild` (Edit's path, shared: delete, `make`, panels,
+materials, place, links), with a `_progress` pseudo-command per cabinet that the guest's `run`
+turns into `control.progress`. The reply: `applied`, `changed` (each cabinet's fields that
+changed), `skipped` (with `why`) and `message`. A cabinet without a plinth keeps its plinth type
+and set-back too, so it is skipped when nothing else differs.
+Apply settings never overwrites what was chosen for a cabinet. Design-wide (applied):
+material, thickness, reveal, joinery and its sizes, hardware models, hinge angle, slide type,
+fastener models, back/drawer/cleat thicknesses, plinth height and set-back (on a cabinet with a
+plinth). Per cabinet with a Settings default (`settings::PER_CABINET`): plinth Yes/No (by its
+height), plinth type, handles, handle position, fronts, back, labels: it follows the new setting
+only when the cabinet's value equals the default it was made with, which it remembers as
+`_defaults` in its params (`settings::defaults`, set when made, updated by Apply settings; a
+cabinet made before 0.5.0 has none: the built-in defaults). A hand-set value equal to that
+default counts as the default and follows (the ambiguous case). Per cabinet only (never a
+setting, kept): sizes, shape/kind, doors, drawers, drawers at, shelves, shelf pins, dividers,
+door hinge, wall mount.
 **One Cabinet dialog for box and corner cabinets:** its `shape` (`box`, `L-shaped`,
 `diagonal`) shows the box's fields (`kind`, `doors`, `drawers`, `dividers`, ... on `shape: box`;
 a field over `doors` says `doors in [1..11]`, as `not` over a field that can hide is true) or
@@ -268,6 +361,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
 
 - **Versions move slowly.** Bump only the last digit, in both `plugin.json` and `Cargo.toml`,
   unless the user decides on a bigger step (0.2.0). 0.1.0 was the first public release.
+- **No backwards compatibility yet:** older designs and scripts may need rebuilding; don't add
+  migration code unless asked.
 - **Every fix and every function has a test that fails without it.** A bug gets a regression
   test in the same commit as its fix: a unit test in the module's `tests.rs` for the logic,
   and a case in `tests/` when the bug showed in real geometry (a joint turning the wrong
@@ -538,7 +633,27 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   is `Joinery::extension` (`<Prefix>_dado_depth`) longer at each end in the builder, and the
   joint is one box cut of its volume in the face board, through front to back; nothing counted;
   a corner cabinet refuses it, as its L-shaped boards, chamfer picked by point and backs would
-  all have to grow); absent is `none`, so a cabinet made before rebuilds as it was.
+  all have to grow), or `finger` (#131: box cabinets, carcass only; `joints_inner` refuses it):
+  `Joinery::extension` is the thickness, so the end board runs through the face board, and each
+  joint is two box cuts in the overlap (`joint::finger`): `<face> finger <end>` from the second
+  finger on, `<end> finger <face>` from the first, `w = run / (2*floor(run/(2*fw)) + 1)` with
+  `fw` the parameter `<Prefix>_finger_width` (auto, 0: the expression `<Prefix>_thickness`),
+  repeated every `2w` by two shared rows (`<Name> fingers <n>`) for the whole shell: 8 cuts and
+  2 patterns a cabinet. The cut list notes the boards (`cutlist::fingered`, `_fingered`).
+  Over a plinth board or notch (`closed_bottom` in `Joinery::new`) the bottom's joints take the
+  third scope, `BOTTOM`: `none`, butted, unless `finger_bottom` is yes
+  (Woodwork settings, design-wide), as its fingers would be closed mortises. Corner cabinets
+  (`corner::Corner::fingered`, `corner`): every corner joint, the boards grown by `t` on their
+  fingered edges in `carcass` and a `t x t` square cut out of the bottom and top where two
+  uprights meet (`<Part> corner back left`, ...); butted (`joint_by("none")`) where it is a
+  T joint (a wall mount's backs on the bottom, under the top, against the ends' middles) or
+  would move the diagonal's chamfer (bottom and top to the ends); no other board has them (the top
+  and a sink base's rails are flush with the sides' tops).
+  Drawer boxes: `drawer_joints` (none / finger; Woodwork settings, box only), read as `Input::box_fingers`; `cabinet::drawers` runs the box's front and back
+  through the sides and cuts the four upright corners while the drawer is open (in its
+  component), fingers as wide as the box boards (`drawer_thickness`), 8 cuts and 2 patterns a
+  drawer. The cut list notes the boards (`cutlist::fingered`, `_fingered`);
+  absent is `none`, so a cabinet made before rebuilds as it was.
   `joints_inner` (read only when the cabinet has dividers or the rail between drawers and
   doors, `INNER`) does the dividers' ends into the bottom and top (`Joint` along Z) and the
   rail into the sides, rows along the shelves' depth from `ein`; and without shelf pins (`input.fixed`)
@@ -600,8 +715,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   selects it by a side or a rail. A depth that leaves less than two rails' depth for them is
   refused. Its dialog hides shelves, pins and dividers; `cabinet::input` drops them
   for a sink base without an error (Edit to a sink base keeps the remembered ones, unused).
-  It takes doors or drawers, not both (refused; the cabinet dialog hides Drawers when there
-  are doors), and 2 drawers or more: the top front is `<Name> False front`, a fixed body in
+  It takes doors or drawers, not both (the cabinet dialog hides Drawers when there are doors,
+  and `cabinet::input` drops drawers sent beside doors), and 2 drawers or more: the top front is `<Name> False front`, a fixed body in
   the cabinet's component with its handle hole and no box or slide, and the boxes below are
   `eshelf_d/2` deep, clear of the trap (no U-cut). An Edit to standard gives full drawers
   again; the panel counts its drawers as overlay fronts. The back groove is not
@@ -679,7 +794,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   refused there. `cabinet::build` counts a copy as 2 commands, a cut as 2 more plus one
   `component.list`, and the definitions it copies (`hardware::cost`); over 230 it builds the
   cabinet again with `off` and says so (`hardware_models` in the summary).
-  **Slide length** (`slide_length`, Edit only, `edit::BOX_ONLY`; a new cabinet is always auto): `hardware::SLIDES`,
+  **Slide length** (`slide_length`, no field: auto at build, a value an older cabinet remembers kept): `hardware::SLIDES`,
   250, 270, 300 to 650 mm and 10 to 28 in; `auto` is the longest of the cabinet's unit
   (`Kit::unit`) within the box depth less `SLIDE_CLEAR` (3 mm), and a chosen one that does not
   fit is refused (`hardware::slide_length`, read in `cabinet::input` as `Input::slide`, mm and

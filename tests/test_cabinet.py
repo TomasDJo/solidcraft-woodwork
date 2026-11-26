@@ -20,6 +20,8 @@ def test_carcass_pins_and_doors(approval):
     # and of the hinge plate's 4 screw holes on the pins' line, the 1 that is not a pin hole
     # (822, over the top row; 182, 214 and 790 are pin holes)
     assert side["face_types"]["cylinder"] == 40 + 1, side["face_types"]
+    # one pattern copies both sides' pins
+    assert bodies["Cabinet Side R"]["face_types"]["cylinder"] == 40 + 1, bodies["Cabinet Side R"]["face_types"]
     assert bodies["Cabinet Door L"]["face_types"]["cylinder"] == 2
     # centred on the origin, standing on Z = 0
     assert [round(v, 6) for v in side["bbox"]["min"]] == [-400, -200, 0], side["bbox"]
@@ -43,6 +45,7 @@ def test_dividers_and_a_resize(approval):
     assert round(shelf["max"][0] - shelf["min"][0], 6) == 376, shelf
     # clear height 684: pin rows 2..19, front and rear
     assert bodies["Cabinet Divider 1"]["face_types"]["cylinder"] == 36
+    assert bodies["Cabinet Divider 2"]["face_types"]["cylinder"] == 36
     assert bodies["Cabinet Side L"]["face_types"]["cylinder"] == 36
 
     # Resize through the parameters: the whole cabinet follows.
@@ -255,7 +258,7 @@ def test_wall_mount_edit(approval):
                    {"command": "parameters.change", "params": {"name": "A_cleat_height", "expression": "100 mm"}},
                    MEASURE,
                    select("A Side L"),
-                   plugin(approval, "edit", {"wall_mount": "keep", "shelves": 2}),
+                   plugin(approval, "edit", {"shelves": 2}),
                    MEASURE,
                    select("A Side L"),
                    plugin(approval, "edit", {"wall_mount": "none"}),
@@ -278,3 +281,18 @@ def test_wall_mount_edit(approval):
     assert "A Cleat" not in box and "A Wall cleat" not in box, sorted(box)
     assert box["A Back"][4] == y1 - 12, box["A Back"]
     assert "Steel" not in str(results[13]["result"]["hardware"])
+
+
+def test_fields_that_cannot_combine_are_hidden_and_not_used(approval):
+    # Drawers take no dividers: with drawers the dialog hides Dividers, and the app leaves a
+    # hidden field out of the run, so A has drawers and no divider. B is matched to A: its
+    # height, depth, thickness and plinth come from A and are hidden, and so is Sizing (by the
+    # drawers' inside), which a matched cabinet cannot take: it is sized from its width.
+    results = cli([plugin(approval, "cabinet", {"name": "A", "drawers": 2, "dividers": 1, "height": 800}),
+                   select("A Side R"),
+                   plugin(approval, "cabinet", {"name": "B", "drawers": 1, "sizing": "drawer", "height": 500,
+                                                "match": "selected", "place": "right"}),
+                   MEASURE])
+    box = boxes(results[3])
+    assert "A Drawer 2 Front" in box and not [n for n in box if "Divider" in n], sorted(box)
+    assert box["B Side L"][5] == 800 and round(box["B Side R"][3] - box["B Side L"][0]) == 600, box["B Side L"]

@@ -39,13 +39,18 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
     let mut all = vec![
         ("thickness", "", Length(18.0, 3.175, 50.0), Hook),
         ("reveal", "", Mm(2.0, 0.5, 6.0), Hook),
+        // the Cabinet dialog's defaults, so Settings starts at them (not Keep) when none is stored
+        ("material", "", Choice("Birch plywood"), Hook),
+        ("handles", "", Choice("none"), Hook),
         ("joints", "", Choice("dowels"), Cabinets),
+        ("finger_bottom", "", Choice("no"), Cabinets),
         ("joints_inner", "", Choice("dowels"), Box),
         ("biscuit", "", Choice("20"), Cabinets),
         ("pocket_face", "", Choice("outside"), Cabinets),
         ("hardware_models", "", Choice("on"), Cabinets),
         ("hinge_angle", "", Choice("110"), Cabinets),
         ("slide_type", "", Choice("full"), Box),
+        ("drawer_joints", "", Choice("none"), Box),
         ("fastener_models", "", Choice("off"), Cabinets),
         ("back", "", Choice("groove"), Box),
         ("back_thickness", "", Length(6.0, 3.175, 50.0), Box),
@@ -74,6 +79,9 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ),
         // no cabinet's: our board materials' opacity (`material::see_through`)
         ("see_through", "", Choice("off"), Nothing),
+        ("camera", "", Choice("fit"), Nothing),
+        // the unit Settings' sizes are given in, set in General and used by the other sections
+        ("units", "", Choice("mm"), Nothing),
     ];
     for (key, mm) in joint::SIZES {
         let (low, high) = joint::range(key);
@@ -105,16 +113,17 @@ fn default(key: &str) -> Option<Value> {
 
 /// Every field Settings keeps.
 fn kept() -> Vec<&'static str> {
-    let mut all = vec!["material", "handles", "camera"];
-    all.extend(table().into_iter().map(|s| s.0));
-    all
+    table().into_iter().map(|s| s.0).collect()
 }
 
 /// The `storage.patch` merge patch for the Settings dialog's values: only the fields that were
 /// set (empty or `keep` leaves the stored value), lengths in mm. A value the same as the
 /// stored one, or the default when none is, is left out: the hook fills omitted keys.
 pub fn patch(params: &Value, stored: &Value) -> Result<Value, String> {
-    let unit = if params["units"] == "in" { 25.4 } else { 1.0 };
+    // a dialog without Units (a section other than General) gives its sizes in the stored one
+    let units = params["units"].as_str();
+    let units = units.or(stored["document"]["settings"]["units"].as_str());
+    let unit = if units == Some("in") { 25.4 } else { 1.0 };
     let mut set = Map::new();
     for key in kept() {
         let value = &params[key];
@@ -212,7 +221,7 @@ pub fn design(entry: &str, params: &mut Value, stored: &Value) {
                     None => default,
                 };
                 match key {
-                    "labels" => json!(v == "yes"),
+                    "labels" | "finger_bottom" => json!(v == "yes"),
                     _ => json!(v),
                 }
             }
@@ -256,64 +265,123 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
     changes
 }
 
-/// A built cabinet's `params` (`edit::merge`'s, sizes from the design's parameters) with what
-/// Woodwork settings hold now, for Settings' Apply to selected; `None` when it already has them.
-/// The design-wide settings count stored or default, and the dialogs' defaults (material,
-/// thickness, reveal, handles) only when stored. Only what the cabinet's `entry` takes (a
-/// corner has no drawers, no inside joinery, no back choice), and the plinth's only when it has
-/// one: a cabinet without one keeps none. With the params, the fields that change.
-pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<String>)> {
-    let settings = &stored["document"]["settings"];
-    let mut wanted = json!({"units": params["units"]});
-    for key in ["material", "handles"] {
-        if settings[key].is_string() {
-            wanted[key] = settings[key].clone();
+/// The per-cabinet fields that Settings also gives a default (Plinth's Yes or No through its
+/// height). A cabinet whose value is not the default it was built with chose its own, which
+/// Apply settings keeps; one that has that default follows the settings.
+pub const PER_CABINET: [&str; 7] = [
+    "handles",
+    "fronts",
+    "back",
+    "plinth",
+    "plinth_type",
+    "handle_position",
+    "labels",
+];
+
+/// What the `PER_CABINET` fields of a cabinet made now with `stored` would be, as its params
+/// hold them (labels a flag, the plinth a height, handles the dialog's None when not stored).
+/// A cabinet remembers it as `_defaults` (`lib.rs`), so Apply settings knows later which of its
+/// values were the defaults then.
+pub fn defaults(entry: &str, units: &Value, stored: &Value) -> Value {
+    let mut fresh = json!({"units": units});
+    design(entry, &mut fresh, stored);
+    let handles = &stored["document"]["settings"]["handles"];
+    fresh["handles"] = if handles.is_string() {
+        handles.clone()
+    } else {
+        json!("none")
+    };
+    let mut out = Map::new();
+    for key in PER_CABINET {
+        if let Some(v) = fresh.get(key) {
+            out.insert(key.into(), v.clone());
         }
     }
-    let has_plinth = params["plinth"].as_f64().unwrap_or(0.0) > 0.0;
+    Value::Object(out)
+}
+
+fn same(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Number(a), Value::Number(b)) => {
+            (a.as_f64().unwrap_or(0.0) - b.as_f64().unwrap_or(0.0)).abs() < 1e-6
+        }
+        (a, b) => a == b,
+    }
+}
+
+/// Woodwork settings hold now, for Apply settings; `None` when it already has them.
+/// The design-wide settings, stored or default, and the dialogs' defaults (material, thickness,
+/// reveal) only when stored. A `PER_CABINET` field follows the settings only when the cabinet
+/// still has the default it was made with (`_defaults`, else the built-in ones for a cabinet
+/// made before 0.5.0): a value of its own is kept. Plinth by Yes or No: a cabinet without one
+/// where the default had one keeps none; one with a plinth takes the settings' height and
+/// set-back. A value the same as the old default counts as following it, even when it was set by
+/// hand. Only what the cabinet's `entry` takes (a corner has no drawers, no inside joinery, no
+/// back choice). With the params (their `_defaults` now the settings'), the fields that change.
+pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<String>)> {
+    let settings = &stored["document"]["settings"];
+    let before = match params.get("_defaults") {
+        Some(d) if d.is_object() => d.clone(),
+        _ => defaults(entry, &params["units"], &json!({})),
+    };
+    let now = defaults(entry, &params["units"], stored);
+    let mut wanted = json!({"units": params["units"]});
+    if settings["material"].is_string() {
+        wanted["material"] = settings["material"].clone();
+    }
     for (key, field, def, to) in table() {
         let field = if field.is_empty() { key } else { field };
-        let plinth = matches!(key, "plinth" | "plinth_type" | "plinth_setback");
         if to == To::Hook && settings[key].is_number() {
             wanted[field] = match def {
                 Def::Length(..) => json!(rounded(mm(settings, key) / unit(params))),
                 _ => json!(mm(settings, key)),
             };
-        } else if plinth && has_plinth {
-            wanted[field] = match def {
-                Def::Choice(d) => json!(settings[key].as_str().unwrap_or(d)),
-                _ => json!(rounded(mm(settings, key) / unit(params))),
-            };
         }
     }
-    // without a plinth its type and set-back stay as they are
-    if !has_plinth {
+    let on = |v: &Value| v.as_f64().unwrap_or(0.0) > 0.0;
+    let has_plinth = on(&params["plinth"]);
+    for key in PER_CABINET {
+        let follows = match key {
+            "plinth" => has_plinth == on(&before["plinth"]),
+            _ => params
+                .get(key)
+                .is_none_or(|v| before.get(key).is_some_and(|b| same(v, b))),
+        };
+        let value = match (key, follows) {
+            ("plinth", false) if has_plinth && on(&now["plinth"]) => Some(&now["plinth"]),
+            // (a default that did not change leaves the value as it is, even when absent)
+            (_, true)
+                if !before
+                    .get(key)
+                    .zip(now.get(key))
+                    .is_some_and(|(b, n)| same(b, n)) =>
+            {
+                now.get(key)
+            }
+            _ => None,
+        };
+        if let Some(v) = value.or(params.get(key)) {
+            wanted[key] = v.clone();
+        }
+    }
+    // a cabinet left without a plinth keeps its type and set-back as they are
+    if !on(&wanted["plinth"]) {
         for key in ["plinth_type", "plinth_setback"] {
             if let Some(v) = params.get(key) {
                 wanted[key] = v.clone();
             }
         }
     }
-    // the rest as a new cabinet gets them (Plinth given, so `design` leaves it)
-    wanted["plinth"] = wanted
-        .get("plinth")
-        .cloned()
-        .unwrap_or(params["plinth"].clone());
     design(entry, &mut wanted, stored);
     let mut out = params.clone();
     let mut changed = Vec::new();
     for (key, value) in wanted.as_object().into_iter().flatten() {
-        let same = match (&out[key.as_str()], value) {
-            (Value::Number(a), Value::Number(b)) => {
-                (a.as_f64().unwrap_or(0.0) - b.as_f64().unwrap_or(0.0)).abs() < 1e-6
-            }
-            (a, b) => a == b,
-        };
-        if !same {
+        if !same(&out[key.as_str()], value) {
             out[key.as_str()] = value.clone();
             changed.push(key.clone());
         }
     }
+    out["_defaults"] = now;
     (!changed.is_empty()).then_some((out, changed))
 }
 
@@ -343,6 +411,127 @@ pub fn matching(values: &Value, design: &Value) -> Value {
     }
 }
 
+/// The sizes Match selected takes from the picked cabinet, as the Cabinet hook's patch for those
+/// fields (greyed while it is on, `x-solidcraft-enabled-when`): its height, depth, thickness
+/// (its parameters, in the dialog's unit) and plinth (Yes when it has one), with a hint naming
+/// it. Nothing when no cabinet is picked. `design` as for `matching`.
+pub fn matched_sizes(values: &Value, design: &Value) -> Map<String, Value> {
+    let mut reply = Map::new();
+    let picked = crate::select::picked(values, design);
+    let Some(cabinet) = picked.first().and_then(|b| crate::select::owner(design, b)) else {
+        return reply;
+    };
+    let prefix = kit::prefix(cabinet);
+    let param = |key: &str| {
+        let all = design["params"].as_array().into_iter().flatten();
+        let id = format!("{prefix}_{key}");
+        all.into_iter()
+            .find(|p| p["name"] == id.as_str())
+            .and_then(|p| p["value"].as_f64())
+    };
+    let unit = if values["units"] == "in" { 25.4 } else { 1.0 };
+    let hint = format!("Match selected takes it from {cabinet}");
+    for key in ["height", "depth", "thickness"] {
+        if let Some(mm) = param(key) {
+            reply.insert(
+                key.into(),
+                json!({"default": rounded(mm / unit), "hint": hint}),
+            );
+        }
+    }
+    if let Some(mm) = param("plinth") {
+        let plinth = if mm > 0.0 { "yes" } else { "no" };
+        reply.insert("plinth".into(), json!({"default": plinth, "hint": hint}));
+    }
+    reply
+}
+
+/// Where the dialog shows a build's refusal `why` (`cabinet::checked`, `corner::checked`): the field
+/// it is about, by its words, else Shape (the first field); `corner` for a corner cabinet, whose
+/// doors are `corner_doors`. With the reason, capitalised, for the hint.
+pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
+    let words = why.to_lowercase();
+    let doors = if corner { "corner_doors" } else { "doors" };
+    let field = [
+        ("drawer front height", "drawer_height"),
+        // Woodwork settings' own fields
+        ("back thickness", "back_thickness"),
+        ("drawer box", "drawer_thickness"),
+        ("cleat thickness", "cleat_thickness"),
+        ("cleat", "cleat_height"),
+        ("panels of", "thickness"),
+        ("height is too small", "height"),
+        ("width is too small", "width"),
+        ("too low", "height"),
+        ("too shallow", "depth"),
+        ("too narrow", "width"),
+        ("door_hinge", "door_hinge"),
+        ("door", doors),
+        ("drawer", "drawers"),
+        ("sink base", "kind"),
+        ("divider", "dividers"),
+        ("shelf pin", "shelf_pins"),
+        ("shel", "shelves"),
+        ("handle", "handles"),
+        ("reveal", "reveal"),
+        ("return", "return"),
+        ("height", "height"),
+        ("depth", "depth"),
+        ("width", "width"),
+        ("sizes", "width"),
+        ("thickness", "thickness"),
+        ("plinth", "plinth"),
+        ("caster", "plinth"),
+        ("cleat", "wall_mount"),
+        ("rail", "wall_mount"),
+        ("wall mount", "wall_mount"),
+        ("name", "name"),
+    ];
+    let field = (field.iter())
+        .find(|(w, _)| words.contains(w))
+        .map_or("shape", |f| f.1);
+    let mut why = why.to_string();
+    if let Some(first) = why.get(..1) {
+        why.replace_range(..1, &first.to_uppercase());
+    }
+    (field, why)
+}
+
+/// `problem`'s field as a Cabinet dialog field: a setting's (the cleat, the back's or the drawer
+/// boxes' thickness) is no field there, and a reply naming one would be ignored whole.
+pub fn on_cabinet(field: &'static str) -> &'static str {
+    match field {
+        "cleat_height" | "cleat_thickness" => "wall_mount",
+        "back_thickness" | "drawer_thickness" => "shape",
+        f => f,
+    }
+}
+
+/// What a new cabinet would make of Woodwork settings changed by the dialog's `values`: the
+/// first refusal of `patch` (a size out of bounds, on its field) or of the build's checks of a
+/// standard cabinet with them (`cabinet::checked`), as the field it is about and the reason.
+pub fn trouble(values: &Value, stored: &Value) -> Option<(String, String)> {
+    let patched = match patch(values, stored) {
+        Ok(p) => p,
+        Err(why) => {
+            let field = why.split('`').nth(1).unwrap_or("units").to_string();
+            return Some((field, why));
+        }
+    };
+    let mut after = stored["document"]["settings"].clone();
+    if !after.is_object() {
+        after = json!({});
+    }
+    for (k, v) in patched["settings"].as_object().into_iter().flatten() {
+        after[k] = v.clone();
+    }
+    let mut p = json!({"plinth": "yes"});
+    design("cabinet", &mut p, &json!({"document": {"settings": after}}));
+    let why = crate::cabinet::checked(&p).err()?;
+    let (field, why) = problem(&why, false);
+    Some((field.to_string(), why))
+}
+
 /// The dialog hook's reply for `entry` with the dialog's `values`, from `storage.get`'s
 /// reply: each stored setting as the field's default, lengths in the dialog's unit. The
 /// Settings dialog gets every setting with a default, stored or the default, and no hint.
@@ -366,7 +555,18 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     } else {
         settings.retain(|key, _| FIELDS.contains(&key.as_str()));
     }
-    let unit = if values["units"] == "in" { 25.4 } else { 1.0 };
+    // Settings' sizes are in Units, which only General (and All) show; the other sections use
+    // the stored one, said in each size's hint
+    let shown = values["section"].as_str().unwrap_or("all");
+    let with_units = matches!(shown, "general" | "all") || !own;
+    let stored_units = stored["document"]["settings"]["units"]
+        .as_str()
+        .unwrap_or("mm");
+    let units = match with_units {
+        true => values["units"].as_str().unwrap_or(stored_units),
+        false => stored_units,
+    };
+    let unit = if units == "in" { 25.4 } else { 1.0 };
     for (key, value) in &settings {
         let value = match (bounds(key), value.as_f64()) {
             (Some((min, max, scaled)), Some(mm)) if (min..=max).contains(&mm) => {
@@ -376,15 +576,125 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
             (Some(_), _) => continue,
             _ => value.clone(),
         };
-        let field = if own {
+        let field = if own && !with_units && bounds(key).is_some_and(|b| b.2) {
+            let name = if units == "in" { "inches" } else { "mm" };
+            json!({ "default": value, "hint": format!("In {name}, as set in General") })
+        } else if own {
             json!({ "default": value })
         } else {
             json!({"default": value, "hint": "From Woodwork settings"})
         };
         reply.insert(key.clone(), field);
     }
+    // Settings' Section shows one group of fields: the others hidden by the hook, which (unlike
+    // a schema condition) still sends them, so a script's values are all used and the dialog's
+    // hidden ones are the stored values, which `patch` leaves out.
+    if own {
+        reply.insert(
+            "section".into(),
+            json!({"hint": "Pick a group to see its settings"}),
+        );
+        // a divider row under Section, greyed and never stored (filled for a script)
+        reply.insert("divider".into(), json!({ "default": DIVIDER }));
+        for (section, keys) in SECTIONS {
+            if shown == "all" || shown == section {
+                continue;
+            }
+            for key in keys {
+                let field = reply.entry(key.to_string()).or_insert(json!({}));
+                field["visible"] = json!(false);
+            }
+        }
+    }
     Value::Object(reply)
 }
+
+/// The divider row under Settings' Section: a greyed field, its value never stored.
+pub const DIVIDER: &str = "────────────────────";
+
+/// Settings' sections (its field `section`, the same in the manifest) and their fields. Apply
+/// to shows in every section.
+pub const SECTIONS: [(&str, &[&str]); 7] = [
+    (
+        "general",
+        &[
+            "units",
+            "material",
+            "thickness",
+            "back",
+            "back_thickness",
+            "labels",
+        ],
+    ),
+    (
+        "fronts",
+        &[
+            "fronts",
+            "reveal",
+            "handles",
+            "handle_position",
+            "hinge_angle",
+        ],
+    ),
+    (
+        "drawers",
+        &[
+            "drawer_thickness",
+            "drawer_bottom",
+            "drawer_joints",
+            "slide_type",
+        ],
+    ),
+    (
+        "plinth",
+        &[
+            "plinth",
+            "plinth_type",
+            "plinth_setback",
+            "cleat_height",
+            "cleat_thickness",
+        ],
+    ),
+    (
+        "joinery",
+        &[
+            "joints",
+            "joints_inner",
+            "joint_spacing",
+            "joint_edge",
+            "dowel_d",
+            "dowel_length",
+            "dado_depth",
+            "biscuit",
+            "cam_d",
+            "cam_bolt",
+            "finger_width",
+            "finger_bottom",
+            "pocket_face",
+        ],
+    ),
+    (
+        "cutlist",
+        &[
+            "banding",
+            "cut_sizes",
+            "sheet",
+            "kerf",
+            "trim",
+            "worktop_material",
+            "worktop_thickness",
+        ],
+    ),
+    (
+        "display",
+        &[
+            "hardware_models",
+            "fastener_models",
+            "see_through",
+            "camera",
+        ],
+    ),
+];
 
 #[cfg(test)]
 mod tests;

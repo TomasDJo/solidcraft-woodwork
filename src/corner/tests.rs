@@ -305,7 +305,17 @@ fn inset_bifold_doors_fill_the_opening() {
     assert_eq!(notch["width"], "Cabinet_return - Cabinet_depth");
     let bottom = named(&commands, "Cabinet Bottom notch");
     assert_eq!(bottom["corner"][0], "Cabinet_depth - Cabinet_width/2");
-    let rows = named(&commands, "Cabinet Back pin rows");
+    // the Back's pins are copied by the pattern its rows share with the other panels'
+    let rows = &(commands.iter())
+        .find(|c| {
+            c.0 == "solid.pattern.rectangular"
+                && c.1["features"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&json!("Cabinet Back pins"))
+        })
+        .unwrap()
+        .1;
     assert_eq!(
         rows["spacing2"],
         "Cabinet_depth - Cabinet_thickness - Cabinet_thickness - 74 mm"

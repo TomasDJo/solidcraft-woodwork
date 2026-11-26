@@ -82,10 +82,24 @@ fn options_add_parts() {
 
     let p = json!({"shelf_pins": true, "doors": 2, "height": 1200});
     let (commands, summary) = build(&p).unwrap();
-    assert_eq!(count(&commands, "solid.pattern.rectangular"), 2);
+    // one pattern copies both sides' pins (a feature each costs time), after both seeds
+    assert_eq!(count(&commands, "solid.pattern.rectangular"), 1);
+    let rows = named(&commands, "Cabinet pin rows");
+    assert_eq!(
+        rows["features"],
+        json!(["Cabinet Side L pins", "Cabinet Side R pins"])
+    );
+    let at = |name: &str| commands.iter().position(|c| c.1["name"] == name).unwrap();
+    assert!(at("Cabinet Side R pins") < at("Cabinet pin rows"));
     // pin seeds, 3 cups per tall door and a plate's 2 screw holes beside each
     assert_eq!(count(&commands, "solid.cylinder"), 2 + 2 * 3 * 3);
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 8);
+    // a divider's pins too
+    let p = json!({"shelf_pins": true, "dividers": 1});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(count(&commands, "solid.pattern.rectangular"), 1);
+    let rows = named(&commands, "Cabinet pin rows");
+    assert_eq!(rows["features"].as_array().unwrap().len(), 3);
 }
 
 #[test]
@@ -288,7 +302,9 @@ fn drawers_replace_shelves() {
     );
     assert_eq!(height("auto"), height("top")); // 560 deep: a floor unit
     assert!(build(&json!({"doors": 1, "handles": "knob", "handle_position": "side"})).is_err());
-    assert!(build(&json!({"drawers": 2, "doors": 2, "dividers": 1})).is_err());
+    // drawers take no dividers: hidden, so a value still sent is not used
+    let (commands, _) = build(&json!({"drawers": 2, "doors": 2, "dividers": 1})).unwrap();
+    assert!(!commands.iter().any(|c| c.1.to_string().contains("Divider")));
     assert!(build(&json!({"drawers": 8, "height": 400})).is_err());
 }
 
@@ -629,13 +645,13 @@ fn a_sink_base_with_drawers_under_a_false_front() {
     assert_eq!(side["width"], half);
     let slide = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
     assert_eq!(slide.1["max"], 250.0);
-    // doors or drawers, and two drawers or more
-    for p in [
-        json!({"kind": "sink", "drawers": 1}),
-        json!({"kind": "sink", "drawers": 2, "doors": 2}),
-    ] {
-        assert!(build(&p).unwrap_err().contains("doors or drawers"));
-    }
+    // two drawers or more; with doors (Drawers hidden) the drawers are not used
+    let err = build(&json!({"kind": "sink", "drawers": 1})).unwrap_err();
+    assert!(err.contains("2 drawers or more"), "{err}");
+    let (commands, _) = build(&json!({"kind": "sink", "drawers": 2, "doors": 2})).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1.to_string().contains("Drawer 1")));
 }
 
 #[test]
@@ -708,7 +724,7 @@ fn drawers_over_doors() {
             "Cabinet_plinth + Cabinet_thickness"
         )
     );
-    let pins = named(&commands, "Cabinet Side L pin rows");
+    let pins = named(&commands, "Cabinet pin rows");
     assert!(pins["count1"].as_str().unwrap().contains(&rail));
     assert_eq!(
         named(&commands, "Cabinet Drawer 1 slide")["at"]["point"][2],
@@ -1158,7 +1174,7 @@ fn a_cabinet_sized_from_its_drawers_inside() {
     from_drawers(&mut p).unwrap();
     assert_eq!(
         (&p["width"], &p["depth"], &p["sizing"]),
-        (&json!(757.4), &json!(724.0), &json!("outside"))
+        (&json!(757.4), &json!(724.0), &json!("drawer"))
     );
     let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
     assert!((input.shelf_d - 10.0 - 2.0 * 12.0 - 672.0).abs() < 1e-9);
@@ -1179,13 +1195,18 @@ fn a_cabinet_sized_from_its_drawers_inside() {
     assert_eq!(p["width"], json!(578.0));
     let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
     assert_eq!((input.slide.1, input.shelf_d), ("450 mm", 453.0));
-    // outside sizing is left alone; no drawers, or Match selected, are refused
+    // outside sizing is left alone; no drawers are refused; with Match selected (Sizing is
+    // hidden then) it is outside sizing
     let mut p = json!({"drawers": 1, "width": 600});
     from_drawers(&mut p).unwrap();
     assert_eq!(p["width"], 600);
     assert!(from_drawers(&mut json!({"sizing": "drawer"})).is_err());
-    let mut p = json!({"drawers": 1, "sizing": "drawer", "_match": {"values": {}}});
-    assert!(from_drawers(&mut p).is_err());
+    let mut p = json!({"drawers": 1, "sizing": "drawer", "_match": {"values": {}}, "width": 600});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(
+        (&p["width"], &p["sizing"]),
+        (&json!(600), &json!("outside"))
+    );
 }
 
 #[test]
@@ -1231,4 +1252,34 @@ fn undermount_slides_make_the_box_to_fit_them() {
     // box sides over 16 mm are refused
     let thick = json!({"drawers": 1, "slide_type": "under_full", "drawer_thickness": 18});
     assert!(build(&thick).unwrap_err().contains("16 mm"));
+}
+
+#[test]
+fn drawer_boxes_take_finger_joints() {
+    let p = json!({"drawers": 2, "drawer_joints": "finger"});
+    let (commands, _) = build(&p).unwrap();
+    // the front and back run through the sides, as wide as the box
+    let front = named(&commands, "Cabinet Drawer 1 Box front");
+    assert_eq!(
+        front["length"],
+        "((Cabinet_width - 2*Cabinet_thickness) - 2*HW_slide_t)"
+    );
+    // four corners, a cut in each board at each, and two patterns up the box
+    let cuts = (commands.iter()).filter(|c| {
+        (c.1["name"].as_str())
+            .is_some_and(|n| n.starts_with("Cabinet Drawer 1 ") && n.contains(" finger "))
+    });
+    assert_eq!(cuts.count(), 8);
+    let side = named(&commands, "Cabinet Drawer 1 Left finger Box front");
+    assert_eq!(side["operation"], "cut");
+    assert_eq!(side["targets"], json!(["Cabinet Drawer 1 Left"]));
+    let pattern = named(&commands, "Cabinet Drawer 1 fingers 2");
+    assert_eq!(pattern["features"].as_array().unwrap().len(), 4);
+    assert_eq!(pattern["dir1"], json!([0, 0, 1]));
+    // without: as before
+    let (commands, _) = build(&json!({"drawers": 2})).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1.to_string().contains(" finger ")));
+    assert!(build(&json!({"drawers": 1, "drawer_joints": "dovetail"})).is_err());
 }

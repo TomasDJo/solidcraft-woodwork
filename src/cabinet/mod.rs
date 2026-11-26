@@ -11,7 +11,7 @@ mod drawers;
 mod input;
 
 use crate::fittings::{self, PinRows, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH};
-use crate::joint::{Joinery, Joint, CARCASS, INNER};
+use crate::joint::{Joinery, Joint, BOTTOM, CARCASS, INNER};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
 use input::Input;
@@ -57,16 +57,15 @@ struct Cabinet<'a> {
 }
 
 /// Sizing by the drawers' inside (`sizing: drawer`): the width and depth that give the boxes
-/// `drawer_width` x `drawer_depth` inside, written into `p` as an ordinary outside size, so
-/// the cabinet is remembered, edited and resized by that.
+/// `drawer_width` x `drawer_depth` inside, written into `p` as its outside size. `sizing`
+/// stays, so the cabinet remembers it: Edit and Apply settings work its outside out again
+/// (`rebuild`), and its drawers keep their inside whatever changed (slides, boards, reveal).
 pub fn from_drawers(p: &mut Value) -> Result<(), String> {
-    if p["sizing"] != "drawer" {
+    // Match selected gives the sizes (the dialog hides Sizing then): outside sizing.
+    if p["sizing"] != "drawer" || !p["_match"].is_null() {
+        p["sizing"] = json!("outside");
         return Ok(());
     }
-    check(
-        p["_match"].is_null(),
-        "drawer inside size cannot be combined with Match selected",
-    )?;
     let kit = Kit::new(p)?;
     let inside = [
         kit.size(p, "drawer_width", 0.0)?,
@@ -105,8 +104,15 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     let round = |mm: f64| (mm / scale * 1e6).round() / 1e6;
     p["width"] = json!(round(w));
     p["depth"] = json!(round(d));
-    p["sizing"] = json!("outside");
     Ok(())
+}
+
+/// The build's checks of the fields, without making anything: the dialog hook's (a whole build
+/// costs too much of its fuel).
+pub fn checked(p: &Value) -> Result<(), String> {
+    let mut p = p.clone();
+    from_drawers(&mut p)?;
+    input::read(&Kit::new(&p)?, &p).map(|_| ())
 }
 
 pub fn build(p: &Value) -> Result<(Commands, Value), String> {
@@ -129,9 +135,12 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     let et = parameter("thickness", input.t, "panel thickness");
     // Dividers, the rail between drawers and doors and fixed shelves take the second method.
     let inner = input.dividers > 0.0 || input.mixed || (input.fixed && input.shelves > 0.0);
-    let joinery = Joinery::new(&kit, p, (input.t, &et), inner)?;
+    // The sides reach the floor below a raised bottom (not on legs or casters).
+    let closed = input.plinth > 0.0 && !matches!(input.plinth_type, "legs" | "casters");
+    let joinery = Joinery::new(&kit, p, (input.t, &et), inner, closed)?;
     let side_mm = if back == "overlay" { d - input.bt } else { d };
     joinery.fits(CARCASS, side_mm, p, "the sides")?;
+    joinery.fits(BOTTOM, side_mm, p, "the sides")?;
     joinery.fits(INNER, input.shelf_d, p, "the dividers and the rail")?;
     // a divider between fixed shelves in dados is grooved from both sides at the same height
     let both = input.fixed && input.shelves > 0.0 && input.dividers > 0.0;
@@ -332,7 +341,16 @@ impl Cabinet<'_> {
             None => (et.clone(), eiw.clone()),
         };
         let (et_, eiw) = (&end_x, &end_w);
-        panel("Bottom", [et_, &zero, epl], [eiw, eside_d, et], false);
+        let (bottom_x, bottom_w) = match self.joinery.extension(BOTTOM) {
+            Some(g) => (format!("{et} - {g}"), format!("{} + 2*{g}", self.eiw)),
+            None => (et.clone(), self.eiw.clone()),
+        };
+        panel(
+            "Bottom",
+            [&bottom_x, &zero, epl],
+            [&bottom_w, eside_d, et],
+            false,
+        );
         let top_z = format!("{eh} - {et}");
         match sink {
             // In front of the back: the shelves' depth ends there, also behind inset fronts.
@@ -581,7 +599,8 @@ impl Cabinet<'_> {
                     single,
                     between: false,
                 };
-                self.joinery.joint(CARCASS, &joint);
+                let scope = if *end == "Bottom" { BOTTOM } else { CARCASS };
+                self.joinery.joint(scope, &joint);
             }
         }
     }
@@ -613,7 +632,7 @@ impl Cabinet<'_> {
             };
             drill.extend(fittings::pin_rows(kit, top_row, rows));
         }
-        drill
+        fittings::shared_pin_rows(kit, drill)
     }
 
     /// Where the shelves' part starts (the bottom panel's top face, the base of the pin rows'

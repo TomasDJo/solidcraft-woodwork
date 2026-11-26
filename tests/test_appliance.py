@@ -8,7 +8,7 @@ def test_a_sink_base(approval):
     # back, 100 deep, their top faces at 720. Two doors that turn; confirmat screws into the rails, chosen by Edit.
     results = designed(approval, NONE, [plugin(approval, "cabinet", {"name": "S", "kind": "sink", "doors": 2, "shelves": 1}), MEASURE,
                    select("S Side L"), plugin(approval, "edit", {"joints": "confirmat"}), drive("S Door L hinge", 90),
-                   MEASURE, select("S Side L"), plugin(approval, "edit", {"kind": "keep", "doors": 1}), MEASURE,
+                   MEASURE, select("S Side L"), plugin(approval, "edit", {"doors": 1}), MEASURE,
                    {"command": "component.metadata", "params": {"component": "S"}}, plugin(approval, "cutlist")],
                   "--save", str(ROOT / "dist" / "sink.sc"))
     box = boxes(results[1])

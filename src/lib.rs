@@ -43,10 +43,17 @@ fn make(entry: &str, params: &Value, design: &Value, run: Run) -> Result<(Value,
     }
     let (summary, made) = component(built, params, "Birch plywood", run)?;
     let name = summary["name"].as_str().unwrap_or_default();
+    let remembered = edit::remember(entry, params, name);
+    // What Edit's dialog shows for it, in a file of ours in the design (`edit::blob`), which its
+    // hook can read (a read entry may not read component metadata: it counts as an edit
+    // command). A file, not our main document: every hook parses that, with 10M fuel.
+    let parts = summary["bodies"].as_array().into_iter().flatten();
+    let copy = edit::copy(entry, params, name, parts.filter_map(Value::as_str));
     run(
         "component.metadata.set",
-        json!({"component": name, "values": edit::remember(entry, params, name)}),
+        json!({"component": name, "values": remembered}),
     )?;
+    run("_put_blob", json!({"name": edit::blob(name), "data": copy}))?;
     Ok((summary, made))
 }
 
@@ -153,54 +160,43 @@ fn component(
     Ok((summary, made))
 }
 
-/// How `apply` goes: over every cabinet or the picked ones, with the settings or as each was
-/// made, and as a job (0.48: no 30 s, progress per cabinet) or within one ordinary run.
-#[derive(Clone, Copy)]
-struct Apply {
+/// Apply settings (the `rebuild` job, 0.48: no 30 s): each picked cabinet (a box or corner
+/// cabinet), or every one with none picked (`all`), built again (`rebuild`) with the settings
+/// where its values differ (`settings::apply`), or as it was made (`settings` false), each
+/// reported as `_progress` (`control.progress` in the guest).
+fn apply(
+    params: &Value,
+    stored: &Value,
     all: bool,
     settings: bool,
-    job: bool,
-}
-
-/// Settings' Apply to selected, and the Rebuild job: each picked cabinet (a box or corner
-/// cabinet), or every one, built again (`rebuild`) with the settings where its values differ
-/// (`settings::apply`), or as it was made. An ordinary run does as many as fit in its time and
-/// commands (`drawing::fits`), at least one; the reply names those `applied` and those
-/// `remaining`, which the next run with them picked does. A job does them all, reporting each
-/// as `_progress` (`control.progress` in the guest).
-fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, String> {
-    let start = now();
-    let used = std::cell::Cell::new(0);
-    let mut run = |command: &str, args: Value| {
-        used.set(used.get() + 1);
-        run(command, args)
-    };
+    run: Run,
+) -> Result<Value, String> {
     let design = run(
         "document.inspect",
         json!({"bodies": false, "timeline": false}),
     )?;
-    let measure = run("inspect.measure", json!({}))?;
+    let names_only = body_names(run)?;
     // The cabinets of the picked bodies: a board, or a hinge or slide model's copy (`HW hinge
     // (A:1/A Door:1/HW hinge:2)`, which measures do not show: the first name on its path).
-    let (mut names, mut skipped) = (Vec::new(), Vec::new());
-    let bodies = match how.all {
+    let bodies = match all {
         // every cabinet: its Side L
-        true => (measure["bodies"].as_array().into_iter().flatten())
+        true => (names_only["bodies"].as_array().into_iter().flatten())
             .filter_map(|b| b["name"].as_str().filter(|n| n.ends_with(" Side L")))
             .map(String::from)
             .collect(),
         false => select::picked(params, &design),
     };
-    for body in bodies {
-        let model = (body.strip_prefix("HW "))
-            .and_then(|b| b.split_once('(')?.1.split_once(':'))
-            .map(|(cabinet, _)| cabinet.to_string());
-        match select::owner(&measure, &body).map(String::from).or(model) {
-            Some(owner) if !names.contains(&owner) => names.push(owner),
-            Some(_) => {}
-            None => skipped.push(json!({"picked": body, "why": "not part of a cabinet"})),
-        }
-    }
+    // as the dialog hook says it (`select::applies_to`)
+    let cabinets: Vec<String> = (names_only["bodies"].as_array().into_iter().flatten())
+        .filter_map(|b| b["name"].as_str()?.strip_suffix(" Side L"))
+        .map(kit::prefix)
+        .collect();
+    let (names, skipped) = select::cabinets_of(&cabinets, &bodies, false);
+    let mut skipped: Vec<Value> = (skipped.into_iter())
+        .map(|body| json!({"picked": body, "why": "not part of a cabinet"}))
+        .collect();
+    // Measured only what is built again: its boards' materials, and its panels.
+    let measure = measured(names_only, &names, run)?;
     let mut todo = Vec::new();
     for name in names {
         let about = run("component.metadata", json!({"component": name}))?;
@@ -214,7 +210,7 @@ fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, 
         };
         let entry = entry.to_string();
         let (_, base) = edit::merge(ours, &json!({}), &design)?;
-        match how.settings {
+        match settings {
             false => todo.push((name, about, entry, base, vec![])),
             true => match settings::apply(&entry, &base, stored) {
                 Some((params, changed)) => todo.push((name, about, entry, params, changed)),
@@ -222,54 +218,38 @@ fn apply(params: &Value, stored: &Value, how: Apply, run: Run) -> Result<Value, 
             },
         }
     }
-    let (mut applied, mut remaining, mut changes) = (Vec::new(), Vec::new(), Map::new());
+    let (mut applied, mut changes) = (Vec::new(), Map::new());
     let count = todo.len();
     for (i, (name, about, entry, params, changed)) in todo.into_iter().enumerate() {
-        let (commands, _) = build(&entry, &params)?;
-        let next = hardware::cost(&commands) + 40;
-        let elapsed = now().saturating_sub(start);
-        if !how.job && !applied.is_empty() && !drawing::fits(elapsed, used.get(), next) {
-            remaining.push(name);
-            continue;
-        }
-        if how.job {
-            let message = format!("{name} ({} of {count})", i + 1);
-            run(
-                "_progress",
-                json!({"fraction": i as f64 / count as f64, "message": message}),
-            )?;
-        }
+        let message = format!("{name} ({} of {count})", i + 1);
+        run(
+            "_progress",
+            json!({"fraction": i as f64 / count as f64, "message": message}),
+        )?;
         let design = run(
             "document.inspect",
             json!({"bodies": false, "timeline": false}),
         )?;
-        rebuild(&name, &about, &entry, &params, &design, &measure, &mut run)?;
+        rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
         changes.insert(name.clone(), json!(changed));
         applied.push(name);
     }
-    let with = if how.settings {
+    let with = if settings {
         "with the settings"
     } else {
         "as they were made"
     };
     let mut message = format!("{} cabinets built again {with}", applied.len());
-    if !remaining.is_empty() {
-        let n = remaining.len();
-        message += &format!("; {n} left: run Settings again with them picked");
-    }
     if !skipped.is_empty() {
         message += &format!("; {} skipped (see skipped)", skipped.len());
     }
-    Ok(
-        json!({"applied": applied, "changed": changes, "remaining": remaining,
-              "skipped": skipped, "message": message}),
-    )
+    Ok(json!({"applied": applied, "changed": changes, "skipped": skipped, "message": message}))
 }
 
 /// Builds the cabinet `name` again from `params` (`edit::merge`'s), where it stands: the same
 /// name, place, links, the materials of the boards that had another than the rest, and its
 /// panels. `about` is its `component.metadata`, `design` and `measure` read before. Edit, and
-/// Settings' Apply to selected.
+/// Apply settings.
 fn rebuild(
     name: &str,
     about: &Value,
@@ -286,6 +266,15 @@ fn rebuild(
     // The cabinets held to this one lose their link with it: found now, held again after.
     let joints = run("joint.list", json!({}))?;
     let hanging = edit::hanging(&tree, &joints, &name);
+    // Sized by its drawers' inside: its outside again from that, whatever changed the boxes.
+    let mut params = params.clone();
+    if entry == "cabinet" && params["sizing"] == "drawer" {
+        match params["drawers"].as_f64().unwrap_or(0.0) > 0.0 {
+            true => cabinet::from_drawers(&mut params)?,
+            false => params["sizing"] = json!("outside"),
+        }
+    }
+    let params = &params;
     run("component.activate", json!({"component": parent}))?;
     let gone = run("component.delete", json!({"component": name}))?;
     let (mut summary, made) = make(entry, params, design, run)?;
@@ -325,7 +314,10 @@ fn rebuild(
     // cabinets that were held to it, to the new one.
     let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
     let was = &about["metadata"][edit::KEY]["link"];
-    let measure = run("inspect.measure", json!({}))?;
+    // This cabinet and the one it was held to: what the links read.
+    let mut linked = vec![name.clone()];
+    linked.extend(was["to"].as_str().map(String::from));
+    let measure = measured(body_names(run)?, &linked, run)?;
     let mut held = false;
     if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
         if let Ok(other) = select::named(&measure, to) {
@@ -613,6 +605,55 @@ fn now() -> u64 {
     0
 }
 
+/// Every body's name, from `inspect.measure`'s `names_only`: nothing is measured. A whole
+/// kitchen's full measure takes over a second, this a few ms. What `select` finds by name
+/// (`owner`, `parts`, `piece`) reads it as it is.
+fn body_names(run: Run) -> Result<Value, String> {
+    run("inspect.measure", json!({"names_only": true}))
+}
+
+/// `names` (`body_names`) with the bodies of `cabinets` measured (boxes, materials, volumes),
+/// the others by name only: what placing, Edit, a panel, a worktop and Apply settings read.
+fn measured(names: Value, cabinets: &[String], run: Run) -> Result<Value, String> {
+    // each body once: the app refuses a name given twice
+    let mut wanted: Vec<String> = Vec::new();
+    for body in cabinets.iter().flat_map(|c| select::parts(&names, c)) {
+        if !wanted.contains(&body) {
+            wanted.push(body);
+        }
+    }
+    if wanted.is_empty() {
+        return Ok(names);
+    }
+    let mut measure = run("inspect.measure", json!({"bodies": wanted}))?;
+    let done: Vec<Value> = (measure["bodies"].as_array().into_iter().flatten())
+        .map(|b| b["name"].clone())
+        .collect();
+    let rest = (names["bodies"].as_array().into_iter().flatten())
+        .filter(|b| !done.contains(&b["name"]))
+        .cloned();
+    let rest: Vec<Value> = rest.collect();
+    match measure["bodies"].as_array_mut() {
+        Some(bodies) => bodies.extend(rest),
+        None => measure["bodies"] = json!(rest),
+    }
+    Ok(measure)
+}
+
+/// `measured` for the cabinets of the `picked` bodies.
+fn picked_measure(picked: &[String], run: Run) -> Result<Value, String> {
+    let names = body_names(run)?;
+    let mut owners: Vec<String> = Vec::new();
+    for body in picked {
+        if let Some(owner) = select::owner(&names, body).map(String::from) {
+            if !owners.contains(&owner) {
+                owners.push(owner);
+            }
+        }
+    }
+    measured(names, &owners, run)
+}
+
 pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     // The hardware models are not boards nor part of a footprint: no function sees them.
     let mut run = |command: &str, args: Value| {
@@ -623,6 +664,33 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
         Ok(reply)
     };
     let run: Run = &mut run;
+    // Cabinet's Mode Edit picked is Edit (one dialog for a new cabinet and a change to one);
+    // Auto goes by what is picked (`select::auto`, as the dialog hook does).
+    let mut params = params.clone();
+    let mut entry = match entry == "cabinet" && params["mode"] == "edit" {
+        true => "edit",
+        false => entry,
+    };
+    if entry == "cabinet" && params["mode"] == "auto" {
+        let design = run(
+            "document.inspect",
+            json!({"bodies": false, "timeline": false}),
+        )?;
+        let measure = run("inspect.measure", json!({}))?;
+        let picked = select::picked(&params, &design);
+        match select::auto(&measure, &picked) {
+            select::Auto::Edit(..) => entry = "edit",
+            _ => {
+                // the Edit fields the dialog hid but sent: a new cabinet takes the settings'
+                if let Some(all) = params.as_object_mut() {
+                    for key in edit::EDIT_ONLY {
+                        all.remove(key);
+                    }
+                }
+            }
+        }
+    }
+    let params = &params;
     // Woodwork settings: the design-wide joinery and hardware of a new cabinet, and the camera.
     let ends = matches!(entry, "cabinet" | "corner" | "edit" | "worktop");
     let stored = match ends || entry == "cutlist" {
@@ -676,6 +744,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             };
             let mut params = params.clone();
             settings::design(entry, &mut params, stored);
+            // The settings' defaults for its per-cabinet fields now, which it remembers: Apply
+            // settings later changes only those it still has (`settings::apply`).
+            params["_defaults"] = settings::defaults(entry, &params["units"], stored);
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
@@ -685,7 +756,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // but still sends a value it had.
             let matching = matching && !picked.is_empty();
             let measure = match matching || place != "origin" {
-                true => run("inspect.measure", json!({}))?,
+                true => picked_measure(&picked, run)?,
                 false => Value::Null,
             };
             if place == "auto" {
@@ -748,23 +819,59 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             Ok(summary)
         }
         "edit" => {
-            // The selected cabinet, built again where it stands with some of its values
-            // changed. Its parameters stay, so what is linked to them still follows.
+            // The picked cabinet, built again where it stands with the dialog's fields, which
+            // start as it is: left so, nothing is built. Its parameters stay, so what is linked
+            // to it still follows.
             let design = run(
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
-            let measure = run("inspect.measure", json!({}))?;
-            let name = select::piece(&select::picked(params, &design), &measure)?;
+            let picked = select::picked(params, &design);
+            let measure = picked_measure(&picked, run)?;
+            let mut names: Vec<String> = Vec::new();
+            for body in &picked {
+                if let Some(owner) = select::owner(&measure, body).map(String::from) {
+                    if !names.contains(&owner) {
+                        names.push(owner);
+                    }
+                }
+            }
+            let name = match names.as_slice() {
+                [] => select::piece(&picked, &measure)?, // says why
+                [one] => one.clone(),
+                _ => return Err("Edit changes one cabinet: pick a board of only one".into()),
+            };
             let about = run("component.metadata", json!({"component": name}))?;
             let ours = &about["metadata"][edit::KEY];
-            let changes = settings::edit_plinth(params, ours, &design, stored);
+            let entry = ours["entry"].as_str().unwrap_or_default();
+            // A cabinet made before Edit's file: the dialog could not show its values, so a
+            // field still at the dialog's default is taken as unchanged (`edit::unshown`), and
+            // the file is written now, for the next time.
+            let file = run("_get_blob", json!({"name": edit::blob(&name)}));
+            let unshown = file.as_ref().map_or(true, Value::is_null);
+            edit::design_wide(entry, params).map_err(|e| format!("`{name}`: {e}"))?;
+            let mut changes = edit::taken(entry, params);
+            if unshown {
+                changes = edit::unshown(&changes);
+                let (_, now) = edit::merge(ours, &json!({}), &design)?;
+                let parts = select::parts(&measure, &name);
+                let copy = edit::copy(entry, &now, &name, parts.iter().map(|b| b.as_str()));
+                let file = json!({"name": edit::blob(&name), "data": copy});
+                run("_put_blob", file)?;
+            }
+            let changes = settings::edit_plinth(&changes, ours, &design, stored);
             let (entry, params) =
                 edit::merge(ours, &changes, &design).map_err(|e| format!("`{name}`: {e}"))?;
-            // Checked before anything is taken away.
-            build(&entry, &params)?;
+            // The dialog shows the cabinet as it is: left as shown, nothing to build.
+            let (_, base) = edit::merge(ours, &json!({}), &design)?;
+            let changed = edit::changed(&params, &base);
+            if changed.is_empty() {
+                let message = format!("{name}: nothing changed");
+                return Ok(json!({"name": name, "edited": false, "message": message}));
+            }
             let mut summary = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
             summary["edited"] = json!(true);
+            summary["changed"] = json!(changed);
             Ok(summary)
         }
         "material" => {
@@ -777,8 +884,8 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let bodies = match params["scope"].as_str().unwrap_or("cabinet") {
                 "parts" => picked,
                 "cabinet" => {
-                    let measure = run("inspect.measure", json!({}))?;
-                    select::parts(&measure, &select::piece(&picked, &measure)?)
+                    let names = body_names(run)?;
+                    select::parts(&names, &select::piece(&picked, &names)?)
                 }
                 _ => return Err("scope must be cabinet or parts".into()),
             };
@@ -796,8 +903,8 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
-            let measure = run("inspect.measure", json!({}))?;
             let picked = select::picked(params, &design);
+            let measure = picked_measure(&picked, run)?;
             let name = select::cabinet(&picked, &measure)?.name;
             let board = picked[0].get(name.len() + 1..).unwrap_or_default();
             let side = panel::side(params, board)?;
@@ -841,7 +948,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 "document.inspect",
                 json!({"bodies": false, "timeline": false}),
             )?;
-            let measure = run("inspect.measure", json!({}))?;
+            let names = body_names(run)?;
             let tree = run("component.list", json!({}))?;
             let components: Vec<&str> = (tree["components"].as_array().into_iter().flatten())
                 .filter_map(|c| c["name"].as_str())
@@ -863,7 +970,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let (mut cabinets, mut old) = (Vec::<String>::new(), Vec::<String>::new());
             let (mut kept, mut any_cabinet) = (None, false);
             for body in select::picked(params, &design) {
-                if let Some(cabinet) = select::owner(&measure, &body) {
+                if let Some(cabinet) = select::owner(&names, &body) {
                     cabinets.push(cabinet.to_string());
                     any_cabinet = true;
                     continue;
@@ -915,7 +1022,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 }
             };
             params["name"] = json!(name);
-            // A cabinet deleted since a worktop remembered it is left out.
+            // Only the cabinets under it are measured. A cabinet deleted since a worktop
+            // remembered it is left out.
+            let measure = measured(names, &cabinets, run)?;
             cabinets.retain(|c| select::named(&measure, c).is_ok());
             let mut seen = std::collections::BTreeSet::new();
             cabinets.retain(|c| seen.insert(c.clone()));
@@ -1011,6 +1120,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             settings::design(entry, &mut params, stored);
             params["_notched"] = json!(cutlist::notched(&design));
             params["_grooved"] = json!(cutlist::grooved(&design));
+            params["_fingered"] = json!(cutlist::fingered(&design));
             params["_corners"] = Value::Object(corners);
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
@@ -1067,6 +1177,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // the board list notes them as the cut list does
             measure["notched"] = json!(cutlist::notched(&design));
             measure["grooved"] = json!(cutlist::grooved(&design));
+            measure["fingered"] = json!(cutlist::fingered(&design));
             let names = match params["scope"].as_str().unwrap_or("selected") {
                 "selected" => {
                     vec![select::cabinet(&select::picked(params, &design), &measure)?.name]
@@ -1194,65 +1305,234 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let stored = run("storage.get", json!({}))?;
             // See-through boards: our materials made so, or solid again, now.
             let changed = material::see_through(run, material::opacity(&stored))?;
-            let mut reply =
-                json!({"settings": stored["document"]["settings"], "see_through": changed});
-            // Apply to picked cabinets Yes: the cabinets picked in its field (not the design's
-            // selection, which a script may have left) built again with these settings. Only
-            // then, as the dialog fills the field with whatever is selected when it opens.
-            let picked = params["selection"]
-                .as_array()
-                .is_some_and(|p| !p.is_empty());
-            if params["apply"] == "yes" && picked {
-                let how = Apply {
-                    all: false,
-                    settings: true,
-                    job: false,
-                };
-                let applied = apply(params, &stored, how, run)?;
-                if let (Some(all), Some(more)) = (reply.as_object_mut(), applied.as_object()) {
-                    all.extend(more.clone());
-                }
-            }
-            Ok(reply)
+            // Settings only stores them: Apply settings builds cabinets again with them.
+            Ok(json!({"settings": stored["document"]["settings"], "see_through": changed}))
         }
-        // The job (0.48): every cabinet, or the picked ones, built again with the settings or
-        // as each was made, with progress per cabinet and no 30 s limit.
+        // Apply settings (a job, 0.48): the cabinets picked in its field, or every one when it
+        // is empty (not the design's selection, which a script may have left), built again with
+        // the settings or as each was made, with progress per cabinet and no 30 s limit.
         "rebuild" => {
             let stored = run("storage.get", json!({}))?;
-            let how = Apply {
-                all: params["scope"] != "selected",
-                settings: params["with"] != "made",
-                job: true,
-            };
-            apply(params, &stored, how, run)
+            let all = params["selection"].as_array().is_none_or(|p| p.is_empty());
+            apply(params, &stored, all, params["with"] != "made", run)
         }
         _ => Err(format!("unknown entry `{entry}`")),
     }
+}
+
+/// What the build would refuse in the Cabinet dialog's own fields (`values`), with the
+/// design-wide settings of `storage.get`'s reply filled in as the run does, as the field it is
+/// about and the reason: the build's checks (`cabinet::checked`, `corner::checked`), no design
+/// read. A corner shape is the corner builder's, its doors `corner_doors`.
+fn form_problem(values: &Value, stored: &Value) -> Option<(&'static str, String)> {
+    let corner = matches!(values["shape"].as_str(), Some("L-shaped" | "diagonal"));
+    let mut p = values.clone();
+    if let (true, Some(all)) = (corner, p.as_object_mut()) {
+        if let Some(doors) = all.remove("corner_doors") {
+            all.insert("doors".into(), doors);
+        }
+    }
+    settings::design(if corner { "corner" } else { "cabinet" }, &mut p, stored);
+    let checked = match corner {
+        true => corner::checked(&p),
+        false => cabinet::checked(&p),
+    };
+    let (field, why) = settings::problem(&checked.err()?, corner);
+    Some((settings::on_cabinet(field), why))
 }
 
 /// The dialog hook (`dialog@0.1`): the Cabinet and Corner dialogs' defaults from Woodwork
 /// settings. It runs outside a plugin run, so `storage.get` names our plugin. Edit's: the
 /// fields the selected cabinet does not take, hidden.
 pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
-    if entry == "edit" {
-        // A failing hook fails `plugin.run`: if the design cannot be read, hide nothing.
+    // Mode Auto with a door, front, shelf... picked: Edit picked's fields, the new cabinet's
+    // hidden (`select::auto`, as the run decides).
+    let mut read = None;
+    if entry == "cabinet" && values["mode"] == "auto" {
         let design = run(
             "document.inspect",
             json!({"bodies": "names", "timeline": false}),
         );
-        return Ok(design.map_or(json!({}), |d| edit::hidden(values, &d)));
+        let picked = (design.as_ref()).map_or(vec![], |d| select::picked(values, d));
+        let auto = (design.as_ref()).map_or(select::Auto::New, |d| select::auto(d, &picked));
+        if let select::Auto::Edit(..) = auto {
+            let mut edit = values.clone();
+            edit["mode"] = json!("edit");
+            let mut reply = dialog("cabinet", &edit, run)?;
+            for key in edit::NEW_ONLY {
+                reply[key] = json!({"visible": false});
+            }
+            reply["mode"] = json!({ "hint": auto.hint() });
+            return Ok(reply);
+        }
+        read = Some(design.clone()); // read once: the new cabinet's fields below use it too
+    }
+    if entry == "cabinet" && values["mode"] == "edit" {
+        let mut reply = dialog("edit", values, run)?;
+        // Cabinet's Shape: a box stays a box (greyed), a corner a corner
+        if reply["corner_doors"]["visible"] == false {
+            reply["shape"] = json!({"default": "box", "enabled": false});
+        }
+        return Ok(reply);
+    }
+    if entry == "edit" {
+        // Kept light, as the hook has 10M fuel and reading a 30-cabinet design's body names and
+        // parameters takes most of it: the picked boards from the dialog's field (the design's
+        // selection only when it is empty, as for a script), the cabinets from the names of our
+        // files (`storage.get`, small), and each picked cabinet's file (#128). A failing hook
+        // fails `plugin.run`, so a read that fails hides nothing.
+        let field = select::picked(values, &Value::Null);
+        let read = |run: Run| {
+            run(
+                "document.inspect",
+                json!({"bodies": "names", "timeline": false}),
+            )
+        };
+        // the design's selection alone (`_selection`)
+        let picked = match field.is_empty() {
+            true => run("_selection", json!({}))
+                .map(|d| select::picked(values, &d))
+                .unwrap_or_default(),
+            false => field,
+        };
+        let stored = run("storage.get", json!({"plugin": "woodwork"})).unwrap_or_default();
+        let files: Vec<&str> = (stored["blobs"].as_array().into_iter().flatten())
+            .filter_map(|b| {
+                b["name"]
+                    .as_str()?
+                    .strip_prefix("edit/")?
+                    .strip_suffix(".json")
+            })
+            .collect();
+        // A board's cabinet: the longest of our files' names its name starts with, whose file
+        // lists the board's first word (names alone would give "Cabinet 2"'s boards to "Cabinet").
+        let Some(body) = picked.first() else {
+            return Ok(json!({}));
+        };
+        let prefix = kit::prefix(body);
+        let mut owner: Option<(&str, Value)> = None;
+        for &f in &files {
+            let longer = owner.as_ref().is_none_or(|(o, _)| f.len() > o.len());
+            if !longer || !prefix.strip_prefix(f).is_some_and(|r| r.starts_with('_')) {
+                continue;
+            }
+            let blob = run("_get_blob", json!({"name": format!("edit/{f}.json")}));
+            let blob = blob.unwrap_or_default();
+            // a file from before the boards' names were kept has no `parts`
+            let lists = blob.get("parts").is_none_or(|parts| {
+                let word = prefix[f.len() + 1..].split('_').next();
+                (parts.as_array().into_iter().flatten()).any(|p| p.as_str() == word)
+            });
+            if lists {
+                owner = Some((f, blob));
+            }
+        }
+        if let Some((f, ours)) = owner {
+            if let (Some(entry), Some(shown)) = (ours["entry"].as_str(), ours["shown"].as_object())
+            {
+                // its sizes as they are in the design now, in the cabinet's units
+                let names: Vec<String> = (edit::SHOWN_SIZES.iter())
+                    .map(|k| format!("{f}_{k}"))
+                    .collect();
+                let found = run("_params", json!({ "names": names })).unwrap_or_default();
+                let scale = if ours["units"] == "in" { 25.4 } else { 1.0 };
+                let mut sizes = Map::new();
+                for (key, name) in edit::SHOWN_SIZES.iter().zip(&names) {
+                    if let Some(mm) = found[name].as_f64() {
+                        sizes.insert(key.to_string(), json!((mm / scale * 1e4).round() / 1e4));
+                    }
+                }
+                let mut reply = edit::fields(entry, shown, &sizes);
+                // A change the build would refuse, said on its field (as for a new cabinet);
+                // only when the cabinet as it is passes, so a field the change does not touch is
+                // never blamed.
+                let mut now = shown.clone();
+                now.extend(sizes);
+                now.insert("name".into(), json!(f));
+                now.insert("units".into(), ours["units"].clone());
+                let remembered = json!({"entry": entry, "params": now});
+                let checked = |changes: &Value| {
+                    let (entry, p) = edit::merge(&remembered, changes, &json!({}))?;
+                    match entry.as_str() {
+                        "corner" => corner::checked(&p),
+                        _ => cabinet::checked(&p),
+                    }
+                };
+                let changes = edit::unshown(&edit::taken(entry, values));
+                if let (Ok(()), Err(why)) = (checked(&json!({})), checked(&changes)) {
+                    let (field, why) = settings::problem(&why, entry == "corner");
+                    let text = format!("{why}: nothing is changed or previewed until this is");
+                    reply[settings::on_cabinet(field)]["hint"] = json!(text);
+                }
+                return Ok(reply);
+            }
+        }
+        // A cabinet made before has no file: only the other kind's fields are hidden, and the
+        // run then writes its file (nothing built).
+        let Ok(design) = read(run) else {
+            return Ok(json!({}));
+        };
+        return Ok(edit::hidden(values, &design));
     }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
+    // Apply settings: which cabinets the picked parts are, from our files' names (`storage.get`,
+    // small: no design read for the 10M fuel), as the run resolves them.
+    if entry == "rebuild" {
+        let files: Vec<String> = (stored["blobs"].as_array().into_iter().flatten())
+            .filter_map(|b| {
+                b["name"]
+                    .as_str()?
+                    .strip_prefix("edit/")?
+                    .strip_suffix(".json")
+            })
+            .map(String::from)
+            .collect();
+        let picked = select::picked(values, &Value::Null);
+        return Ok(json!({"selection": {"hint": select::applies_to(&files, &picked)}}));
+    }
     let mut reply = settings::fields(entry, values, &stored);
+    // A combination the build refuses (Doors 3 without dividers, ...), said at once on its
+    // field, as the preview then shows nothing: the build's own checks of the fields, with the
+    // design-wide settings filled in as the run does (no design read).
+    if entry == "cabinet" {
+        if let Some((field, why)) = form_problem(values, &stored) {
+            reply[field]["hint"] = json!(format!(
+                "{why}: nothing is made or previewed until this is changed"
+            ));
+        }
+    }
+    // Woodwork settings: a size out of bounds, or settings a new cabinet would refuse, said on
+    // the field of this dialog it is about (another section's is not shown here).
+    if entry == "settings" || entry.starts_with("settings-") {
+        if let Some((field, why)) = settings::trouble(values, &stored) {
+            if let Some(patch) = reply.get_mut(&field).filter(|f| f.is_object()) {
+                patch["hint"] = json!(format!("{why}: new cabinets would be refused"));
+            }
+        }
+    }
     // Match selected: Yes when a cabinet is picked, hidden when none is. A second read, a few
     // ms on the sample kitchen; if it fails, the field stays as it is.
     if entry == "cabinet" {
-        let design = run(
-            "document.inspect",
-            json!({"bodies": "names", "timeline": false}),
-        );
+        let design = read.unwrap_or_else(|| {
+            run(
+                "document.inspect",
+                json!({"bodies": "names", "timeline": false}),
+            )
+        });
         if let Ok(design) = design {
             reply["match"] = settings::matching(values, &design);
+            if let Some(all) = reply.as_object_mut() {
+                all.extend(settings::matched_sizes(values, &design));
+            }
+            // Mode Auto, a new cabinet (`select::auto`): the Edit fields hidden, and the
+            // hint says so. (The hook cannot set Mode: a reply that does is refused whole.)
+            if values["mode"] == "auto" {
+                let picked = select::picked(values, &design);
+                reply["mode"] = json!({"hint": select::auto(&design, &picked).hint()});
+                for key in edit::EDIT_ONLY {
+                    reply[key] = json!({"visible": false});
+                }
+            }
         }
     }
     Ok(reply)
@@ -1263,7 +1543,7 @@ mod tests;
 
 #[cfg(target_arch = "wasm32")]
 mod guest {
-    wit_bindgen::generate!({ path: "wit", world: "command-dialog-plugin" });
+    wit_bindgen::generate!({ path: "wit", world: "woodwork" });
 
     use craft::plugin::types::{FieldFailure, PluginError};
 
@@ -1277,6 +1557,51 @@ mod guest {
     }
 
     fn run(command: &str, args: serde_json::Value) -> Result<serde_json::Value, String> {
+        // Our files in the design (`storage@0.1`): JSON, a missing file read as null.
+        if command == "_put_blob" {
+            let (name, data) = (
+                args["name"].as_str().unwrap_or_default(),
+                args["data"].to_string(),
+            );
+            craft::plugin::storage::put_blob(name, data.as_bytes(), false, false)
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            return Ok(serde_json::Value::Null);
+        }
+        if command == "_get_blob" {
+            let name = args["name"].as_str().unwrap_or_default();
+            let bytes = craft::plugin::storage::get_blob(Some("woodwork"), name, 0, 16 * 1024)
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            return Ok(serde_json::from_slice(&bytes).unwrap_or_default());
+        }
+        // The design's selection, from `document.inspect`, whose other keys are not parsed: they
+        // are every parameter (78 KB in a 30-cabinet design), costly for the 10M fuel of a hook.
+        if command == "_selection" {
+            let args = serde_json::json!({"bodies": false, "timeline": false});
+            let reply = craft::plugin::commands::run("document.inspect", &args.to_string())
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            let at = reply.rfind("\"selection\"").ok_or("no selection")?;
+            let rest = reply[at + 11..].trim_start().trim_start_matches(':');
+            let mut values = serde_json::Deserializer::from_str(rest).into_iter();
+            let selection: serde_json::Value = values
+                .next()
+                .ok_or("no selection")?
+                .map_err(|e| e.to_string())?;
+            return Ok(serde_json::json!({ "selection": selection }));
+        }
+        // Some parameters' values (mm) by name, from `document.inspect`'s reply without parsing it.
+        if command == "_params" {
+            let args2 = serde_json::json!({"bodies": false, "timeline": false});
+            let reply = craft::plugin::commands::run("document.inspect", &args2.to_string())
+                .map_err(|e| format!("{command}: {e:?}"))?;
+            let mut found = serde_json::Map::new();
+            for name in args["names"].as_array().into_iter().flatten() {
+                let Some(name) = name.as_str() else { continue };
+                if let Some(v) = crate::kit::param_value(&reply, name) {
+                    found.insert(name.into(), v.into());
+                }
+            }
+            return Ok(serde_json::Value::Object(found));
+        }
         // A job's step (`apply`): the operations panel's bar and name.
         if command == "_progress" {
             let fraction = args["fraction"].as_f64().unwrap_or(0.0) as f32;

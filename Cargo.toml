@@ -1,6 +1,6 @@
 [package]
 name = "woodwork"
-version = "0.4.0"
+version = "0.5.0"
 license = "MIT"
 edition = "2021"
 description = "Woodworking plugin for SolidCraft: cabinets and cut lists"
@@ -13,10 +13,10 @@ crate-type = ["cdylib", "rlib"]
 serde_json = "1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wit-bindgen = "0.46"
+wit-bindgen = "0.63"
 
 [profile.release]
-opt-level = "s"
+opt-level = 3
 lto = true
 strip = true
 panic = "abort"

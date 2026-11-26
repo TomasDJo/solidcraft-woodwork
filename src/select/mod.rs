@@ -148,6 +148,131 @@ pub fn owner<'a>(measure: &'a Value, body: &str) -> Option<&'a str> {
         .max_by_key(|cabinet| cabinet.len())
 }
 
+/// What Cabinet's Mode Auto does with the picked boards: a door, front, shelf, divider or
+/// drawer part of a cabinet edits it; a side, top, bottom or back (what Match selected and Place
+/// use), or nothing, makes a new cabinet. One function for the dialog hook and the run, so the
+/// two never disagree. `names` is `inspect.measure`'s or `document.inspect`'s reply with body
+/// names.
+#[derive(Debug, PartialEq)]
+pub enum Auto<'a> {
+    New,
+    Beside(&'a str),
+    Edit(&'a str, &'static str),
+}
+
+pub fn auto<'a>(names: &'a Value, picked: &[String]) -> Auto<'a> {
+    let Some((body, cabinet)) = picked.first().and_then(|b| Some((b, owner(names, b)?))) else {
+        return Auto::New;
+    };
+    let part = &body[cabinet.len() + 1..];
+    let what = match part.split(' ').next().unwrap_or_default() {
+        "Side" | "Top" | "Bottom" | "Back" => return Auto::Beside(cabinet),
+        "Door" => "a door",
+        "Drawer" if part.ends_with("Front") => "a drawer front",
+        "Drawer" => "a drawer",
+        "Shelf" => "a shelf",
+        "Divider" => "a divider",
+        _ => "a part",
+    };
+    Auto::Edit(cabinet, what)
+}
+
+impl Auto<'_> {
+    /// What Mode's hint says Auto does.
+    pub fn hint(&self) -> String {
+        match self {
+            Auto::New => "Auto: a new cabinet".into(),
+            Auto::Beside(c) => format!("Auto: a new cabinet next to {c}"),
+            Auto::Edit(c, what) => format!("Auto: editing {c} ({what} is picked)"),
+        }
+    }
+}
+
+/// The cabinets of the picked `bodies`, once each in the order picked, and the bodies that are
+/// no cabinet's (a hardware model's definition, a worktop, ...). `cabinets` are the cabinets'
+/// name prefixes (`kit::prefix`): from their `Side L` boards in the run, from our files' names in
+/// Apply settings' dialog hook, so both resolve alike. A board is the cabinet's whose prefix is
+/// the longest its own starts with (`Base 2 Door` is `Base 2`'s, not `Base`'s), named as the
+/// board begins; a hinge or slide model's copy (`HW hinge (A:1/A Door:1/HW hinge:2)`) the first
+/// name on its path. With `by_name` (the hook, whose list misses cabinets made before they had a
+/// file, pre-0.5.0), a board none of them owns is the cabinet named before its board word
+/// (`Base 1 Side L`, `Base 1 Door 2`: `BOARD_WORDS`).
+pub fn cabinets_of(
+    cabinets: &[String],
+    bodies: &[String],
+    by_name: bool,
+) -> (Vec<String>, Vec<String>) {
+    let (mut found, mut skipped) = (Vec::new(), Vec::new());
+    for body in bodies {
+        let model = (body.strip_prefix("HW "))
+            .and_then(|b| b.split_once('(')?.1.split_once(':'))
+            .map(|(cabinet, _)| cabinet.to_string());
+        let own = crate::kit::prefix(body);
+        let board = (cabinets.iter())
+            .filter(|c| {
+                own.strip_prefix(c.as_str())
+                    .is_some_and(|r| r.starts_with('_'))
+            })
+            .max_by_key(|c| c.len())
+            .and_then(|c| {
+                // its name: as many characters as the prefix has, or 2 fewer for a `c_` added
+                let n = c.chars().count();
+                [n, n.saturating_sub(2)].into_iter().find_map(|k| {
+                    let name: String = body.chars().take(k).collect();
+                    let next = body.chars().nth(k);
+                    (crate::kit::prefix(&name) == *c && next == Some(' ')).then_some(name)
+                })
+            });
+        let named = by_name.then(|| by_board_word(body)).flatten();
+        match model.or(board).or(named) {
+            Some(owner) if !found.contains(&owner) => found.push(owner),
+            Some(_) => {}
+            None => skipped.push(body.clone()),
+        }
+    }
+    (found, skipped)
+}
+
+/// The first words of a cabinet's boards and parts after the cabinet's name.
+const BOARD_WORDS: [&str; 16] = [
+    "Side", "Top", "Bottom", "Back", "Door", "Drawer", "Shelf", "Plinth", "Rail", "Divider",
+    "Cleat", "Wall", "Leg", "Filler", "End", "Caster",
+];
+
+/// The cabinet a body belongs to by its name alone: what comes before its first board word.
+fn by_board_word(body: &str) -> Option<String> {
+    let words: Vec<&str> = body.split(' ').collect();
+    (1..words.len())
+        .find(|&i| BOARD_WORDS.contains(&words[i]))
+        .map(|i| words[..i].join(" "))
+}
+
+/// What Apply settings' dialog says on its field: the cabinets the picked parts resolve to
+/// (`cabinets_of`), and the parts that are no cabinet's; all cabinets when none is picked.
+pub fn applies_to(cabinets: &[String], bodies: &[String]) -> String {
+    if bodies.is_empty() {
+        return "Applies to all cabinets".into();
+    }
+    let (found, skipped) = cabinets_of(cabinets, bodies, true);
+    let mut hint = match found.len() {
+        1 => format!("Applies to 1 cabinet: {}", found[0]),
+        n => format!("Applies to {n} cabinets: {}", found.join(", ")),
+    };
+    if !skipped.is_empty() {
+        hint += &format!("; not part of a cabinet: {}", skipped.join(", "));
+    }
+    // the app takes at most 1024 bytes
+    if hint.len() > 1000 {
+        let mut end = 1000;
+        while !hint.is_char_boundary(end) {
+            end -= 1;
+        }
+        hint.truncate(end);
+        hint += "...";
+    }
+    hint
+}
+
 /// The selected bodies, by name: what the dialog's `selection` field holds (SolidCraft 0.44 picks
 /// it in the viewport), else the design's selection, which is what a script has. Both are
 /// selection references; for a face or an edge, the body it is on. A plain name is taken too.

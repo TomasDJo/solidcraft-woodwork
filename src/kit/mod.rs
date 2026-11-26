@@ -506,3 +506,28 @@ pub fn seat(cabinet: &str, side: &str, end: bool) -> String {
 
 #[cfg(test)]
 mod tests;
+
+/// The value of the parameter `name` in `document.inspect`'s reply as text, found without parsing
+/// it all (a 30-cabinet design's parameters are 78 KB, costly for a dialog hook's 10M fuel).
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+pub fn param_value(reply: &str, name: &str) -> Option<f64> {
+    let quoted = format!("\"{name}\"");
+    let mut from = 0;
+    while let Some(at) = reply[from..].find(&quoted).map(|i| i + from) {
+        from = at + quoted.len();
+        let before = reply[..at].trim_end().strip_suffix(':').map(str::trim_end);
+        if !before.is_some_and(|b| b.ends_with("\"name\"")) {
+            continue;
+        }
+        // the same parameter's `value` (its keys come sorted: name, unit, value)
+        let rest = &reply[from..];
+        let end = rest.find("\"name\"").unwrap_or(rest.len());
+        let value = rest[..end].find("\"value\"")? + "\"value\"".len();
+        let number = rest[value..].trim_start().strip_prefix(':')?.trim_start();
+        let len = number
+            .find(|c: char| !(c.is_ascii_digit() || "+-.eE".contains(c)))
+            .unwrap_or(number.len());
+        return number[..len].parse().ok();
+    }
+    None
+}

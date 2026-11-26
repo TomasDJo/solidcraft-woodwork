@@ -12,9 +12,10 @@ without doors.
 - [Corner cabinets](#corner-cabinets)
 - [Building a run: Place and Match selected](#building-a-run-place-and-match-selected)
 - [Changing sizes](#changing-sizes)
-- [Edit cabinet](#edit-cabinet)
+- [Edit a cabinet](#edit-a-cabinet)
 - [Material](#material)
-- [Rebuild cabinets](#rebuild-cabinets)
+- [Woodwork settings](#woodwork-settings)
+- [Apply settings](#apply-settings)
 - [Panel](#panel)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
@@ -32,6 +33,15 @@ without doors.
 | ![Plinth types: board, notched sides, legs and casters.](images/plinths.png) | |
 | *Plinth types: board, notched sides, legs and casters.* | |
 
+**A combination that cannot be made is said at once.** When the fields do not go together (three
+doors without the two dividers behind them, more drawers than the height holds, a depth too
+small), the preview shows nothing and the field it is about says why in its tooltip, such as Doors:
+"Doors must be 0, 1, 2 or one per compartment (dividers + 1 = 1 here): nothing is made or
+previewed until this is changed". Edit picked does the same for a change, and Woodwork settings
+for settings a new cabinet would refuse (casters on a plinth lower than 50 mm). The dialog's Run
+stays on: SolidCraft gives a plugin no way to turn it off, and a Run then fails with the same
+reason.
+
 One dialog for every cabinet: **Shape** is a Box (below) or a corner cabinet, L-shaped or
 diagonal (see [Corner cabinets](#corner-cabinets)); the dialog shows only the fields of the
 shape chosen, and a corner starts at its own sizes (900 wide, 900 return). Corner
@@ -45,6 +55,7 @@ component can hold its cabinets.
 
 | Field | What it does |
 |---|---|
+| **Mode** | **Auto** (the default) goes by what is picked: a door, drawer front, shelf, divider or drawer part of a cabinet changes that cabinet, as Edit picked (see [Edit a cabinet](#edit-a-cabinet)); a side, top, bottom or back makes a new cabinet next to it (with Match selected and Place as usual); nothing picked, a new cabinet. Mode's hint says which ("Auto: editing Cabinet 2 (a door is picked)"); pick another part to switch. **New cabinet** and **Edit picked** do that whatever is picked. |
 | **Kind** | Standard or a sink base: see [Sink base](#sink-base). |
 | **Units** | The sizes in the dialog in mm or inches. Inches puts inch sizes in the fields you have not changed. |
 | **Width, Height, Depth, Panel thickness** | The outside sizes. Height includes the plinth. |
@@ -52,13 +63,13 @@ component can hold its cabinets.
 | **Wall mount** (the cleat's height and thickness in Woodwork settings) | How the cabinet hangs on the wall: none, a French cleat, a hanging rail or a steel rail. See [Wall mount](#wall-mount). |
 | **Dividers** | Vertical dividers, splitting the inside into equal compartments, each with the same shelves. |
 | **Shelves** | Shelves in each compartment, evenly spaced. |
-| **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers. |
-| **Drawer front height** | 0 is Auto: 150 mm beside doors, all alike for drawers only. Otherwise at least 100 mm (4 in; more with boards thicker than 16 mm beside doors, as the box needs room), and a lower value is refused with a message that names the minimum. With doors: the height of each drawer front. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below). Typical: 150 mm beside doors, 140 mm for the top of a stack. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with Edit cabinet, not by setting the parameter to 0. |
-| **Size by**, **Drawer inside width** and **depth** | With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a wooden runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box and the back. The cabinet is then made and remembered with that outside size, which the summary gives: the drawer size is only the starting point, and Edit and Parameters work on the outside size. Not with Match selected. |
+| **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers: with drawers the dialog hides Dividers. |
+| **Drawer front height** | 0 is Auto: 150 mm beside doors, all alike for drawers only. Otherwise at least 100 mm (4 in; more with boards thicker than 16 mm beside doors, as the box needs room), and a lower value is refused with a message that names the minimum. With doors: the height of each drawer front. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below). Typical: 150 mm beside doors, 140 mm for the top of a stack. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with an Edit, not by setting the parameter to 0. |
+| **Size by**, **Drawer inside width** and **depth** | With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box and the back. The cabinet is made with that outside size, which the summary gives, and remembers the drawer inside size: when the slides, the drawer boards or anything else around the boxes changes later (Woodwork settings and Apply settings, or Edit), its outside is worked out again so the boxes keep their inside. Edit shows Size by and the inside sizes for it; a width changed in Parameters is replaced by the one the inside needs at the next Edit or Apply settings. Not with Match selected. |
 | **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
-| **Plinth** | Yes (the default): the plinth set in Woodwork settings, its height (100 mm unless set), type and set-back. No: none, for a wall cabinet or a cabinet on top. With Match selected the plinth is the selected cabinet's, as before. |
-| **Plinth type** (Woodwork settings) | **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
-| **Plinth set-back** (Woodwork settings) | With a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
+| **Plinth / toe kick** | Yes (the default): the plinth set in Woodwork settings, its height (100 mm unless set), type and set-back. No: none, for a wall cabinet or a cabinet on top. With Match selected the plinth is the selected cabinet's, as before. |
+| **Plinth / toe kick type** (Woodwork settings) | **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
+| **Plinth / toe kick set-back** (Woodwork settings) | With a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. Off, the shelves are fixed and joined by Joinery inside (a cabinet made before 0.2.0 keeps them unjoined, as it has no method). |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
@@ -76,9 +87,8 @@ The joinery and the hardware (Joinery, Joinery inside and their sizes, Hardware 
 opening, Slide type), and the fields marked (Woodwork settings) above, are no fields here: they are the same for the whole design, set in
 [Woodwork settings](#woodwork-settings), and a new cabinet takes what is stored there (dowels,
 models shown, 110 degrees and full extension when nothing is). It remembers them, so changing
-the settings later does not change it; Edit cabinet changes them for one cabinet. The slide
-length is always Auto on a new cabinet (the longest that fits its depth); Edit cabinet can
-choose another.
+the settings later does not change it until Apply settings builds it again with them. The slide
+length is Auto (the longest that fits its depth).
 
 ### Doors and drawers move
 
@@ -97,9 +107,9 @@ it. A cabinet placed against another is held to that one instead.
 
 ### Hinges and slides
 
-![Wooden runners: each drawer's bottom runs in a groove in the sides.](images/wood-runners.png)
+![Dado runners: each drawer's bottom runs in a groove in the sides.](images/wood-runners.png)
 
-*Wooden runners: each drawer's bottom runs in a groove in the sides.*
+*Dado runners: each drawer's bottom runs in a groove in the sides.*
 
 A box cabinet drills the holes its hinges and drawer slides need, every size and place an
 expression over design parameters that all cabinets share, made the first time a cabinet
@@ -134,14 +144,14 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   the box or carcass sides. The sizes come from the makers' sheets and are not all confirmed:
   check yours. Partial pulls out three quarters of the length, full all of it; the cut list
   names them `Drawer slide, undermount full extension, 500 mm, pair`.
-- **Wooden runners** (Slide type Wood): no slides, holes or models. The box stands 1 mm
+- **Dado runners** (Slide type Dado runners, the drawer's bottom running in a groove, a dado, in each side): no slides, holes or models. The box stands 1 mm
   clear of each side on a bottom wider than it, whose edges run in a groove in each carcass
   side (`Name Side L runner 1` and on, front to back), as high as the bottom plus 1 mm of play
   above and below, 6 mm deep, the bottom 1 mm short of its end. The parameters
   `Name_runner_depth` (3 mm up to the panel thickness less 6) and `Name_runner_play`. With no
   stop, the drawer pulls out two thirds of its box's depth. The cut list notes the grooved
   sides and counts no slides. A 9 mm bottom (Drawer bottom thickness) runs better than 6.
-- **Slide length** (Edit cabinet; a new cabinet takes Auto): the standard side-mount
+- **Slide length** (Auto, set by the cabinet's depth): the standard side-mount
   ball-bearing lengths, 250, 270 and 300 to 650 mm in steps of 50, or 10 to 28 in in steps of
   2. **Auto**
   takes the longest one in the cabinet's unit that fits the drawer boxes with 3 mm behind it
@@ -149,7 +159,7 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   list's hardware names it with the type ("Drawer slide, full extension, 500 mm, pair");
   drawers made before have the plain "Drawer slide, pair". Undermount slides are not offered
   yet.
-- **Hardware models** (Woodwork settings for new cabinets, and Edit cabinet): with **Shown**,
+- **Hardware models** (Woodwork settings, then Apply settings for those made): with **Shown**,
   the default, each hinge is a simple model: a cup in its hole and
   an arm behind the door, which swing with it, and a mounting plate (8.5 mm thick, 40 deep) on
   the side over the plate's two holes, which stays; the arm lies on the plate. Its arm is
@@ -230,7 +240,7 @@ There is no oven housing: size a tall cabinet for your oven yourself.
 *Dowels at build, with fastener models on and see-through boards.*
 
 **Joinery** (in [Woodwork settings](#woodwork-settings), for the whole design, with the sizes
-below; Edit cabinet changes the method of one cabinet) chooses how the sides are fixed to the
+below; Apply settings takes it to the cabinets made) chooses how the sides are fixed to the
 bottom and the top (a sink base's to its bottom and its two rails), and the holes are drilled
 as the cabinet is made:
 
@@ -266,6 +276,26 @@ as the cabinet is made:
   Joinery inside: a divider grows into grooves in the bottom and top, the rail into the sides.
   Glue them; nothing to buy. The depth leaves 3 mm of the side behind the groove at least.
   A corner cabinet refuses it.
+- **Finger joints** (the shell only, box and corner cabinets): the bottom and top run through the sides
+  to the outside, and the corners interlock in an odd count of equal fingers, the sides keeping
+  the outer ones. **Finger width** (Woodwork settings) is 0 by default, making the fingers as wide
+  as the boards are thick, and following the thickness. Each finger is a box cut, repeated along
+  the corner, so the count follows a resize. The cut list gives the bottom and top at their size over
+  the fingers (a 600 mm cabinet's bottom is 600) with the note "finger jointed"; the layouts
+  and DXF draw rectangles. Glue them; nothing to buy. Not for Joinery inside. A corner cabinet's bottom and top run
+  through all four uprights round them, its back through the back return and the back leg's
+  end, the back return through the return's end; where two uprights meet, their corner is cut
+  out of the bottom and top. Butted (as None) instead where fingers cannot be made: with a
+  wall mount the backs stand on the bottom, under the top and against the middle of the ends
+  (mortises, not corners), and a diagonal cabinet's bottom and top keep their front edges for
+  the slanted front, so they are butted to the two ends. Over a plinth board or notched sides the sides reach below the bottom, where its
+  fingers would be closed mortises through the sides (a CNC job): the bottom is then butted (as
+  Joinery None) and keeps its own width, unless **Finger-joint
+  the bottom too** (Woodwork settings; shown only with a board or notch plinth) is Yes. On legs or casters, or with no plinth, the
+  bottom is finger-jointed as the top. The top is always flush with the sides' top edges.
+  **Drawer box joints** (Woodwork settings): Finger joints give the drawer boxes the same
+  at their four corners, the box's front and back running through the sides, fingers as wide as
+  the box boards are thick, the sides keeping the outer ones.
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
 **Joinery inside** does the same for fixed shelves (without **Shelf pin holes** the shelves are
@@ -288,8 +318,8 @@ middle. The sizes are the cabinet's design parameters (`Name_joint_spacing`,
 `Name_joint_edge`, `Name_dowel_d`, `Name_dowel_length`): change one in Parameters, or change
 the depth, and the holes follow, their number too. The cut list counts what to buy from the
 parameters `Name_dowels`, `Name_confirmats`, `Name_screws`, `Name_cams`, `Name_pocket_screws`, `Name_biscuits_20` (and `_0`, `_10`) and `Name_dominos` (the sum of the joints' counts, so they follow
-as well), as "Dowel, 8 x 35 mm" or "Confirmat screw, 7 x 50 mm". Edit cabinet changes either
-method (its sizes stay as they are in Parameters); Woodwork settings keeps the two methods and
+as well), as "Dowel, 8 x 35 mm" or "Confirmat screw, 7 x 50 mm". Apply settings gives
+the cabinets made a changed method (their sizes stay as they are in Parameters); Woodwork settings keeps the two methods and
 their sizes for new cabinets. Each joint is a cut in the cabinet's history folder (`Name joint Side L Bottom
 dowels`, `... confirmat` and `... confirmat pilot`), repeated along it by a pattern; the joints
 that run the same way with the same count share one (`Name joint Side L Bottom dowels row`).
@@ -311,7 +341,7 @@ that run the same way with the same count share one (`Name joint Side L Bottom d
   and thickness, nested under the cabinet's, its top bevelled to match (low at the wall, high in
   front), its long front face a cleat height tall. The cabinet's weight pulls it into the wall.
   The wall cleat is a body in the cabinet's component, so it moves with the cabinet, is built
-  again by Edit cabinet and Match selected, is deleted with the cabinet, and is in the cut list
+  again by an Edit and Match selected, is deleted with the cabinet, and is in the cut list
   as `Name Wall cleat`. **Cleat height** (on the long face, 90 mm or 3.5 in) and **Cleat
   thickness** (18 mm or 3/4 in) are the design parameters `Name_cleat_height` and
   `Name_cleat_thickness`: change them in Parameters and both cleats follow. Twice the height
@@ -342,7 +372,7 @@ wall, so a cleat or a hanging rail needs a back in a groove or none; a steel rai
 
 Cabinet with **Shape** Corner, L-shaped or Corner, diagonal builds a cabinet for a corner of the room: bottom, top and shelves that fill the corner,
 optional plinth, shelf pin holes, and doors hinged at the end you choose, with handle holes.
-**Plinth** (Yes or No) and the plinth of Woodwork settings work as on the box cabinet: a board set back from the fronts, the two end panels
+**Plinth / toe kick** (Yes or No) and the plinth of Woodwork settings work as on the box cabinet: a board set back from the fronts, the two end panels
 notched at their front bottom corners, or legs under the corners of the footprint (six under the
 L, the sixth in its inner corner; five under the diagonal) with the ends and backs standing on them.
 **Casters** stand it on locking casters at the legs' places, but 50 mm in from the inside of
@@ -378,7 +408,7 @@ and the bottom and top into the four upright boards round them. With a cleat or 
 the backs stand on the bottom and under the top, so those joints go up into the backs instead.
 Split boards keep their two dowels at the joint between the two pieces (an edge joint the
 other methods cannot make); each piece is joined to the boards it meets. L-shaped and
-diagonal alike; Edit cabinet changes the method.
+diagonal alike; Apply settings changes the method of those made.
 
 **Corner** is the side the return is on. On Auto it is on the right when you place the
 cabinet right of the selected one, as a run that ends in a corner needs it, and else on the
@@ -410,11 +440,12 @@ Two shapes:
 
 Select any part of a cabinet, then open **Cabinet**. The selection
 shows in the dialog as **Selected cabinet**. Click that field and pick another board in the
-model while the dialog is open, and the preview follows. Edit cabinet, Material and Drawing
+model while the dialog is open, and the preview follows. Material and Drawing
 have the same field.
 
 **Match selected** shows only when a cabinet's board is picked, and then starts at Yes: the new
-cabinet takes the picked one's height, depth, thickness and plinth, linked. With nothing picked
+cabinet takes the picked one's height, depth, thickness and plinth, linked. While it is on, those four fields show the picked cabinet's values, greyed: change them on
+that cabinet, or turn Match selected off. With nothing picked
 it is hidden and not used. A script still says `match` (`selected` with nothing selected makes
 the cabinet unmatched); one that leaves it out gets Yes when a cabinet is selected.
 
@@ -447,29 +478,32 @@ A cabinet's sizes are design parameters: `Name_width`, `Name_height`, `Name_dept
 `Name_thickness` and so on. Change one in the Parameters table and the cabinet follows, its
 doors' hinges included.
 
-The counts (shelves, dividers, doors, drawers) are changed with Edit cabinet.
+The counts (shelves, dividers, doors, drawers) are changed with an Edit.
 
-## Edit cabinet
+## Edit a cabinet
 
-Changes a cabinet after it is made. Select any part of it, fill in only what should change and
-leave the rest empty or on Keep: shelves, dividers, doors, the side the first door is hinged
-on, drawers, drawer front height, where the drawers go beside doors (top or bottom), fronts
-(overlay or inset), reveal, back, shelf pin holes, handles and their position, labels, plinth
-(Yes keeps the cabinet's own plinth, or gives one without a plinth the height and type of
-Woodwork settings; No takes it away), plinth type, plinth set-back, the kind (standard or sink base), the wall mount, the
-[joinery](#joinery-at-build) (Joinery inside on box cabinets only; the sizes stay as they are in Parameters), and a corner cabinet's doors and shape. The reveal, the plinth set-back and the drawer
-front height are taken from Parameters unless the edit gives them. Drawers added to a cabinet
-with doors go at the top unless Drawers at says Bottom; an edit that takes the doors away from
-a cabinet with drawers makes the drawers all alike again unless it gives a drawer front height.
-Kind Sink base hides shelves, dividers, shelf pins and where the drawers go (a sink base with
-doors needs Doors 0 for drawers); Kind Standard or Sink base
-hides the corner cabinet's fields; Doors 0 hides the hinge side, Handle holes None the handle
-position.
+Changes one cabinet after it is made: the Cabinet dialog with **Mode** on **Edit picked**, or on Auto with a door, front, shelf or
+drawer of the cabinet picked. Select any part of the cabinet: the fields show that cabinet as it is, each field at its current value (the sizes as they are in Parameters), and
+only the fields that apply show (no doors: no hinge side; no drawers: no drawer height or
+Drawers at; no plinth: no plinth type). Change what should change; with nothing changed the
+cabinet is not built again. The fields are the cabinet's own: width, height, depth (and a
+corner's return), the kind (standard or sink base) or a corner's shape, doors and the side the
+first door is hinged on, drawers, drawer front height and where the drawers go beside doors,
+shelves, shelf pin holes, dividers, fronts (overlay or inset), handles and their position,
+back, plinth (Yes keeps the cabinet's own plinth, or gives one the height of Woodwork
+settings; No takes it away), plinth type, wall mount and labels. What is the same for the
+whole design (joinery, hardware models, hinge opening, slide type, board thickness, reveal,
+the plinth's height and set-back) is changed in [Woodwork settings](#woodwork-settings), then
+Apply settings. Drawers added to a cabinet with doors go at the top unless Drawers at says
+Bottom; an edit that takes the doors away from a cabinet with drawers makes the drawers all
+alike again unless it gives another drawer front height. Name, Match selected, Place and what
+only a new cabinet takes (units, board thickness, material, the drawer sizing) are hidden:
+renaming would cut the cabinets matched to it loose.
 
-The dialog shows only the fields of the cabinet that is picked: a corner cabinet's doors and
-shape for a box cabinet are hidden, and for a corner cabinet the kind, dividers, doors, the
-hinge side, drawers, drawer front height, Drawers at and back. With nothing picked, or a
-board that is no cabinet's, it shows them all.
+A corner cabinet shows its doors, shape and return instead of the kind, dividers, doors,
+hinge side, drawers and back. A cabinet made before Woodwork kept its values for Edit opens
+with the dialog's defaults the first time: what you change is built, and a field left at its
+default keeps the cabinet's value. From then on Edit shows the cabinet's values.
 
 The cabinet is built again where it stands, under the same name. Its sizes stay as they are
 in Parameters, its doors keep their material, its joinery is made again, and cabinets
@@ -491,49 +525,47 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 
 ## Woodwork settings
 
+**Show settings for**, at the top, picks one group of the settings to show below it (a divider
+row parts it from them): General (units, material, board thickness, back, labels), Doors and
+fronts (fronts, reveal, handles, hinge opening), Drawers (box boards, slide type), Plinth / toe kick and
+wall mount, Joinery (the methods and their sizes), Cut list and worktop, Display (hardware and
+fastener models, see-through boards, camera), or All. Units is in General and is kept: the
+other groups give their sizes in it, and each size's hint says which. The settings of the other
+groups are not changed by a run: they keep what is stored. A script may leave the group out;
+every field it gives is used whatever the group, and its sizes are in the `units` it gives (else
+the stored one).
+
 The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
 holes, plinth height and plinth type. Set the ones you want and run it; Keep or an empty field
-leaves what is stored, and the result shows everything stored now. The Cabinet and Corner
-cabinet dialogs then open with these values (the hint says "From Woodwork settings"), in the
+leaves what is stored, and the result shows everything stored now. The Cabinet
+dialog then opens with these values (the hint says "From Woodwork settings"), in the
 dialog's own unit: a 19.05 mm thickness shows as 0.75 in when Units is Inches. You can still
 change any field before Run. A script's `plugin.run` that leaves a field out gets the stored
 value too.
 
-It also holds what is the same for the whole design and is no field of the Cabinet and Corner
-cabinet dialogs: the back and its thickness, fronts (overlay or inset), handle position, the
+It also holds what is the same for the whole design and is no field of the Cabinet
+dialog: the back and its thickness, fronts (overlay or inset), handle position, the
 plinth's height, type and set-back (a cabinet only says Yes or No), labels, a French cleat's
 height and thickness; for the cut list the edge banding, the sizes it gives, the sheet size,
 saw kerf and edge trim; for a new worktop its material and thickness (the overhangs stay in
 the Worktop dialog: they differ from run to run); and the joinery (**Joinery**, **Joinery inside**, and the sizes of the method
 chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel diameter**,
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
-face**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
-**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, wooden runners or undermount partial or full,
-**Fastener models**; see [Hinges and slides](#hinges-and-slides)). The dialog starts at what is stored, or at the
+face**, **Finger width**, **Finger-joint the bottom too**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
+**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, dado runners or undermount partial or full,
+**Fastener models**; see [Hinges and slides](#hinges-and-slides)) and **Drawer box joints** (none or finger joints). The dialog starts at what is stored, or at the
 defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowels, models
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
-them later leaves the cabinets made before as they are, and Edit cabinet changes the methods,
-the models, the hinge opening and the slide type of one cabinet. A corner cabinet takes the
+them later leaves the cabinets made before as they are, and Apply settings gives them the
+methods, the models, the hinge opening and the slide type stored. A corner cabinet takes the
 carcass method (dowels for a dado). A script cannot give them to `woodwork.cabinet` (an unknown field is refused): it runs `woodwork.settings` first, such as
 `{"joints": "confirmat", "joint_spacing": 300}`. A size that shows only with a choice needs the
 choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `back`,
 `plinth_setback` with `plinth_type`).
 
-- **Apply to picked cabinets** (No by default) and **Picked cabinets**: changing the settings
-  does not change the cabinets already made. Set Apply to Yes, pick a board of each cabinet to
-  bring up to date and run: the settings
-  are stored and each picked cabinet is built again with them, where it stands (the same name,
-  links, panels and the materials of single parts you changed), taking only what that cabinet
-  uses: a cabinet without a plinth keeps none, a corner cabinet takes no drawer or inside
-  settings. Material, thickness, reveal and handles count only when they are stored. A cabinet
-  that already has the settings is skipped. One run builds as many as fit in SolidCraft's 30 s
-  and 256 commands (at least one); the result says how many are left, and running it again with
-  the same cabinets picked does the rest. With No the settings are only stored, whatever is
-  picked (the dialog fills the field with what is selected when it opens). Any part of a
-  cabinet can be picked, a hinge or slide model too. The result names each cabinet built again
-  with the settings that changed on it (`changed`), and each one skipped and why (`skipped`:
-  already has these settings, or not part of a cabinet). A script passes
-  `"apply": "yes"` and the cabinets in `selection` (the design's selection is not used).
+- Changing the settings does not change the cabinets already made: Settings only stores them.
+  **Apply settings** builds cabinets again with them (it was Settings' Apply to picked cabinets
+  before).
 - The settings are kept in the design (SolidCraft 0.46, `storage@0.1`), not for you as a user:
   a new design starts with none.
 - **Camera after a run**: Fit (the default) frames the result after a cabinet, corner, edit or
@@ -548,20 +580,40 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
 - Nothing is cleared: to go back to a default, set it to that value.
 - The dialog does not remember the last values you used; only what Woodwork settings stored.
 
-## Rebuild cabinets
+## Apply settings
 
-Builds cabinets again where they stand, as a long job (SolidCraft 0.48 or later): no 30 s
-limit, a row in the operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and
-Cancel, which leaves the design as it was. A job has no Preview.
+Builds cabinets again with the Woodwork settings, where they stand (the same name, links, panels
+and the materials of single parts you changed), as a long job: no 30 s limit, a row in the
+operations panel with a bar that moves on per cabinet ("A (2 of 6)"), and Cancel, which leaves
+the design as it was. A job has no Preview.
 
-- **Build again**: **With the settings** gives each cabinet the Woodwork settings stored now,
-  where its own differ, as Settings' Apply to picked cabinets does but for any number of
-  cabinets (Settings stops after about 20 s and lists the rest). **As made** builds each with
-  its own values and sizes from Parameters, for example after updating Woodwork.
-- **Cabinets**: **All** box and corner cabinets in the design, or the **Picked** ones (a board
-  of each).
+- **Cabinets**: a part of each cabinet to build again (any board, a hinge or slide model
+  too); several parts of one cabinet count once. Empty: all box and corner cabinets in the
+  design. The field's count is of parts; the note under it names the cabinets they are ("Applies
+  to 3 cabinets: Base 1, Base 2, Wall 1") and any part that is no cabinet's. The dialog fills it
+  with what is selected when it opens; a script passes the parts in `selection` (the design's
+  selection is not used).
+- **Build again**: **With the settings** gives each cabinet the design-wide settings stored now,
+  taking only what that cabinet uses: a corner cabinet takes no drawer or inside settings.
+  Material, thickness and reveal count only when they are stored. A cabinet that already has the
+  settings is skipped. It never changes what you chose for a cabinet:
+  - **Design-wide, applied:** board material and thickness, reveal, joinery and its sizes,
+    hardware (models, hinge opening, slide type, fasteners), back, drawer and cleat thicknesses,
+    and the plinth height and set-back (only on a cabinet with a plinth).
+  - **Per cabinet with a default in Settings:** plinth Yes or No, plinth type, handles, handle
+    position, fronts, back and labels. A cabinet that still has the default it was made with
+    follows the new setting (all cabinets made on board plinths get legs); one with a value of
+    its own keeps it (a wall cabinet made without a plinth keeps none). A value set by hand that
+    is the same as the default then counts as the default, and follows. A cabinet made before
+    Woodwork 0.5.0 is taken as made with the built-in defaults.
+  - **Per cabinet only, kept:** sizes, shape and kind, doors, drawers and where they are,
+    shelves, shelf pins, dividers, door hinge side and wall mount.
 
-The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why.
+  **As made** builds each with its own values and sizes from Parameters, for example after
+  updating Woodwork.
+
+The reply names the cabinets `applied`, what `changed` in each, and those `skipped` and why
+(already has these settings, or not part of a cabinet).
 
 ## Panel
 
@@ -586,7 +638,7 @@ in a folder of the history under its first board's name. One panel per side, and
 where another cabinet stands against it. Not on corner cabinets.
 
 To take a panel off, delete its folder in the history (with its features), not only the board:
-Edit cabinet then leaves it out. A cabinet placed on a side that carries a panel (Right or Left, or
+An Edit then leaves it out. A cabinet placed on a side that carries a panel (Right or Left, or
 the panel picked with Auto) stands beyond the panel, so a filler can go between two cabinets.
 It is then not linked to the first: it does not follow when that one's width changes. A
 drawing's width is over all, the panels included; its views take the panels in. On a cabinet turned a quarter (one placed past a
@@ -651,7 +703,7 @@ its battens go, such as a shelf, a divider, a drawer or a door the opening reach
 refused by name: make the cabinet without it (with 20 mm doors and a 40 mm front overhang, keep
 the opening's front edge at least 40 mm from the worktop's front). So is an opening that
 reaches over the cabinet's back. The opening in the cabinet's top is a cut the cabinet does not
-remember: Edit cabinet makes its top whole again (run Worktop again afterwards), and a tool
+remember: an Edit makes its top whole again (run Worktop again afterwards), and a tool
 moved on a run again leaves the old opening in the top. The tool's bolt holes in the shelf and
 an outfeed table or side wing are not made.
 
@@ -802,7 +854,7 @@ quarter turn) is drawn from its own front.
   cabinet stops starting sheets after about 20 s (a sheet takes 12 commands) and answers with the
   sheets drawn and those left, such as "Drew 6 of 13 sheets; run Drawing again for the rest". Run it
   again until none are left: each run carries on where the last one stopped.
-- **Draw a cabinet again after Edit cabinet**: Edit builds the cabinet anew, and the old sheet's
+- **Draw a cabinet again after an Edit**: Edit builds the cabinet anew, and the old sheet's
   views go blank and its sizes are lost. A deleted cabinet's sheet stays until you delete it.
 - The drawing is in mm also in a design in inches.
 

@@ -4,6 +4,7 @@ import json
 from helpers import *
 
 DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems", "x-solidcraft-visible-when",
+         "x-solidcraft-enabled-when",
          "x-solidcraft-defaults"}
 WHEN = "x-solidcraft-visible-when"
 
@@ -48,19 +49,29 @@ def test_choices_have_titles(approval):
             at = (entry["name"], name)
             # A keyword the dialog cannot draw leaves the entry with Run turned off.
             assert set(field) <= DRAWN, (at, set(field) - DRAWN)
+            # A selection field with any other keyword, `default` too, has no dialog (0.49:
+            # "This entry needs to be run from the agent or CLI").
+            if field["type"] == "array":
+                assert set(field) <= {"type", "title", "description", "maxItems", WHEN}, at
             # A field shown only when it applies (0.46). Hidden, it is left out of Run and not
             # required; it still has a default for when it shows, as `required` orders it.
             # Its controllers are sibling scalar fields, and each value one they can have. A
             # hidden controller matches neither `eq` nor `in`, so `not` over a controller that
             # can hide comes true when it hides: write such a test as an `in` list instead.
             if WHEN in field:
-                assert name not in schema["required"] or "default" in field, at
+                assert name not in schema["required"] or "default" in field or field["type"] == "array", at
                 for leaf, negated in conditions(field[WHEN]):
                     controller = schema["properties"][leaf["field"]]
                     assert leaf["field"] != name and controller["type"] in ("string", "boolean", "number", "integer"), at
                     values = [leaf["eq"]] if "eq" in leaf else leaf["in"]
                     assert values and all(fits(controller, v) for v in values), (at, leaf)
                     assert not (negated and WHEN in controller), (at, leaf)
+            # Greyed while a condition is false (0.49, `x-solidcraft-enabled-when`): still sent,
+            # over sibling scalar fields with values they can have.
+            for leaf, _ in conditions(field.get("x-solidcraft-enabled-when", {"all": []})):
+                controller = schema["properties"][leaf["field"]]
+                values = [leaf["eq"]] if "eq" in leaf else leaf["in"]
+                assert leaf["field"] != name and all(fits(controller, v) for v in values), (at, leaf)
             # A conditional default (0.46): a size's inch default when Units is Inches, or a
             # corner cabinet's when Shape is a corner, until the field is changed. Each rule a
             # sound condition over sibling fields, and a value the field can have.
@@ -88,7 +99,7 @@ def test_choices_have_titles(approval):
             assert field["default"] in values, at
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
-    assert choices == 73, choices
+    assert choices == 60, choices
     # SolidCraft 0.45 refuses a manifest over 64 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
     assert json.loads(packed) == manifest and len(packed) < 64 * 1024, len(packed)

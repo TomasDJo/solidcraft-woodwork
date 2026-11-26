@@ -6,7 +6,7 @@ import re
 import shutil
 import threading
 
-from build import LOCAL, PKG, ROOT, cli, env, flat, plugin  # noqa: F401 (the tests use them through `import *`)
+from build import LOCAL, PKG, ROOT, cli, entry_step, env, flat, plugin  # noqa: F401 (the tests use them through `import *`)
 
 MEASURE = {"command": "inspect.measure", "params": {}}
 # The tests with a profile share dist/profile and the folders they empty: one at a time.

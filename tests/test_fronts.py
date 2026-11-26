@@ -131,7 +131,7 @@ def test_the_first_door_hinges_on_the_side_that_is_asked(approval):
         return box[0], box[3], round(hole, 3)
     assert door({"doors": 1}) == (-298, -280, 248), door({"doors": 1})
     assert door({"doors": 1, "door_hinge": "right"}) == (280, 298, -248), door({"doors": 1, "door_hinge": "right"})
-    turned = door({"doors": 1}, then=[select("Cabinet Top"), plugin(approval, "edit", {"door_hinge": "right"})])
+    turned = door({"doors": 1}, then=[select("Cabinet Top"), plugin(approval, "edit", {"doors": 1, "door_hinge": "right"})])
     assert turned == (280, 298, -248), turned
     three = {"width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"}
     opened = [door(three, f"Cabinet Door {n}", f"Cabinet Door {n} hinge") for n in (1, 2, 3)]
@@ -344,3 +344,36 @@ def test_a_cabinet_sized_by_its_drawers_inside(approval):
         box = boxes(measure)
         inside = box["Cabinet Drawer 1 Bottom"]
         assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (672, 672), inside
+
+
+def test_a_cabinet_sized_by_its_drawers_inside_keeps_it(approval):
+    # Sized by its drawers' inside, then side-mount slides changed to undermount in Woodwork
+    # settings and Rebuild cabinets with them: the boxes keep their inside width, and the
+    # cabinet's outside is worked out again around them (undermount needs 42 mm, not 2 x 24.7).
+    inside = lambda measure: round(boxes(measure)["Cabinet Drawer 1 Right"][0] - boxes(measure)["Cabinet Drawer 1 Left"][3], 3)
+    results = cli([plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 500, "drawer_depth": 400}),
+                   MEASURE, plugin(approval, "settings", {"slide_type": "under_full"}),
+                   plugin(approval, "rebuild", {"with": "settings"}), MEASURE,
+                   select("Cabinet Top"), plugin(approval, "edit", {}),
+                   select("Cabinet Top"), plugin(approval, "edit", {"drawers": 2, "sizing": "drawer", "drawer_width": 550}), MEASURE,
+                   plugin(approval, "settings", {"slide_type": "full"})])
+    before, after = results[0]["result"]["size"]["width"], boxes(results[4])["Cabinet Side R"][3] - boxes(results[4])["Cabinet Side L"][0]
+    assert inside(results[1]) == inside(results[4]) == 500, (inside(results[1]), inside(results[4]))
+    assert (before, round(after, 3)) == (500 + 2 * (12 + 12.7 + 18), 500 + 42 + 36), (before, after)
+    # Edit shows it by its inside: left as shown nothing changes; a new inside width is built
+    assert results[6]["result"]["edited"] is False, results[6]
+    assert inside(results[9]) == 550, inside(results[9])
+
+
+def test_drawer_box_finger_joints(approval):
+    # Drawer box joints Finger (#131): the box's front and back as wide as the box, the four
+    # corners interlocking (fingers 12 mm wide on 12 mm boards), the cut list noting them.
+    results = designed(approval, {"drawer_joints": "finger"},
+                       [plugin(approval, "cabinet", {"drawers": 1}), MEASURE, plugin(approval, "cutlist")])
+    box = boxes(results[1])
+    left, front = box["Cabinet Drawer 1 Left"], box["Cabinet Drawer 1 Box front"]
+    assert round(front[0], 3) == round(left[0], 3), (front, left)
+    full = (front[3] - front[0]) * (front[4] - front[1]) * (front[5] - front[2])
+    assert volume(results[1], "Cabinet Drawer 1 Box front") < full - 1000, full
+    notes = [p.get("note", "") for p in results[2]["result"]["parts"]]
+    assert any("finger jointed" in n for n in notes), results[2]["result"]["parts"]

@@ -21,7 +21,10 @@ def test_dowels_and_confirmat_follow_a_resize_and_edit(approval):
                    MEASURE, faces("D Bottom"), faces("C Side R"), plugin(approval, "cutlist"),
                    {"command": "parameters.change", "params": {"name": "D_depth", "expression": "900 mm"}},
                    MEASURE, plugin(approval, "cutlist"),
-                   select("D Top"), plugin(approval, "edit", {"joints": "none"}), MEASURE, plugin(approval, "cutlist"),
+                   select("D Top"),
+                   # joinery is design-wide: set in Woodwork settings, then applied to D alone
+                   setting(approval, {"joints": "none"}), plugin(approval, "rebuild", {"with": "settings", "selection": ["D Top"]}),
+                   setting(approval, {"joints": "confirmat"}), MEASURE, plugin(approval, "cutlist"),
                    {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}],
                   "--save", str(ROOT / "dist" / "joints.sc"))
     measure = results[3]
@@ -133,6 +136,54 @@ def test_dado(approval):
     assert "576" in results[2]["result"]["csv"], results[2]["result"]["csv"][:400]
     assert hardware(results[2]) == {}, hardware(results[2])
 
+
+def test_finger_joints(approval):
+    # Finger joints on the shell (#131): the bottom and top run through the sides to the outside,
+    # 31 fingers 560/31 mm wide along each corner (the fingers as wide as the 18 mm boards), the
+    # sides keeping the outer ones: a side loses 15 at each of its two corners, a bottom or top
+    # 16 at each end. The cut list notes them; no hardware.
+    results = designed(approval, {"joints": "finger"},
+                       [plugin(approval, "cabinet", {"name": "F", "shelves": 0, "place": "origin"}),
+                        MEASURE, plugin(approval, "cutlist")])
+    box = boxes(results[1])
+    assert box["F Bottom"][0] == -300 and box["F Bottom"][3] == 300, box["F Bottom"]
+    w = 560 / 31
+    side, bottom = volume(results[1], "F Side L"), volume(results[1], "F Bottom")
+    # less the back's groove: 9 x 6 along the side's inside (702) and the bottom's (564)
+    assert abs(side - (18 * 560 * 720 - 2 * 15 * w * 18 * 18 - 9 * 6 * 702)) < 100, side
+    assert abs(bottom - (600 * 560 * 18 - 2 * 16 * w * 18 * 18 - 9 * 6 * 564)) < 100, bottom
+    notes = [p.get("note", "") for p in results[2]["result"]["parts"]]
+    assert any("finger jointed" in n for n in notes), results[2]["result"]["parts"]
+    assert hardware(results[2]) == {}, hardware(results[2])
+
+
+
+def test_finger_joints_on_corner_cabinets(approval):
+    # F: an L with finger joints, B the same butted. The fingers only move material between
+    # the boards they join: with no overlap and no gap the boards hold as much wood together as
+    # the butted ones, board by board summed. P: over a plinth board the bottom is butted, the
+    # top fingered. D: a right diagonal.
+    shell = ("Side L", "Side R", "Back", "Back return", "Bottom", "Top")
+    corner = {"shelves": 0, "plinth": 0, "place": "origin"}
+    results = designed(approval, {"joints": "finger"},
+                       [plugin(approval, "corner", {"name": "F", **corner}),
+                        plugin(approval, "corner", {"name": "P", **corner, "plinth": 100, "plinth_type": "board"}),
+                        plugin(approval, "corner", {"name": "D", "shape": "diagonal", "corner": "right", **corner}),
+                        setting(approval, {"joints": "none"}),
+                        plugin(approval, "corner", {"name": "B", **corner}),
+                        MEASURE, {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
+    measure = results[4]
+    total = lambda name: sum(volume(measure, f"{name} {part}") for part in shell)
+    assert abs(total("F") - total("B")) < 50, (total("F"), total("B"))
+    # the bottom runs through to the outsides: as wide as the cabinet, its corners cut
+    box = boxes(measure)
+    assert box["F Bottom"][0] == box["F Side L"][0] and box["F Bottom"][4] == box["F Back"][4], box["F Bottom"]
+    assert box["F Back"][0] == box["F Bottom"][0] and box["F Back"][3] == box["F Side R"][3], box["F Back"]
+    assert volume(measure, "F Side R") < volume(measure, "B Side R")  # the back's and bottom's fingers
+    # over a plinth: the bottom inside the uprights, butted
+    assert box["P Bottom"][0] > box["P Side L"][0] and box["P Top"][0] == box["P Side L"][0], (box["P Bottom"], box["P Top"])
+    assert box["D Back"][3] == box["D Side R"][3], box["D Back"]
+    assert not [f["name"] for f in results[5]["timeline"] if f["warning"] or f["error"]]
 
 def test_biscuits(approval):
     # #20 slots, 62 x 4 mm, 13 mm into each board: 3 a joint, 6 in each side; N without any.
