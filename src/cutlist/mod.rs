@@ -598,8 +598,15 @@ pub fn cutlist(
         let name = body["name"].as_str().unwrap_or("?").to_string();
         let tenths = size(body)?.map(|mm| (mm * 10.0).round() as i64);
         let material = body["material"].as_str().unwrap_or("").to_string();
+        // A drawer box's front with no `Drawer <n> Front` is the front (integrated, #163).
+        let front = format!("{} Front", name.strip_suffix(" Box front").unwrap_or(&name));
+        let part = match name.ends_with(" Box front") && !bodies.iter().any(|b| b["name"] == *front)
+        {
+            true => &front,
+            false => &name,
+        };
         let (edges, grain) = match crate::select::owner(measure, &name) {
-            Some(cabinet) => role(&name[cabinet.len() + 1..], width_axis(cabinet, &name)?),
+            Some(cabinet) => role(&part[cabinet.len() + 1..], width_axis(cabinet, &name)?),
             None => (Edges::None, None),
         };
         // Thinnest axis is the thickness; the length runs along the grain on a grained board,

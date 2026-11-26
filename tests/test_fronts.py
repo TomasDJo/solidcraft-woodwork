@@ -344,6 +344,15 @@ def test_a_cabinet_sized_by_its_drawers_inside(approval):
         box = boxes(measure)
         inside = box["Cabinet Drawer 1 Bottom"]
         assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (672, 672), inside
+    # Apply settings to an integrated front (#163): a board shallower outside, the same inside
+    results = cli([plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 672, "drawer_depth": 672}),
+                   plugin(approval, "settings", {"drawer_front": "integrated"}),
+                   plugin(approval, "rebuild", {"with": "settings"}), MEASURE,
+                   plugin(approval, "settings", {"drawer_front": "separate"})])
+    box = boxes(results[3])
+    inside, side = box["Cabinet Drawer 1 Bottom"], box["Cabinet Side L"]
+    assert round(inside[4] - inside[1], 3) == 672, inside
+    assert round(side[4] - side[1], 3) == 712, side
 
 
 def test_a_cabinet_sized_by_its_drawers_inside_keeps_it(approval):
@@ -426,3 +435,22 @@ def test_grip_edges(approval):
     assert abs(volume(m, "N Door") - volume(m, "G Door") - 72 * 796) < 0.002 * 72 * 796, volume(m, "G Door")
     centre, normal = slanted(results[11])
     assert normal[1] == 0 and normal[2] == 0.7071 and centre[2] == boxes(m)["C Door return"][5] - 6, (centre, normal)
+
+
+def test_integrated_drawer_fronts(approval):
+    # Drawer front Integrated (#163): no front of its own, the box's front board where the
+    # separate front was (drilled for the knob), one board fewer a drawer in the cut list.
+    steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "knob"}), MEASURE, plugin(approval, "cutlist")]
+    separate = designed(approval, {"drawer_front": "separate"}, steps)
+    results = designed(approval, {"drawer_front": "integrated"}, steps)
+    box = boxes(results[1])
+    assert "Cabinet Drawer 1 Front" not in box, sorted(box)
+    for n in (1, 2):
+        own, front = box[f"Cabinet Drawer {n} Box front"], boxes(separate[1])[f"Cabinet Drawer {n} Front"]
+        assert [round(v, 3) for v in own] == [round(v, 3) for v in front], (own, front)
+    # the bottom starts at the front's back face (y1 of the front, y0 of the bottom)
+    assert box["Cabinet Drawer 1 Bottom"][1] == box["Cabinet Drawer 1 Box front"][4], box
+    holes = cylinders(results[1], "Cabinet Drawer 1 Box front")
+    assert holes == cylinders(separate[1], "Cabinet Drawer 1 Front") > 0, holes
+    count = lambda r: sum(p["qty"] for p in r[2]["result"]["parts"])
+    assert count(results) == count(separate) - 2, (count(results), count(separate))
