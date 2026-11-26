@@ -60,7 +60,9 @@ table says which).
   can be off-screen (required for its place, default `None`, which the hook also gives a
   script; greyed by an `x-solidcraft-enabled-when` that is never true; the hook gives it `value` and `visible: true`
   with a reason and `visible: false` without, `settings::problem_row`; `edit::remember` drops
-  it, `patch` never keeps it). The hook does run on every change (120 ms after the last).
+  it, `patch` never keeps it). A cabinet without Edit's file (made before 0.5.0) is checked on the
+  dialog's own fields, as a new cabinet (`form_problem`), as the hook cannot read its values; the
+  file's check otherwise sets the row (and blames only what the change touches). The hook does run on every change (120 ms after the last).
   **Fields that cannot combine are hidden, and not used:** a field that another one makes
   meaningless gets a condition, and the build takes a stale value of it (still sent by a
   script, or remembered by Edit) as absent instead of refusing. Cabinet: Dividers with

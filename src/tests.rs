@@ -754,3 +754,27 @@ fn mode_auto_shows_the_problem_row_when_editing_and_when_new() {
     let text = reply["problem"]["value"].as_str().unwrap_or_default();
     assert!(text.contains("dividers + 1 = 1 here"), "{reply}");
 }
+
+#[test]
+fn edit_picked_on_a_cabinet_without_a_file_checks_the_dialogs_own_fields() {
+    // a cabinet made before 0.5.0: no Edit file, so the dialog's own Doors and Dividers
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => json!({"bodies": ["A Side L", "A Top"], "params": []}),
+            _ => json!({}),
+        })
+    };
+    let picked = json!([{"type": "body", "name": "A Side L"}]);
+    let bad =
+        json!({"mode": "edit", "shape": "box", "selection": picked, "doors": 4, "dividers": 2});
+    let reply = dialog("cabinet", &bad, &mut run).unwrap();
+    let text = reply["problem"]["value"].as_str().unwrap_or_default();
+    assert!(
+        text.contains("dividers + 1 = 3 here") && text.contains("nothing is changed"),
+        "{reply}"
+    );
+    let fine =
+        json!({"mode": "edit", "shape": "box", "selection": picked, "doors": 3, "dividers": 2});
+    let reply = dialog("cabinet", &fine, &mut run).unwrap();
+    assert_eq!(reply["problem"]["visible"], false, "{reply}");
+}
