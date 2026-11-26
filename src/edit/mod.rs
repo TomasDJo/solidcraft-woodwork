@@ -342,7 +342,20 @@ pub fn changed(params: &Value, base: &Value) -> Vec<String> {
 /// are not part of that.
 pub fn remember(entry: &str, params: &Value, name: &str) -> Value {
     let mut params = params.as_object().cloned().unwrap_or_default();
-    for key in ["place", "match", "selection", "_match", "_existing", "mode"] {
+    for key in [
+        "place",
+        "match",
+        "selection",
+        "_match",
+        "_existing",
+        "mode",
+        "line",
+        "start_at",
+        "offset",
+        "faces",
+        "width_from_line",
+        "_line",
+    ] {
         params.remove(key);
     }
     params.insert("name".into(), json!(name));

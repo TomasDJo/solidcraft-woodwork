@@ -6,8 +6,9 @@ from helpers import *
 
 DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems", "x-solidcraft-visible-when",
          "x-solidcraft-enabled-when",
-         "x-solidcraft-defaults"}
+         "x-solidcraft-defaults", "x-solidcraft-selection"}
 WHEN = "x-solidcraft-visible-when"
+PICKS = "x-solidcraft-selection"  # a pick field of another name (Cabinet's Line): exactly version 1 and accept
 
 
 def conditions(condition):
@@ -53,7 +54,7 @@ def test_choices_have_titles(approval):
             # A selection field with any other keyword, `default` too, has no dialog (0.49:
             # "This entry needs to be run from the agent or CLI").
             if field["type"] == "array":
-                assert set(field) <= {"type", "title", "description", "maxItems", WHEN}, at
+                assert set(field) <= {"type", "title", "description", "maxItems", WHEN, PICKS}, at
             # A field shown only when it applies (0.46). Hidden, it is left out of Run and not
             # required; it still has a default for when it shows, as `required` orders it.
             # Its controllers are sibling scalar fields, and each value one they can have. A
@@ -82,11 +83,15 @@ def test_choices_have_titles(approval):
                 assert fits(field, rule["value"]), (at, rule)
             # Its description is the field's hover tooltip: every field explains itself.
             assert field.get("description", "").strip(), at
-            # The one list the dialog draws: `selection`, picked in the viewport (0.44). The app
+            # The lists the dialog draws: `selection`, picked in the viewport (0.44). The app
             # reserves that name for bodies, faces and edges, which costs the manifest nothing;
-            # faces matter, as a click on a board selects one. Another array, or more keywords
-            # on this one, leaves Run turned off.
-            assert (field["type"] == "array") == (name == "selection"), at
+            # faces matter, as a click on a board selects one. Another array needs
+            # `x-solidcraft-selection` (Cabinet's Line, which takes sketch lines too); any other
+            # keyword leaves Run turned off.
+            assert (field["type"] == "array") == (name == "selection" or PICKS in field), at
+            if PICKS in field:
+                assert field[PICKS]["version"] == 1 and set(field[PICKS]) == {"version", "accept"}, at
+                assert set(field[PICKS]["accept"]) <= {"edge", "face", "sketch_curve", "sketch_point", "body", "profile"}, at
             # The dialog keeps a number within its bounds; a value the plugin refuses past them
             # only stops the preview, with no message. The reveal is 0.5 to 6 mm in every unit.
             if name == "reveal":
@@ -100,7 +105,7 @@ def test_choices_have_titles(approval):
             assert field["default"] in values, at
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
-    assert choices == 59, choices
+    assert choices == 61, choices
     # SolidCraft 0.45 refuses a manifest over 64 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
     assert json.loads(packed) == manifest and len(packed) < 64 * 1024, len(packed)

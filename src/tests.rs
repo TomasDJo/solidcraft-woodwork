@@ -745,3 +745,59 @@ fn mode_auto_says_a_refused_change_when_editing_and_when_new() {
     let text = reply["doors"]["hint"].as_str().unwrap_or_default();
     assert!(text.contains("dividers + 1 = 1 here"), "{reply}");
 }
+
+#[test]
+fn along_a_line_names_its_dimension_and_sizes_the_width_by_it() {
+    // A sketch line 1200 long in an inch design's dialog: the offset is in inches, the app's
+    // `d1` is renamed after the sketch, and the width is an expression over it.
+    let sketch = json!({
+        "name": "Wall line",
+        "curves": [{"id": "l1", "type": "line", "start": "l1.start", "end": "l1.end"}],
+        "points": [{"id": "l1.start", "world": [0.0, 0.0, 0.0]}, {"id": "l1.end", "world": [1200.0, 0.0, 0.0]}],
+        "constraints": [{"type": "length", "l": 0, "param": "d1"}],
+    });
+    let mut called: Vec<(String, Value)> = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        called.push((command.to_string(), args));
+        Ok(sketch.clone())
+    };
+    let mut params = json!({"units": "in", "offset": 2, "start_at": "left", "width_from_line": true,
+        "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
+    let design = json!({"params": []});
+    let (_, front, follows) = along_line(&mut params, &design, &mut run).unwrap();
+    assert_eq!(front, [0.0, -1.0]);
+    assert!(follows.contains("Width follows Wall_line_l1"), "{follows}");
+    assert_eq!(called[0].0, "sketch.inspect");
+    assert_eq!(
+        called[1],
+        (
+            "parameters.rename".into(),
+            json!({"name": "d1", "new_name": "Wall_line_l1"})
+        )
+    );
+    assert_eq!(params["_line"]["width"], "Wall_line_l1 - 2 in");
+    assert_eq!(params["width"], json!(45.244094)); // (1200 mm - 2 in) in inches, rounded
+                                                   // a dimension already named is used as it is; no pick, or drawer sizing, is refused
+    let mut named = sketch.clone();
+    named["constraints"][0]["param"] = json!("Run");
+    let mut run = |_: &str, _: Value| Ok(named.clone());
+    let mut p = json!({"width_from_line": true, "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
+    along_line(&mut p, &design, &mut run).unwrap();
+    assert_eq!(p["_line"]["width"], "Run");
+    let mut p = json!({"width_from_line": true, "sizing": "drawer",
+        "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
+    assert!(along_line(&mut p, &design, &mut run)
+        .unwrap_err()
+        .contains("drawers' inside"));
+    let mut p = json!({"line": []});
+    assert!(along_line(&mut p, &design, &mut run)
+        .unwrap_err()
+        .contains("pick a line"));
+    let pick = json!([{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]);
+    let mut p = json!({"width_from_line": true, "offset": 1300, "line": pick});
+    let err = along_line(&mut p, &design, &mut run).unwrap_err();
+    assert!(err.contains("shorter than the offset"), "{err}");
+    let mut p = json!({"start_at": "end", "line": pick});
+    let err = along_line(&mut p, &design, &mut run).unwrap_err();
+    assert!(err.contains("start_at must be"), "{err}");
+}

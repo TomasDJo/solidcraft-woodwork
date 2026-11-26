@@ -709,6 +709,20 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   sizes they are up to half the banding off, and the part's length is told from its width by
   size, so a nearly square part's holes can be turned a quarter. Layer names write a decimal
   point as `P` (R12 takes no `.`).
+- **Place Along a line** (#147 step 1, `src/line/`, `along_line` in `lib.rs`): the pick field
+  `line` (`x-solidcraft-selection` accepting `sketch_curve`, `edge`, `face`; about 200 bytes with
+  its condition), read before the build: `sketch.inspect` (the curve's ends by point id, the
+  front toward the middle of the sketch's other points, else -Y or -X; its driving `length`
+  constraint's `param`, matched by `l`, the curve's index), or `model.edges` and `model.faces`
+  of the body (the edge's upright face by the edge's name `<face>|<face>`, its normal the front;
+  a face's lowest edge). Level and along X or Y only (`line::level`). `line::place`: the origin
+  half the box depth in front of the line, the left (`start_at`, seen from the front, along the
+  front turned a quarter) side at `offset`, turned by the front (0, 90, 180, -90). Width from line
+  sets `width` (and `sizing: outside`) and, over a driving dimension, `_line: {width: "<dim> -
+  <offset>"}`, which `Kit::parameter_as` uses as the expression; an app-named `d<n>` is renamed
+  `<Sketch>_<curve>` first (`parameters.rename`). The place itself is not followed, and an edge,
+  face or undimensioned line is read once (the summary's `line` says which). `edit::remember`
+  leaves the line fields out. Grounded as at the origin. Field order: Line right under Place.
 - Place's Auto, the dialog's default, goes by the name of the selected board
   (`select::side`): `Side L`, `Side R` (or a panel on it) or `Top`, and the origin for anything else. From 0.46 a
   script must pass `place` (the entry has conditions, see Tools for agents).

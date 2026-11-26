@@ -93,6 +93,7 @@ pub fn matched(cabinet: &str, design: &Value) -> Result<Value, String> {
 
 pub struct Kit {
     link: Value,     // `_match`, or null
+    line: Value,     // `_line`: a size's expression over a picked line's dimension (#147)
     existing: Value, // `_existing`: the parameters an edited cabinet already has, in mm
     labels: bool,    // write each board's name and size on it
     /// `hardware_models`: on, off or cut (`crate::hardware::model`)
@@ -142,6 +143,7 @@ impl Kit {
             unit,
             scale,
             link: p.get("_match").cloned().unwrap_or_default(),
+            line: p.get("_line").cloned().unwrap_or_default(),
             existing: p.get("_existing").cloned().unwrap_or_default(),
             labels: p.get("labels").and_then(Value::as_bool).unwrap_or(false),
             models,
@@ -200,9 +202,11 @@ impl Kit {
             return id;
         }
         // A matched size is the selected cabinet's parameter: change it there, both follow.
-        let expression = match self.link["values"].get(key) {
-            Some(_) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
-            None => length,
+        // Width from line: the line's dimension, so the cabinet follows it.
+        let expression = match (self.link["values"].get(key), self.line[key].as_str()) {
+            (Some(_), _) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
+            (None, Some(over)) => over.to_string(),
+            (None, None) => length,
         };
         self.push((
             "parameters.add",

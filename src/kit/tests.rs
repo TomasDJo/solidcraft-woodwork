@@ -23,6 +23,18 @@ fn a_matched_cabinet_points_at_the_selected_ones_parameters() {
 }
 
 #[test]
+fn width_from_a_line_is_an_expression_over_its_dimension() {
+    let p = json!({"name": "B", "width": 1150, "_line": {"width": "Wall_l1 - 50 mm"}});
+    let (commands, summary) = crate::cabinet::build(&p).unwrap();
+    let found = commands.iter().find(|c| c.1["name"] == "B_width");
+    assert_eq!(
+        found.map(|c| c.1["expression"].clone()),
+        Some(json!("Wall_l1 - 50 mm"))
+    );
+    assert_eq!(summary["size"]["width"], 1150.0);
+}
+
+#[test]
 fn a_matched_plinth_takes_the_set_back_when_there_is_one() {
     let design = json!({"params": [
         {"name": "A_height", "value": 900.0}, {"name": "A_plinth", "value": 100.0},
