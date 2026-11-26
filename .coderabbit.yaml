@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  profile: chill
+  poem: false
+  sequence_diagrams: false
+  related_issues: false
+  related_prs: false
+  suggested_labels: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+  auto_review:
+    # Review when a PR is opened or marked ready, or on `@coderabbitai review`; not on every push.
+    drafts: false
+    auto_incremental_review: false
+    # Dependabot bumps are checked by CI.
+    ignore_usernames:
+      - "dependabot[bot]"
+  path_instructions:
+    - path: "src/**"
+      instructions: |
+        Every fix and every function has a test that fails without it: a unit test in the module's tests.rs, and a case in tests/ when it shows in real geometry. Flag a change without one.
+        Every length sent to the app carries its unit ("582 mm"); a bare number is read in the design's unit. Only occurrence.move's translate and a joint's point take plain mm.
+        Design-wide settings (joinery, hardware, thickness, reveal, the plinth's height and set-back) stay out of Edit, which changes only what is per cabinet.
+        Apply settings never overwrites a value chosen per cabinet; it follows a setting only where the cabinet took the default.
+        No unwrap, expect or panic in plugin code that user input or an app reply can reach: return an Err with a message the user can act on.
+    - path: "Cargo.toml"
+      instructions: |
+        No new dependencies beyond serde_json and wit-bindgen: the plugin is one small WebAssembly component.
+    - path: "{src/**,plugin.json}"
+      instructions: |
+        A change a user can see updates docs/usage.md in the same PR, and README.md's short list when a function is added. Flag it when the docs are missing.
