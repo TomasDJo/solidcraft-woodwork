@@ -153,6 +153,8 @@ Cabinets:
 - [x] Drawer slide length: standard lengths in mm or inches, Auto the longest that fits, a field to choose one; the models, screw holes and the cut list's hardware line follow it
 - [x] Slide type (partial, full extension, over-travel) and hinge opening (95, 110, 165 degrees) set the joints' limits; hinges per door by its height (2 to 5)
 - [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
+- [x] Doors meeting on a divider: with three doors or more the end doors hinge on the sides, and a door hinged on a divider gets half overlay hinges (the 9.5 mm cranked model, its own line in the hardware list) (#157)
+- [ ] Double dividers where overlay doors meet, so every door gets full overlay hinges (#176)
 - [ ] Hinges in the model with hinge types (#60); hinge models that cut their cups by default once SolidCraft 0.47 is out (upstream tangency-labs/solidcraft#20787)
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - [x] Joinery and hardware are design wide: the two methods, their sizes, hardware models, hinge opening and slide type are Woodwork settings, no longer Cabinet and Corner fields (a new cabinet takes them and remembers them; Edit changes the methods, models, opening and type of one cabinet; slide length is Auto at build, chosen in Edit); the manifest 6.5 KB smaller

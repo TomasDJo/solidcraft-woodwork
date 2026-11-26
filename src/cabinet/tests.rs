@@ -405,7 +405,8 @@ fn a_door_hinges_on_its_outer_front_edge() {
         .as_str()
         .unwrap()
         .contains("* 0 + 50 mm"));
-    // a pair opens from the middle whatever is asked, and three alternate from the first
+    // a pair opens from the middle whatever is asked; of three the end ones hinge on the
+    // sides whatever is asked, and the middle one hinges on the side asked (#157)
     let (pair, _) = build(&json!({"doors": 2, "door_hinge": "right"})).unwrap();
     assert_eq!(pair, commands);
     let p = json!({"width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"});
@@ -419,7 +420,7 @@ fn a_door_hinges_on_its_outer_front_edge() {
             .1;
         axis["a"]["plane"]["normal"] == json!([1, 0, 0]) // true: hinged on its right
     };
-    assert_eq!([way(1), way(2), way(3)], [true, false, true]);
+    assert_eq!([way(1), way(2), way(3)], [false, true, true]);
     assert!(build(&json!({"doors": 1, "door_hinge": "top"})).is_err());
     // and the two doors open away from each other
     assert_eq!(
@@ -1408,4 +1409,72 @@ fn an_integrated_drawer_front_is_the_box_front() {
     assert_eq!(cut["targets"], json!(["Cabinet Drawer 1 Box front"]));
     assert_eq!(cut["width"], "Cabinet_thickness");
     assert!(build(&json!({"drawers": 1, "drawer_front": "applied"})).is_err());
+}
+
+#[test]
+fn doors_hinge_on_the_sides_and_only_the_middle_ones_on_a_divider() {
+    use super::doors::hinged_left;
+    let ways = |count: usize, first: usize| -> Vec<bool> {
+        (0..count)
+            .map(|i| hinged_left(i, count, first, false))
+            .collect()
+    };
+    // one door as asked, a pair from the middle, more: the end doors on the sides
+    assert_eq!((ways(1, 0), ways(1, 1)), (vec![true], vec![false]));
+    assert_eq!(ways(2, 0), [true, false]);
+    // and the doors between start on the side asked: right, the middle of three on its right
+    assert_eq!(ways(3, 0), [true, true, false]);
+    assert_eq!(ways(3, 1), [true, false, false]);
+    assert_eq!(ways(4, 0), [true, true, false, false]);
+    assert_eq!(ways(5, 1), [true, false, true, false, false]);
+    // 3 overlay doors over 2 dividers: the middle door's hinges are half overlay (cranked
+    // 9.5 mm, its cups named so for the cut list), the end doors' plain ones on the sides,
+    // with their plates' holes
+    let p = json!({"width": 900, "dividers": 2, "doors": 3});
+    let (commands, _) = build(&p).unwrap();
+    let cups = |door: &str| -> Vec<String> {
+        let all = commands.iter().filter(|c| c.0 == "solid.cylinder");
+        let start = format!("Cabinet {door} hinge cup ");
+        let names = all.filter_map(|c| c.1["name"].as_str());
+        names
+            .filter(|n| n.starts_with(&start))
+            .map(String::from)
+            .collect()
+    };
+    assert_eq!(
+        cups("Door 2"),
+        [
+            "Cabinet Door 2 hinge cup 1 (half overlay)",
+            "Cabinet Door 2 hinge cup 2 (half overlay)"
+        ]
+    );
+    assert_eq!(
+        cups("Door 1"),
+        ["Cabinet Door 1 hinge cup 1", "Cabinet Door 1 hinge cup 2"]
+    );
+    assert_eq!(cups("Door 3").len(), 2);
+    let models = crate::hardware::wanted(&commands);
+    assert!(models.contains(&crate::hardware::hinge(crate::hardware::HALF_OVERLAY)));
+    let plates = |side: &str| {
+        let all = commands.iter().filter(|c| c.1["targets"] == json!([side]));
+        all.filter(|c| c.1["name"].as_str().unwrap().contains(" hinge plate "))
+            .count()
+    };
+    assert_eq!((plates("Cabinet Side L"), plates("Cabinet Side R")), (4, 4));
+    // inset doors fill their compartments: they alternate from the first as before, with no
+    // half overlay, and the third hangs on a divider, so Side R gets no plate holes
+    let inset_ways: Vec<bool> = (0..3).map(|i| hinged_left(i, 3, 0, true)).collect();
+    assert_eq!(inset_ways, [true, false, true]);
+    let (inset, _) =
+        build(&json!({"width": 900, "dividers": 2, "doors": 3, "fronts": "inset"})).unwrap();
+    let inset_plates = |side: &str| {
+        let all = inset.iter().filter(|c| c.1["targets"] == json!([side]));
+        all.filter(|c| c.1["name"].as_str().unwrap().contains(" hinge plate "))
+            .count()
+    };
+    assert_eq!(inset_plates("Cabinet Side R"), 0);
+    assert!(inset.iter().all(|c| !c.1["name"]
+        .as_str()
+        .unwrap_or("")
+        .ends_with("(half overlay)")));
 }

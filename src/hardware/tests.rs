@@ -239,6 +239,24 @@ fn with_cut_the_models_cut_the_cups() {
 }
 
 #[test]
+fn a_half_overlay_hinge_cuts_cups_named_so() {
+    // the middle of three overlay doors hangs on a divider: its cups, drilled or cut by the
+    // model, say half overlay, for the cut list's hardware (#157)
+    let p = json!({"width": 900, "dividers": 2, "doors": 3});
+    let (drilled, _) = crate::cabinet::build(&p).unwrap();
+    assert!(drilled
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Door 2 hinge cup 1 (half overlay)"));
+    let p = json!({"width": 900, "dividers": 2, "doors": 3, "hardware_models": "cut"});
+    let (cut, _) = crate::cabinet::build(&p).unwrap();
+    let hinges = copies(&cut, &hinge(HALF_OVERLAY));
+    assert_eq!(
+        hinges[0]["_cut"],
+        "Cabinet Door 2 hinge cup 1 (half overlay)"
+    );
+}
+
+#[test]
 fn the_models_are_counted_against_the_command_limit() {
     let (commands, _) = crate::cabinet::build(&json!({"doors": 1})).unwrap();
     let n = commands.len();

@@ -121,8 +121,9 @@ def test_joints(approval):
 
 def test_the_first_door_hinges_on_the_side_that_is_asked(approval):
     # One door, 600 wide. Hinged left it swings out about x = -298, hinged right about x = 298,
-    # with its handle hole at the other edge. Edit turns it round. Three doors alternate from
-    # the first, and a pair opens from the middle whatever is asked.
+    # with its handle hole at the other edge. Edit turns it round. Of three doors the end ones
+    # hinge on the sides whatever is asked (#157), the middle one on the side asked,
+    # and a pair opens from the middle whatever is asked.
     def door(params, name="Cabinet Door", joint="Cabinet Door hinge", then=()):
         made = [plugin(approval, "cabinet", {"handles": "knob", **params}), *then]
         hole = [f["centroid"][0] for f in cli([*made, faces(name)])[-1]["faces"]
@@ -135,8 +136,8 @@ def test_the_first_door_hinges_on_the_side_that_is_asked(approval):
     assert turned == (280, 298, -248), turned
     three = {"width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"}
     opened = [door(three, f"Cabinet Door {n}", f"Cabinet Door {n} hinge") for n in (1, 2, 3)]
-    # each opened door stands at its hinge edge: the right of the first, the left of the second
-    assert [d[1] for d in opened[::2]] == [-150.667, 448] and opened[1][0] == -148.667, opened
+    # each opened door stands at its hinge edge: Side L, the second's right (asked), Side R
+    assert (opened[0][0], opened[1][1], opened[2][1]) == (-448, 148.667, 448), opened
     pair = {"doors": 2, "door_hinge": "right"}
     assert door(pair, "Cabinet Door L", "Cabinet Door L hinge")[0] == -298, "a pair opens from the middle"
 

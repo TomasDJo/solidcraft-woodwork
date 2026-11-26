@@ -7,10 +7,12 @@ use crate::hardware;
 use crate::kit::mm;
 
 /// Equal doors across the front. They hinge left, right, left..., or right, left, right...
-/// when the first is asked to hinge on its right. Two doors are a pair that opens from the
-/// middle whatever is asked: hinged the other way both would hang in the middle. Overlay, one
-/// door per compartment puts every gap on a divider (within half a panel); inset, each door
-/// fills its own compartment.
+/// when the first is asked to hinge on its right; with three or more the end doors hinge on
+/// the sides whatever is asked (`hinged_left`), so as few as can hinge in the middle, on a
+/// divider. Two doors are a pair that opens from the middle whatever is asked: hinged the
+/// other way both would hang in the middle. Overlay, one door per compartment puts every gap
+/// on a divider (within half a panel), where a door covers half of it: one hinged there gets
+/// half overlay hinges; inset, each door fills its own compartment.
 pub fn build(cabinet: &Cabinet) {
     let Cabinet {
         kit,
@@ -67,7 +69,7 @@ pub fn build(cabinet: &Cabinet) {
         kit.open(&part);
         kit.panel(&part, [&x0, efront, z0], [&door_w, et, door_h], None);
         // The hinge cups, from the door's back face, `HW_cup_inset` in from its hinge edge.
-        let left = (i + first) % 2 == 0;
+        let left = hinged_left(i, count, first, inset);
         let cup_x = match left {
             true => format!("{x0} + HW_cup_inset"),
             false => format!("{x0} + {door_w} - HW_cup_inset"),
@@ -83,13 +85,13 @@ pub fn build(cabinet: &Cabinet) {
         let crank = match (inset, on_side) {
             (true, _) => 18.0,
             (false, true) => 0.0,
-            (false, false) => 9.5,
+            (false, false) => hardware::HALF_OVERLAY,
         };
         hardware::cup_holes(kit, &part, at, [[0, -1, 0], toward], Some(crank), &cups);
         // The handle is on the side away from the hinges.
-        let handle_x = match (i + first) % 2 {
-            0 => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),
-            _ => format!("{x0} + {}", mm(HANDLE_EDGE)),
+        let handle_x = match left {
+            true => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),
+            false => format!("{x0} + {}", mm(HANDLE_EDGE)),
         };
         cabinet.handle(&part, &handle_x, &handle_z, 2);
         cabinet.grip(&part, [&x0, efront, z0], [&door_w, et, door_h], grip_top);
@@ -97,9 +99,9 @@ pub fn build(cabinet: &Cabinet) {
         // front edge on the door's hinge side. A cup hinge carries the door out and round so that its edge clears the door of
         // the next cabinet; about the back edge it would swing a panel thickness into it. An
         // inset door's back edge then moves away from the side as it opens.
-        let (x, turn) = match (i + first) % 2 {
-            0 => (x0.clone(), -1),
-            _ => (format!("{x0} + {door_w}"), 1),
+        let (x, turn) = match left {
+            true => (x0.clone(), -1),
+            false => (format!("{x0} + {door_w}"), 1),
         };
         let line = kit.at(&x, efront, z0);
         let line = [0, 1].map(|i| line[i].as_str().unwrap_or_default());
@@ -118,5 +120,19 @@ pub fn build(cabinet: &Cabinet) {
             let at = |z: &str| kit.at(&x, &y, z);
             hardware::plate_holes(kit, board, at, [into, 0, 0], &cups, et);
         }
+    }
+}
+
+/// Whether door `i` of `count` hinges on its left: alternating from the first, which hinges
+/// on its right when `first` is 1. With three doors or more the first hinges on Side L and
+/// the last on Side R whatever is asked, so only the doors between hinge on a divider, and
+/// `first` is the side the second door hinges on, the rest alternating from it. Inset doors
+/// each fill their own compartment, so they alternate from the first as asked.
+pub fn hinged_left(i: usize, count: usize, first: usize, inset: bool) -> bool {
+    let ends = count >= 3 && !inset;
+    match (ends, i) {
+        (true, 0) => true,
+        (true, i) if i + 1 == count => false,
+        _ => (i + first + usize::from(ends)).is_multiple_of(2),
     }
 }

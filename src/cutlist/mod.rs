@@ -225,7 +225,15 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             "Hinge, cup",
             features
                 .iter()
-                .filter(|f| f.contains(" hinge cup "))
+                .filter(|f| f.contains(" hinge cup ") && !f.ends_with(" (half overlay)"))
+                .count() as u64,
+        ),
+        (
+            // a door hinged on a divider covers only half of it (`cabinet::doors`)
+            "Hinge, cup, half overlay",
+            features
+                .iter()
+                .filter(|f| f.contains(" hinge cup ") && f.ends_with(" (half overlay)"))
                 .count() as u64,
         ),
         (
@@ -275,7 +283,13 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
-    let at = usize::from(list.first().is_some_and(|h| h["item"] == "Hinge, cup"));
+    // after the hinges
+    let hinge = |h: &&Value| {
+        h["item"]
+            .as_str()
+            .is_some_and(|i| i.starts_with("Hinge, cup"))
+    };
+    let at = list.iter().take_while(hinge).count();
     for (slide, qty) in slides.into_iter().rev() {
         let (length, kind) = slide.split_once(", ").unwrap_or((slide, ""));
         let item = format!("Drawer slide, {kind}, {length}, pair").replace(", ,", ",");
