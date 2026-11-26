@@ -1488,7 +1488,14 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
             .map(String::from)
             .collect();
         let picked = select::picked(values, &Value::Null);
-        return Ok(json!({"selection": {"hint": select::applies_to(&files, &picked)}}));
+        let hint = select::applies_to(&files, &picked);
+        // also in the greyed Applies to row under the field (a hint is only its tooltip)
+        let row = hint
+            .strip_prefix("Applies to ")
+            .unwrap_or(&hint)
+            .to_string();
+        return Ok(json!({"selection": {"hint": hint},
+            "applies": {"default": row, "value": row}}));
     }
     let mut reply = settings::fields(entry, values, &stored);
     // A combination the build refuses (Doors 3 without dividers, ...), said at once on its

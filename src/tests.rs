@@ -745,3 +745,27 @@ fn mode_auto_says_a_refused_change_when_editing_and_when_new() {
     let text = reply["doors"]["hint"].as_str().unwrap_or_default();
     assert!(text.contains("dividers + 1 = 1 here"), "{reply}");
 }
+
+#[test]
+fn the_apply_settings_hook_names_the_cabinets_in_its_row_and_tooltip() {
+    let mut asked = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        asked.push(json!([command, args]));
+        Ok(json!({"blobs": [{"name": "edit/Base_1.json"}, {"name": "edit/Wall_1.json"}]}))
+    };
+    let picks = json!([{"type": "body", "name": "Base 1 Side L"}, {"type": "body", "name": "Base 1 Door"},
+        {"type": "body", "name": "Wall 1 Top"}]);
+    let reply = dialog("rebuild", &json!({"selection": picks}), &mut run).unwrap();
+    assert_eq!(
+        reply["selection"]["hint"],
+        "Applies to 2 cabinets: Base 1, Wall 1"
+    );
+    assert_eq!(reply["applies"]["value"], "2 cabinets: Base 1, Wall 1");
+    let none = dialog("rebuild", &json!({"selection": []}), &mut run).unwrap();
+    assert_eq!(none["applies"]["value"], "all cabinets");
+    // our files' names only: one small read a dialog
+    assert_eq!(
+        asked,
+        vec![json!(["storage.get", {"plugin": "woodwork"}]); 2]
+    );
+}

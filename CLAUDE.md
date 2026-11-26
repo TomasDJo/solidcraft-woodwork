@@ -302,7 +302,9 @@ settings)`: the cabinets of the bodies in its `selection` field (Cabinets, any p
 cabinet's `Side L` when it is empty (not the design's selection, which tests and scripts leave
 behind), by `select::cabinets_of` (cabinet name prefixes; a hinge or slide model's copy, which
 measures hide, the first name of its `(A:1/...)` path); box and corner only. Its dialog hook
-puts `select::applies_to` on the field as a hint, with the prefixes from our files' names
+puts `select::applies_to` on the field as a hint (only a tooltip in 0.49) and in the
+`applies` row under it (never stored, greyed by an `x-solidcraft-enabled-when` that is never
+true, as the Problem rows), with the prefixes from our files' names
 (`storage.get`, no design read for the 10M fuel), so the dialog names the same cabinets as the
 run; a board of a cabinet made before it had a file (pre-0.5.0) by its name before its board
 word (`select::BOARD_WORDS`: `Base 1 Door 2` is `Base 1`'s). Only a body with neither, such as
