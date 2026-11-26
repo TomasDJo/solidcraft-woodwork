@@ -20,7 +20,8 @@ jobs:
         run: |
           base=$(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
           body=$(jq -r '.pull_request.body // ""' "$GITHUB_EVENT_PATH")
-          head=$(jq -r .pull_request.head.ref "$GITHUB_EVENT_PATH")
+          # A release PR's head is this repository's develop, not a fork's branch of that name.
+          head=$(jq -r 'if .pull_request.head.repo.full_name == .repository.full_name then .pull_request.head.ref else "fork" end' "$GITHUB_EVENT_PATH")
           number=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
           fail=0
           # Work goes into develop; main only takes develop, at a release.
