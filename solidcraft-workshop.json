@@ -9,7 +9,14 @@
   "summary": "Parametric kitchen and furniture cabinets with joinery, hardware, cut lists and shop drawings.",
   "description": "README.md",
   "category": "generators",
-  "tags": ["woodworking", "cabinets", "kitchen", "furniture", "joinery", "cutlist"],
+  "tags": [
+    "woodworking",
+    "cabinets",
+    "kitchen",
+    "furniture",
+    "joinery",
+    "cutlist"
+  ],
   "permissions": [
     "files:write",
     "clock",
@@ -31,8 +38,17 @@
     "commands:view"
   ],
   "files": [
-    { "asset": "woodwork-0.5.0.zip", "role": "package" },
-    { "path": "docs/banner.png", "role": "image" },
-    { "path": "docs/tool-station.png", "role": "image" }
+    {
+      "asset": "woodwork-0.5.0.zip",
+      "role": "package"
+    },
+    {
+      "path": "docs/banner.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/tool-station.png",
+      "role": "image"
+    }
   ]
 }
