@@ -55,14 +55,10 @@ table says which).
   `enabled`, `choices`, `default`, `value`, `hint`), and integers take no `choices`, so Doors
   cannot be limited. A hook `hint` is only the field's hover tooltip in 0.49 (`plugin_menu.rs`
   `apply_hook_reply`: `field.tip`, drawn by `with_row_label_tooltip`), so nothing showed until
-  the mouse was on Doors: the reason also goes into `problem`, a text field near the top of the
-  Cabinet (after Mode) and Settings (after Show settings for) dialogs, as a long dialog's end
-  can be off-screen (required for its place, default `None`, which the hook also gives a
-  script; greyed by an `x-solidcraft-enabled-when` that is never true; the hook gives it `value` and `visible: true`
-  with a reason and `visible: false` without, `settings::problem_row`; `edit::remember` drops
-  it, `patch` never keeps it). A cabinet without Edit's file (made before 0.5.0) is checked on the
-  dialog's own fields, as a new cabinet (`form_problem`), as the hook cannot read its values; the
-  file's check otherwise sets the row (and blames only what the change touches). The hook does run on every change (120 ms after the last).
+  the mouse was on Doors. A Problem row (a greyed text field near the top showing the reason)
+  was tried and removed for 0.5.0: an Edit into a refused combination did not show it in the
+  app, and SolidCraft's own preview errors (tangency-labs/solidcraft#22297) are to say it
+  instead. The hook does run on every change (120 ms after the last).
   **Fields that cannot combine are hidden, and not used:** a field that another one makes
   meaningless gets a condition, and the build takes a stale value of it (still sent by a
   script, or remembered by Edit) as absent instead of refusing. Cabinet: Dividers with
