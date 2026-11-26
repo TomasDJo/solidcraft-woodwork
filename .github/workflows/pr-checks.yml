@@ -10,6 +10,8 @@ permissions:
 
 jobs:
   pr-checks:
+    # Dependabot's bumps have no issue to link; a skipped required check counts as passed.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Base, issue link and picture
