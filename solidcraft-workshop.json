@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "woodwork",
+  "name": "Woodwork",
+  "kind": "plugin",
+  "version": "0.5.0",
+  "licence": "MIT",
+  "min_app_version": "0.49.0",
+  "summary": "Parametric kitchen and furniture cabinets with joinery, hardware, cut lists and shop drawings.",
+  "description": "README.md",
+  "category": "generators",
+  "tags": ["woodworking", "cabinets", "kitchen", "furniture", "joinery", "cutlist"],
+  "permissions": [
+    "files:write",
+    "clock",
+    "commands:component",
+    "commands:construct",
+    "commands:document",
+    "commands:drawing",
+    "commands:inspect",
+    "commands:joint",
+    "commands:material",
+    "commands:model",
+    "commands:occurrence",
+    "commands:parameters",
+    "commands:select",
+    "commands:sketch",
+    "commands:solid",
+    "commands:storage",
+    "commands:timeline",
+    "commands:view"
+  ],
+  "files": [
+    { "asset": "woodwork-0.5.0.zip", "role": "package" },
+    { "path": "docs/banner.png", "role": "image" },
+    { "path": "docs/tool-station.png", "role": "image" }
+  ]
+}

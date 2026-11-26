@@ -149,3 +149,18 @@ def test_help_links_point_to_existing_headings(approval):
     assert anchors("## Plinth / toe kick\n### Size by, drawer inside\n## Size by, drawer inside") == {
         "plinth--toe-kick", "size-by-drawer-inside", "size-by-drawer-inside-1"}
     assert anchors("```\n## Removed\n```\n## Kept") == {"kept"}
+
+
+def test_workshop_listing_matches_the_plugin(approval):
+    # solidcraft-workshop.json lists the release in the SolidCraft Workshop: its version and
+    # package must be this release's, and its command groups the ones plugin.json may call.
+    workshop = json.loads((ROOT / "solidcraft-workshop.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
+    version = manifest["version"]
+    assert workshop["version"] == version and workshop["id"] == manifest["id"], workshop["version"]
+    assert {"asset": f"woodwork-{version}.zip", "role": "package"} in workshop["files"]
+    groups = {c.split(".")[0] for c in manifest["runtime"]["commands"]}
+    listed = {p.split(":")[1] for p in workshop["permissions"] if p.startswith("commands:")}
+    assert listed >= groups, sorted(groups - listed)
+    for f in workshop["files"]:
+        assert "asset" in f or (ROOT / f["path"]).is_file(), f
