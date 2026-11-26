@@ -353,7 +353,7 @@ def test_a_cabinet_sized_by_its_drawers_inside_keeps_it(approval):
     inside = lambda measure: round(boxes(measure)["Cabinet Drawer 1 Right"][0] - boxes(measure)["Cabinet Drawer 1 Left"][3], 3)
     results = cli([plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 500, "drawer_depth": 400}),
                    MEASURE, plugin(approval, "settings", {"slide_type": "under_full"}),
-                   plugin(approval, "rebuild", {"with": "settings", "scope": "all"}), MEASURE,
+                   plugin(approval, "rebuild", {"with": "settings"}), MEASURE,
                    select("Cabinet Top"), plugin(approval, "edit", {}),
                    select("Cabinet Top"), plugin(approval, "edit", {"drawers": 2, "sizing": "drawer", "drawer_width": 550}), MEASURE,
                    plugin(approval, "settings", {"slide_type": "full"})])
