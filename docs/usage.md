@@ -174,6 +174,15 @@ needs them. Change one in Parameters and every cabinet's holes follow:
 
   ![Three doors: the end ones hinge on the sides, the middle one on a divider with half overlay hinges.](images/divider-hinges.png)
 
+- **Double dividers** (Woodwork settings, No by default): where overlay doors meet on every
+  divider (one door per compartment), each divider is two boards side by side, `Divider 1 L`
+  and `Divider 1 R`. Every door then covers a whole board and takes standard hinges, and a
+  door hung on a divider gets its plates' holes in its own board; the shelves' pin holes are
+  blind, from each board's outer face. One more board per divider in the cut list. With other
+  door counts, or inset fronts, the dividers stay single.
+
+  ![Double dividers: the middle door hangs on its own board with standard hinges.](images/double-dividers.png)
+
 - Each drawer box gets two holes in each side, in the middle of its height, and the carcass
   side beside it two more at the same height: `HW_setback` behind the front, and as many whole
   `HW_pitch` further as the slide's length leaves before `HW_setback` from its end. A sink
@@ -669,7 +678,7 @@ change any field before Run. A script's `plugin.run` that leaves a field out get
 value too.
 
 It also holds what is the same for the whole design and is no field of the Cabinet
-dialog: the back and its thickness, fronts (overlay or inset), handle position, the
+dialog: the back and its thickness, fronts (overlay or inset), **Double dividers**, handle position, the
 plinth's height, type and set-back (a cabinet only says Yes or No), labels, a French cleat's
 height and thickness; for the cut list the edge banding, the sizes it gives, the sheet size,
 saw kerf and edge trim, and the **Prices** for its [cost estimate](#cost-estimate); for a new worktop its material and thickness (the overhangs stay in

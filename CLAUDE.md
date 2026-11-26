@@ -813,7 +813,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   them on the side `door_hinge` says, the rest alternating); such an
   overlay door covers half of it and gets half overlay hinges (`hardware::HALF_OVERLAY`, the
   9.5 mm crank), its cups named `<Door> hinge cup n (half overlay)`, which the cut list counts
-  as "Hinge, cup, half overlay" apart from "Hinge, cup" (#157). No double dividers.
+  as "Hinge, cup, half overlay" apart from "Hinge, cup" (#157). **Double dividers**
+  (`double_dividers`, Woodwork settings, box only, `no` by default, given as a bool;
+  `Input::double`, used only with overlay doors one per compartment): each divider is
+  `<Name> Divider k L` and `R` side by side (`Cabinet::dividers`, `cell_x` with `2*t`), the
+  shelves' pins blind from each board's outer face, the fixed shelves joined to their own
+  board, and a door hinged there takes a straight hinge (crank 0) with its plate holes in that
+  board (#176).
   A drawer box's sides (`<Drawer n Left> slide k`, cut before `Kit::close` while the drawer is
   active) and the carcass sides (`<Side> Drawer n slide k`, after), whole pitches apart as the slide's length allows; the box is
   `2*HW_slide_t` narrower than the opening, and one shallower than 250 mm is refused

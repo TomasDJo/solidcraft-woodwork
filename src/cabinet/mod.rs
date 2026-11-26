@@ -146,7 +146,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     joinery.fits(BOTTOM, side_mm, p, "the sides")?;
     joinery.fits(INNER, input.shelf_d, p, "the dividers and the rail")?;
     // a divider between fixed shelves in dados is grooved from both sides at the same height
-    let both = input.fixed && input.shelves > 0.0 && input.dividers > 0.0;
+    let both = input.fixed && input.shelves > 0.0 && input.dividers > 0.0 && !input.double;
     check(
         !both || joinery.method(INNER) != "dado" || 2.0 * kit.size(p, "dado_depth", 6.0)? <= input.t - 3.0,
         "`dado_depth`: fixed shelves on both sides of a divider would groove it through; at most (thickness - 3 mm) / 2",
@@ -233,7 +233,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         kit: &kit,
         input,
         joinery,
-        ecell: format!("(({eiw} - {n}*{et}) / {})", n + 1),
+        ecell: format!(
+            "(({eiw} - {}*{et}) / {})",
+            n * (1 + u32::from(input.double)),
+            n + 1
+        ),
         eiw,
         ech: format!("({eh} - {epl} - 2*{et})"),
         ew,
@@ -388,15 +392,14 @@ impl Cabinet<'_> {
             let at = [[et.as_str(), &y, &z], [eiw.as_str(), tm, mh]];
             fittings::mount_board(kit, input.wall_mount, tm, board, at, "", [9, 3]);
         }
-        // Left face of each divider. They stand between bottom and top, as deep as the shelves.
-        let divider_x: Vec<String> = (1..=n).map(|k| format!("({ecell} + {et}) * {k}")).collect();
-        for (k, x) in divider_x.iter().enumerate() {
-            let part = format!("Divider {}", k + 1);
+        // The dividers' boards. They stand between bottom and top, as deep as the shelves.
+        let dividers = self.dividers();
+        for (part, x, _) in &dividers {
             let (z0, tall) = match self.joinery.extension(INNER) {
                 Some(g) => (format!("{bottom_top} - {g}"), format!("{ech} + 2*{g}")),
                 None => (bottom_top.clone(), ech.to_string()),
             };
-            panel(&part, [x, ein, &z0], [et, eshelf_d, &tall], false);
+            panel(part, [x, ein, &z0], [et, eshelf_d, &tall], false);
             // its ends into the bottom's top face and the top's underside
             let mid = format!("{x} + {et}/2");
             for (face, z, up) in [
@@ -442,14 +445,19 @@ impl Cabinet<'_> {
                     None => (x.clone(), ecell.clone()),
                 };
                 panel(&part, [&x0, ein, &z], [&wide, eshelf_d, et], false);
-                let face = |k: u32| match k {
-                    0 => "Side L".to_string(),
-                    k if k > n => "Side R".to_string(),
-                    k => format!("Divider {k}"),
+                // the compartment's left end, then its right
+                let face = |k: u32, right: bool| match (k, input.double) {
+                    (0, _) => "Side L".to_string(),
+                    (k, _) if k > n => "Side R".to_string(),
+                    (k, false) => format!("Divider {k}"),
+                    (k, true) => format!("Divider {k} {}", if right { "L" } else { "R" }),
                 };
                 let mid = format!("{z} + {et}/2");
                 let right = format!("{x} + {ecell}");
-                for (face, plane, into) in [(face(cell), &x, 1), (face(cell + 1), &right, -1)] {
+                for (face, plane, into) in [
+                    (face(cell, false), &x, 1),
+                    (face(cell + 1, true), &right, -1),
+                ] {
                     let joint = Joint {
                         face,
                         end: part.clone(),
@@ -460,7 +468,8 @@ impl Cabinet<'_> {
                         run: eshelf_d.clone(),
                         single: false,
                         // right of a divider: between the holes from the shelf on its left
-                        between: into == 1 && cell > 0,
+                        // (a double divider's two boards each carry one shelf)
+                        between: into == 1 && cell > 0 && !input.double,
                     };
                     self.joinery.joint(INNER, &joint);
                 }
@@ -556,7 +565,7 @@ impl Cabinet<'_> {
             _ => {}
         }
         match input.pins {
-            true => self.pins(&divider_x, &elast, &ebase),
+            true => self.pins(&dividers, &elast, &ebase),
             false => Vec::new(),
         }
     }
@@ -610,19 +619,48 @@ impl Cabinet<'_> {
         }
     }
 
+    /// Each divider's boards: its name, its left face and the face its shelves rest on (0 both,
+    /// -1 its left, 1 its right). A double divider is two boards side by side, `L` and `R`,
+    /// each carrying the shelves on its outer face.
+    fn dividers(&self) -> Vec<(String, String, i32)> {
+        let Cabinet { input, et, .. } = self;
+        let mut boards = Vec::new();
+        for k in 1..=input.dividers as u32 {
+            let right = self.cell_x(k); // the compartment right of it
+            match input.double {
+                false => boards.push((format!("Divider {k}"), format!("{right} - {et}"), 0)),
+                true => {
+                    boards.push((format!("Divider {k} L"), format!("{right} - 2*{et}"), -1));
+                    boards.push((format!("Divider {k} R"), format!("{right} - {et}"), 1));
+                }
+            }
+        }
+        boards
+    }
+
     /// One hole per panel, repeated up the panel and across to the rear row. Blind in the
-    /// sides; through a divider, which carries shelves on both faces.
-    fn pins(&self, divider_x: &[String], top_row: &str, base: &str) -> Commands {
+    /// sides and a double divider's boards; through a divider, which carries shelves on both
+    /// faces.
+    fn pins(&self, dividers: &[(String, String, i32)], top_row: &str, base: &str) -> Commands {
         let Cabinet {
             kit, ew, et, ein, ..
         } = self;
         let blind = fittings::blind_pin(et);
         let mut rows = vec![
             ("Side L".to_string(), et.clone(), blind.clone(), -1),
-            ("Side R".to_string(), format!("{ew} - {et}"), blind, 1),
+            (
+                "Side R".to_string(),
+                format!("{ew} - {et}"),
+                blind.clone(),
+                1,
+            ),
         ];
-        for (k, x) in divider_x.iter().enumerate() {
-            rows.push((format!("Divider {}", k + 1), x.clone(), et.clone(), 1));
+        for (part, x, face) in dividers {
+            rows.push(match face {
+                0 => (part.clone(), x.clone(), et.clone(), 1),
+                -1 => (part.clone(), x.clone(), blind.clone(), 1),
+                _ => (part.clone(), format!("{x} + {et}"), blind.clone(), -1),
+            });
         }
         let z = format!("{base} + {}", mm(2.0 * PITCH));
         let mut drill = Vec::new();
@@ -666,8 +704,13 @@ impl Cabinet<'_> {
 
     /// The left face of compartment `cell`.
     fn cell_x(&self, cell: u32) -> String {
-        let Cabinet { et, ecell, .. } = self;
-        format!("{et} + ({ecell} + {et}) * {cell}")
+        let Cabinet {
+            input, et, ecell, ..
+        } = self;
+        match input.double {
+            false => format!("{et} + ({ecell} + {et}) * {cell}"),
+            true => format!("{et} + ({ecell} + 2*{et}) * {cell}"),
+        }
     }
 
     /// A grip edge or finger groove along a front's top or bottom edge (`fittings::grip`): the

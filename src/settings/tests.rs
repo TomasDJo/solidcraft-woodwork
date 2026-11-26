@@ -193,6 +193,7 @@ fn plinth_yes_takes_settings_no_takes_none_and_the_rest_is_filled() {
         (&json!("legs"), &json!("inset"))
     );
     assert_eq!(p["labels"], true);
+    assert_eq!(p["double_dividers"], false);
     assert_eq!(p["back_thickness"], 0.314961);
     assert_eq!(p["plinth_setback"], 1.968504);
     let mut p = json!({"plinth": "no"});
