@@ -43,11 +43,23 @@
       "role": "package"
     },
     {
-      "path": "docs/banner.png",
+      "path": "docs/workshop-card.png",
       "role": "image"
     },
     {
-      "path": "docs/tool-station.png",
+      "path": "docs/workshop/kitchen.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/see-through.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/drawer.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/corner.png",
       "role": "image"
     }
   ]
