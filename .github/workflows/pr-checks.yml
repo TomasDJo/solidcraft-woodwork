@@ -20,12 +20,16 @@ jobs:
         run: |
           base=$(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
           body=$(jq -r '.pull_request.body // ""' "$GITHUB_EVENT_PATH")
+          head=$(jq -r .pull_request.head.ref "$GITHUB_EVENT_PATH")
           number=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
           fail=0
-          if [ "$base" != main ]; then
-            echo "::error::A pull request goes into main (this one is into '$base'): one PR a feature or fix, no stacked chains."
-            fail=1
-          fi
+          # Work goes into develop; main only takes develop, at a release.
+          case "$base:$head" in
+            develop:* | main:develop) ;;
+            *)
+              echo "::error::A pull request goes into develop (this one is into '$base'): one PR a feature or fix, no stacked chains. main only takes develop at a release."
+              fail=1 ;;
+          esac
           if ! grep -Eiq '(closes|fixes) #[0-9]+|^no issue: .+' <<<"$body"; then
             echo "::error::The description needs a line 'Closes #N' (or 'Fixes #N'), or 'No issue: <reason>'."
             fail=1
