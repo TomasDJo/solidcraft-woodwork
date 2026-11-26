@@ -24,7 +24,9 @@ table says which).
   a `ribbon` slot named after a host tab such as Model would put it there instead).
   A schema keyword the dialog cannot draw or check (`pattern`, `readOnly`, ...) leaves the
   entry in the menu with Run turned off; ours use only type, title, description, default,
-  oneOf, bounds, lengths and `x-solidcraft-visible-when` (0.46; 0.45 cannot draw it). The dialog shows the fields that `required` names first, in that
+  oneOf, bounds, lengths, `x-solidcraft-visible-when` (0.46; 0.45 cannot draw it) and `x-solidcraft-help`
+  (a field's "More about this field" link into `docs/usage.md`, 0.50; 0.49 turns Run off;
+  per field only, about 105 bytes each, so only where a hobbyist needs the guide). The dialog shows the fields that `required` names first, in that
   order, and the rest by key: so every schema lists all its fields in `required`, which also
   puts a ` *` after each label, except a field that may be left empty (Edit's numbers, the cut
   list's Save as), as a required field cannot be. `build.py` packs the manifest without white space: the app

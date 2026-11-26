@@ -6,7 +6,7 @@ from helpers import *
 
 DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems", "x-solidcraft-visible-when",
          "x-solidcraft-enabled-when",
-         "x-solidcraft-defaults", "x-solidcraft-selection"}
+         "x-solidcraft-defaults", "x-solidcraft-selection", "x-solidcraft-help"}
 WHEN = "x-solidcraft-visible-when"
 PICKS = "x-solidcraft-selection"  # a pick field of another name (Cabinet's Line): exactly version 1 and accept
 

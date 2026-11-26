@@ -76,7 +76,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line, Mobile base, handle-less fronts (grip edge, finger groove), a cost estimate in the cut list, Match selected as one shared group per run, bolt holes for the tool station, and Woodwork settings as a dialog per group under one ribbon dropdown. |
+| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line, Mobile base, handle-less fronts (grip edge, finger groove), a cost estimate in the cut list, Match selected as one shared group per run, bolt holes for the tool station, and Woodwork settings as a dialog per group under one ribbon dropdown, and links from the dialogs' fields to the usage guide. |
 | 0.49 | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
 | 0.47 | 0.4.0 | Tested on 0.47.0; works on 0.46 too. Joinery and hardware are design-wide Woodwork settings, one dialog for box and corner cabinets, and hinges, slides and fasteners as models. |
 | 0.46 | 0.3.0 | Tested on 0.46.1. Dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults. |

@@ -6,7 +6,8 @@ A dialog shows only the fields that apply to your choices (SolidCraft 0.46): the
 appear when there are doors, the reveal and handles when there are doors or drawers, the drawer
 front height when there are two or more drawers or drawers with doors, and where they go when there are doors too, the back's
 thickness when there is a back, and a sink base has no shelf or divider fields, and drawers only
-without doors.
+without doors. A field with a **More about this field** link under it opens its part of this
+guide (SolidCraft 0.50).
 
 - [Cabinet](#cabinet)
 - [Corner cabinets](#corner-cabinets)
@@ -29,10 +30,8 @@ without doors.
 |---|---|
 | ![A cabinet with two doors, a shelf and knobs, on a plinth.](images/cabinet.png) | ![Three drawers: the top one 140 mm, the others share the rest.](images/drawers.png) |
 | *A cabinet with two doors, a shelf and knobs, on a plinth.* | *Three drawers: the top one 140 mm, the others share the rest.* |
-| ![A drawer over two doors, on a rail.](images/drawers-doors.png) | ![Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.](images/fronts.png) |
-| *A drawer over two doors, on a rail.* | *Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.* |
-| ![Plinth types: board, notched sides, legs and casters.](images/plinths.png) | |
-| *Plinth types: board, notched sides, legs and casters.* | |
+| ![A drawer over two doors, on a rail.](images/drawers-doors.png) | |
+| *A drawer over two doors, on a rail.* | |
 
 **A combination that cannot be made is said at once.** When the fields do not go together (three
 doors without the two dividers behind them, more drawers than the height holds, a depth too
@@ -66,16 +65,14 @@ component can hold its cabinets.
 | **Shelves** | Shelves in each compartment, evenly spaced. |
 | **Drawers** | Drawers with fronts and boxes sized for 12.7 mm ball-bearing slides, drilled for them (see [Hinges and slides](#hinges-and-slides)). Alone they fill the front and the cabinet has no shelves. With one or two doors they sit above or below the doors (**Drawers at**), with a fixed rail (`Name Rail`) between the sides behind the gap between the drawers and the doors, and the shelves on the doors' side of it; with inset fronts the rail stands a panel back, behind them. Not with dividers: with drawers the dialog hides Dividers. |
 | **Drawer front height** | 0 is Auto: 150 mm beside doors, all alike for drawers only. Otherwise at least 100 mm (4 in; more with boards thicker than 16 mm beside doors, as the box needs room), and a lower value is refused with a message that names the minimum. With doors: the height of each drawer front. Drawers only: the top drawer's front, and the others share what is left equally (a lower top drawer, deeper ones below). Typical: 150 mm beside doors, 140 mm for the top of a stack. In the dialog's units. Once used it is the design parameter `Name_drawer_height`: change it in Parameters and the fronts, doors and rail follow. Going back to all alike (or 150 mm) is done with an Edit, not by setting the parameter to 0. |
-| **Size by**, **Drawer inside width** and **depth** | With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box and the back. The cabinet is made with that outside size, which the summary gives, and remembers the drawer inside size: when the slides, the drawer boards or anything else around the boxes changes later (Woodwork settings and Apply settings, or Edit), its outside is worked out again so the boxes keep their inside. Edit shows Size by and the inside sizes for it; a width changed in Parameters is replaced by the one the inside needs at the next Edit or Apply settings. Not with Match selected. |
+| **Size by**, **Drawer inside width** and **depth** | With drawers: Outside or Drawer inside. See [Size by drawer inside](#size-by-drawer-inside). |
 | **Drawers at** | With doors too: Top puts the drawers at the top and the doors below them, Bottom the drawers at the bottom on the plinth and the doors above. |
-| **Plinth / toe kick** | Yes (the default): the plinth set in Woodwork settings, its height (100 mm unless set), type and set-back. No: none, for a wall cabinet or a cabinet on top. With Match selected the plinth is the selected cabinet's, as before. |
-| **Plinth / toe kick type** (Woodwork settings) | **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too. |
-| **Plinth / toe kick set-back** (Woodwork settings) | With a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
+| **Plinth / toe kick** | Yes (the default) or No. See [Plinth / toe kick](#plinth--toe-kick). |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. Off, the shelves are fixed and joined by Joinery inside (a cabinet made before 0.2.0 keeps them unjoined, as it has no method). |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
 | **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. With three overlay doors or more the end doors always hinge on the sides, so only the doors between hinge on a divider; this is then the side the first of those hinges on (Right: the middle one of three hinges on its right), and the rest alternate. |
 | **Drawer box thickness**, **Drawer bottom thickness** (Woodwork settings) | The drawer boxes' sides, front and back (12 mm by default, 10 to 25) and their bottoms between the sides (6 mm, 3 to 19). The box keeps its outside size; the front, back and bottom get smaller. The parameters `Name_drawer_thickness` and `Name_drawer_bottom`: change them in Parameters for one cabinet, and Edit keeps them. |
-| **Fronts** (Woodwork settings) | Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment. |
+| **Fronts** (Woodwork settings) | Overlay or inset. See [Fronts: overlay or inset](#fronts-overlay-or-inset). |
 | **Reveal** | The gap around and between the fronts, 0.5 to 6 mm (2 by default), always in mm, also on an inch cabinet. Overlay: also how far the fronts stop short of the carcass's outside edges. Inset: the gap all round inside the opening. On a cabinet with doors or drawers it is the design parameter `Name_reveal`: change it in Parameters and the fronts follow. |
 | **Handle holes** | Drills the doors and drawer fronts for a knob (one 5 mm hole) or a pull (two, 128 mm apart). Or no handle at all, the front is the grip: **Grip edge** bevels the back of the grip edge at 45 degrees (the panel thickness less 6 mm along both faces, 12 mm on an 18 mm front), so fingers reach behind the front; **Finger groove** routes a rounded groove 20 mm high and 10 mm deep along the front face, its middle 25 mm from the grip edge. Both run the front's whole width and follow a resize. The grip edge is a drawer front's top, and a door's top or bottom by Handle position; on a corner cabinet's folding pair it is on the door that folds. No handles go in the cut list's hardware. |
 | **Handle position** (Woodwork settings) | Near the top, in the middle or near the bottom of a door. On Auto: near the top on a floor unit, near the bottom on a wall unit. On a drawer front the handle lies across: in the middle on Auto, or 40 mm from the front's top or bottom edge. With a grip edge or finger groove: the door's top edge (Top, Middle, or Auto on a floor unit) or its bottom edge (Bottom, or Auto on a wall unit). |
@@ -92,6 +89,30 @@ opening, Slide type), and the fields marked (Woodwork settings) above, are no fi
 models shown, 110 degrees and full extension when nothing is). It remembers them, so changing
 the settings later does not change it until Apply settings builds it again with them. The slide
 length is Auto (the longest that fits its depth).
+
+### Size by drawer inside
+
+With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box and the back. The cabinet is made with that outside size, which the summary gives, and remembers the drawer inside size: when the slides, the drawer boards or anything else around the boxes changes later (Woodwork settings and Apply settings, or Edit), its outside is worked out again so the boxes keep their inside. Edit shows Size by and the inside sizes for it; a width changed in Parameters is replaced by the one the inside needs at the next Edit or Apply settings. Not with Match selected.
+
+### Plinth / toe kick
+
+![Plinth types: board, notched sides, legs and casters.](images/plinths.png)
+
+*Plinth types: board, notched sides, legs and casters.*
+
+Yes (the default): the plinth set in Woodwork settings, its height (100 mm unless set), type and set-back. No: none, for a wall cabinet or a cabinet on top. With Match selected the plinth is the selected cabinet's, as before.
+
+**Plinth / toe kick type** (Woodwork settings): **Board**: a board under the cabinet, Plinth set-back from the front (`Name Plinth`). **Notched sides**: no board; each side has a toe kick Plinth set-back deep cut out of its front bottom corner, as high as the plinth, and the bottom sits on top of it, so you can fit one long plinth board along a whole run yourself (the cut list gives a notched side's size over the notch and says so). **Legs**: no board; the whole carcass stands on adjustable legs as high as the plinth (`Name Leg 1` and on, 40 mm round, 50 mm in from the edges: four, six on a cabinet over 900 mm wide), which the cut list counts as hardware and leaves out of the boards. An end panel still reaches the floor. **Casters**: the same, on locking casters so the cabinet rolls (`Name Caster 1` and on: an 80 mm plate under the bottom and a wheel, at the legs' places but 50 mm in from the inside of the sides; four 4 mm pilot holes for each plate in the bottom panel, 60 mm apart). Needs a plinth of at least 50 mm, counted as "Caster, locking" in the cut list's hardware; an end panel stops at the cabinet's bottom. Corner cabinets too.
+
+**Plinth / toe kick set-back** (Woodwork settings): With a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`.
+
+### Fronts: overlay or inset
+
+![Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.](images/fronts.png)
+
+*Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.*
+
+Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment.
 
 ### Doors and drawers move
 
