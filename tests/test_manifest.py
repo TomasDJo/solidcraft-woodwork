@@ -116,9 +116,11 @@ def test_choices_have_titles(approval):
 def anchors(markdown):
     """The heading anchors GitHub makes for a Markdown file: lowercase, punctuation removed,
     spaces to hyphens, and -1, -2... after a repeated one."""
-    seen, found = {}, set()
+    seen, found, fenced = {}, set(), False
     for line in markdown.splitlines():
-        match = re.match(r"#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        match = not fenced and re.match(r"#{1,6}\s+(.*?)\s*#*\s*$", line)
         if not match:
             continue
         slug = re.sub(r"[^\w\- ]", "", match.group(1).lower()).replace(" ", "-")
@@ -146,3 +148,7 @@ def test_help_links_point_to_existing_headings(approval):
     # GitHub's anchors, as the links will use them
     assert anchors("## Plinth / toe kick\n### Size by, drawer inside\n## Size by, drawer inside") == {
         "plinth--toe-kick", "size-by-drawer-inside", "size-by-drawer-inside-1"}
+    assert anchors("```
+## Removed
+```
+## Kept") == {"kept"}
