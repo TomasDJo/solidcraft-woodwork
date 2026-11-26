@@ -17,7 +17,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 
 - **Cabinet**: makes a cabinet, or changes one you already made. Its **Mode** starts on Auto:
   pick a door, drawer front, shelf, divider or drawer part and it edits that cabinet; pick a
-  side, top, bottom or back, or nothing, and it makes a new one (next to the picked one).
+  side, top, bottom or back and it makes a new one next to that cabinet; pick nothing for a
+  new one on its own.
   - A box cabinet with shelves, dividers, a back and a plinth / toe kick (a board, notched
     sides, legs or casters).
   - Doors, drawers, or drawers above or below doors, overlay or inset, that open on their
@@ -26,7 +27,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     folding doors, or diagonal with one door.
   - Hangs on the wall on a French cleat, a hanging rail or a steel rail.
   - Placed against the cabinet you picked, and held to it, so a run stays together when a
-    cabinet changes size. Match selected takes the picked cabinet's sizes.
+    cabinet changes size. Match selected takes the picked cabinet's height,
+    depth and plinth.
 - **Woodwork settings**: what is the same for the whole design, in sections: board material
   and thickness, doors and fronts, drawers and slides, plinth and wall mount, joinery, cut
   list and worktop, and display. New cabinets start from them.
@@ -109,7 +111,7 @@ The package lands in `dist/woodwork-<version>.zip`; it can also be installed fro
 
 - `plugin.json`: the manifest: the functions, their dialogs and the app commands they use.
 - `src/lib.rs`: runs each function and talks to the app.
-- `src/cabinet/`, `src/corner/`, `src/edit/`, `src/panel/`, `src/worktop/`, `src/settings/`,
+- `src/cabinet/`, `src/corner/`, `src/edit/` (Cabinet in Edit mode), `src/panel/`, `src/worktop/`, `src/settings/`,
   `src/material.rs`, `src/cutlist/`, `src/drawing/`: one module per function, plain Rust.
   The cut list's files are written by `src/pdf/` and `src/dxf/`, its cutting layouts by
   `src/nesting/`.
