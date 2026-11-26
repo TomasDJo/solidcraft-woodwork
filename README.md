@@ -1,7 +1,7 @@
 # solidcraft-woodwork
 
 A woodworking plugin for SolidCraft: parametric cabinets, joinery, materials, shop drawings
-and a cut list. Version 0.5.0 needs SolidCraft 0.49 or later; for older SolidCraft, see
+and a cut list. The next version needs SolidCraft 0.50 or later (0.5.0 needs 0.49); for older SolidCraft, see
 [SolidCraft versions](#solidcraft-versions). The roadmap is in [PLAN.md](PLAN.md).
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
@@ -29,9 +29,10 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   - Placed against the cabinet you picked, and held to it, so a run stays together when a
     cabinet changes size. Match selected takes the picked cabinet's height,
     depth and plinth.
-- **Woodwork settings**: what is the same for the whole design, in sections: board material
-  and thickness, doors and fronts, drawers and slides, plinth and wall mount, joinery, cut
-  list and worktop, and display. New cabinets start from them.
+- **Woodwork settings**: what is the same for the whole design, a dialog per group: General
+  (board material and thickness), Doors and fronts, Drawers, Plinth / toe kick and wall mount,
+  Joinery, Cut list and worktop, and Display. On the Model tab they are under one **Woodwork
+  settings** button with a dropdown; each is also in the menu. New cabinets start from them.
 - **Apply settings**: builds the picked cabinets, or all of them, again with the Woodwork
   settings, keeping each cabinet's own sizes and choices. It runs as a long job with progress
   per cabinet and a Cancel button.
@@ -67,7 +68,8 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.49+ | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
+| 0.50+ | next | Tested on 0.50.0. Woodwork settings as a dialog per group, under one ribbon dropdown. |
+| 0.49 | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
 | 0.47 | 0.4.0 | Tested on 0.47.0; works on 0.46 too. Joinery and hardware are design-wide Woodwork settings, one dialog for box and corner cabinets, and hinges, slides and fasteners as models. |
 | 0.46 | 0.3.0 | Tested on 0.46.1. Dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults. |
 | 0.45 | 0.2.0 | Tested on 0.45.0. The view is framed after a cabinet is added, and agents get each function as a tool. |

@@ -1,6 +1,6 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.49+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.50+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
 
 **Woodwork targets the latest SolidCraft release.** Raise the minimum version freely when a new
@@ -78,19 +78,23 @@ table says which).
   with a plinth height of 0. Not expressed: Settings' Back against a Cabinet's Wall mount (two
   dialogs), Edit's Wall mount against Back (an option, not a field), Picked cabinets with Apply
   No (a keyword on the reserved `selection` may turn Run off).
-  **Settings' sections (#128 step 2):** the field `section` ("Show settings for": General,
-  Doors and fronts, Drawers, Plinth / toe kick and wall mount, Joinery, Cut list and worktop, Display, All;
-  not stored; the hook's hint "Pick a group to see its settings") shows one group, under a
-  divider row (`divider`: a string field greyed by an `x-solidcraft-enabled-when` that is never
-  true, its default a line, `settings::DIVIDER`, given by the hook for scripts and never stored).
-  The hook hides the other groups' fields (`settings::SECTIONS`, the same lists as the
-  manifest's options, `{visible: false}` with the field's default), not a schema condition: a
-  field the hook hides is still sent, so a script's fields are all used whatever its section (a
-  condition would leave them out of `plugin.run`), and the dialog's hidden fields carry the
-  stored values, which `patch` leaves out. `units` is a setting now, in General: the other
-  sections' sizes are in the stored unit (the hook scales by it and hints "In mm, as set in
-  General"; `patch` takes it when the run gives no `units`). Apply to shows in every section.
-  The fields' own conditions (a joinery size on its method, ...) stay in the schema.
+  **Settings' sections (#128 step 2):** an entry per group, `settings-general`, `-fronts`,
+  `-drawers`, `-plinth`, `-joinery`, `-cutlist`, `-display` (menu "Settings: <group>", the
+  settings icon), each with only its fields. Same `execute` branch and storage: a run sends only
+  its fields, so `patch` leaves the rest as stored. The hook (`settings::fields`) answers only
+  the entry's fields (`settings::SECTIONS`), as a reply naming a field the schema lacks is
+  ignored whole; a refusal (`settings::trouble`) is hinted only when its field is in the entry.
+  A schema condition cannot name another entry's field: Finger-joint the bottom too (Joinery) is
+  hidden by the hook when the stored `plinth_type` is legs or casters.
+  `units` is a setting, in General only: the other entries' sizes are in the stored unit (the
+  hook scales by it and hints "In mm, as set in General"; `patch` takes it when the run gives no
+  `units`). `settings`, for scripts, has no slot, no hook and no properties: with no conditions
+  `plugin.run` passes its fields through unchecked, so it takes any setting; agents
+  use the section tools. `runtime.ribbon_groups` (SolidCraft 0.50, tangency-labs/solidcraft#20089)
+  puts the section entries behind one "Woodwork settings" button in the Model tab's Plugins
+  group; it affects only those buttons, not the Plugins menu or the slot tabs, and an entry a
+  user pinned keeps its own button. `tests/test_manifest.py` checks the group lists exactly the
+  section entries.
   **Field order:** the most used first, and a conditional field right after the field that
   controls it, directly below it (drawer height and Drawers at under Drawers, the door hinge and
   hinge angle under Doors, plinth type and set-back under Plinth, slide length under slide type, a joinery method's sizes after it,

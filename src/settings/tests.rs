@@ -84,8 +84,7 @@ fn settings_dialog_starts_at_stored_values_or_cabinet_defaults() {
         &json!({"document": null}),
     );
     assert_eq!(empty["material"], json!({"default": "Birch plywood"}));
-    // every setting, Section's hint and the divider
-    assert_eq!(mm.as_object().unwrap().len(), table().len() + 2, "{mm}");
+    assert_eq!(mm.as_object().unwrap().len(), table().len(), "{mm}");
     assert_eq!(mm["plinth"], json!({"default": 100.0}));
     assert_eq!(mm["kerf"], json!({"default": 4.0}));
     assert_eq!(mm["worktop_material"], json!({"default": "Oak"}));
@@ -376,50 +375,58 @@ fn match_selected_shows_the_picked_cabinets_sizes() {
 }
 
 #[test]
-fn a_section_shows_its_fields_and_hides_the_rest_still_sent() {
-    let joinery = fields("settings", &json!({"section": "joinery"}), &json!({}));
-    assert!(joinery["joints"].get("visible").is_none());
-    assert_eq!(joinery["joints"]["default"], "dowels");
-    // hidden, but with its value: the hook hides without leaving it out
-    // a size outside General says its unit, set there
-    assert_eq!(
-        joinery["plinth"],
-        json!({"default": 100.0, "hint": "In mm, as set in General", "visible": false})
-    );
-    let stored_in = json!({"document": {"settings": {"units": "in", "dowel_d": 6.35}}});
-    let inch = fields(
-        "settings",
-        &json!({"section": "joinery", "units": "mm"}),
-        &stored_in,
-    );
-    assert_eq!(inch["dowel_d"]["default"], 0.25);
-    assert_eq!(inch["units"], json!({"default": "in", "visible": false}));
-    assert_eq!(inch["section"]["hint"], "Pick a group to see its settings");
-    assert_eq!(inch["divider"]["default"], DIVIDER);
-    assert_eq!(
-        joinery["material"],
-        json!({"default": "Birch plywood", "visible": false})
-    );
-    // Units shows only in General
-    assert_eq!(joinery["units"], json!({"default": "mm", "visible": false}));
-    let all = fields("settings", &json!({"section": "all"}), &json!({}));
-    assert!(all
+fn a_section_dialog_gets_only_its_fields() {
+    let joinery = fields("settings-joinery", &json!({}), &json!({}));
+    let mut keys: Vec<&str> = joinery
         .as_object()
         .unwrap()
-        .values()
-        .all(|f| f.get("visible").is_none()));
-    // every setting and Settings' own keep-choices are in one section
+        .keys()
+        .map(|k| k.as_str())
+        .collect();
+    keys.sort();
+    let mut wanted = SECTIONS
+        .iter()
+        .find(|s| s.0 == "joinery")
+        .unwrap()
+        .1
+        .to_vec();
+    wanted.sort();
+    assert_eq!(keys, wanted);
+    assert_eq!(joinery["joints"]["default"], "dowels");
+    // a size outside General says its unit, set there; General has Units
+    assert_eq!(joinery["dowel_d"]["hint"], "In mm, as set in General");
+    let stored_in = json!({"document": {"settings": {"units": "in", "dowel_d": 6.35}}});
+    let inch = fields("settings-joinery", &json!({}), &stored_in);
+    assert_eq!(inch["dowel_d"]["default"], 0.25);
+    let general = fields("settings-general", &json!({"units": "mm"}), &stored_in);
+    assert_eq!(general["units"], json!({"default": "in"}));
+    // Finger-joint the bottom too goes by the stored plinth type, set in another dialog
+    assert!(joinery["finger_bottom"].get("visible").is_none());
+    for (plinth, shown) in [
+        ("board", true),
+        ("notch", true),
+        ("legs", false),
+        ("casters", false),
+    ] {
+        let stored = json!({"document": {"settings": {"plinth_type": plinth}}});
+        let reply = fields("settings-joinery", &json!({}), &stored);
+        assert_eq!(
+            reply["finger_bottom"].get("visible").is_none(),
+            shown,
+            "{plinth}"
+        );
+    }
+    // every setting is in one section
     let mut keys: Vec<&str> = SECTIONS.iter().flat_map(|s| s.1.iter().copied()).collect();
     let mut wanted = kept();
     keys.sort();
     wanted.sort();
     assert_eq!(keys, wanted);
-    // Section is no setting: it is not stored
-    let patched = patch(
-        &json!({"section": "joinery", "joints": "none"}),
-        &Value::Null,
-    )
-    .unwrap();
+    // the scripts' entry keeps every setting
+    let all = fields("settings", &json!({}), &json!({}));
+    assert!(all.get("joints").is_some() && all.get("plinth").is_some());
+    // nothing is stored but what a run gives
+    let patched = patch(&json!({"joints": "none"}), &Value::Null).unwrap();
     assert_eq!(patched, json!({"settings": {"joints": "none"}}));
 }
 
