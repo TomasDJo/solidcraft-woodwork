@@ -1,0 +1,38 @@
+name: PR checks
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Base, issue link and picture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base=$(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
+          body=$(jq -r '.pull_request.body // ""' "$GITHUB_EVENT_PATH")
+          number=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
+          fail=0
+          if [ "$base" != main ]; then
+            echo "::error::A pull request goes into main (this one is into '$base'): one PR a feature or fix, no stacked chains."
+            fail=1
+          fi
+          if ! grep -Eiq '(closes|fixes) #[0-9]+|^no issue: .+' <<<"$body"; then
+            echo "::error::The description needs a line 'Closes #N' (or 'Fixes #N'), or 'No issue: <reason>'."
+            fail=1
+          fi
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$number/files" --jq '.[].filename')
+          if grep -Eq '^(plugin\.json|src/)' <<<"$files"; then
+            if ! grep -Eiq '!\[|<img|^no picture: .+' <<<"$body"; then
+              echo "::error::This PR changes plugin.json or src/: add a screenshot to the description, or a line 'No picture: <reason>'."
+              fail=1
+            fi
+          fi
+          exit $fail
