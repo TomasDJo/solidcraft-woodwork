@@ -17,6 +17,9 @@ pub const HANDLE_D: f64 = 5.0; // screw hole for a knob or pull
 pub const PULL: f64 = 128.0; // between the two screws of a pull
 pub const HANDLE_EDGE: f64 = 50.0; // on a door: from its opening edge
 pub const HANDLE_END: f64 = 100.0; // and from its top or bottom to the nearest hole
+pub const GROOVE_D: f64 = 20.0; // a finger groove: a half round, 20 mm high and 10 deep
+pub const GROOVE_EDGE: f64 = 25.0; // its middle, from the front's edge
+pub const GRIP_LAND: f64 = 6.0; // a grip edge's 45-degree bevel leaves this much of the edge
 
 /// The top row of pins, counted in pitches above the bottom panel. Pin holes sit on a 32 mm
 /// grid there, two pitches clear of both ends of the clear height.
@@ -168,7 +171,7 @@ const HINGES: [f64; 3] = [900.0, 1600.0, 2000.0];
 /// Where the screws of a knob (one) or a pull (two) sit, from the handle's middle.
 pub fn screw_offsets(handles: &str) -> &'static [f64] {
     match handles {
-        "none" => &[],
+        "none" | "grip" | "groove" => &[],
         "knob" => &[0.0],
         _ => &[-PULL / 2.0, PULL / 2.0],
     }
@@ -186,6 +189,19 @@ pub fn screw_heights(handles: &str, handle_z: &str) -> Vec<String> {
         }
     });
     screws.collect()
+}
+
+/// Whether a handle-less front of `t` mm keeps wood behind its grip: a grip edge's bevel
+/// leaves `GRIP_LAND`, and a finger groove must not come through.
+pub fn profile_fits(handles: &str, t: f64) -> Result<(), String> {
+    match handles {
+        "grip" if t <= GRIP_LAND => Err(format!("a grip edge needs fronts over {GRIP_LAND} mm")),
+        "groove" if t <= GROOVE_D / 2.0 => Err(format!(
+            "a finger groove needs fronts over {} mm",
+            GROOVE_D / 2.0
+        )),
+        _ => Ok(()),
+    }
 }
 
 /// The `handle_position` field: where on a door its handle sits.
@@ -458,6 +474,107 @@ pub fn floor_unit(plinth: f64, depth: f64) -> bool {
     plinth > 0.0 || depth >= 450.0
 }
 
+/// `handle_position` with auto settled: top, middle or bottom.
+fn place(at: &str, front_h: f64, floor: bool) -> &str {
+    match at {
+        "auto" if front_h > 1200.0 => "middle",
+        "auto" if floor => "top",
+        "auto" => "bottom",
+        at => at,
+    }
+}
+
+/// Whether a door's grip edge or groove (`handles` grip or groove) is along its top edge, else
+/// its bottom: auto by the kind of unit (also on a tall door), and middle is the top.
+pub fn grip_on_top(at: &str, floor: bool) -> bool {
+    match at {
+        "auto" => floor,
+        at => at != "bottom",
+    }
+}
+
+/// A handle-less front's grip along its top (`top`) or bottom edge, for `handles` grip (a
+/// 45-degree bevel along the back of the edge: a box turned on the edge and cut away) or groove
+/// (a half-round groove in the front face, a cylinder cut); nothing for other handles. The
+/// front is the box from `lo` to `lo + size` in the builder's coordinates, `along` its
+/// horizontal axis (0 or 1) and `back` the way (1 or -1) across it to its back face; `at` turns
+/// a point into the command's. Both cuts reach a millimetre past the ends.
+#[allow(clippy::too_many_arguments)]
+pub fn grip(
+    kit: &Kit,
+    part: &str,
+    handles: &str,
+    at: impl Fn(&str, &str, &str) -> Value,
+    lo: [&str; 3],
+    size: [&str; 3],
+    along: usize,
+    back: i32,
+    top: bool,
+) {
+    let across = 1 - along;
+    let face = |back_face: bool| match (back == 1) == back_face {
+        true => format!("{} + {}", lo[across], size[across]),
+        false => lo[across].to_string(),
+    };
+    let edge = match top {
+        true => format!("{} + {}", lo[2], size[2]),
+        false => lo[2].to_string(),
+    };
+    let mut axis = [0, 0, 0];
+    axis[along] = 1;
+    let point = |a: String, c: String, z: String| {
+        let mut p = [String::new(), String::new(), z];
+        (p[along], p[across]) = (a, c);
+        at(&p[0], &p[1], &p[2])
+    };
+    let body = format!("{} {part}", kit.name);
+    match handles {
+        "groove" => {
+            let z = match top {
+                true => format!("{edge} - {}", mm(GROOVE_EDGE)),
+                false => format!("{edge} + {}", mm(GROOVE_EDGE)),
+            };
+            let base = point(format!("{} - 1 mm", lo[along]), face(false), z);
+            let length = format!("{} + 2 mm", size[along]);
+            hole(kit, part, base, axis, &mm(GROOVE_D), &length, "groove");
+        }
+        "grip" => {
+            // A square on the back edge, turned 45 degrees: what it takes of the front is the
+            // bevel, `t - GRIP_LAND` along both faces.
+            let centre = point(
+                format!("{} + ({})/2", lo[along], size[along]),
+                face(true),
+                edge,
+            );
+            let side = format!("sqrt(2)*({} - {})", size[across], mm(GRIP_LAND));
+            let mut dims = [side.clone(), side.clone(), side];
+            dims[along] = format!("{} + 2 mm", size[along]);
+            let cutter = format!("{body} grip");
+            kit.push((
+                "solid.box",
+                json!({
+                    "center": centre, "length": dims[0], "width": dims[1], "height": dims[2],
+                    "name": format!("{cutter} cutter"), "body_name": cutter,
+                }),
+            ));
+            kit.push((
+                "solid.move",
+                json!({
+                    "bodies": [cutter], "origin": centre, "axis": axis, "angle": "45 deg",
+                    "name": format!("{cutter} turn"),
+                }),
+            ));
+            kit.push((
+                "solid.combine",
+                json!({
+                    "target": body, "tools": [cutter], "operation": "cut", "name": cutter,
+                }),
+            ));
+        }
+        _ => {}
+    }
+}
+
 /// The middle of the handle on a door from `z0` up to `z1`, at `at`: top, middle, bottom or
 /// auto. `front_h` is the cabinet's height above its plinth, in mm.
 pub fn handle_height(
@@ -470,13 +587,7 @@ pub fn handle_height(
 ) -> String {
     let half = if handles == "pull" { PULL / 2.0 } else { 0.0 };
     let end = mm(HANDLE_END + half);
-    let at = match at {
-        "auto" if front_h > 1200.0 => "middle",
-        "auto" if floor => "top",
-        "auto" => "bottom",
-        at => at,
-    };
-    match at {
+    match place(at, front_h, floor) {
         "middle" => format!("({z0} + {z1}) / 2"),
         "top" => format!("{z1} - {end}"),
         _ => format!("{z0} + {end}"),

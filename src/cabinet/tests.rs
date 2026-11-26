@@ -1283,3 +1283,78 @@ fn drawer_boxes_take_finger_joints() {
         .any(|c| c.1.to_string().contains(" finger ")));
     assert!(build(&json!({"drawers": 1, "drawer_joints": "dovetail"})).is_err());
 }
+
+#[test]
+fn grip_edges_and_finger_grooves() {
+    let named = |commands: &Commands, name: &str| {
+        let found = commands.iter().find(|c| c.1["name"] == name);
+        found.unwrap_or_else(|| panic!("no {name}")).1.clone()
+    };
+    // a groove: a 20 mm half round along a drawer front's top, on its front face, 25 mm down,
+    // a millimetre past both ends; no handle holes
+    let (commands, _) = build(&json!({"drawers": 2, "handles": "groove"})).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"].as_str().unwrap_or("").contains("handle")));
+    let groove = named(&commands, "Cabinet Drawer 2 Front groove");
+    assert_eq!(groove["axis"], json!([1, 0, 0]));
+    assert_eq!(groove["diameter"], "20 mm");
+    assert_eq!(groove["targets"], json!(["Cabinet Drawer 2 Front"]));
+    let base = groove["base"].as_array().unwrap();
+    assert!(base[0]
+        .as_str()
+        .unwrap()
+        .starts_with("0 mm + Cabinet_reveal - 1 mm"));
+    assert!(base[2].as_str().unwrap().ends_with(" - 25 mm"));
+    assert!(groove["height"].as_str().unwrap().ends_with(" + 2 mm"));
+    // a grip edge: a square on the back of the top edge, turned 45 degrees about it and cut
+    // away, on a floor unit's door (auto: the top) and a wall unit's (the bottom)
+    let edge = |p: Value| {
+        let (commands, _) = build(&p).unwrap();
+        let cutter = named(&commands, "Cabinet Door grip cutter");
+        let turn = named(&commands, "Cabinet Door grip turn");
+        assert_eq!(turn["origin"], cutter["center"]);
+        assert_eq!(
+            (turn["axis"].clone(), turn["angle"].clone()),
+            (json!([1, 0, 0]), json!("45 deg"))
+        );
+        let cut = named(&commands, "Cabinet Door grip");
+        assert_eq!(cut["target"], "Cabinet Door");
+        assert_eq!(cut["tools"], json!(["Cabinet Door grip"]));
+        assert_eq!(cutter["width"], "sqrt(2)*(Cabinet_thickness - 6 mm)");
+        assert_eq!(
+            cutter["center"][1],
+            "-Cabinet_reveal - Cabinet_thickness + Cabinet_thickness - Cabinet_depth/2"
+        );
+        cutter["center"][2].as_str().unwrap().to_string()
+    };
+    let top = edge(json!({"doors": 1, "handles": "grip"}));
+    let wall = edge(json!({"doors": 1, "handles": "grip", "depth": 320}));
+    assert_eq!(wall, "0 mm + 0 mm + Cabinet_reveal");
+    assert!(
+        top.starts_with(&format!("{wall} + Cabinet_height - ")),
+        "{top}"
+    );
+    // middle is the top edge too
+    assert_eq!(
+        edge(json!({"doors": 1, "handles": "grip", "handle_position": "middle"})),
+        top
+    );
+    assert_eq!(
+        edge(json!({"doors": 1, "handles": "grip", "handle_position": "bottom", "depth": 320})),
+        wall
+    );
+    // a tall wall unit's door on auto: still the bottom edge (a knob would go in the middle)
+    let tall = json!({"doors": 1, "handles": "grip", "depth": 320, "height": 1500});
+    assert_eq!(edge(tall), wall);
+    // the front must keep wood behind a grip: over 6 mm for a bevel, 10 mm for a groove
+    let thin = |handles: &str, t: f64| {
+        let p = json!({"drawers": 2, "handles": handles, "thickness": t, "back_thickness": 3});
+        build(&p).is_ok()
+    };
+    assert!(
+        !thin("grip", 6.0) && thin("grip", 8.0) && !thin("groove", 10.0) && thin("groove", 12.0)
+    );
+    assert!(thin("knob", 6.0));
+    assert!(build(&json!({"doors": 1, "handles": "rail"})).is_err());
+}

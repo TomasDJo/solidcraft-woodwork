@@ -736,3 +736,35 @@ fn hinges_on_the_shared_hardware_and_the_pins_grid() {
         .iter()
         .any(|c| c.1["name"].to_string().contains("hinge plate")));
 }
+
+#[test]
+fn a_grip_goes_on_the_door_that_folds() {
+    let has = |commands: &Commands, name: &str| commands.iter().any(|c| c.1["name"] == name);
+    // the L: the folding door's top edge, along y on the return; its back face is towards the
+    // corner (-x in a left corner, +x in a right one, mirrored)
+    for (corner, doors, x) in [
+        ("left", "hinged right", "Cabinet_depth + Cabinet_reveal - Cabinet_width/2"),
+        ("right", "hinged left", "Cabinet_width - (Cabinet_depth + Cabinet_reveal) - (Cabinet_thickness) + Cabinet_thickness - Cabinet_width/2"),
+    ] {
+        let p = json!({"doors": doors, "handles": "grip", "corner": corner});
+        let (commands, _) = build(&p).unwrap();
+        assert!(!has(&commands, "Cabinet Door grip cutter"));
+        let cutter = named(&commands, "Cabinet Door return grip cutter");
+        assert_eq!(named(&commands, "Cabinet Door return grip turn")["axis"], json!([0, 1, 0]));
+        assert!(cutter["length"].as_str().unwrap().starts_with("sqrt(2)*"));
+        assert_eq!(cutter["center"][0], x, "{corner}");
+        // in the middle of the door's length, which is a difference
+        assert!(cutter["center"][1].as_str().unwrap().starts_with("Cabinet_reveal + ("));
+    }
+    // hinged left, the back leg's door folds: along x; a groove on the diagonal's one door,
+    // at the bottom of a wall unit
+    let p = json!({"doors": "hinged left", "handles": "groove"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(has(&commands, "Cabinet Door groove") && !has(&commands, "Cabinet Door return groove"));
+    let p = json!({"shape": "diagonal", "doors": "hinged left", "handles": "groove",
+        "plinth": 0, "depth": 320});
+    let (commands, _) = build(&p).unwrap();
+    let groove = named(&commands, "Cabinet Door groove");
+    assert_eq!(groove["axis"], json!([1, 0, 0]));
+    assert_eq!(groove["base"][2], "0 mm + Cabinet_reveal + 25 mm");
+}

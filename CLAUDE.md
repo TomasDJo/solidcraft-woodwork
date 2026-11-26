@@ -701,6 +701,14 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   and under the top (joints along Z). Split, each piece is joined to what it meets and the two
   keep their fixed `return dowel` pair (an edge joint; the cut list's `Dowel, 8 x 60 mm`).
   A corner cabinet's shelves stay on pins (fixed only on a box cabinet).
+- **Handle-less fronts** (`handles` `grip`, `groove`; #180, `fittings::grip`): no screw holes, so
+  no handles in the hardware list. A groove is one cylinder cut along the edge (20 mm, its axis
+  in the front face, 25 mm from the edge); a grip edge is a box made on the back edge, turned
+  45 degrees about it (`solid.move`) and cut away by `solid.combine`, all by names, never a
+  chamfer's edge pick (the naming depth, below): 3 commands a front. A drawer front's top edge;
+  a door's top or bottom by `fittings::grip_on_top` (auto by floor or wall unit, also on a
+  tall door; middle is the top), on the corner's folding door only. `fittings::profile_fits`
+  refuses a front too thin for it. Both run a millimetre past the front's ends.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
 - A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
   from parameters takes whole parameters (`number(Width)`), not expressions. A board is told
