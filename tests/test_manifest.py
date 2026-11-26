@@ -148,7 +148,4 @@ def test_help_links_point_to_existing_headings(approval):
     # GitHub's anchors, as the links will use them
     assert anchors("## Plinth / toe kick\n### Size by, drawer inside\n## Size by, drawer inside") == {
         "plinth--toe-kick", "size-by-drawer-inside", "size-by-drawer-inside-1"}
-    assert anchors("```
-## Removed
-```
-## Kept") == {"kept"}
+    assert anchors("```\n## Removed\n```\n## Kept") == {"kept"}
