@@ -497,23 +497,6 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
     (field, why)
 }
 
-/// The dialog's Problem row (`problem`, near the top: a greyed text field, never stored): shown with the
-/// reason when there is one, hidden otherwise. A field's hint is only its hover tooltip in 0.49,
-/// so the row is what the user sees at once.
-pub fn problem_row(hint: Option<&str>) -> Value {
-    match hint {
-        Some(hint) => {
-            let text: String = hint.chars().take(PROBLEM_MAX).collect();
-            json!({"default": text, "value": text, "visible": true})
-        }
-        // its default too, for a script that leaves it out (it is required, for its place)
-        None => json!({"default": "None", "visible": false}),
-    }
-}
-
-/// The Problem row's longest text (its `maxLength` in the manifest).
-pub const PROBLEM_MAX: usize = 400;
-
 /// `problem`'s field as a Cabinet dialog field: a setting's (the cleat, the back's or the drawer
 /// boxes' thickness) is no field there, and a reply naming one would be ignored whole.
 pub fn on_cabinet(field: &'static str) -> &'static str {

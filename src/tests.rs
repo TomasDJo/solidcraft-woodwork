@@ -613,15 +613,11 @@ fn the_cabinet_dialog_says_at_once_what_the_build_would_refuse() {
     let hint = reply["doors"]["hint"].as_str().unwrap();
     assert!(hint.contains("dividers + 1 = 1 here"), "{hint}");
     assert!(hint.contains("nothing is made or previewed"), "{hint}");
-    // and in the Problem row, which shows it (a hint is only a hover tooltip in 0.49)
-    assert_eq!(
-        reply["problem"],
-        json!({"default": hint, "value": hint, "visible": true})
-    );
+    // no Problem row any more (removed for 0.5.0): the reply names no such field
+    assert!(reply.get("problem").is_none(), "{reply}");
     // a corner's doors are Doors there; a fine cabinet gets no hint
     let ok = dialog("cabinet", &json!({"shape": "box", "doors": 2}), &mut run).unwrap();
     assert!(ok["doors"].get("hint").is_none(), "{ok}");
-    assert_eq!(ok["problem"], json!({"default": "None", "visible": false}));
     let low = dialog(
         "cabinet",
         &json!({"shape": "box", "height": 100, "drawers": 4}),
@@ -696,7 +692,7 @@ fn placing_measures_only_the_picked_cabinet_and_lands_where_a_full_measure_put_i
 }
 
 #[test]
-fn edit_picked_shows_a_refused_change_in_the_problem_row() {
+fn edit_picked_says_a_refused_change_on_its_field() {
     // Cabinet A, 900 wide with two dividers and three doors, kept in its Edit file; the dialog
     // in Edit picked asks for four doors (more than one per compartment)
     let mut run = |command: &str, _: Value| {
@@ -711,21 +707,17 @@ fn edit_picked_shows_a_refused_change_in_the_problem_row() {
     let picked = json!([{"type": "body", "name": "A Side L"}]);
     let values = json!({"mode": "edit", "selection": picked, "doors": 4, "dividers": 2});
     let reply = dialog("cabinet", &values, &mut run).unwrap();
-    let text = reply["problem"]["value"].as_str().unwrap_or_default();
+    let text = reply["doors"]["hint"].as_str().unwrap_or_default();
     assert!(text.contains("dividers + 1 = 3 here"), "{reply}");
-    assert_eq!(reply["problem"]["visible"], true);
-    // as it is: no problem, the row hidden
+    assert!(reply.get("problem").is_none(), "{reply}");
+    // as it is: no hint
     let values = json!({"mode": "edit", "selection": picked, "doors": 3, "dividers": 2});
     let reply = dialog("cabinet", &values, &mut run).unwrap();
-    assert_eq!(
-        reply["problem"],
-        json!({"default": "None", "visible": false}),
-        "{reply}"
-    );
+    assert!(reply["doors"].get("hint").is_none(), "{reply}");
 }
 
 #[test]
-fn mode_auto_shows_the_problem_row_when_editing_and_when_new() {
+fn mode_auto_says_a_refused_change_when_editing_and_when_new() {
     // Cabinet A, 900 wide with two dividers and three doors; Mode Auto with its door picked
     // edits it (`select::auto`), and four doors are more than one per compartment
     let mut run = |command: &str, _: Value| {
@@ -744,37 +736,12 @@ fn mode_auto_shows_the_problem_row_when_editing_and_when_new() {
     let reply = dialog("cabinet", &values, &mut run).unwrap();
     let hint = reply["mode"]["hint"].as_str().unwrap_or_default();
     assert!(hint.contains("editing A"), "{reply}");
-    let text = reply["problem"]["value"].as_str().unwrap_or_default();
+    let text = reply["doors"]["hint"].as_str().unwrap_or_default();
     assert!(text.contains("dividers + 1 = 3 here"), "{reply}");
-    assert_eq!(reply["problem"]["visible"], true, "{reply}");
     // Auto with nothing picked is a new cabinet: three doors and no dividers are refused there
     let values = json!({"mode": "auto", "shape": "box", "doors": 3, "dividers": 0});
     let reply = dialog("cabinet", &values, &mut run).unwrap();
     assert_eq!(reply["mode"]["hint"], "Auto: a new cabinet", "{reply}");
-    let text = reply["problem"]["value"].as_str().unwrap_or_default();
+    let text = reply["doors"]["hint"].as_str().unwrap_or_default();
     assert!(text.contains("dividers + 1 = 1 here"), "{reply}");
-}
-
-#[test]
-fn edit_picked_on_a_cabinet_without_a_file_checks_the_dialogs_own_fields() {
-    // a cabinet made before 0.5.0: no Edit file, so the dialog's own Doors and Dividers
-    let mut run = |command: &str, _: Value| {
-        Ok(match command {
-            "document.inspect" => json!({"bodies": ["A Side L", "A Top"], "params": []}),
-            _ => json!({}),
-        })
-    };
-    let picked = json!([{"type": "body", "name": "A Side L"}]);
-    let bad =
-        json!({"mode": "edit", "shape": "box", "selection": picked, "doors": 4, "dividers": 2});
-    let reply = dialog("cabinet", &bad, &mut run).unwrap();
-    let text = reply["problem"]["value"].as_str().unwrap_or_default();
-    assert!(
-        text.contains("dividers + 1 = 3 here") && text.contains("nothing is changed"),
-        "{reply}"
-    );
-    let fine =
-        json!({"mode": "edit", "shape": "box", "selection": picked, "doors": 3, "dividers": 2});
-    let reply = dialog("cabinet", &fine, &mut run).unwrap();
-    assert_eq!(reply["problem"]["visible"], false, "{reply}");
 }
