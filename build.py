@@ -173,6 +173,25 @@ def entry_step(approval, entry, params=None):
         "path": str(PKG), "approval": approval, "entry": entry, "params": defaults | (params or {})}}
 
 
+def workshop():
+    """Bring solidcraft-workshop.json (the Workshop listing) up to plugin.json's version and its
+    package, and the SolidCraft version CI tests against as the minimum. Not on CI, where
+    test_manifest must catch a listing that was committed stale."""
+    if os.environ.get("CI"):
+        return
+    path = ROOT / "solidcraft-workshop.json"
+    listing = json.loads(path.read_text(encoding="utf-8"))
+    version = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))["version"]
+    ci = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    app = ci.split("SOLIDCRAFT:", 1)[1].split()[0]
+    package = {"asset": f"woodwork-{version}.zip", "role": "package"}
+    files = [package if f.get("role") == "package" else f for f in listing["files"]]
+    updated = {**listing, "version": version, "min_app_version": app, "files": files}
+    if updated != listing:
+        path.write_text(json.dumps(updated, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"solidcraft-workshop.json: version {version}, SolidCraft {app} or later")
+
+
 def build():
     sh("cargo", "test", "--quiet")
     sh("cargo", "build", "--release", "--target", "wasm32-unknown-unknown")
@@ -186,6 +205,7 @@ def build():
     shutil.copy(ROOT / "LICENSE", PKG)
     shutil.copytree(ROOT / "icons", PKG / "icons", dirs_exist_ok=True)
     version = manifest["version"]
+    workshop()
     archive = ROOT / "dist" / f"woodwork-{version}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         icons = sorted(f"icons/{icon.name}" for icon in (ROOT / "icons").glob("*.svg"))
