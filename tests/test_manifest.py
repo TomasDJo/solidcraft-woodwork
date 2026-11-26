@@ -1,5 +1,6 @@
 """The dialogs in plugin.json: only what SolidCraft 0.46 can draw, and every choice with a title."""
 import json
+import re
 
 from helpers import *
 
@@ -110,3 +111,38 @@ def test_choices_have_titles(approval):
     # The plugin still gets the value, not the title.
     results = cli([plugin(approval, "corner", {"shape": "diagonal", "doors": "hinged right"}), MEASURE])
     assert "Cabinet Door" in boxes(results[1]), boxes(results[1])
+
+
+def anchors(markdown):
+    """The heading anchors GitHub makes for a Markdown file: lowercase, punctuation removed,
+    spaces to hyphens, and -1, -2... after a repeated one."""
+    seen, found = {}, set()
+    for line in markdown.splitlines():
+        match = re.match(r"#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if not match:
+            continue
+        slug = re.sub(r"[^\w\- ]", "", match.group(1).lower()).replace(" ", "-")
+        n = seen.get(slug, 0)
+        seen[slug] = n + 1
+        found.add(slug if n == 0 else f"{slug}-{n}")
+    return found
+
+
+def test_help_links_point_to_existing_headings(approval):
+    # `x-solidcraft-help` (SolidCraft 0.50) opens a page: one into this repo's docs must name a
+    # file that exists and a heading in it, so a renamed heading cannot leave a dead link.
+    manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
+    ours = re.compile(r"https://github\.com/TomasDJo/solidcraft-woodwork/blob/main/([^#?]+)(?:#(.+))?$")
+    for entry in manifest["runtime"]["entries"]:
+        for name, field in entry["input_schema"]["properties"].items():
+            link = field.get("x-solidcraft-help")
+            match = link and ours.match(link)
+            if not match:
+                continue
+            path, anchor = ROOT / match.group(1), match.group(2)
+            at = f"{entry['name']}.{name}: {link}"
+            assert path.is_file(), at
+            assert anchor is None or anchor in anchors(path.read_text(encoding="utf-8")), at
+    # GitHub's anchors, as the links will use them
+    assert anchors("## Plinth / toe kick\n### Size by, drawer inside\n## Size by, drawer inside") == {
+        "plinth--toe-kick", "size-by-drawer-inside", "size-by-drawer-inside-1"}

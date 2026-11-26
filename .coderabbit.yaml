@@ -29,3 +29,28 @@ reviews:
     - path: "{src/**,plugin.json}"
       instructions: |
         A change a user can see updates docs/usage.md in the same PR, and README.md's short list when a function is added. Flag it when the docs are missing.
+    - path: "{plugin.json,docs/**,README.md}"
+      instructions: |
+        Help links work: every `x-solidcraft-help` link in plugin.json points to an existing page and heading anchor in docs/usage.md or README.md. A renamed or removed heading updates the links that point to it.
+  pre_merge_checks:
+    title:
+      mode: warning
+    description:
+      mode: warning
+    custom_checks:
+      - name: Docs updated
+        mode: warning
+        instructions: |
+          Pass when the PR changes nothing a user sees or does. Otherwise, a change to plugin.json or src/ that changes what a user sees or does (a field, a choice, a default, what a function builds or refuses) must also update docs/usage.md in the same PR, and README.md when a function is added. Fail and name the change that is not documented.
+      - name: Test for the change
+        mode: warning
+        instructions: |
+          Pass when the PR changes no behaviour (docs, CI or config only). Otherwise, a fix or new behaviour must add or change a test, a unit test in src/**/tests.rs or an end-to-end test in tests/test_*.py, that would fail without the change. Fail and name the fix or behaviour that has no such test.
+      - name: Fulfils the linked issue
+        mode: warning
+        instructions: |
+          Pass when the PR has no linked issue (a line "No issue: <reason>"). Otherwise, the PR must do what its "Closes #N" or "Fixes #N" issue asks, or say in its description what is left for later. Fail and name what the issue asks that the PR neither does nor mentions.
+      - name: Help links work
+        mode: warning
+        instructions: |
+          Pass when plugin.json has no `x-solidcraft-help` links and the PR renames or removes no heading in docs/usage.md or README.md. Otherwise, every `x-solidcraft-help` link in plugin.json must point to an existing file and heading anchor in docs/usage.md or README.md as they are after this PR (GitHub's anchors: lowercase, spaces to hyphens, punctuation removed). Fail and name each broken link.
