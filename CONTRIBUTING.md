@@ -5,11 +5,12 @@
 You need Rust with the `wasm32-unknown-unknown` target, `wasm-tools`, Python 3 and the SolidCraft CLI
 (`solidcraft-cli`, set `SOLIDCRAFT_CLI` if it is not on your PATH).
 
-    python build.py            # unit tests, clippy, the package in dist/, then every end-to-end test
+    python build.py            # unit tests, the package in dist/, then every end-to-end test
     python build.py corner     # the same, with only the end-to-end tests whose name has "corner"
+    cargo fmt --check
+    cargo clippy --all-targets -- -D warnings
 
-`cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` must pass. CI runs all of it on
-the SolidCraft version named in `.github/workflows/build.yml`.
+All four must pass. CI runs them on the SolidCraft version named in `.github/workflows/build.yml`.
 
 ## Pull requests
 
