@@ -20,6 +20,6 @@ All four must pass. CI runs them on the SolidCraft version named in `.github/wor
 - Update `docs/usage.md` in the same PR (and `README.md` when a function is added).
 - The description says what changes in plain words, what you ran to check it, and has a
   screenshot for anything visible in a dialog or the model (or a line `No picture: <reason>`).
-- Link the issue with `Closes #N`, or write a line `No issue: <reason>`.
+- Link the issue with `Closes #N` (`Part of #N` when the PR is one step and the issue stays open), or write a line `No issue: <reason>`.
 
 The PR checks enforce the last two and the base branch. `main` is what was last released: at a release the maintainer merges `develop` into `main` (a pull request) and tags it, so the help links and the Workshop show only released work.
