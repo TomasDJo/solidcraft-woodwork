@@ -18,7 +18,27 @@ env:
   SOLIDCRAFT: 0.49.0 # the app version the end-to-end tests run against
 
 jobs:
+  # A pull request that only changes files the build does not read (listed below) skips the
+  # build; a skipped required check counts as passed. Pushes and tags always build.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      build: ${{ steps.files.outputs.build }}
+    steps:
+      - id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename')
+          other=$(grep -Ev '^(PLAN\.md|CONTRIBUTING\.md|SECURITY\.md|LICENSE|solidcraft-workshop\.json|\.coderabbit\.yaml|\.github/(ISSUE_TEMPLATE/.*|PULL_REQUEST_TEMPLATE\.md|FUNDING\.yml|dependabot\.yml|workflows/pr-checks\.yml))$' <<<"$files" || true)
+          if [ -n "$other" ]; then echo "build=true" >> "$GITHUB_OUTPUT"; else echo "Nothing the build reads changed."; fi
+
   build:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.result != 'failure' && (needs.changes.result == 'skipped' || needs.changes.outputs.build == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
