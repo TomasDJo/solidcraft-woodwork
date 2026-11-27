@@ -846,6 +846,13 @@ frame under all of them and stands them on it:
   frame (cabinets side by side across it, or back to back with different widths) runs only under
   the cabinets with that side and stops at the cross boards it meets, in pieces. **Frame height** (70 mm)
   is how tall they stand, **Board thickness** (18 mm) their thickness, **Material** theirs.
+- **Timber:** **Frame of** Timber builds the same frame of solid softwood instead of boards, standing
+  on edge: **Timber thickness** is the frame's thickness across, **Timber width** its height.
+  48 x 98 mm by default; common sections are 48 x 98, 48 x 148 and 48 x 198 in Norway, and a US
+  2x4 is 38 x 89 (2x6 38 x 140). The material is `Softwood timber`, which the cut list buys in
+  running metres per section: each piece under *Timber, bought to length* and the metres of each
+  section (`timber_metres`, and a Timber table in the CSV), laid out on no sheet. The caster
+  blocks are timber too, listed by their own section.
 - **Casters:** a block (`Name Block 1` and on, 90 x 90 mm) in each corner with a locking caster
   under it, screwed into the block; a frame longer than 1500 mm gets a pair in its middle too.
   **Caster height** (100 mm) is from the floor to the frame's underside.
@@ -882,6 +889,10 @@ frame under all of them and stands them on it:
 ![Connector bolts: four 9 mm holes through the touching sides of two cabinets on a base, seen through the boards.](images/base-bolts.png)
 
 *Connector bolts: four 9 mm holes through the touching sides of two cabinets on a base, seen through the boards.*
+
+![A mobile base of 48 x 98 mm timber under a cabinet, bought in running metres.](images/base-timber.png)
+
+*A mobile base of 48 x 98 mm timber under a cabinet, bought in running metres.*
 
 Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
 again. Quarter turns only, and in a component that stands on the origin. Not in it yet

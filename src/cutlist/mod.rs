@@ -747,6 +747,8 @@ pub fn cutlist(
     type Laid = (crate::nesting::Part, String, usize); // a part, its name and its row
     let mut pieces: BTreeMap<(String, i64), Vec<Laid>> = BTreeMap::new(); // to lay out, the same
     let mut worktops = Vec::new();
+    let mut timber = Vec::new();
+    let mut metres: BTreeMap<(i64, i64), f64> = BTreeMap::new(); // timber per section, in tenths of a mm
     for ((t, l, w, material, le, we, notch), names) in &rows {
         let qty = names.len();
         let row_m2 = mm(*l) * mm(*w) * qty as f64 / 1e6;
@@ -763,12 +765,20 @@ pub fn cutlist(
         let grain = crate::material::GRAINED.contains(&material.as_str());
         let (row, one_m2) = (parts.len(), mm(*l) * mm(*w) / 1e6);
         for name in names {
-            // A worktop: bought to length.
-            if worktop(name) {
-                worktops.push(
+            // A worktop, or solid timber (a mobile base's frame): bought to length.
+            let bought = match worktop(name) {
+                _ if material == crate::material::TIMBER.0 => Some(&mut timber),
+                true => Some(&mut worktops),
+                false => None,
+            };
+            if let Some(list) = bought {
+                list.push(
                     json!({"part": name, "material": material, "thickness": shown(*t),
                                      "length": shown(cl), "width": shown(cw)}),
                 );
+                if material == crate::material::TIMBER.0 {
+                    *metres.entry((*t, *w)).or_insert(0.0) += mm(*l) / 1000.0;
+                }
                 continue;
             }
             *stock.entry((material.clone(), *t)).or_insert(0.0) += one_m2;
@@ -887,8 +897,28 @@ pub fn cutlist(
             );
         }
     }
+    // Timber to buy: the metres of each section, as a timber yard sells it.
+    let lengths: Vec<Value> = (metres.iter())
+        .map(|((t, w), m)| {
+            json!({"material": crate::material::TIMBER.0, "section": format!("{} x {} mm", mm(*t), mm(*w)),
+                   "metres": round(*m)})
+        })
+        .collect();
+    if !lengths.is_empty() {
+        csv += "\nTimber,Section,Metres\n";
+        for total in &lengths {
+            csv += &format!(
+                "{},{},{}\n",
+                quoted(total["material"].as_str().unwrap_or("")),
+                total["section"].as_str().unwrap_or(""),
+                text(&total["metres"])
+            );
+        }
+    }
     let mut list = json!({
         "units": units,
+        "timber": timber,
+        "timber_metres": lengths,
         "size": if cut { "cut" } else { "finished" },
         "banding_mm": mm(band),
         "sheets": sheets,

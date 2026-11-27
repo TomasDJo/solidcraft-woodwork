@@ -1324,6 +1324,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             cabinets.retain(|c| select::named(&measure, c).is_ok());
             let (plans, floors) = base::plans(&measure, &cabinets)?;
             params["name"] = json!(name);
+            if base::timber(&params)?.is_some() {
+                params["material"] = json!(material::TIMBER.0);
+            }
             let built = base::build(&params, &plans)?;
             let lift = built.1["lift"].as_f64().unwrap_or(0.0);
             if again {

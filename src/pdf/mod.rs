@@ -371,8 +371,11 @@ pub fn render(list: &Value, title: &str, diagrams: bool) -> Vec<u8> {
         doc.text(M, doc.y, 7.5, false, GREY, &line);
     }
 
-    // Worktops: bought to length, not on a sheet.
-    let bought = [("worktops", "Worktops, bought to length")];
+    // Worktops and timber: bought to length, not on a sheet.
+    let bought = [
+        ("worktops", "Worktops, bought to length"),
+        ("timber", "Timber, bought to length"),
+    ];
     for (key, heading) in bought {
         let parts = list[key].as_array().unwrap_or(&none);
         if parts.is_empty() {

@@ -197,6 +197,35 @@ fn the_dialogs_bounds_are_the_builders() {
             "{key}: past them refused"
         );
     }
+    // a timber section's two sizes
+    for (key, low, high) in [
+        ("timber_thickness", 20.0, 150.0),
+        ("timber_width", 30.0, 300.0),
+    ] {
+        let field = &schema["properties"][key];
+        assert_eq!(
+            (field["minimum"].as_f64(), field["maximum"].as_f64()),
+            (Some(low), Some(high)),
+            "{key}"
+        );
+        let at = |v: f64| build(&json!({"frame_material": "timber", key: v}), &ok);
+        assert!(at(low).is_ok() && at(high).is_ok(), "{key}");
+        assert!(at(low - 0.5).is_err() && at(high + 0.5).is_err(), "{key}");
+    }
+}
+
+#[test]
+fn a_timber_frame_takes_its_sizes_from_the_section() {
+    // 48 x 98 timber by default: the frame 48 across and 98 tall, whatever Frame height and
+    // Thickness say; a US 2x4 is 38 x 89
+    let plans = [[0.0, 0.0, 600.0, 560.0]];
+    let p = json!({"name": "T", "frame_material": "timber", "frame_height": 70, "thickness": 18});
+    let all = boxes(&build(&p, &plans).unwrap().0);
+    let front = all.iter().find(|b| b.0 == "T Frame front").unwrap();
+    assert_eq!(front.2, [600.0, 48.0, 98.0]);
+    let us = json!({"frame_material": "timber", "timber_thickness": 38, "timber_width": 89});
+    assert_eq!(timber(&us).unwrap(), Some((38.0, 89.0)));
+    assert_eq!(timber(&json!({"timber_width": 89})).unwrap(), None);
 }
 
 #[test]
