@@ -154,6 +154,11 @@ def test_models_show_and_move_with_the_doors_and_drawers(approval):
     assert all(abs(shut[n][4] - shut[n][1] - 500) < 0.01 for n in drawer + carcass)
     assert all(shut[n][0] == -282 and shut[n][3] == -273.5 and shut[n][4] - shut[n][1] == 40
                and middle(shut[n])[1] == -243 for n in plates), [shut[n] for n in plates]
+    # a hinge is its cup with a 40 mm rim on the door, a boss and an arm; the plate a cross (#140)
+    assert all(round(shut[n][5] - shut[n][2], 2) == 40 for n in hinges), [shut[n] for n in hinges]
+    assert all(round(shut[n][5] - shut[n][2], 2) == 48 for n in plates), [shut[n] for n in plates]
+    # a cross, not a full block: the 40 x 8.5 x 16 middle and the 12 x 3 x 48 wings (40 * 8.5 * 48 = 16320 as a block)
+    assert all(volume(results[1], n) == 40 * 8.5 * 16 + 12 * 3 * (48 - 16) for n in plates), [volume(results[1], n) for n in plates]
     # each hinge's cup is in a cup hole: its middle on the hole's axis, half the depth in
     cups = holes(results[2], 17.5)
     for name, cup in zip(hinges, sorted(cups, key=lambda c: c[2])):

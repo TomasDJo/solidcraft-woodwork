@@ -229,9 +229,13 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   drawers made before have the plain "Drawer slide, pair". Undermount slides are not offered
   yet.
 - **Hardware models** (Woodwork settings, then Apply settings for those made): with **Shown**,
-  the default, each hinge is a simple model: a cup in its hole and
-  an arm behind the door, which swing with it, and a mounting plate (8.5 mm thick, 40 deep) on
-  the side over the plate's two holes, which stays; the arm lies on the plate. Its arm is
+  the default, each hinge is a model of a concealed hinge: a cup in its hole with a 40 mm rim
+  on the door, a boss over it and an arm behind the door, which swing with it, and a
+  cruciform mounting plate (8.5 mm thick, 40 deep, its wings up and down over the plate's two
+  holes) on the side, which stays; the arm lies on the plate.
+
+  ![A hinge model: the cup and its rim in the door, the boss and arm, and the cross-shaped plate on the side.](images/hinge-model.png)
+ Its arm is
   cranked 18 mm on an inset door and 9.5 mm on a door hung on a divider (half overlay). Each
   slide is bars as long as the slide: one on the drawer box, which slides out with it, one on
   the carcass side, and on a 3-section slide a middle one between them (it moves with the
