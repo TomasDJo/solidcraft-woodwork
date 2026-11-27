@@ -198,6 +198,16 @@ const ORIGIN: [f64; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
 pub const PLATE_SIZE: [f64; 3] = [8.5, 40.0, 48.0];
 /// The arm: thickness off the plate, length back from the door's back face, height.
 pub const ARM_SIZE: [f64; 3] = [11.0, 52.0, 16.0];
+/// The cup's rim on the door's back face: diameter and thickness (#140).
+const RIM: [f64; 2] = [40.0, 1.5];
+/// The hinge's boss over the cup, where the arm's links pivot: length back from the door,
+/// height (as thick as the arm) (#140).
+const BOSS: [f64; 2] = [14.0, 26.0];
+/// The cruciform plate's wings over the two screw holes: depth along the side and thickness
+/// off it; as high as the plate. Its middle, which carries the arm, is as high as the arm.
+const WINGS: [f64; 2] = [12.0, 3.0];
+/// How far the rim and the boss stand off the door's back face.
+const LIFT: f64 = 0.1;
 /// How far the cup's centre is inside the side's inner face on a full overlay door (22.5 mm
 /// in from the edge, 18 mm sides, 2 mm reveal): where a straight arm's plate is. A cranked arm
 /// (9.5 for half overlay, on a divider; 18 for inset) reaches that much further.
@@ -435,14 +445,35 @@ fn shape(model: &str) -> Commands {
         )];
     }
     let [plate_t, plate_d, plate_h] = PLATE_SIZE;
+    // a part joined to the model's first one
+    let joined = |mut part: Value, what: &str| {
+        part["operation"] = json!("join");
+        part["targets"] = json!([model]);
+        part["name"] = json!(format!("{model} {what}"));
+        part.as_object_mut().map(|a| a.remove("body_name"));
+        part
+    };
     match model {
-        PLATE => vec![(
-            "solid.box",
-            block(
-                [&mm(-plate_d / 2.0), &mm(0.0), &mm(-plate_h / 2.0)],
-                [&mm(plate_d), &mm(plate_t), &mm(plate_h)],
-            ),
-        )],
+        // A cruciform plate: its middle along the side carries the arm, its wings up and down
+        // hold the two screws.
+        PLATE => {
+            let mid_h = ARM_SIZE[2];
+            let [wing_d, wing_t] = WINGS;
+            let wings = block(
+                [&mm(-wing_d / 2.0), &mm(0.0), &mm(-plate_h / 2.0)],
+                [&mm(wing_d), &mm(wing_t), &mm(plate_h)],
+            );
+            vec![
+                (
+                    "solid.box",
+                    block(
+                        [&mm(-plate_d / 2.0), &mm(0.0), &mm(-mid_h / 2.0)],
+                        [&mm(plate_d), &mm(plate_t), &mm(mid_h)],
+                    ),
+                ),
+                ("solid.box", joined(wings, "wings")),
+            ]
+        }
         _ => {
             let crank: f64 = model
                 .strip_prefix("HW hinge crank ")
@@ -456,15 +487,28 @@ fn shape(model: &str) -> Commands {
             // into the cup, so the two are one body, back to the plate's end.
             let [arm_t, arm_l, arm_h] = ARM_SIZE;
             let x0 = plate_t - ARM_REACH - crank;
-            let mut arm = block(
+            let arm = block(
                 [&mm(x0), &mm(-1.0), &mm(-arm_h / 2.0)],
                 [&mm(arm_t), &mm(arm_l + 1.0), &mm(arm_h)],
             );
-            arm["operation"] = json!("join");
-            arm["targets"] = json!([model]);
-            arm["name"] = json!(format!("{model} arm"));
-            arm.as_object_mut().map(|a| a.remove("body_name"));
-            vec![("solid.cylinder", cup), ("solid.box", arm)]
+            // the rim on the door's back face, outside the cup hole, and the boss over the cup
+            // where the arm starts, both `LIFT` off the door (joined through the arm), so `cut`
+            // cuts only the cup: on the face itself they split the cup hole's face
+            let rim = json!({
+                "base": [mm(0.0), mm(LIFT), mm(0.0)], "axis": [0, 1, 0],
+                "diameter": mm(RIM[0]), "height": mm(RIM[1]),
+            });
+            let [boss_l, boss_h] = BOSS;
+            let boss = block(
+                [&mm(x0), &mm(LIFT), &mm(-boss_h / 2.0)],
+                [&mm(arm_t), &mm(boss_l), &mm(boss_h)],
+            );
+            vec![
+                ("solid.cylinder", cup),
+                ("solid.box", joined(arm, "arm")),
+                ("solid.cylinder", joined(rim, "rim")),
+                ("solid.box", joined(boss, "boss")),
+            ]
         }
     }
 }

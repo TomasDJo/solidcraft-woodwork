@@ -453,6 +453,36 @@ fn the_arm_is_cranked_for_inset_doors_and_dividers() {
         (&plate["length"], &plate["width"]),
         (&json!("40 mm"), &json!("8.5 mm"))
     );
+    // recognisable (#140): the cup has a 40 mm rim and a boss where the arm starts, outside
+    // the door (+Y), joined into one body; the plate is a cross, its wings 48 mm high
+    let parts = |model: &str| -> Vec<String> {
+        let made = shape(model);
+        made.iter()
+            .map(|c| c.1["name"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(
+        parts(HINGE),
+        [
+            "HW hinge cup",
+            "HW hinge arm",
+            "HW hinge rim",
+            "HW hinge boss"
+        ]
+    );
+    let made = shape(HINGE);
+    assert_eq!(
+        (&made[2].1["diameter"], &made[2].1["axis"]),
+        (&json!("40 mm"), &json!([0, 1, 0]))
+    );
+    assert_eq!(made[3].1["corner"][1], "0.1 mm");
+    assert!(made[1..].iter().all(|c| c.1["targets"] == json!([HINGE])));
+    assert_eq!(parts(PLATE), ["HW hinge plate", "HW hinge plate wings"]);
+    let plate = shape(PLATE);
+    assert_eq!(
+        (&plate[0].1["height"], &plate[1].1["height"]),
+        (&json!("16 mm"), &json!("48 mm"))
+    );
 }
 
 #[test]

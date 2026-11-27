@@ -848,7 +848,10 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   drawer side; the cabinet member in the cabinet's component, the drawer member and, on a
   3-section slide, the middle member in the drawer's, in `cabinet::drawers`; the middle member
   moves the drawer's whole travel, as half would need a driven joint), with our own keys
-  `_matrix` and `_cut`. Sizes are constants after a Blum CLIP top 110° hinge on a 0 mm plate and a 45 mm ball-bearing slide
+  `_matrix` and `_cut`. A hinge is its cup, a `RIM` (40 x 1.5) on the door's back face and a
+  `BOSS` over the cup where the arm starts, both outside the door so `cut` cuts only the cup; the
+  plate a cross, its middle as high as the arm and `WINGS` (12 x 3) as high as the plate, over
+  the screw holes (#140: the bounding boxes and the copies' places are as before). Sizes are constants after a Blum CLIP top 110° hinge on a 0 mm plate and a 45 mm ball-bearing slide
   (`PLATE_SIZE` 8.5 x 40 x 48, `ARM_SIZE` 11 x 52 x 16, `MEMBERS` 6/3/4 thick and 45/40/35
   high): the arm lies on the plate's outer face for the standard geometry (`ARM_REACH`, the cup
   6.5 mm inside the side: 22.5 in from the edge, 18 mm sides, 2 mm reveal; other thicknesses
