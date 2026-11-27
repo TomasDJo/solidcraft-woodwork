@@ -27,7 +27,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     folding doors, or diagonal with one door.
   - Hangs on the wall on a French cleat, a hanging rail or a steel rail.
   - Placed against the cabinet you picked, and held to it, so a run stays together when a
-    cabinet changes size. Match selected takes the picked cabinet's height,
+    cabinet changes size. Or along a line: a sketch line, a wall's edge or face, as wide as
+    the line if you like. Match selected takes the picked cabinet's height,
     depth and plinth.
 - **Woodwork settings**: what is the same for the whole design, a dialog per group: General
   (board material and thickness), Doors and fronts, Drawers, Plinth / toe kick and wall mount,

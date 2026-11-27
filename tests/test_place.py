@@ -83,3 +83,64 @@ def test_framed_on_the_whole_model(approval):
                    plugin(approval, "edit", {"shelves": 2}), select("B Top"), plugin(approval, "material")])
     assert [results[i].get("view") for i in (0, 2, 5, 7)] == [{"kind": "fit"}] * 3 + [None], results
     assert results[3]["items"] == [], results[3]
+
+
+def test_along_a_sketch_line_with_its_width(approval):
+    # Along a line (#147): a floor line from (200, 500) to (1400, 500) with an unnamed length
+    # dimension. The cabinet's back is on it, facing -Y (nothing else in the sketch), its
+    # left side at the left end, and Width from line names the dimension and follows it:
+    # 1500 mm makes the cabinet 1500 wide with no rebuild.
+    line = [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]
+    along = {"place": "line", "line": line, "width_from_line": True, "depth": 400}
+    results = designed(approval, NONE, [
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "Wall line"}},
+        {"command": "sketch.line", "params": {"points": [[200, 500], [1400, 500]]}},
+        {"command": "sketch.dimension", "params": {"entities": ["l1"], "value": "1200 mm"}},
+        {"command": "sketch.finish", "params": {}},
+        plugin(approval, "cabinet", {**along, "name": "A"}),
+        MEASURE,
+        {"command": "parameters.change", "params": {"name": "Wall_line_l1", "expression": "1500 mm"}},
+        MEASURE,
+        {"command": "parameters.list", "params": {"filter": "A_width"}}])
+    summary, before, after = results[4]["result"], boxes(results[5]), boxes(results[7])
+    assert "Width follows Wall_line_l1" in summary["line"], summary
+    assert before["A Side L"][0] == 200 and before["A Side R"][3] == 1400, (before["A Side L"], before["A Side R"])
+    assert before["A Side L"][4] == 500 and before["A Side L"][1] == 100, before["A Side L"]  # back on the line
+    assert after["A Side R"][3] - after["A Side L"][0] == 1500, (after["A Side L"], after["A Side R"])
+    width = [p for p in results[8]["parameters"] if p["name"] == "A_width"]
+    assert width[0]["expression"] == "Wall_line_l1", width
+
+
+def test_along_a_wall_face_and_a_flipped_edge(approval):
+    # A wall 2000 long from (0, 500): its -Y face stands for its bottom edge, and the cabinet
+    # faces away from it, its right side 100 from the right end. The +Y bottom edge faces +Y,
+    # away from the wall; flipped, it faces -Y, its back at y = 600 (the test only checks the
+    # side it takes, not that it overlaps the wall).
+    wall = {"command": "solid.box", "params": {"name": "Wall", "body_name": "Wall", "corner": [0, 500, 0],
+                                               "length": 2000, "width": 100, "height": 2400}}
+    face = [{"type": "face", "body": "Wall", "index": 3}]
+    results = designed(approval, NONE, [
+        wall,
+        {"command": "model.edges", "params": {"body": "Wall"}},
+        plugin(approval, "cabinet", {"name": "B", "width": 600, "depth": 400, "place": "line", "line": face,
+                                     "start_at": "right", "offset": 100}),
+        MEASURE])
+    edges = results[1]["edges"]
+    back = next(e["index"] for e in edges if e["name"] == "F1:+y|F1:-z")
+    box = boxes(results[3])
+    assert box["B Side R"][3] == 1900 and box["B Side L"][0] == 1300, (box["B Side L"], box["B Side R"])
+    assert box["B Side L"][4] == 500 and box["B Side L"][1] == 100, box["B Side L"]  # facing away from the wall
+    # the back edge faces +Y (away from the wall); flipped it faces -Y, into the wall
+    edge = [{"type": "edge", "body": "Wall", "index": back}]
+    results = designed(approval, NONE, [
+        wall,
+        plugin(approval, "cabinet", {"name": "C", "width": 600, "depth": 400, "place": "line", "line": edge}),
+        plugin(approval, "cabinet", {"name": "D", "width": 600, "depth": 400, "place": "line", "line": edge,
+                                     "start_at": "middle", "faces": "flip"}),
+        MEASURE])
+    box, summary = boxes(results[3]), results[1]["result"]
+    assert "Placed once" in summary["line"], summary
+    # C faces +Y, turned half: its left side (Side L) at the line's +X end
+    assert box["C Side L"][3] == 2000 and box["C Side L"][1] == 600 and box["C Side L"][4] == 1000, box["C Side L"]
+    # D faces -Y, its back on y = 600, in the middle
+    assert box["D Side L"][0] == 700 and box["D Side L"][4] == 600, box["D Side L"]

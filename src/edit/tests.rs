@@ -10,11 +10,13 @@ fn design() -> Value {
 #[test]
 fn a_cabinet_remembers_how_it_was_made() {
     let params = json!({"width": 600, "doors": 2, "place": "right", "match": "selected",
-        "_match": {"prefix": "B"}, "name": "A"});
+        "_match": {"prefix": "B"}, "name": "A", "line": [{"type": "edge"}], "start_at": "right",
+        "offset": 50, "faces": "flip", "width_from_line": true, "_line": {"width": "L - 50 mm"}});
     let kept = remember("cabinet", &params, "A 2");
     let ours = &kept[KEY];
     assert_eq!(ours["entry"], "cabinet");
-    // under the name it got, and without where it was placed or what it was matched to
+    // under the name it got, and without where it was placed (the line too: Edit builds it
+    // where it stands) or what it was matched to; the width it got from the line stays
     assert_eq!(
         ours["params"],
         json!({"width": 600, "doors": 2, "name": "A 2"})

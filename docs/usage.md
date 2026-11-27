@@ -79,7 +79,7 @@ component can hold its cabinets.
 | **Handle holes** | Drills the doors and drawer fronts for a knob (one 5 mm hole) or a pull (two, 128 mm apart). |
 | **Handle position** (Woodwork settings) | Near the top, in the middle or near the bottom of a door. On Auto: near the top on a floor unit, near the bottom on a wall unit. On a drawer front the handle lies across: in the middle on Auto, or 40 mm from the front's top or bottom edge. |
 | **Labels** (Woodwork settings) | Writes each board's name on it, the name the cut list has, as text in a sketch on the board's face. It stays in the middle of the board when the cabinet changes size. |
-| **Selected cabinet**, **Match selected**, **Place** | See [Building a run](#building-a-run-place-and-match-selected). |
+| **Selected cabinet**, **Match selected**, **Place** | See [Building a run](#building-a-run-place-and-match-selected). **Line**, **Start at**, **Offset**, **Faces** and **Width from line** show with Place Along a line: see [Along a line](#along-a-line). |
 | **Material** | The board material of every panel. Change it later with [Material](#material). |
 | **Name** | The prefix of the panel names. A name that is taken is numbered: Cabinet, Cabinet 2, Cabinet 3; after Base 1 comes Base 2. |
 
@@ -458,6 +458,7 @@ stand square to the axes.
 | **At the origin** | Centred on the origin. |
 | **Right of selected**, **Left of selected** | Against that cabinet's right or left side, whichever way it stands. At the end of a corner cabinet's return the new one is turned a quarter and continues along the return, and the run carries on from there, corner cabinets too. |
 | **Above selected** | On top of it. |
+| **Along a line** | Its back on a line you pick: see [Along a line](#along-a-line). |
 
 **A run stays together.** The new cabinet is held to its neighbour by a joint (`Name link`):
 
@@ -471,6 +472,37 @@ stand square to the axes.
 
 **Match selected** links the new cabinet's height, depth, panel thickness and plinth (with its
 set-back) to the selected cabinet, so a whole run is resized by changing one cabinet's parameters.
+
+### Along a line
+
+![Along a line: two cabinets against a wall's face, from its left and right ends.](images/line.png)
+
+*Along a line: two cabinets against a wall's face, from its left and right ends.*
+
+Model the room first, then put the cabinets against it. With **Place** on **Along a line**, click
+the **Line** field and pick a line on the floor: a sketch line, an edge of a body (a wall's
+bottom edge), or a wall's face, which stands for its bottom edge. The new cabinet stands with its
+back on that line, at the line's height.
+
+| Field | What it does |
+|---|---|
+| **Start at** | **Left end** (the default), **Right end** or **Middle** of the line, as seen from the front of the cabinet. |
+| **Offset** | From that end to the cabinet's side, 0 by default. At the middle, how far right of the middle the cabinet's middle is (a negative offset moves it left). |
+| **Faces** | **Away from the wall**: for an edge or a face, the cabinet faces away from the face; for a sketch line, it faces the rest of what is drawn in that sketch (the room), or -Y (-X for a line along Y) when the sketch has only the line. **Flip** turns it the other way. The preview shows which. |
+| **Width from line** | The cabinet is as wide as the line, less the offset (at the middle, less the offset at each end). Width is then greyed. It does not go with **Size by** the drawers' inside, which works the width out from the boxes: pick one. |
+
+- **Quarter turns only:** the line must be level and run along X or Y. Any other line is
+  refused, as Place, the worktop and the cut list read cabinets square to the axes.
+- **A sketch line with a length dimension is followed.** With Width from line, the cabinet's
+  `Name_width` parameter becomes that dimension (less the offset), so changing the dimension in
+  the sketch, or in Parameters, makes the cabinet as wide, with no rebuild. A dimension the app
+  named (`d1`) is renamed after the sketch and the line first (`Wall_line_l1`). The cabinet
+  stays centred where it stands, so it grows to both sides; it is not moved with the line.
+- **Anything else is read once:** an edge or face of a body, or a sketch line without a driving
+  length dimension (or one only measured, a reference dimension). After changing it, run
+  Cabinet again. The summary says which it was.
+- The dialog's first pick field is **Selected cabinet**, which takes what is selected when the
+  dialog opens; the **Line** field starts empty, so click it before picking the line.
 
 ## Changing sizes
 
