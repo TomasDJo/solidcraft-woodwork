@@ -860,3 +860,23 @@ fn apply_settings_says_why_a_cabinet_stayed_off_its_line() {
         "{reply}"
     );
 }
+
+#[test]
+fn a_base_refuses_a_cabinet_that_would_not_stand_on_it() {
+    // B is held to a cabinet that is not picked (not grounded): it does not move, so the run is
+    // refused, naming B, and nothing is left made
+    let side = |name: &str, x: f64| json!({"name": name, "bbox": {"min": [x, 0.0, 0.0], "max": [x + 18.0, 560.0, 720.0]}});
+    let bodies = json!({"bodies": [side("B Side L", 0.0), side("B Side R", 582.0)]});
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "inspect.measure" => bodies.clone(),
+            "component.list" => json!({"active": 0, "components": [{"name": "B", "occurrences": [
+                {"id": 1, "parent": 0, "grounded": false,
+                 "transform": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}]}]}),
+            _ => json!({}),
+        })
+    };
+    let params = json!({"name": "Bench", "selection": ["B Side L"]});
+    let err = execute("base", &params, &mut run).unwrap_err();
+    assert!(err.contains("`B` did not go up onto the base"), "{err}");
+}

@@ -43,6 +43,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Material**: birch plywood, MDF, white melamine or oak, for a whole cabinet or just the
   parts you pick (the doors, say).
 - **Panel**: an end panel or a filler on one side of a cabinet, following its size.
+- **Mobile base**: one frame on locking casters under a group of cabinets, for a workbench
+  that rolls.
 - **Worktop**: over the picked cabinets, with butt or mitred corners, dog holes, a sink
   cut-out, and an opening for a benchtop tool set flush with the top.
 - **Drawing**: an A3 shop drawing per cabinet, with front, right and iso views, its sizes and
