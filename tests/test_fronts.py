@@ -492,3 +492,28 @@ def test_grooved_fronts(approval):
         assert grooves >= 1 and abs(grooves - round(grooves)) < 0.002, (door, grooves)
     cut = volume(results[10], "N Door") - volume(results[10], "V Door")
     assert abs(cut - 15 * square) < 0.002 * 15 * square, cut
+
+
+def test_bottom_tab(approval):
+    # Handle holes Bottom tab (#181): under each drawer front's lower edge a tab of the bottom's
+    # stock (12 mm here) sits in a notch, flush with that edge, 120 mm wide and 20 mm out past
+    # the face, rounded at the front; the front is scooped above it. Separate and integrated.
+    steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "tab"}), MEASURE]
+    for front in ("separate", "integrated"):
+        results = designed(approval, {"drawer_front": front, "drawer_bottom": 12}, steps)
+        box = boxes(results[1])
+        name = "Cabinet Drawer 1 " + ("Front" if front == "separate" else "Box front")
+        tab, face = box["Cabinet Drawer 1 Tab"], box[name]
+        assert round(face[1] - tab[1], 3) == 20 and tab[4] == face[4], (tab, face)
+        assert tab[2] == face[2] and round(tab[5] - tab[2], 3) == 12, (tab, face)
+        assert round(tab[3] - tab[0], 3) == 120, tab
+        assert cylinders(results[1], name) > 0, name
+        assert cylinders(results[1], "Cabinet Drawer 1 Tab") >= 2, front
+    # a narrow inset cabinet with integrated, finger-jointed fronts: the box sides run through
+    # the front from 8 mm above its lower edge, so the 12 mm tab must stay between them
+    narrow = [plugin(approval, "cabinet", {"width": 162, "drawers": 1, "handles": "tab"}), MEASURE]
+    results = designed(approval, {"fronts": "inset", "drawer_front": "integrated", "drawer_joints": "finger",
+                                  "drawer_bottom": 12}, narrow)
+    box = boxes(results[1])
+    tab, left, right = (box[f"Cabinet Drawer 1 {p}"] for p in ("Tab", "Left", "Right"))
+    assert left[3] <= tab[0] + 0.001 and tab[3] <= right[0] + 0.001, (tab, left, right)
