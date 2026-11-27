@@ -1343,7 +1343,15 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let mut params = params.clone();
             let name = params["name"].as_str().unwrap_or("Base").trim().to_string();
             let mut cabinets: Vec<String> = Vec::new();
+            // A board of this base picked (#239): the cabinets picked beside it are added to the
+            // ones it stands under, not put in their place.
+            let ours = base::file(&name);
+            let mut adding = false;
             for body in select::picked(&params, &design) {
+                if base::owner(&body, &[ours.as_str()]).is_some() {
+                    adding = true;
+                    continue;
+                }
                 let cabinet = select::owner(&names, &body)
                     .ok_or(format!("`{body}` is not part of a cabinet"))?;
                 if !cabinets.iter().any(|c| c == cabinet) {
@@ -1358,9 +1366,12 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     ours["entry"] == "base",
                     &format!("name: `{name}` is taken; choose another"),
                 )?;
-                if cabinets.is_empty() {
+                if cabinets.is_empty() || adding {
                     let all = ours["cabinets"].as_array().into_iter().flatten();
-                    cabinets = all.filter_map(|c| c.as_str().map(String::from)).collect();
+                    let kept: Vec<String> =
+                        all.filter_map(|c| c.as_str().map(String::from)).collect();
+                    let new = cabinets.into_iter().filter(|c| !kept.contains(c));
+                    cabinets = kept.iter().cloned().chain(new).collect();
                 }
             }
             let measure = measured(names, &cabinets, run)?;
@@ -1506,6 +1517,19 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             run(
                 "component.metadata.set",
                 json!({"component": name, "values": values}),
+            )?;
+            // its dialog's values, for the hook to fill the dialog when a board of it is picked
+            let mut kept = params.clone();
+            if let Some(all) = kept.as_object_mut() {
+                all.remove("selection");
+                // a timber frame's material is no choice of the field
+                if base::timber(&params)?.is_some() {
+                    all.remove("material");
+                }
+            }
+            run(
+                "_put_blob",
+                json!({"name": base::file(&name), "data": kept}),
             )?;
             summary["cabinets"] = json!(cabinets);
             summary["raised"] = Value::Object(raised);
@@ -2055,6 +2079,26 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
             return Ok(json!({}));
         };
         return Ok(edit::hidden(values, &design));
+    }
+    // Mobile base (#239): a board of a base picked fills the dialog with that base's values.
+    if entry == "base" {
+        let field = select::picked(values, &Value::Null);
+        let picked = match field.is_empty() {
+            true => run("_selection", json!({}))
+                .map(|d| select::picked(values, &d))
+                .unwrap_or_default(),
+            false => field,
+        };
+        let stored = run("storage.get", json!({"plugin": "woodwork"})).unwrap_or_default();
+        let files: Vec<&str> = (stored["blobs"].as_array().into_iter().flatten())
+            .filter_map(|b| b["name"].as_str())
+            .filter(|n| n.starts_with("base/"))
+            .collect();
+        let Some(base) = picked.iter().find_map(|b| base::owner(b, &files)) else {
+            return Ok(json!({}));
+        };
+        let kept = run("_get_blob", json!({"name": format!("base/{base}.json")}));
+        return Ok(kept.map_or(json!({}), |k| base::fields(&k)));
     }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
     // Apply settings: which cabinets the picked parts are, from our files' names (`storage.get`,

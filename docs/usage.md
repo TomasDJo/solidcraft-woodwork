@@ -872,6 +872,14 @@ frame under all of them and stands them on it:
 - **Made again:** run Mobile base with the same **Name** to make it again, for example after a
   cabinet got wider or with another frame height. With nothing picked it takes the cabinets it
   remembers, and they go up or down to the new frame's top.
+- **Edit it like a cabinet:** pick a board, block or caster of the base and open **Mobile base**:
+  the dialog starts at that base's values, and Name's hint says it is that base you edit. Pick
+  more cabinets beside its board to add them: the base is made again under the cabinets it had
+  and the new ones. (Taking a cabinet off a base is not offered yet.) A base made before this
+  version opens so only after it has been made again once: run Mobile base by its Name.
+- **A long job:** Mobile base runs as a job, with a row in the operations panel and Cancel, so a
+  base under many cabinets (eight in a row and more) is made in one go. Its dialog has no
+  Preview.
 - **Held to the base** (#215): each cabinet standing on the frame that no neighbour holds gets a
   link to the base, `Name link`, like a cabinet placed on top of another. A cabinet placed beside
   another keeps its link to that one and rides along with it. An Edit or Apply settings puts the

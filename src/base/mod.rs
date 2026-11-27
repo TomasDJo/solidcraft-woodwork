@@ -435,6 +435,50 @@ pub fn screws(
     holes
 }
 
+/// The file (`storage@0.1`) where the base `name` keeps its dialog's values, for the dialog hook
+/// to read when a board of it is picked (#239).
+pub fn file(name: &str) -> String {
+    format!("base/{}.json", crate::kit::prefix(name))
+}
+
+/// Which of the bases whose files are `files` (each `base/<prefix>.json`) the body `body` is a
+/// board, block or caster of: the base's prefix followed by exactly one of the names `build`
+/// gives (`Frame front`, `Frame cross 2`, `Block 3`, ...), so a cabinet called `Bench Frame` is
+/// not taken for base `Bench`. None for any other body.
+pub fn owner<'a>(body: &str, files: &[&'a str]) -> Option<&'a str> {
+    let body = crate::kit::prefix(body);
+    let part = |rest: &str| {
+        let numbered = |head: &str| {
+            rest.strip_prefix(head)
+                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        };
+        ["_Frame_front", "_Frame_back", "_Frame_left", "_Frame_right"].contains(&rest)
+            || ["_Frame_cross_", "_Frame_stiffener_", "_Block_", "_Caster_"]
+                .iter()
+                .any(|head| numbered(head))
+    };
+    (files.iter())
+        .filter_map(|f| f.strip_prefix("base/")?.strip_suffix(".json"))
+        .filter(|base| body.strip_prefix(base).is_some_and(part))
+        .max_by_key(|base| base.len())
+}
+
+/// The Mobile base dialog's values for an existing base, from its file `kept` (the values it was
+/// made with): each field's default, and a hint on Name that it is that base being edited.
+pub fn fields(kept: &Value) -> Value {
+    let mut reply = json!({});
+    for (key, value) in kept.as_object().into_iter().flatten() {
+        if key != "selection" && !key.starts_with('_') {
+            reply[key] = json!({ "default": value });
+        }
+    }
+    let name = kept["name"].as_str().unwrap_or("Base");
+    reply["name"]["hint"] = json!(format!(
+        "Editing {name}: cabinets picked beside its board are added to it"
+    ));
+    reply
+}
+
 /// A screw hole's feature name: its bottom, number and board, and where it is in the world to
 /// 0.1 mm, so a frame made again with other sizes gives other names.
 pub fn screw_name(screw: &(String, String, usize, [[f64; 3]; 2])) -> String {

@@ -97,7 +97,7 @@
       },
       {
         "name": "base",
-        "effect": "edit",
+        "effect": "edit", "job": true, "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "Mobile base" }, { "kind": "ribbon", "name": "Mobile base" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/base.svg",
