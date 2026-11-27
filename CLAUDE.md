@@ -197,7 +197,12 @@ table says which).
   `setting` in `tests/helpers.py` (settings results left out, so indices stay the cabinets').
   Since then also `back`, `back_thickness` (box only), `fronts`, `handle_position`, `plinth`
   (the height, 100 mm by default), `plinth_type`, `plinth_setback`, `labels` (stored `yes`/`no`,
-  given as a bool), `cleat_height`, `cleat_thickness`, `drawer_thickness`, `drawer_bottom` (box only, parameters while the cabinet has boxes); the cut list's `banding`, `cut_sizes`
+  given as a bool), `cleat_height`, `cleat_thickness`, `drawer_thickness`, `drawer_bottom` (box only, parameters while the cabinet has boxes),
+  `drawer_side_height`, `drawer_back_height` (#221: box only, 0 the full height and the sides', a
+  parameter only when set, the board's height `min(<box>, <param>)` and the back's `min(<side>,
+  <param>)` per drawer, so a taller value (dialog, Parameters, Edit) is capped, not refused, and
+  a sink's false front sets no limit; `input` refuses only 1 to 49 mm; on finger joints the
+  back param is not used, the back as high as its own sides, whose corner rows it pairs with); the cut list's `banding`, `cut_sizes`
   (its field `size`), `sheet`, `kerf`, `trim` (mm in every unit, `Def::Mm`); a worktop's
   `worktop_material` and `worktop_thickness` (its `material` and `thickness`; a worktop made
   again keeps its remembered ones). `settings::table` is the one list: key, the entry's field,

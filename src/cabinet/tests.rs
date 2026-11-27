@@ -1833,3 +1833,74 @@ fn glass_doors() {
         .any(|c| c.1["name"] == "Cabinet Drawer 1 Front glass"));
     assert!(build(&json!({"doors": 1, "front_style": "glass", "handles": "groove"})).is_err());
 }
+
+#[test]
+fn drawer_sides_and_back_can_be_lower() {
+    // #221: the sides 100 mm and the back 80, capped by the box and the sides; the front full
+    let p = json!({"drawers": 2, "drawer_side_height": 100, "drawer_back_height": 80});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_drawer_side_height")["expression"],
+        "100 mm"
+    );
+    let height = |part: &str| {
+        named(&commands, &format!("Cabinet Drawer 1 {part}"))["height"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    let (side, back, front) = (height("Left"), height("Box back"), height("Box front"));
+    assert!(side.starts_with("min(") && side.ends_with(", Cabinet_drawer_side_height)"));
+    assert_eq!(height("Right"), side);
+    assert_eq!(back, format!("min({side}, Cabinet_drawer_back_height)"));
+    assert!(!front.contains("_height)"), "{front}");
+    // the slides' holes in the middle of the lower side
+    let hole = named(
+        &commands,
+        "Cabinet Drawer 1 Left slide 1 (500 mm, full extension)",
+    );
+    assert!(hole["base"][2]
+        .as_str()
+        .unwrap()
+        .contains(&format!("{side}/2")));
+    // 0: full height, no parameters
+    let (plain, _) = build(&json!({"drawers": 2})).unwrap();
+    assert!(!has(&plain, "Cabinet_drawer_side_height"));
+    assert!(!has(&plain, "Cabinet_drawer_back_height"));
+    // under 50 mm is refused; taller than the box or the sides is capped, not refused, so Edit
+    // of a cabinet whose parameter was raised still builds (also a sink base, whose false front
+    // has no box)
+    assert!(build(&json!({"drawers": 2, "drawer_side_height": 40})).is_err());
+    assert!(build(&json!({"drawers": 2, "drawer_back_height": 40})).is_err());
+    for p in [
+        json!({"drawers": 2, "drawer_side_height": 900}),
+        json!({"drawers": 2, "drawer_side_height": 100, "drawer_back_height": 120}),
+        json!({"kind": "sink", "drawers": 2, "drawer_height": 110, "drawer_side_height": 300}),
+    ] {
+        let (commands, _) = build(&p).unwrap_or_else(|e| panic!("{p}: {e}"));
+        let left = named(&commands, "Cabinet Drawer 1 Left")["height"].to_string();
+        assert!(left.contains("min("), "{left}");
+    }
+    // finger-jointed, every drawer's back is as high as its own sides: no back parameter
+    let p = json!({"drawers": 3, "drawer_height": 140, "drawer_back_height": 98, "drawer_joints": "finger"});
+    let (fingered, _) = build(&p).unwrap();
+    assert!(!has(&fingered, "Cabinet_drawer_back_height"));
+    for i in 1..=3 {
+        let part = |board: &str| {
+            named(&fingered, &format!("Cabinet Drawer {i} {board}"))["height"].clone()
+        };
+        assert_eq!(part("Box back"), part("Left"));
+    }
+    // finger joints over the lower sides, the back as high
+    let p = json!({"drawers": 2, "drawer_side_height": 100, "drawer_joints": "finger"});
+    let (fingered, _) = build(&p).unwrap();
+    let rows = fingered
+        .iter()
+        .filter(|c| c.0 == "solid.pattern.rectangular");
+    assert!(rows
+        .filter(|c| c.1["name"].as_str().unwrap().contains(" fingers "))
+        .all(|c| c.1["count1"]
+            .as_str()
+            .unwrap()
+            .contains("Cabinet_drawer_side_height")));
+}
