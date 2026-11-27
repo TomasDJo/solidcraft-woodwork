@@ -24,6 +24,45 @@ fn boxes(commands: &Commands) -> Vec<(String, [f64; 3], [f64; 3])> {
         .collect()
 }
 
+/// The frame boards and blocks among the boxes that share any volume.
+fn overlapping(all: &[(String, [f64; 3], [f64; 3])]) -> Vec<(String, String)> {
+    let mut found = Vec::new();
+    let all: Vec<_> = (all.iter())
+        .filter(|b| b.0.contains(" Frame ") || b.0.contains(" Block "))
+        .collect();
+    let all = &all[..];
+    for (i, a) in all.iter().enumerate() {
+        for b in &all[i + 1..] {
+            if (0..3).all(|k| a.1[k] < b.1[k] + b.2[k] - 0.01 && b.1[k] < a.1[k] + a.2[k] - 0.01) {
+                found.push((a.0.clone(), b.0.clone()));
+            }
+        }
+    }
+    found
+}
+
+#[test]
+fn cabinets_back_to_back_of_different_widths_get_boards_that_do_not_cross() {
+    // #216: A 600 x 560 and B 800 x 560 behind it, back to back, both from x = 0. The joint at
+    // y = 560 gets a board across; A's right side at x = 600 one along, only under A and short of
+    // the board across, so nothing overlaps.
+    let plans = [[0.0, 0.0, 600.0, 560.0], [0.0, 560.0, 800.0, 1120.0]];
+    let (commands, _) = build(&json!({"name": "B"}), &plans).unwrap();
+    let all = boxes(&commands);
+    assert_eq!(overlapping(&all), vec![] as Vec<(String, String)>);
+    let find = |name: &str| all.iter().find(|b| b.0 == name).cloned().unwrap();
+    assert_eq!(find("B Frame cross 1").1, [18.0, 551.0, 100.0]);
+    assert_eq!(find("B Frame cross 2").1, [591.0, 18.0, 100.0]);
+    assert_eq!(find("B Frame cross 2").2, [18.0, 533.0, 70.0]);
+    assert!(all.iter().all(|b| b.0 != "B Frame cross 3"));
+    // offset the other way, B's edge at x = 200 inside A's span: under B only
+    let plans = [[0.0, 0.0, 800.0, 560.0], [200.0, 560.0, 800.0, 1120.0]];
+    let all = boxes(&build(&json!({"name": "B"}), &plans).unwrap().0);
+    assert_eq!(overlapping(&all), vec![] as Vec<(String, String)>);
+    let cross = all.iter().find(|b| b.0 == "B Frame cross 2").unwrap();
+    assert_eq!((cross.1[1], cross.2[1]), (569.0, 533.0));
+}
+
 #[test]
 fn a_frame_round_two_cabinets_with_a_cross_board_and_casters() {
     // two 600 x 560 cabinets side by side from (0, 0): frame 1200 x 560

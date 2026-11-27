@@ -831,8 +831,9 @@ frame under all of them and stands them on it:
 
 - **The frame:** boards on edge round the cabinets' joint footprint (seen from above, their sides
   and backs), `Name Frame front`, `back`, `left` and `right`, and a `Frame cross` board under each
-  place where two cabinets meet, so every cabinet side stands on a board (where two cross boards
-  cross, halve them into each other: the cut list gives both their whole length). **Frame height** (70 mm)
+  place where two cabinets meet, so every cabinet side stands on a board. A cross board along the
+  frame (cabinets side by side across it, or back to back with different widths) runs only under
+  the cabinets with that side and stops at the cross boards it meets, in pieces. **Frame height** (70 mm)
   is how tall they stand, **Board thickness** (18 mm) their thickness, **Material** theirs.
 - **Casters:** a block (`Name Block 1` and on, 90 x 90 mm) in each corner with a locking caster
   under it, screwed into the block; a frame longer than 1500 mm gets a pair in its middle too.
