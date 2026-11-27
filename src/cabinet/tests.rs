@@ -1963,15 +1963,41 @@ fn drawer_sides_and_back_can_be_lower() {
         let left = named(&commands, "Cabinet Drawer 1 Left")["height"].to_string();
         assert!(left.contains("min("), "{left}");
     }
-    // finger-jointed, every drawer's back is as high as its own sides: no back parameter
+    // finger-jointed too (#233): the back is lower, its corner fingers laid out over its own
+    // height in a pair of rows of their own, the front corners' over the sides'
     let p = json!({"drawers": 3, "drawer_height": 140, "drawer_back_height": 98, "drawer_joints": "finger"});
     let (fingered, _) = build(&p).unwrap();
-    assert!(!has(&fingered, "Cabinet_drawer_back_height"));
+    assert!(has(&fingered, "Cabinet_drawer_back_height"));
     for i in 1..=3 {
         let part = |board: &str| {
             named(&fingered, &format!("Cabinet Drawer {i} {board}"))["height"].clone()
         };
-        assert_eq!(part("Box back"), part("Left"));
+        let back = part("Box back").as_str().unwrap().to_string();
+        assert_eq!(
+            back,
+            format!(
+                "min({}, Cabinet_drawer_back_height)",
+                part("Left").as_str().unwrap()
+            )
+        );
+        let cut = named(
+            &fingered,
+            &format!("Cabinet Drawer {i} Box back finger Left"),
+        );
+        assert!(
+            cut["height"].as_str().unwrap().contains(&back),
+            "{}",
+            cut["height"]
+        );
+        let front = named(
+            &fingered,
+            &format!("Cabinet Drawer {i} Box front finger Left"),
+        );
+        assert!(!front["height"]
+            .as_str()
+            .unwrap()
+            .contains("drawer_back_height"));
+        assert!(has(&fingered, &format!("Cabinet Drawer {i} fingers 4")));
     }
     // finger joints over the lower sides, the back as high
     let p = json!({"drawers": 2, "drawer_side_height": 100, "drawer_joints": "finger"});
