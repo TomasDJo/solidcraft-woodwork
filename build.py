@@ -65,7 +65,9 @@ MOVED = {
                  "handle_position": ("handle_position", "auto"), "plinth_type": ("plinth_type", "board"),
                  "plinth_setback": ("plinth_setback", 50), "labels": ("labels", "no"),
                  "cleat_height": ("cleat_height", 90), "cleat_thickness": ("cleat_thickness", 18),
-                 "drawer_thickness": ("drawer_thickness", 12), "drawer_bottom": ("drawer_bottom", 6)},
+                 "drawer_thickness": ("drawer_thickness", 12), "drawer_bottom": ("drawer_bottom", 6),
+                 "front_style": ("front_style", "flat"), "groove_shape": ("groove_shape", "square"),
+                 "groove_spacing": ("groove_spacing", 50), "groove_depth": ("groove_depth", 3)},
     "cutlist": {"banding": ("banding", "1"), "size": ("cut_sizes", "finished"), "sheet": ("sheet", "2440x1220"),
                 "kerf": ("kerf", 4), "trim": ("trim", 10)},
     "worktop": {"material": ("worktop_material", "Oak"), "thickness": ("worktop_thickness", 38)},
@@ -73,7 +75,8 @@ MOVED = {
 
 # Fields Edit had that are design-wide now (Woodwork settings), with the setting's default.
 DESIGN_WIDE = {"joints": "dowels", "joints_inner": "dowels", "hardware_models": "on", "hinge_angle": "110",
-               "slide_type": "full", "reveal": 2, "plinth_setback": 50}
+               "slide_type": "full", "reveal": 2, "plinth_setback": 50,
+               "groove_shape": "square", "groove_spacing": 50, "groove_depth": 3}
 
 
 def plugin(approval, entry, params=None):

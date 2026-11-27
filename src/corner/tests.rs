@@ -768,3 +768,28 @@ fn a_grip_goes_on_the_door_that_folds() {
     assert_eq!(groove["axis"], json!([1, 0, 0]));
     assert_eq!(groove["base"][2], "0 mm + Cabinet_reveal + 25 mm");
 }
+
+#[test]
+fn both_doors_are_grooved() {
+    // vertical grooves across each door: along x on the back leg's, along y on the return's
+    let p = json!({"doors": "hinged right", "front_style": "vertical"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Door front grooves")["dir1"],
+        json!([1, 0, 0])
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Door return front grooves")["dir1"],
+        json!([0, 1, 0])
+    );
+    // the diagonal's one door, horizontal: up the door; none without doors
+    let p = json!({"shape": "diagonal", "doors": "hinged left", "front_style": "horizontal"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet Door front grooves")["dir1"],
+        json!([0, 0, 1])
+    );
+    let p = json!({"front_style": "vertical", "groove_depth": 10});
+    let (commands, _) = build(&p).unwrap();
+    assert!(!commands.iter().any(|c| c.1.to_string().contains("groove")));
+}

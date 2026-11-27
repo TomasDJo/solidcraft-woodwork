@@ -94,6 +94,7 @@ pub fn build(cabinet: &Cabinet) {
             false => format!("{x0} + {}", mm(HANDLE_EDGE)),
         };
         cabinet.handle(&part, &handle_x, &handle_z, 2);
+        cabinet.grooves(&part, [&x0, efront, z0], [&door_w, et, door_h]);
         cabinet.grip(&part, [&x0, efront, z0], [&door_w, et, door_h], grip_top);
         // The hinge: turning outwards up to `hinge_angle` (110 degrees by default) about the
         // front edge on the door's hinge side. A cup hinge carries the door out and round so that its edge clears the door of

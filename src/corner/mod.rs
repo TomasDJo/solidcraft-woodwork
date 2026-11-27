@@ -38,6 +38,8 @@ struct Corner<'a> {
     split: bool, // the L-shaped boards as two dowelled boards
     handles: &'a str,
     handle_at: &'a str,
+    /// Grooved fronts and their spacing and depth parameters, on a cabinet with doors.
+    grooves: Option<(fittings::Grooves<'a>, [String; 2])>,
     a: f64,
     b: f64,
     d: f64,
@@ -84,6 +86,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         on_return,
         handles,
         handle_at,
+        grooves,
         right,
         diagonal,
         split,
@@ -130,6 +133,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         true => kit.parameter_as("reveal", reveal, "gap around the doors", mm(reveal)),
         false => mm(reveal),
     };
+    let grooves = grooves.map(|g| (g, fittings::groove_sizes(&kit, &g)));
     let emount = fittings::mount_sizes(&kit, wall_mount, mount_t, mount_h, &et);
     // A rail on each wall.
     let steel = wall_mount == "steel";
@@ -148,6 +152,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         split,
         handles,
         handle_at,
+        grooves,
         a,
         b,
         d,

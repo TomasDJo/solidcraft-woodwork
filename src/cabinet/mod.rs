@@ -43,6 +43,8 @@ struct Cabinet<'a> {
     // outside (a panel when inset, which is also where the shelves start); and the y of the
     // fronts' front and back faces.
     er: String,
+    /// Grooved fronts' spacing and depth parameters, on a cabinet with fronts.
+    egrooves: Option<[String; 2]>,
     ein: String,
     efront: String,
     eback: String,
@@ -178,6 +180,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         ),
         false => mm(input.reveal),
     };
+    let egrooves = (input.grooves).map(|g| fittings::groove_sizes(&kit, &g));
     let (ein, efront, eback) = match input.inset {
         true => (et.clone(), mm(0.0), et.clone()),
         false => (mm(0.0), format!("-{er} - {et}"), format!("-{er}")),
@@ -243,6 +246,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         eshelf_d,
         emount,
         er,
+        egrooves,
         ein,
         efront,
         eback,
@@ -671,6 +675,14 @@ impl Cabinet<'_> {
     fn grip(&self, body: &str, lo: [&str; 3], size: [&str; 3], top: bool) {
         let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
         fittings::grip(self.kit, body, self.input.handles, at, lo, size, 0, 1, top);
+    }
+
+    /// Grooves in a front's face (`fittings::front_grooves`), the front as for `grip`.
+    fn grooves(&self, body: &str, lo: [&str; 3], size: [&str; 3]) {
+        if let (Some(g), Some(sizes)) = (&self.input.grooves, &self.egrooves) {
+            let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
+            fittings::front_grooves(self.kit, body, g, sizes, at, lo, size, 0, 1);
+        }
     }
 
     /// Screw holes for a knob (one) or a pull (two), through a front from its back face.

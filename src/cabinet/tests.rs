@@ -1478,3 +1478,70 @@ fn doors_hinge_on_the_sides_and_only_the_middle_ones_on_a_divider() {
         .unwrap_or("")
         .ends_with("(half overlay)")));
 }
+
+#[test]
+fn grooved_fronts() {
+    let named = |commands: &Commands, name: &str| {
+        let found = commands.iter().find(|c| c.1["name"] == name);
+        found.unwrap_or_else(|| panic!("no {name}")).1.clone()
+    };
+    // vertical: one square cut up the door's whole height, 2 x 3 mm deep from a millimetre in
+    // front of its face, then a pattern across, the count and pitch over the door's width
+    let p = json!({"doors": 1, "front_style": "vertical"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(commands
+        .iter()
+        .any(|c| c.0 == "parameters.add" && c.1["name"] == "Cabinet_groove_spacing"));
+    let cut = named(&commands, "Cabinet Door front groove");
+    assert_eq!(
+        (cut["operation"].clone(), cut["targets"].clone()),
+        (json!("cut"), json!(["Cabinet Door"]))
+    );
+    assert_eq!(cut["length"], "2*Cabinet_groove_depth");
+    assert_eq!(cut["width"], "Cabinet_groove_depth + 1 mm");
+    assert!(cut["height"].as_str().unwrap().ends_with(" + 2 mm"));
+    assert_eq!(
+        cut["corner"][1],
+        "-Cabinet_reveal - Cabinet_thickness - 1 mm - Cabinet_depth/2"
+    );
+    let row = named(&commands, "Cabinet Door front grooves");
+    assert_eq!(row["features"], json!(["Cabinet Door front groove"]));
+    assert_eq!(row["dir1"], json!([1, 0, 0]));
+    let strips = row["count1"].as_str().unwrap();
+    assert!(
+        strips.starts_with("max(round((")
+            && strips.ends_with(") / Cabinet_groove_spacing), 2) - 1")
+    );
+    // horizontal on drawers, round: a half-round cylinder along each front, repeated upwards
+    let p = json!({"drawers": 2, "front_style": "horizontal", "groove_shape": "round"});
+    let (commands, _) = build(&p).unwrap();
+    let cut = named(&commands, "Cabinet Drawer 1 Front front groove");
+    assert_eq!(
+        (cut["axis"].clone(), cut["diameter"].clone()),
+        (json!([1, 0, 0]), json!("2*Cabinet_groove_depth"))
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Drawer 2 Front front grooves")["dir1"],
+        json!([0, 0, 1])
+    );
+    // flat: none, and no parameters
+    let (commands, _) = build(&json!({"doors": 1})).unwrap();
+    assert!(!commands.iter().any(|c| c.1.to_string().contains("groove_")));
+    // a groove clear of the hinge cups behind it (18 - 13 - 1), and spaced to fit
+    let fits = |p: Value| build(&p).is_ok();
+    assert!(fits(
+        json!({"doors": 1, "front_style": "vertical", "groove_depth": 4})
+    ));
+    assert!(!fits(
+        json!({"doors": 1, "front_style": "vertical", "groove_depth": 4.5})
+    ));
+    assert!(fits(
+        json!({"drawers": 1, "front_style": "vertical", "groove_depth": 8})
+    ));
+    assert!(!fits(
+        json!({"doors": 1, "front_style": "vertical", "groove_spacing": 10})
+    ));
+    assert!(!fits(json!({"doors": 1, "front_style": "fluted"})));
+    // no fronts: nothing to groove, so a depth too deep for a front is not refused
+    assert!(fits(json!({"front_style": "vertical", "groove_depth": 10})));
+}
