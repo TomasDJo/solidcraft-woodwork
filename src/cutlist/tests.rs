@@ -564,14 +564,26 @@ fn sheets_from_cutting_layouts() {
         body("Base Frame front", "Softwood timber", [1200.0, 45.0, 70.0]),
         body("Base Frame back", "Softwood timber", [1200.0, 45.0, 70.0]),
         body("Base Frame left", "Softwood timber", [45.0, 470.0, 70.0]),
+        // a caster block: a piece of its own size, out of the running metres
+        body("Base Block 1", "Softwood timber", [90.0, 90.0, 70.0]),
     ]});
     let list = cutlist(&frame, &BTreeMap::new(), false, &json!({})).unwrap();
     assert_eq!(list["sheets"], json!([]));
-    assert_eq!(list["timber"].as_array().unwrap().len(), 3);
+    assert_eq!(list["timber"].as_array().unwrap().len(), 4);
     assert_eq!(
         list["timber_metres"],
-        json!([{"material": "Softwood timber", "section": "45 x 70 mm", "metres": 2.87}])
+        json!([{"material": "Softwood timber", "section": "45 x 70 mm", "thickness_mm": 45.0,
+                "width_mm": 70.0, "metres": 2.87}])
     );
+    let block = (list["timber"].as_array().unwrap().iter())
+        .find(|p| p["part"] == "Base Block 1")
+        .unwrap();
+    assert_eq!(block["note"], "caster block");
+    // and in the CSV, on a row of its own
+    assert!(list["csv"]
+        .as_str()
+        .unwrap()
+        .contains("\"Base Block 1 (caster block)\""));
     assert!(list["csv"]
         .as_str()
         .unwrap()

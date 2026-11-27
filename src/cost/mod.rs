@@ -79,6 +79,15 @@ pub fn estimate(list: &Value, text: &str) -> Result<Value, String> {
             format!("{name} = ?"),
         );
     }
+    // timber per running metre of its section: `Timber 48x98` (or `Timber 48 x 98`)
+    for s in list["timber_metres"].as_array().into_iter().flatten() {
+        let mm = |k: &str| s[k].as_f64().unwrap_or(0.0);
+        let name = format!("Timber {}x{}", mm("thickness_mm"), mm("width_mm"));
+        let spaced = format!("Timber {} x {}", mm("thickness_mm"), mm("width_mm"));
+        let price = exact(&name).or(exact(&spaced));
+        let qty = s["metres"].as_f64().unwrap_or(0.0);
+        line(name.clone(), qty, "m", price, format!("{name} = ?"));
+    }
     let metres: f64 = (list["banding"].as_array().into_iter().flatten())
         .filter_map(|b| b["metres"].as_f64())
         .sum();

@@ -215,6 +215,13 @@ fn the_dialogs_bounds_are_the_builders() {
 }
 
 #[test]
+fn a_caster_block_is_told_by_its_name() {
+    assert!(is_block("Cart Block 3"));
+    assert!(!is_block("Cart Block x"));
+    assert!(!is_block("Cart Frame front"));
+}
+
+#[test]
 fn a_timber_frame_takes_its_sizes_from_the_section() {
     // 48 x 98 timber by default: the frame 48 across and 98 tall, whatever Frame height and
     // Thickness say; a US 2x4 is 38 x 89

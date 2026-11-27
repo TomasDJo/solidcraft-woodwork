@@ -59,6 +59,12 @@ pub fn plans(measure: &Value, cabinets: &[String]) -> Result<(Vec<[f64; 4]>, Vec
     Ok((plans, floors))
 }
 
+/// Whether a body is a base's caster block, `<Name> Block <n>`.
+pub fn is_block(name: &str) -> bool {
+    name.rsplit_once(" Block ")
+        .is_some_and(|(_, n)| n.parse::<usize>().is_ok())
+}
+
 /// A timber frame's section `(thickness, width)` in mm (`frame_material: timber`): the timber's
 /// thickness is the frame's across, its width the frame's height, standing on edge. 48 x 98 by
 /// default (Norway's common stud). `None` for a frame of boards.
