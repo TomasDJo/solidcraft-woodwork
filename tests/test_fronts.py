@@ -517,3 +517,32 @@ def test_bottom_tab(approval):
     box = boxes(results[1])
     tab, left, right = (box[f"Cabinet Drawer 1 {p}"] for p in ("Tab", "Left", "Right"))
     assert left[3] <= tab[0] + 0.001 and tab[3] <= right[0] + 0.001, (tab, left, right)
+
+
+def test_shaker_fronts(approval):
+    # A shaker door, 596 x 716, hinged left: 60 mm stiles full height (the left one keeps the
+    # door's name and takes the cups), rails 476 long between them, and a 6 mm panel centred in
+    # the 18 mm thickness (y -294 to -288), 8 mm into a groove all round: 492 x 612. Two drawer
+    # fronts 357 high take a frame too. Then the cabinet 200 mm wider: the boards follow.
+    results = cli([plugin(approval, "cabinet", {"name": "S", "doors": 1, "handles": "knob", "front_style": "shaker"}),
+                   plugin(approval, "cabinet", {"name": "D", "drawers": 2, "front_style": "shaker"}),
+                   MEASURE,
+                   {"command": "parameters.change", "params": {"name": "S_width", "expression": "800 mm"}},
+                   MEASURE, plugin(approval, "cutlist")],
+                  "--save", str(ROOT / "dist" / "shaker-fronts.sc"))
+    box, m = boxes(results[2]), results[2]
+    assert box["S Door"] == [-298, -300, 2, -238, -282, 718], box["S Door"]
+    assert box["S Door stile"] == [238, -300, 2, 298, -282, 718], box["S Door stile"]
+    assert box["S Door rail top"] == [-238, -300, 658, 238, -282, 718], box["S Door rail top"]
+    assert box["S Door panel"] == [-246, -294, 54, 246, -288, 666], box["S Door panel"]
+    assert volume(m, "S Door panel") == 492 * 6 * 612, volume(m, "S Door panel")  # the knob is in the stile
+    # each rail lost its groove, 6 x 8 along its whole length
+    assert volume(m, "S Door rail top") == 476 * 18 * 60 - 476 * 6 * 8, volume(m, "S Door rail top")
+    assert cylinders(m, "S Door") >= 2 and cylinders(m, "S Door stile") == 1, (cylinders(m, "S Door"), cylinders(m, "S Door stile"))
+    assert all(f"D Drawer {n} Front {p}" in box for n in (1, 2) for p in ("stile", "rail top", "panel"))
+    wide = boxes(results[4])
+    assert wide["S Door stile"][3] == 398 and wide["S Door panel"][3] - wide["S Door panel"][0] == 692, wide["S Door panel"]
+    # the cut list: the panel at its own thickness, the two rails alike, 676 long once wider
+    part = lambda name: next(p for p in results[5]["result"]["parts"] if name in p["parts"])
+    assert part("S Door panel")["thickness"] == 6, part("S Door panel")
+    assert part("S Door rail top")["length"] == 676 and "S Door rail bottom" in part("S Door rail top")["parts"], part("S Door rail top")

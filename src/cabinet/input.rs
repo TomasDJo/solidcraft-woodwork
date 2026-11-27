@@ -44,6 +44,8 @@ pub struct Input<'a> {
     pub handle_at: &'a str,
     /// Grooves cut into the fronts' faces (`front_style`, #182): `None` for flat fronts.
     pub grooves: Option<crate::fittings::Grooves<'a>>,
+    /// Shaker fronts (`front_style` shaker, #183): the frame's width and the panel's thickness.
+    pub frame: Option<[f64; 2]>,
     pub hinge_right: bool, // the first door is hinged on its right
     /// Inset fronts sit inside the carcass opening; overlay ones cover its edges.
     pub inset: bool,
@@ -325,6 +327,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         true => crate::fittings::grooves(p, size, t, doors > 0.0)?,
         false => None,
     };
+    let door_w = (w - 2.0 * o - (doors + 1.0) * g) / doors.max(1.0);
+    let smallest = (doors > 0.0).then_some(door_w.min(door_h));
+    let frame = match doors > 0.0 || drawers > 0.0 {
+        true => crate::fittings::frame(p, size, t, smallest)?,
+        false => None,
+    };
     let handle_at = crate::fittings::handle_position(p)?;
     let hinge_right = match p
         .get("door_hinge")
@@ -437,6 +445,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handles,
         handle_at,
         grooves,
+        frame,
         hinge_right,
         inset,
         reveal: g,

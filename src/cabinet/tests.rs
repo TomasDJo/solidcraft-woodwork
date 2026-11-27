@@ -1658,3 +1658,88 @@ fn a_bottom_tab_sticks_out_under_the_front() {
     // two narrow doors beside the drawers' tabs need no room for handles
     assert!(build(&json!({"width": 300, "doors": 2, "handles": "tab"})).is_ok());
 }
+
+#[test]
+fn shaker_fronts() {
+    let named = |commands: &Commands, name: &str| {
+        let found = (commands.iter()).find(|c| c.1["name"] == name && c.0 != "component.create");
+        found.unwrap_or_else(|| panic!("no {name}")).1.clone()
+    };
+    // a door hinged left: its own name is the left stile, with the cups; the right stile, the
+    // rails between them and the panel in a groove cut through the four frame boards
+    let p = json!({"doors": 1, "handles": "knob", "front_style": "shaker"});
+    let (commands, summary) = build(&p).unwrap();
+    let stile = named(&commands, "Cabinet Door");
+    assert_eq!(stile["length"], "Cabinet_frame_width");
+    let other = named(&commands, "Cabinet Door stile");
+    assert!(other["corner"][0]
+        .as_str()
+        .unwrap()
+        .contains(" - Cabinet_frame_width"));
+    let rail = named(&commands, "Cabinet Door rail top");
+    assert!(rail["length"]
+        .as_str()
+        .unwrap()
+        .ends_with(" - 2*Cabinet_frame_width"));
+    let panel = named(&commands, "Cabinet Door panel");
+    assert_eq!(panel["width"], "Cabinet_panel_thickness");
+    let groove = named(&commands, "Cabinet Door groove");
+    assert_eq!(groove["operation"], "cut");
+    assert_eq!(groove["corner"], panel["corner"]);
+    let frame = json!([
+        "Cabinet Door",
+        "Cabinet Door stile",
+        "Cabinet Door rail bottom",
+        "Cabinet Door rail top"
+    ]);
+    assert_eq!(groove["targets"], frame);
+    // every hole into the door cuts all five boards; the cups land in the stile
+    let five = json!([
+        "Cabinet Door",
+        "Cabinet Door stile",
+        "Cabinet Door rail bottom",
+        "Cabinet Door rail top",
+        "Cabinet Door panel"
+    ]);
+    assert_eq!(
+        named(&commands, "Cabinet Door hinge cup 1")["targets"],
+        five
+    );
+    assert_eq!(named(&commands, "Cabinet Door handle 1")["targets"], five);
+    let bodies = summary["bodies"].to_string();
+    assert!(bodies.contains("Cabinet Door panel") && bodies.contains("Cabinet Door rail bottom"));
+    // hinged right: the right stile keeps the door's name
+    let p = json!({"doors": 1, "door_hinge": "right", "front_style": "shaker"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(named(&commands, "Cabinet Door")["corner"][0]
+        .as_str()
+        .unwrap()
+        .contains(" - Cabinet_frame_width"));
+    // drawer fronts too low for a frame and its panel (2 x 60 + 60) stay flat; tall ones get it
+    let (commands, _) = build(&json!({"drawers": 4, "front_style": "shaker"})).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Drawer 1 Front panel"));
+    // a narrow front too: 296 wide for a 150 mm frame (2 x 150 + 60)
+    let p = json!({"width": 300, "drawers": 1, "front_style": "shaker", "frame_width": 150});
+    let (commands, _) = build(&p).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Drawer 1 Front panel"));
+    let (commands, _) = build(&json!({"drawers": 2, "front_style": "shaker"})).unwrap();
+    named(&commands, "Cabinet Drawer 2 Front panel");
+    // refused: a narrow door, a thick panel, a grip edge
+    let fits = |p: Value| build(&p).is_ok();
+    assert!(!fits(
+        json!({"width": 300, "doors": 2, "front_style": "shaker"})
+    ));
+    assert!(!fits(
+        json!({"doors": 1, "front_style": "shaker", "panel_thickness": 14})
+    ));
+    assert!(!fits(
+        json!({"doors": 1, "front_style": "shaker", "handles": "grip"})
+    ));
+    assert!(!fits(
+        json!({"doors": 1, "front_style": "shaker", "frame_width": 50})
+    ));
+}

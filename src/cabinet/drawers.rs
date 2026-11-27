@@ -56,6 +56,15 @@ pub fn build(cabinet: &Cabinet) {
     let panel =
         |part: &str, corner: [&str; 3], size: [&str; 3]| kit.panel(part, corner, size, None);
     let count = drawers as usize;
+    // Shaker fronts only where every front is tall and wide enough for its frame, and not
+    // integrated: the width less the panels round inset fronts and the reveals.
+    let low = match cabinet.input.drawer_h > 0.0 {
+        true => front_mm.min(cabinet.input.drawer_h),
+        false => front_mm,
+    };
+    let wide = cabinet.input.w - 2.0 * if inset { t } else { 0.0 } - 2.0 * reveal;
+    let framed = (cabinet.input.frame)
+        .is_some_and(|[fw, _]| !integrated && low.min(wide) >= fittings::framed(fw));
     let gap_mm = er;
     // The fronts' room: the height above the plinth, less the panels round inset fronts.
     let room = format!("{eh} - {epl} - 2*{ein}");
@@ -133,7 +142,13 @@ pub fn build(cabinet: &Cabinet) {
             _ => format!("{z} + {front_h}/2"),
         };
         if sink && i + 1 == count {
-            panel("False front", [&x0, efront, &z], [&front_w, et, front_h]);
+            cabinet.front(
+                "False front",
+                [&x0, efront, &z],
+                [&front_w, et, front_h],
+                true,
+                framed,
+            );
             cabinet.handle("False front", &format!("{ew}/2"), &handle_z, 0);
             cabinet.grooves("False front", [&x0, efront, &z], [&front_w, et, front_h]);
             cabinet.grip(
@@ -150,7 +165,13 @@ pub fn build(cabinet: &Cabinet) {
             true => format!("{drawer} Box front"),
             false => format!("{drawer} Front"),
         };
-        panel(&front, [&x0, efront, &z], [&front_w, et, front_h]);
+        cabinet.front(
+            &front,
+            [&x0, efront, &z],
+            [&front_w, et, front_h],
+            true,
+            framed,
+        );
         cabinet.handle(&front, &format!("{ew}/2"), &handle_z, 0);
         cabinet.grooves(&front, [&x0, efront, &z], [&front_w, et, front_h]);
         cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], true);

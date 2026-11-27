@@ -741,6 +741,17 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   grooves at `len/strips`, so they follow a resize. A V groove is not made: a turned cutter
   (`solid.move`) and its combine cannot be patterned ("cannot be patterned or mirrored yet").
   The depth stays clear of the cups (`t - CUP_DEPTH - 1`, or `t/2` without doors).
+- **Shaker fronts** (`front_style` shaker, #183; `frame_width`, `panel_thickness`: design-wide,
+  the parameters `<Prefix>_frame_width` and `_panel_thickness`; `fittings::frame`, `front`): the
+  part's own name is a stile (a door's hinge stile, so cups, hinge models, `cut` and select work
+  as before; a drawer's left one, so `Drawer n Front` still counts), plus `<part> stile`,
+  `rail bottom`, `rail top` and `panel`, and one box cut of the panel's size through the four
+  frame boards as the groove (`PANEL_GROOVE` 8 mm): 6 commands a front instead of 1.
+  `Kit::pieces` notes the boards and `fittings::hole` cuts `Kit::targets`, all five, so cups and
+  handle holes need no change (a cut into a target it misses is fine). A door's handle goes to
+  the middle of the other stile (`handle_edge`). Drawer fronts lower than `framed` (2 frames +
+  60 mm), and integrated ones, stay flat; such a door is refused. The cut list's `role` takes
+  ` rail top`/` rail bottom` across, ` stile` and a front's ` panel` upright. No glass yet.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
 - A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
   from parameters takes whole parameters (`number(Width)`), not expressions. A board is told

@@ -64,6 +64,8 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("groove_shape", "", Choice("square"), Cabinets),
         ("groove_spacing", "", Length(50.0, 10.0, 300.0), Cabinets),
         ("groove_depth", "", Length(3.0, 0.5, 10.0), Cabinets),
+        ("frame_width", "", Length(60.0, 55.0, 150.0), Cabinets),
+        ("panel_thickness", "", Length(6.0, 3.0, 25.0), Cabinets),
         // `plinth` is Cabinet's Yes or No (`design`)
         ("plinth", "", Length(100.0, 0.0, 500.0), Nothing),
         ("plinth_type", "", Choice("board"), Cabinets),
@@ -467,6 +469,7 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
         ("back thickness", "back_thickness"),
         ("drawer box", "drawer_thickness"),
         ("front grooves", "groove_depth"),
+        ("shaker", "frame_width"),
         ("cleat thickness", "cleat_thickness"),
         ("cleat", "cleat_height"),
         ("panels of", "thickness"),
@@ -512,7 +515,7 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
 pub fn on_cabinet(field: &'static str) -> &'static str {
     match field {
         "cleat_height" | "cleat_thickness" => "wall_mount",
-        "back_thickness" | "drawer_thickness" | "groove_depth" => "shape",
+        "back_thickness" | "drawer_thickness" | "groove_depth" | "frame_width" => "shape",
         f => f,
     }
 }
@@ -641,6 +644,8 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
             "groove_shape",
             "groove_spacing",
             "groove_depth",
+            "frame_width",
+            "panel_thickness",
             "double_dividers",
         ],
     ),

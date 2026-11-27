@@ -475,6 +475,20 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
         "Rail back" => (Edges::None, Some(width)), // hidden under the worktop
         _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
         _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),
+        // a shaker front's boards (`fittings::front`): rails across, stiles and panel upright
+        // a corner's return door's rails run along its return, across the cabinet's width
+        _ if part.ends_with(" rail top") || part.ends_with(" rail bottom") => {
+            let along = if part.starts_with("Door return ") {
+                1 - width
+            } else {
+                width
+            };
+            (Edges::All, Some(along))
+        }
+        _ if part.ends_with(" stile") => (Edges::All, Some(2)),
+        _ if part.ends_with(" panel") && (part.starts_with("Door") || drawer) => {
+            (Edges::None, Some(2))
+        }
         _ if part.starts_with("Door")
             || drawer && part.ends_with(" Front")
             || part == "False front" =>

@@ -6,7 +6,7 @@
 //! in a right one, and its -Y faces the room.
 
 use super::Corner;
-use crate::fittings::{self, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, HANDLE_D};
 use crate::hardware;
 use crate::kit::mm;
 use serde_json::{json, Value};
@@ -78,15 +78,26 @@ pub fn door(corner: &Corner, on_return: bool) {
     let (cup_x, pull_x) = match at_end {
         true => (
             format!("{x1} - HW_cup_inset"),
-            format!("{x0} + {}", mm(HANDLE_EDGE)),
+            format!("{x0} + {}", fittings::handle_edge(corner.eframe.as_ref())),
         ),
         false => (
             format!("{x0} + HW_cup_inset"),
-            format!("{x1} - {}", mm(HANDLE_EDGE)),
+            format!("{x1} - {}", fittings::handle_edge(corner.eframe.as_ref())),
         ),
     };
     kit.open("Door");
-    kit.panel_at("Door", json!([x0, &front, z0]), [&len, et, &door_h], None);
+    let at = |x: &str, y: &str, z: &str| json!([x, y, z]);
+    let lo = [x0.as_str(), front.as_str(), z0.as_str()];
+    fittings::front(
+        kit,
+        "Door",
+        corner.eframe.as_ref(),
+        at,
+        lo,
+        [&len, et, &door_h],
+        0,
+        !at_end,
+    );
     let hole = |x: &str, z: &str, d: f64, depth: &str, what: String| {
         fittings::hole(
             kit,

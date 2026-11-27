@@ -25,6 +25,7 @@ pub struct Input<'a> {
     pub handles: &'a str,
     pub handle_at: &'a str,
     pub grooves: Option<crate::fittings::Grooves<'a>>,
+    pub frame: Option<[f64; 2]>,
     pub right: bool,
     pub diagonal: bool,
     /// The L's bottom, top and shelves each made as two boards dowelled together.
@@ -91,6 +92,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     crate::fittings::profile_fits(handles, t)?;
     let grooves = match doors {
         true => crate::fittings::grooves(p, size, t, true)?,
+        false => None,
+    };
+    // ponytail: the doors' least size by the carcass (a leg's front less the other's depth)
+    let smallest = (a.min(b) - d).min(h - plinth);
+    let frame = match doors {
+        true => crate::fittings::frame(p, size, t, Some(smallest))?,
         false => None,
     };
     let handle_at = crate::fittings::handle_position(p)?;
@@ -176,6 +183,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handles,
         handle_at,
         grooves,
+        frame,
         right,
         diagonal,
         split,

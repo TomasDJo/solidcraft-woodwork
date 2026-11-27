@@ -793,3 +793,22 @@ fn both_doors_are_grooved() {
     let (commands, _) = build(&p).unwrap();
     assert!(!commands.iter().any(|c| c.1.to_string().contains("groove")));
 }
+
+#[test]
+fn shaker_corner_doors() {
+    // the L: each door's own name is the stile with its cups; the diagonal's one door too
+    let p = json!({"doors": "hinged right", "front_style": "shaker"});
+    let (commands, _) = build(&p).unwrap();
+    for part in ["Door", "Door return"] {
+        named(&commands, &format!("Cabinet {part} panel"));
+        let cup = named(&commands, &format!("Cabinet {part} hinge cup 1"));
+        assert_eq!(cup["targets"].as_array().unwrap().len(), 5);
+    }
+    assert_eq!(
+        board(&commands, "Cabinet Door return")["width"],
+        "Cabinet_frame_width"
+    );
+    let p = json!({"shape": "diagonal", "doors": "hinged left", "front_style": "shaker"});
+    let (commands, _) = build(&p).unwrap();
+    named(&commands, "Cabinet Door rail top");
+}

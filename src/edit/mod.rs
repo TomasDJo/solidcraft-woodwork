@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 26] = [
+const SIZES: [&str; 28] = [
     "width",
     "height",
     "depth",
@@ -40,6 +40,9 @@ const SIZES: [&str; 26] = [
     // grooved fronts' (`fittings::groove_sizes`)
     "groove_spacing",
     "groove_depth",
+    // shaker fronts' (`fittings::frame_sizes`)
+    "frame_width",
+    "panel_thickness",
 ];
 
 /// The Edit fields only a box cabinet takes, and only a corner cabinet: the dialog hook hides
