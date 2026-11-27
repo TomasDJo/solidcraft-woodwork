@@ -155,6 +155,11 @@ pub fn build(cabinet: &Cabinet) {
         // the front's lower edge
         let z = format!("{edraw} + ({front_h} + {gap_mm}) * {i}");
         let front_h = if i + 1 == count { &top_h } else { &front_h };
+        // A groove or grip edge on the top edge, or the bottom one when asked (#230); a grip
+        // edge's front stops the grip gap short of it, and its box with it.
+        let top = cabinet.input.handle_at != "bottom";
+        let (z, front_h) = cabinet.gripped(&z, front_h, top);
+        let front_h = &front_h;
         let box_h = format!("({front_h} - 2*{lift})");
         let front_w = format!("{ew} - 2*{ein} - 2*{gap_mm}");
         let x0 = format!("{ein} + {gap_mm}");
@@ -185,7 +190,7 @@ pub fn build(cabinet: &Cabinet) {
                 "False front",
                 [&x0, efront, &z],
                 [&front_w, et, front_h],
-                true,
+                top,
             );
             break;
         }
@@ -210,7 +215,7 @@ pub fn build(cabinet: &Cabinet) {
         );
         cabinet.handle(&front, &format!("{ew}/2"), &handle_z, 0);
         cabinet.grooves(&front, [&x0, efront, &z], [&front_w, et, front_h]);
-        cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], true);
+        cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], top);
         // Bottom tab (#181): a board of the bottom's stock set into a notch in the front's lower
         // edge, `TAB_W` wide, from the front's back face to `TAB_OUT` past its face with its
         // front corners rounded, to pull by from below; the front is scooped above it. The rest

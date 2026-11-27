@@ -751,6 +751,10 @@ fn a_grip_goes_on_the_door_that_folds() {
         assert!(!has(&commands, "Cabinet Door grip cutter"));
         let cutter = named(&commands, "Cabinet Door return grip cutter");
         assert_eq!(named(&commands, "Cabinet Door return grip turn")["axis"], json!([0, 1, 0]));
+        // only the folding door stops the grip gap short of its top (#230)
+        let folding = board(&commands, "Cabinet Door return")["height"].clone();
+        assert!(folding.as_str().unwrap().ends_with(" - Cabinet_grip_gap)"), "{folding}");
+        assert!(!board(&commands, "Cabinet Door")["height"].to_string().contains("grip_gap"));
         assert!(cutter["length"].as_str().unwrap().starts_with("sqrt(2)*"));
         assert_eq!(cutter["center"][0], x, "{corner}");
         // in the middle of the door's length, which is a difference
@@ -822,4 +826,42 @@ fn a_plinth_edited_away_sets_its_parameter_to_0() {
     assert!(commands
         .iter()
         .any(|c| c.0 == "parameters.change" && c.1 == zero));
+}
+
+#[test]
+fn a_grip_gap_on_corner_doors() {
+    // the diagonal door: the gap short of its top (a floor unit) or its bottom (Bottom), the
+    // bevel on the new edge
+    for (at, edge) in [
+        ("top", " - Cabinet_grip_gap)"),
+        ("bottom", " + Cabinet_grip_gap"),
+    ] {
+        let p = json!({"shape": "diagonal", "doors": "hinged left", "handles": "grip",
+            "handle_position": at});
+        let (commands, _) = build(&p).unwrap();
+        let door = board(&commands, "Cabinet Door");
+        assert!(door["height"]
+            .as_str()
+            .unwrap()
+            .ends_with(" - Cabinet_grip_gap)"));
+        let corner = door["corner"][2].as_str().unwrap();
+        assert_eq!(
+            corner.ends_with(" + Cabinet_grip_gap"),
+            at == "bottom",
+            "{corner}"
+        );
+        let cutter = named(&commands, "Cabinet Door grip cutter")["center"][2].clone();
+        assert!(cutter.as_str().unwrap().ends_with(edge), "{at}: {cutter}");
+        // its cups over its own height: the one near the shortened end moves with it
+        let n = if at == "top" { 2 } else { 1 };
+        let cup = named(&commands, &format!("Cabinet Door hinge cup {n}"))["base"][2].clone();
+        assert!(cup.to_string().contains("grip_gap"), "{cup}");
+    }
+    // the L's folding door: its cups over its shortened height, the first door's as before
+    let p = json!({"doors": "hinged right", "handles": "grip", "handle_position": "bottom"});
+    let (commands, _) = build(&p).unwrap();
+    let folding = named(&commands, "Cabinet Door return hinge cup 1")["base"][2].clone();
+    assert!(folding.to_string().contains("grip_gap"), "{folding}");
+    let first = named(&commands, "Cabinet Door hinge cup 1")["base"][2].clone();
+    assert!(!first.to_string().contains("grip_gap"), "{first}");
 }

@@ -53,6 +53,8 @@ pub struct Input<'a> {
     /// The drawer fronts take the frame (Shaker or glass): every one tall and wide enough for
     /// it (`fittings::framed`), and not integrated.
     pub framed_drawers: bool,
+    /// A grip edge's gap (`grip_gap`, #230), in mm; `None` without grip edges.
+    pub grip_gap: Option<f64>,
     pub hinge_right: bool, // the first door is hinged on its right
     /// Inset fronts sit inside the carcass opening; overlay ones cover its edges.
     pub inset: bool,
@@ -296,14 +298,14 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     // Room for a box behind each front (an inset one beside doors stays clear of the rail
     // as an overlay one does), and the width of the box between the slides.
-    let lowest = match inset && !mixed {
+    let box_front = match inset && !mixed {
         true => 2.0 * BOX_CLEAR + 50.0,
         false => 2.0 * (t + BOX_CLEAR) + 50.0,
     };
     // A drawer front height is 0 (Auto) or at least 100 mm, more where thick boards leave
     // no room for a box, rounded up to a whole mm or 1/8 in. The dialog's minimum stays 0.
     let step = if kit.unit == "in" { 25.4 / 8.0 } else { 1.0 };
-    let floor = (lowest.max(MIN_DRAWER_FRONT) / step - 1e-6).ceil() * step;
+    let floor = (box_front.max(MIN_DRAWER_FRONT) / step - 1e-6).ceil() * step;
     check(
         dh == 0.0 || drawer_h == 0.0 || drawer_h >= floor - 1e-6,
         &format!(
@@ -312,11 +314,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         ),
     )?;
     check(
-        drawers == 0.0 || front_h >= lowest,
+        drawers == 0.0 || front_h >= box_front,
         "too low for that many drawers",
     )?;
     check(
-        drawer_h == 0.0 || drawer_h >= lowest,
+        drawer_h == 0.0 || drawer_h >= box_front,
         "the drawer front height is too low for a drawer box",
     )?;
     // The sides and back: 0, or at least a slide's members (45 mm) and the bottom with an
@@ -380,6 +382,22 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         !(glass && framed_drawers && matches!(handles, "knob" | "pull") && handle_at == "middle"),
         "a glass drawer front's handle must be at the top or the bottom (Handle position): in the middle it would go through the glass",
+    )?;
+    let fronts = [door_h, front_h, drawer_h].into_iter();
+    let lowest = fronts.filter(|&h| h > 0.0).fold(f64::MAX, f64::min);
+    let grip_gap = match doors > 0.0 || drawers > 0.0 {
+        true => crate::fittings::grip_gap(handles, handle_at, size, lowest)?,
+        false => None,
+    };
+    // a grip edge's drawer box is the gap lower too: it must still fit (`box_front`); a sink
+    // base's top front is a false front with no box (the rest are `front_h`)
+    let lowest_drawer = match drawer_h > 0.0 && !sink {
+        true => front_h.min(drawer_h),
+        false => front_h,
+    };
+    check(
+        grip_gap.is_none_or(|gap| drawers == 0.0 || lowest_drawer - gap >= box_front),
+        "the drawer fronts are too low for that grip gap: a drawer box would be under 50 mm",
     )?;
     let hinge_right = match p
         .get("door_hinge")
@@ -524,6 +542,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         frame,
         glass,
         framed_drawers,
+        grip_gap,
         hinge_right,
         inset,
         reveal: g,

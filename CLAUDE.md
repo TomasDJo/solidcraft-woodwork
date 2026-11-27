@@ -731,9 +731,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   no handles in the hardware list. A groove is one cylinder cut along the edge (20 mm, its axis
   in the front face, 25 mm from the edge); a grip edge is a box made on the back edge, turned
   45 degrees about it (`solid.move`) and cut away by `solid.combine`, all by names, never a
-  chamfer's edge pick (the naming depth, below): 3 commands a front. A drawer front's top edge;
-  a door's top or bottom by `fittings::grip_on_top` (auto by floor or wall unit, also on a
-  tall door; middle is the top), on the corner's folding door only. `fittings::profile_fits`
+  chamfer's edge pick (the naming depth, below): 3 commands a front. A drawer front's top edge,
+  or its bottom on Handle position Bottom (#230); a door's top or bottom by `fittings::grip_on_top`
+  (auto by floor or wall unit, also on a tall door; middle is the top for a groove, refused for a
+  grip edge), on the corner's folding door only. A grip edge's front is `grip_gap` (Woodwork
+  settings, design-wide, the parameter `<Prefix>_grip_gap`; `fittings::grip_gap` checks it and
+  that `MIN_GRIPPED` of the lowest front is left) shorter at its grip edge (`fittings::gripped`,
+  `Cabinet::gripped`), a drawer's box with it, so a finger fits behind the bevel. `fittings::profile_fits`
   refuses a front too thin for it. Both run a millimetre past the front's ends.
   `tab` (#181, drawers only; doors and a sink base's false front get nothing): in
   `cabinet::drawers` right after the front, `<Drawer> Tab` (a `Kit` body, `drawer_bottom` thick,

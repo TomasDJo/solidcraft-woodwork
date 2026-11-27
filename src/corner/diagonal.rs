@@ -87,14 +87,18 @@ pub fn door(corner: &Corner, on_return: bool) {
     };
     kit.open("Door");
     let at = |x: &str, y: &str, z: &str| json!([x, y, z]);
-    let lo = [x0.as_str(), front.as_str(), z0.as_str()];
+    // with a grip edge the door stops the grip gap short of its grip edge (#230)
+    let floor = fittings::floor_unit(plinth, d);
+    let top = fittings::grip_on_top(handle_at, floor);
+    let (gz, gh) = fittings::gripped(corner.egap.as_deref(), &z0, &door_h, top);
+    let lo = [x0.as_str(), front.as_str(), gz.as_str()];
     fittings::front(
         kit,
         "Door",
         corner.eframe.as_ref(),
         at,
         lo,
-        [&len, et, &door_h],
+        [&len, et, &gh],
         0,
         !at_end,
         corner.glass,
@@ -113,20 +117,19 @@ pub fn door(corner: &Corner, on_return: bool) {
     // ponytail: no plate holes: the ends stand at 45 degrees to the door, which takes a
     // hinge for that angle.
     let base = format!("{epl} + {et}");
-    let cups = hardware::cups(&z0, &z1, h - plinth - 2.0 * o_mm, &base);
+    // over the door's own height, shorter with a grip gap
+    let cup_top = format!("{gz} + {gh}");
+    let cups = hardware::cups(&gz, &cup_top, h - plinth - 2.0 * o_mm - corner.gap, &base);
     let at = |z: &str| json!([cup_x, back, z]);
     let toward = [if at_end { 1 } else { -1 }, 0, 0];
     let crank = if corner.inset { 18.0 } else { 0.0 };
     hardware::cup_holes(kit, "Door", at, [[0, -1, 0], toward], Some(crank), &cups);
-    let floor = fittings::floor_unit(plinth, d);
     let handle_z = fittings::handle_height(handles, handle_at, &z0, &z1, h - plinth, floor);
     // A grip edge or groove instead, along its top or bottom: the door is still square here.
-    let top = fittings::grip_on_top(handle_at, floor);
     let at = |x: &str, y: &str, z: &str| json!([x, y, z]);
-    let lo = [x0.as_str(), front.as_str(), z0.as_str()];
-    fittings::grip(kit, "Door", handles, at, lo, [&len, et, &door_h], 0, 1, top);
+    fittings::grip(kit, "Door", handles, at, lo, [&len, et, &gh], 0, 1, top);
     if let Some((g, sizes)) = &corner.grooves {
-        fittings::front_grooves(kit, "Door", g, sizes, at, lo, [&len, et, &door_h], 0, 1);
+        fittings::front_grooves(kit, "Door", g, sizes, at, lo, [&len, et, &gh], 0, 1);
     }
     let screws = fittings::screw_heights(handles, &handle_z);
     for (j, z) in screws.iter().enumerate() {

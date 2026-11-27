@@ -42,7 +42,9 @@ struct Corner<'a> {
     grooves: Option<(fittings::Grooves<'a>, [String; 2])>,
     /// Shaker doors' frame width and panel thickness parameters.
     eframe: Option<[String; 2]>,
-    glass: bool, // glass doors: a pane in the frame
+    glass: bool,          // glass doors: a pane in the frame
+    egap: Option<String>, // a grip edge's gap, the parameter
+    gap: f64,             // and in mm, 0 without one
     a: f64,
     b: f64,
     d: f64,
@@ -91,6 +93,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handle_at,
         grooves,
         frame,
+        grip_gap,
         glass,
         right,
         diagonal,
@@ -145,6 +148,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     };
     let grooves = grooves.map(|g| (g, fittings::groove_sizes(&kit, &g)));
     let eframe = frame.map(|f| fittings::frame_sizes(&kit, f));
+    let egap = grip_gap.map(|g| kit.parameter("grip_gap", g, "grip edge gap"));
     let emount = fittings::mount_sizes(&kit, wall_mount, mount_t, mount_h, &et);
     // A rail on each wall.
     let steel = wall_mount == "steel";
@@ -166,6 +170,8 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         grooves,
         eframe,
         glass,
+        egap,
+        gap: grip_gap.unwrap_or(0.0),
         a,
         b,
         d,
