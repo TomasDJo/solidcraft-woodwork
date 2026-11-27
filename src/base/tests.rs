@@ -129,6 +129,51 @@ fn a_long_frame_gets_casters_in_its_middle_and_runs_either_way() {
 }
 
 #[test]
+fn casters_go_in_the_corners_and_evenly_between() {
+    // #228: at most 1500 apart, evenly spaced, not at the cross boards
+    assert_eq!(casters(0.0, 1400.0, &[600.0], 18.0).unwrap(), [0.0, 1400.0]);
+    let three = casters(0.0, 3200.0, &[], 18.0).unwrap();
+    assert_eq!(three.len(), 4);
+    assert!((three[1] - 3200.0 / 3.0).abs() < 1e-9 && (three[2] - 6400.0 / 3.0).abs() < 1e-9);
+    // a block that would stand on a board across moves to its nearer side
+    assert_eq!(
+        casters(0.0, 1600.0, &[800.0], 18.0).unwrap(),
+        [0.0, 809.0, 1600.0]
+    );
+    assert_eq!(
+        casters(0.0, 1600.0, &[850.0], 18.0).unwrap(),
+        [0.0, 751.0, 1600.0]
+    );
+    // clear of every board, not only the first it meets: boards at 1100 and 1150
+    let near = casters(18.0, 3192.0, &[1100.0, 1150.0, 2200.0], 18.0).unwrap();
+    let on_board = |a: &f64| {
+        [1100.0, 1150.0, 2200.0]
+            .iter()
+            .any(|c| *a < c + 9.0 && a + 90.0 > c - 9.0)
+    };
+    assert!(!near.iter().any(on_board), "{near:?}");
+    // a move that would leave casters more than 1500 apart brings a pair more instead
+    for (last, board) in [(3018.0, 1563.0), (3018.0, 1518.0), (3100.0, 1550.0)] {
+        let at = casters(18.0, last, &[board], 18.0).unwrap();
+        assert!(at.windows(2).all(|w| w[1] - w[0] <= LONG), "{at:?}");
+        assert!(
+            !at.iter()
+                .any(|a| *a < board + 9.0 && a + 90.0 > board - 9.0),
+            "{at:?}"
+        );
+    }
+    // boards across every 50 mm the whole way: no room for a block, refused
+    let packed: Vec<f64> = (1..60).map(|k| 18.0 + k as f64 * 50.0).collect();
+    assert!(casters(18.0, 3018.0, &packed, 18.0)
+        .unwrap_err()
+        .contains("no room"));
+    // the review's case: 150 mm boards every 200 mm from 1000 to 3000 leave a 2240 mm stretch
+    // with no place for a block, refused rather than a gap over 1500
+    let wide: Vec<f64> = (0..=10).map(|k| 1000.0 + k as f64 * 200.0).collect();
+    assert!(casters(150.0, 4160.0, &wide, 150.0).is_err());
+}
+
+#[test]
 fn what_a_base_refuses() {
     let tiny = [[0.0, 0.0, 200.0, 200.0]];
     assert!(build(&json!({}), &tiny).unwrap_err().contains("too small"));
