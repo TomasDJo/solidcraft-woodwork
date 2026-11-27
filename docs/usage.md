@@ -859,7 +859,8 @@ frame under all of them and stands them on it:
   `Timber 48x98` in the [cost estimate](#cost-estimate). The caster blocks are timber too: each is
   listed as a piece of its own size, noted `caster block`, out of the running metres.
 - **Casters:** a block (`Name Block 1` and on, 90 x 90 mm) in each corner with a locking caster
-  under it, screwed into the block; a frame longer than 1500 mm gets a pair in its middle too.
+  under it, screwed into the block; a longer frame gets more pairs, spaced evenly so the casters
+  are at most 1500 mm apart along it (a block that would stand on a cross board moves beside it).
   **Caster height** (100 mm) is from the floor to the frame's underside.
 - **The cabinets** go up onto the frame, each to its top (by Caster height plus Frame height
   from the floor). Make them with **Plinth** No: the frame is their plinth. A cabinet placed

@@ -133,6 +133,70 @@ def test_a_timber_frame_is_bought_by_length(approval):
     assert all(s["material"] != "Softwood timber" for s in listed["sheets"]), listed["sheets"]
 
 
+def test_a_long_base_has_casters_evenly_spaced(approval):
+    # #228: three 1100 mm cabinets, a 3300 mm frame: casters in the corners and two pairs more,
+    # evenly spaced (at most 1500 apart), each block moved off the cross board it would stand on,
+    # so no two of the frame's boards and blocks share volume.
+    bare = {"width": 1100, "shelves": 0, "doors": 0}
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "A", **bare}), select("A Side R"),
+        plugin(approval, "cabinet", {"name": "B", "place": "right", **bare}), select("B Side R"),
+        plugin(approval, "cabinet", {"name": "C", "place": "right", **bare}),
+        pick("A Side L", "B Side L", "C Side L"),
+        plugin(approval, "base", {"name": "Long"}),
+        MEASURE])
+    assert results[6]["result"]["casters"] == 8, results[6]["result"]
+    box = boxes(results[7])
+    front = sorted(b[0] for n, b in box.items() if n.startswith("Long Block ") and b[1] < -250)
+    assert front == [-532, 559, 1551, 2642], front
+    frame = {n: b for n, b in box.items() if n.startswith(("Long Frame", "Long Block"))}
+    names = sorted(frame)
+    crossing = [(a, b) for i, a in enumerate(names) for b in names[i + 1:]
+                if all(frame[a][k] < frame[b][k + 3] - 0.01 and frame[b][k] < frame[a][k + 3] - 0.01 for k in range(3))]
+    assert crossing == [], crossing
+
+
+def test_close_cross_boards_keep_the_casters_clear(approval):
+    # #228 review: two rows back to back, staggered (1100, 1100, 1100 in front; 1150, 1050, 1100
+    # behind, turned round): cross boards 50 mm apart at x = 550 and 600. The middle block finds a
+    # place clear of both, the casters stay within 1500 mm, and nothing overlaps.
+    bare = {"shelves": 0, "doors": 0}
+    steps = [plugin(approval, "cabinet", {"name": "A1", "width": 1100, **bare}), select("A1 Side R"),
+             plugin(approval, "cabinet", {"name": "A2", "width": 1100, "place": "right", **bare}), select("A2 Side R"),
+             plugin(approval, "cabinet", {"name": "A3", "width": 1100, "place": "right", **bare})]
+    for name, width, x in [("B1", 1150, 25), ("B2", 1050, 1125), ("B3", 1100, 2200)]:
+        steps += [plugin(approval, "cabinet", {"name": name, "width": width, "place": "origin", **bare}),
+                  {"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": False}},
+                  {"command": "occurrence.move", "params": {"occurrence": f"{name}:1", "to_matrix": [
+                      -1, 0, 0, x, 0, -1, 0, 560, 0, 0, 1, 0]}},
+                  {"command": "occurrence.ground", "params": {"occurrence": f"{name}:1", "grounded": True}}]
+    steps += [pick(*[f"{c} Side L" for c in ["A1", "A2", "A3", "B1", "B2", "B3"]]),
+              plugin(approval, "base", {"name": "Pair"}), MEASURE]
+    results = designed(approval, NONE, steps)
+    box = boxes(results[-1])
+    starts = sorted({b[0] for n, b in box.items() if n.startswith("Pair Block ")})
+    assert all(b - a <= 1500 for a, b in zip(starts, starts[1:])), starts
+    frame = {n: b for n, b in box.items() if n.startswith(("Pair Frame", "Pair Block"))}
+    names = sorted(frame)
+    crossing = [(a, b) for i, a in enumerate(names) for b in names[i + 1:]
+                if all(frame[a][k] < frame[b][k + 3] - 0.01 and frame[b][k] < frame[a][k + 3] - 0.01 for k in range(3))]
+    assert crossing == [], crossing
+
+
+def test_joints_that_leave_no_room_for_casters_are_refused(approval):
+    # #228 review: thirteen 150 mm cabinets in a row under 150 mm timber: the cross boards at their
+    # joints touch each other over 1560 mm, with no place for a caster block between the corners,
+    # so the base is refused with a message, not made with casters too far apart.
+    bare = {"width": 150, "shelves": 0, "doors": 0}
+    steps = [plugin(approval, "settings", NONE), plugin(approval, "cabinet", {"name": "N1", **bare})]
+    for i in range(2, 14):
+        steps += [select(f"N{i - 1} Side R"), plugin(approval, "cabinet", {"name": f"N{i}", "place": "right", **bare})]
+    steps += [pick(*[f"N{i} Side L" for i in range(1, 14)]),
+              plugin(approval, "base", {"name": "Row", "frame_material": "timber", "timber_thickness": 150})]
+    error = refused(steps)
+    assert "no room for the caster blocks" in error, error
+
+
 def test_connector_bolts_join_the_cabinets_on_a_base(approval):
     # A and B side by side on a base: four 9 mm holes through A Side R and B Side L, counted once
     # as connector bolts. Run again with the cabinets picked the other way round, no hole is cut

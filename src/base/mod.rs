@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 
 /// A caster block's side, in mm: the caster's 80 mm plate fits under it.
 const BLOCK: f64 = 90.0;
-/// Past this length the frame gets a pair of casters in its middle too.
+/// The most between two casters along the frame: past it a pair more, spaced evenly.
 const LONG: f64 = 1500.0;
 
 /// The plan boxes `[x0, y0, x1, y1]` of `cabinets` (their sides and backs seen from above, as
@@ -199,21 +199,10 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
             board(&format!("Frame cross {n}"), a, j - t / 2.0, b - a, t);
         }
     }
-    // Blocks in the corners, and on a long frame two more by the middle (beside the cross
-    // board nearest it), each with a caster under its middle.
-    let mut along = vec![lo + t, hi - t - BLOCK];
-    if len > LONG {
-        let middle = (lo + hi) / 2.0;
-        let nearest = joints
-            .iter()
-            .min_by(|a, b| (*a - middle).abs().total_cmp(&(*b - middle).abs()));
-        along.push(match nearest {
-            Some(j) if (j - middle).abs() < len / 4.0 => j + t / 2.0,
-            _ => middle - BLOCK / 2.0,
-        });
-    }
+    // Blocks in the corners, and on a long frame pairs spaced evenly between them (#228), each
+    // with a caster under its middle.
     let mut n = 0;
-    for a in along {
+    for a in casters(lo + t, hi - t - BLOCK, &joints, t)? {
         for b in [slo + t, shi - t - BLOCK] {
             n += 1;
             let part = format!("Block {n}");
@@ -227,6 +216,49 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
     summary["lift"] = json!(caster + h);
     summary["casters"] = json!(n);
     Ok((commands, summary))
+}
+
+/// Where the caster blocks start along the frame: the two corners `first` and `last`, and
+/// between them as many more as keep the casters at most `LONG` apart, evenly spaced. A block
+/// that would stand on a board across the frame (each `t` thick, centred on one of `across`) moves
+/// to the nearest place clear of every one of them; if a move leaves two casters more than `LONG`
+/// apart, a pair more is spread over the frame and placed again. Refused when no such layout is
+/// found (boards across closer together than a block, all along the frame).
+pub fn casters(first: f64, last: f64, across: &[f64], t: f64) -> Result<Vec<f64>, String> {
+    let clear = |a: f64| {
+        across
+            .iter()
+            .all(|&c| a >= c + t / 2.0 || a + BLOCK <= c - t / 2.0)
+    };
+    // the nearest start to `a` that stands on no board: `a` itself, or beside one of them
+    let place = |a: f64| {
+        let beside = across
+            .iter()
+            .flat_map(|&c| [c - t / 2.0 - BLOCK, c + t / 2.0]);
+        std::iter::once(a)
+            .chain(beside)
+            .filter(|&b| b >= first && b <= last && clear(b))
+            .min_by(|x, y| (x - a).abs().total_cmp(&(y - a).abs()))
+            .unwrap_or(a)
+    };
+    let mut gaps = ((last - first) / LONG).ceil().max(1.0) as usize;
+    loop {
+        let at: Vec<f64> = (0..=gaps)
+            .map(|k| first + (last - first) * k as f64 / gaps as f64)
+            .enumerate()
+            .map(|(k, a)| if k == 0 || k == gaps { a } else { place(a) })
+            .collect();
+        let spread = (at.windows(2)).all(|w| w[1] - w[0] <= LONG + 1e-9 && w[1] - w[0] >= BLOCK);
+        if spread && at[1..at.len() - 1].iter().all(|&a| clear(a)) {
+            return Ok(at);
+        }
+        // ten pairs more than needed and still no layout: the boards leave no room
+        if gaps > ((last - first) / LONG).ceil() as usize + 10 {
+            return Err("the cabinets' joints leave no room for the caster blocks under the frame:                         move the cabinets so their sides line up"
+                .into());
+        }
+        gaps += 1;
+    }
 }
 
 /// The stretches `(from, to)` a cross board covers: the union of `spans`, within `lo..hi`, less a
