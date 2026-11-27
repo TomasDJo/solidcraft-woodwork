@@ -623,10 +623,17 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   after `storage.get`: 1-3 ms on the sample kitchen, well within its 250 ms. A hidden field is
   still sent, so the run uses `match` only when something is picked or selected
   (`entries`: `matching && !picked.is_empty()`).
-- Match selected links a new cabinet's parameters to the selected cabinet's (`B_height =
-  A_height`; `kit::matched` passes them to `Kit` as `_match`). Deleting the first cabinet's
-  parameters breaks the ones linked to it, and a matched cabinet gets a plinth only if the
-  selected one has one. Material is not matched.
+- Match selected links a new cabinet's parameters to its run's shared group (#137:
+  `B_height = Run_A_height`; `kit::matched` passes `{prefix, values, names, setup}` to `Kit` as
+  `_match`, `names` the group parameter per size). The first match against A makes the group
+  (`parameters.add Run_A_<key>` with A's expression, or its value when the expression names one
+  of A's own parameters, `names_own`, then `parameters.change A_<key> =
+  Run_A_<key>`: `setup`, run by `entries` before the build); a cabinet whose parameter is just a
+  `Run_` name already shares that run. So deleting any cabinet breaks no other, and changing one
+  cabinet's own parameter (Parameters, Edit, or Apply settings changing its thickness or plinth)
+  takes only that size out of the run. An older `_match` without `names` points at
+  `<prefix>_<key>` as before; no migration. A matched cabinet gets a plinth only if the selected
+  one has one. Material is not matched.
 - **Joinery at build** (`src/joint/`): the cabinet's `joints` (a Woodwork setting, filled in by
   `settings::design`; carcass: sides to bottom and top, a sink base's rails one fastener each,
   `Joint::single`) is `none`, `dowels` (the default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
