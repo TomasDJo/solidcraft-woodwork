@@ -512,6 +512,51 @@ fn a_benchtop_tool_on_a_shelf_in_the_cabinet_below() {
 }
 
 #[test]
+fn a_side_wing_carries_the_top_on_past_an_end_on_two_legs() {
+    // A from x 0 to 1000: a 600 mm wing past its right end, as deep and thick as the top
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let p = json!({"wing": "right", "wing_length": 600});
+    let (commands, summary) = build(&p, &names(&["A"]), &m).unwrap();
+    let top = named(&commands, "Worktop");
+    let wing = named(&commands, "Worktop Wing");
+    let y = top["corner"][1].as_f64().unwrap();
+    assert_eq!(
+        wing["corner"],
+        json!(["1000 mm", format!("{y} mm"), "720 mm"])
+    );
+    assert_eq!(
+        [&wing["length"], &wing["width"], &wing["height"]],
+        [&json!("600 mm"), &top["width"], &top["height"]]
+    );
+    // two 40 mm legs, 30 in from the free end and the edges, from the floor to its underside
+    let leg = named(&commands, "Worktop Wing Leg 1");
+    assert_eq!(
+        leg["corner"],
+        json!(["1530 mm", format!("{} mm", y + 30.0), "0 mm"])
+    );
+    assert_eq!(
+        [&leg["length"], &leg["height"]],
+        [&json!("40 mm"), &json!("720 mm")]
+    );
+    assert!(commands.iter().any(|c| c.1["name"] == "Worktop Wing Leg 2"));
+    let bodies = summary["bodies"].as_array().unwrap();
+    assert!(
+        bodies.contains(&json!("Worktop Wing")) && bodies.contains(&json!("Worktop Wing Leg 2"))
+    );
+    // made again with the worktop: its parts are the worktop's
+    assert!(piece_of("Worktop Wing", "Worktop") && piece_of("Worktop Wing Leg 1", "Worktop"));
+    // on the left end it reaches back from x 0
+    let (commands, _) = build(
+        &json!({"wing": "left", "wing_length": 300}),
+        &names(&["A"]),
+        &m,
+    )
+    .unwrap();
+    assert_eq!(named(&commands, "Worktop Wing")["corner"][0], "-300 mm");
+    assert!(build(&json!({"wing": "up"}), &names(&["A"]), &m).is_err());
+}
+
+#[test]
 fn bolt_holes_for_the_tools_feet_go_through_its_shelf() {
     // the tool's middle at (600, -280): four 8 mm holes 400 apart across, 300 front to back
     let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);

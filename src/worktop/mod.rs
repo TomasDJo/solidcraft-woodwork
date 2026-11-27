@@ -231,6 +231,10 @@ impl Piece {
     }
 }
 
+/// A side wing's legs: their side, and how far in from the wing's edges, in mm.
+const LEG: f64 = 40.0;
+const LEG_IN: f64 = 30.0;
+
 /// A bolt hole for the tool's feet in its shelf, in mm: an M6 bolt with play.
 const BOLT_D: f64 = 8.0;
 
@@ -514,7 +518,15 @@ pub fn piece_of(body: &str, name: &str) -> bool {
     let rest = body.strip_prefix(name);
     rest.is_some_and(|r| {
         r.is_empty()
-            || [" Tool shelf", " Tool batten L", " Tool batten R"].contains(&r)
+            || [
+                " Tool shelf",
+                " Tool batten L",
+                " Tool batten R",
+                " Wing",
+                " Wing Leg 1",
+                " Wing Leg 2",
+            ]
+            .contains(&r)
             || r.strip_prefix(' ')
                 .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
     })
@@ -697,6 +709,64 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
         cut("cut-out", opening, top, thickness);
     }
     let mut parts = names.clone();
+    // A side wing (#172): the first piece carried on past its left or right end, as deep and
+    // as thick, for long stock beside a tool, on two legs at its free end down to the floor
+    // the cabinets stand on.
+    let side = choice("wing", "none", &["none", "left", "right"])?;
+    if side != "none" {
+        let long = size("wing_length", 600.0)?;
+        check(long > 0.0, "wing length must be more than 0")?;
+        let square = match side.as_str() {
+            "left" => (first.left.0 - first.left.1).abs() < 1e-6,
+            _ => (first.right_end.0 - first.right_end.1).abs() < 1e-6,
+        };
+        check(
+            square,
+            &format!("a side wing needs a square end: `{target}`'s {side} end is mitred"),
+        )?;
+        let (x0, x1) = match side.as_str() {
+            "left" => (-long, 0.0),
+            _ => (first.length(), first.length() + long),
+        };
+        let wing = format!("{name} Wing");
+        let (at, size) = first.world_box([x0, 0.0, x1, first.depth]);
+        kit.push((
+            "solid.box",
+            json!({
+                "length": mm(size[0]), "width": mm(size[1]), "height": mm(thickness),
+                "corner": [mm(at[0]), mm(at[1]), mm(top)], "operation": "new",
+                "name": wing, "body_name": wing,
+            }),
+        ));
+        // its legs, 40 mm square, 30 mm in from the free end and the front and back edges
+        let floor = (measure["bodies"].as_array().into_iter().flatten())
+            .filter(|b| {
+                owner(measure, b["name"].as_str().unwrap_or(""))
+                    .is_some_and(|c| cabinets.iter().any(|n| n == c))
+            })
+            .filter_map(|b| b["bbox"]["min"][2].as_f64())
+            .fold(f64::INFINITY, f64::min);
+        let floor = if floor.is_finite() { floor } else { 0.0 };
+        let x = if side == "left" {
+            x0 + LEG_IN
+        } else {
+            x1 - LEG_IN - LEG
+        };
+        for (n, y) in [LEG_IN, first.depth - LEG_IN - LEG].into_iter().enumerate() {
+            let leg = format!("{wing} Leg {}", n + 1);
+            let (at, size) = first.world_box([x, y, x + LEG, y + LEG]);
+            kit.push((
+                "solid.box",
+                json!({
+                    "length": mm(size[0]), "width": mm(size[1]), "height": mm(top - floor),
+                    "corner": [mm(at[0]), mm(at[1]), mm(floor)], "operation": "new",
+                    "name": leg, "body_name": leg,
+                }),
+            ));
+            parts.push(leg);
+        }
+        parts.push(wing);
+    }
     let mut tool = Value::Null;
     if choice("tool", "none", &["none", "benchtop"])? == "benchtop" {
         let (w, d, h) = (

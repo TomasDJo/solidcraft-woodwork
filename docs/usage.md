@@ -829,8 +829,19 @@ refused by name: make the cabinet without it (with 20 mm doors and a 40 mm front
 the opening's front edge at least 40 mm from the worktop's front). So is an opening that
 reaches over the cabinet's back. The opening in the cabinet's top is a cut the cabinet does not
 remember: an Edit makes its top whole again (run Worktop again afterwards), and a tool
-moved on a run again leaves the old opening in the top. An outfeed table or side wing is not
-made (#172).
+moved on a run again leaves the old opening in the top.
+
+![A side wing: the worktop carried on 600 mm past the run's right end, on two legs.](images/side-wing.png)
+
+*A side wing: the worktop carried on 600 mm past the run's right end, on two legs.*
+
+**Side wing** (Left end or Right end) carries the worktop on past that end of the run, as deep
+and as thick, **Wing length** long, for long stock beside a tool such as a mitre saw. It stands
+on two 40 mm square legs at its free end, from the floor the cabinets stand on (or their legs) to
+its underside. The wing is `<Name> Wing`, bought to length with the worktop; its legs are
+`<Name> Wing Leg 1` and `2` and count as legs in the cut list's hardware. It goes on the first
+piece's end, which must be square (not mitred into a corner). It is made again with the
+worktop. A fold-down wing is not made (#172).
 
 ## Cut list
 

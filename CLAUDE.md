@@ -560,7 +560,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   taken into its frame by `worktop::local`); any other body of the cabinet in that space, or in
   the shelf and battens' box, is refused, and so is an opening past the back's front face. Bolt holes
   for the tool's feet (#172): `bolt_x`, `bolt_y`, a rectangle of `BOLT_D` 8 mm cylinder cuts through
-  the shelf round the tool's middle, each checked to be on the shelf; summary `tool.bolt_holes`. That cut is not remembered: Edit cabinet drops it, and a tool moved on a run again
+  the shelf round the tool's middle, each checked to be on the shelf; summary `tool.bolt_holes`. Side wing (#172):
+  `wing` (none, left, right) and `wing_length`, `<Name> Wing` a box past piece 1's end (square
+  ends only: a mitred end is refused), as deep and thick, on `<Name> Wing Leg 1`/`2` (`LEG` 40 mm
+  square, `LEG_IN` 30 in from the free end and the edges) from the lowest point of the picked
+  cabinets' bodies to the top's underside; `fittings::is_leg` takes them (hardware, not boards). That cut is not remembered: Edit cabinet drops it, and a tool moved on a run again
   leaves the old one. `piece_of` counts the three tool parts as the worktop's, so a run again
   replaces them and picking one makes the worktop again.
 - Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no
