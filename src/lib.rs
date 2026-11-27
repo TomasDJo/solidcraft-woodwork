@@ -295,6 +295,12 @@ fn rebuild(
         true => Some(along_line(&mut params, design, run)),
         false => None,
     };
+    // On a mobile base (#215) that is still there, the base holds it: it goes back where it
+    // stood and is held to the base again; a line still sets its width and height, not where it
+    // stands.
+    let was = &about["metadata"][edit::KEY]["link"];
+    let base = live_base(about, &tree);
+    let found = found.filter(|_| base.is_none());
     let params = &params;
     run("component.activate", json!({"component": parent}))?;
     let gone = run("component.delete", json!({"component": name}))?;
@@ -345,13 +351,15 @@ fn rebuild(
     // Held again to the cabinet it stood against, when that is still there; and the
     // cabinets that were held to it, to the new one.
     let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
-    let was = &about["metadata"][edit::KEY]["link"];
     // This cabinet and the one it was held to: what the links read.
     let mut linked = vec![name.clone()];
     linked.extend(was["to"].as_str().map(String::from));
     let measure = measured(body_names(run)?, &linked, run)?;
     let mut held = false;
-    if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
+    if let Some(base) = base {
+        on_base(base, &name, run)?;
+        held = true;
+    } else if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
         if let Ok(other) = select::named(&measure, to) {
             held = link(&other, place, &name, stands(&matrix), run)?;
         }
@@ -477,6 +485,58 @@ fn link(
         }),
     )?;
     noted(other, place, name, run)
+}
+
+/// The mobile base a cabinet's `component.metadata` (`about`) notes it is held to, when that
+/// base is still in the design (`component.list`'s `tree`): then the base places it (#215).
+fn live_base<'a>(about: &'a Value, tree: &Value) -> Option<&'a str> {
+    let was = &about["metadata"][edit::KEY]["link"];
+    let base = was["to"].as_str().filter(|_| was["place"] == "base")?;
+    let mut all = tree["components"].as_array().into_iter().flatten();
+    all.any(|c| c["name"] == base).then_some(base)
+}
+
+/// Before the base `base` is made again: the cabinets it holds lose their links with it, so
+/// they are grounded where they stand and go up or down to the new frame as any grounded one.
+fn release(base: &str, tree: &Value, run: Run) -> Result<(), String> {
+    for cabinet in edit::hanging(tree, &run("joint.list", json!({}))?, base) {
+        run(
+            "occurrence.ground",
+            json!({"occurrence": format!("{cabinet}:1"), "grounded": true}),
+        )?;
+    }
+    Ok(())
+}
+
+/// Holds the cabinet `name` to the mobile base `base` where it stands, with a rigid link
+/// `<name> link` like a cabinet's on top of another, and notes it (`place: base`), so Edit makes
+/// it again (#215). The cabinet is not grounded then: it rides on the base.
+fn on_base(base: &str, name: &str, run: Run) -> Result<(), String> {
+    let tree = run("component.list", json!({}))?;
+    let (_, matrix, _) = edit::placement(&tree, name)?;
+    let at = [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
+    let frame = |occurrence: String| json!({"occurrence": occurrence, "frame": {"origin": at, "z": [0, 0, 1], "x": [1, 0, 0]}});
+    run(
+        "occurrence.ground",
+        json!({"occurrence": format!("{name}:1"), "grounded": false}),
+    )?;
+    run(
+        "joint.create",
+        json!({
+            "type": "rigid", "name": format!("{name} link"), "flip": true, "offset": "0 mm",
+            "a": frame(format!("{base}:1")), "b": frame(format!("{name}:1")), "quiet": true,
+        }),
+    )?;
+    let about = run("component.metadata", json!({"component": name}))?;
+    let mut ours = about["metadata"][edit::KEY].clone();
+    if ours.is_object() {
+        ours["link"] = json!({"to": base, "place": "base"});
+        run(
+            "component.metadata.set",
+            json!({"component": name, "values": { edit::KEY: ours }}),
+        )?;
+    }
+    Ok(())
 }
 
 /// Notes a link on the placed cabinet's component, so Edit can make it again.
@@ -1267,8 +1327,10 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let built = base::build(&params, &plans)?;
             let lift = built.1["lift"].as_f64().unwrap_or(0.0);
             if again {
+                release(&name, &tree, run)?;
                 run("component.delete", json!({"component": name}))?;
             }
+            let tree = run("component.list", json!({}))?;
             // ponytail: made in the active component at world coordinates, as a worktop is, so
             // that component must stand on the origin, unturned.
             let (mut summary, made) = component(built, &params, "Birch plywood", run)?;
@@ -1383,6 +1445,15 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             }
             summary["bolts"] = json!(holes.len());
             summary["screws"] = json!(screws.len());
+            // Each cabinet on the frame that no neighbour holds is held to the base (#215), so it
+            // rides on it and Edit and Apply settings put it back on it.
+            let joints = run("joint.list", json!({}))?;
+            let tree = run("component.list", json!({}))?;
+            for cabinet in &cabinets {
+                if !edit::links(&tree, &joints, cabinet).iter().any(|l| l.1) {
+                    on_base(&name, cabinet, run)?;
+                }
+            }
             let mut values = edit::remember("base", &params, &name);
             values[edit::KEY]["cabinets"] = json!(cabinets);
             run(
