@@ -27,6 +27,8 @@ pub struct Input<'a> {
     pub plinth_setback: f64,
     pub shelves: f64,
     pub dividers: f64,
+    /// Each divider two boards side by side, where overlay doors meet on it (#176).
+    pub double: bool,
     pub doors: f64,
     pub drawers: f64,
     pub pins: bool,
@@ -239,8 +241,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (0.0..=10.0).contains(&dividers) && dividers.fract() == 0.0,
         "dividers must be 0 to 10",
     )?;
+    // Overlay doors that meet on every divider (one door a compartment) can stand on double
+    // dividers, two boards side by side, so each door covers a whole board and takes full
+    // overlay hinges (#176). Anywhere else the setting is not used.
+    let double = matches!(p.get("double_dividers"), Some(v) if v == "yes" || v == true)
+        && !inset
+        && dividers > 0.0
+        && doors == dividers + 1.0;
     // Dividers split the inside into equal compartments.
-    let cell_w = (inner_w - dividers * t) / (dividers + 1.0);
+    let boards = if double { 2.0 * dividers } else { dividers };
+    let cell_w = (inner_w - boards * t) / (dividers + 1.0);
     check(
         cell_w >= 50.0,
         "width is too small for the panels and dividers",
@@ -410,6 +420,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         plinth_setback,
         shelves,
         dividers,
+        double,
         doors,
         drawers,
         pins,

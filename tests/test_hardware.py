@@ -272,7 +272,7 @@ def misplaced(steps):
     measure, joints = results[-2], results[-1]
     folds = [j["name"][:-len(" fold")] for j in joints["joints"] if j["name"].endswith(" fold")]
     names = [b["name"] for b in measure["bodies"]]
-    boards = [n for n in names if not n.startswith("HW ") and (" Door" in n or " Side " in n)]
+    boards = [n for n in names if not n.startswith("HW ") and (" Door" in n or " Side " in n or " Divider " in n)]
     found = cli(flat(steps) + [faces(n) for n in boards])[-len(boards):]
     round_faces = [(f["cylinder"]["radius"], f["centroid"], n) for n, each in zip(boards, found)
                    for f in each["faces"] if f.get("cylinder")]
@@ -290,9 +290,30 @@ def misplaced(steps):
     return off, len(hinges), len(cups)
 
 
+def test_double_dividers(approval):
+    # Woodwork settings' Double dividers (#176): three overlay doors on two dividers of two
+    # boards each, 18 mm, so each compartment is (900 - 6 * 18) / 3 = 264 wide. The middle door
+    # (hinged left) hangs on divider 1's right board: plain hinges, plates in that board, and no
+    # half overlay line in the hardware list. Two doors on two dividers keep single ones.
+    results = designed(approval, {**NONE, "double_dividers": "yes"}, [
+        plugin(approval, "cabinet", {"name": "W", "width": 900, "dividers": 2, "doors": 3}),
+        plugin(approval, "cabinet", {"name": "S", "width": 900, "dividers": 2, "doors": 2, "place": "origin"}),
+        MEASURE, plugin(approval, "cutlist")])
+    measure = results[2]
+    box = boxes(measure)
+    left, right = box["W Divider 1 L"], box["W Divider 1 R"]
+    assert (round(left[3] - left[0], 3), round(right[0] - left[3], 3)) == (18, 0), (left, right)
+    assert round(left[0] - box["W Side L"][3], 3) == 264, (left, box["W Side L"])
+    assert [cylinders(measure, f"W {b}") for b in ("Side L", "Divider 1 L", "Divider 1 R", "Divider 2 L", "Divider 2 R", "Side R")]         == [4, 0, 4, 0, 0, 4]
+    assert not models(measure, "HW hinge crank 9.5 (W:1/")
+    assert "S Divider 1" in box and "S Divider 1 L" not in box
+    hardware = {h["item"]: h["qty"] for h in results[-1]["result"]["hardware"]}
+    assert "Hinge, cup, half overlay" not in hardware and hardware["Hinge, cup"] == 6 + 4, hardware
+
+
 def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
     # Box cabinets (doors made after a drawers-only cabinet made the hardware component, inset,
-    # a door on a divider), L-shaped corners left and right hung on either end, inset, and the
+    # a door on a divider, and on a double divider's board), L-shaped corners left and right hung on either end, inset, and the
     # diagonal door; and after Edit of a box and a corner cabinet that stand off the origin
     # (no copies left behind: as many hinges as cups). A corner's fold door has cups but no
     # hinge models.
@@ -304,6 +325,8 @@ def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
         "box": [cab({"drawers": 2}), cab({"name": "B", "doors": 2, "place": "origin"}),
                 cab({"name": "I", "doors": 1, "fronts": "inset", "place": "origin"}),
                 cab({"name": "T", "width": 900, "dividers": 2, "doors": 3, "place": "origin"})],
+        "double": [setting(approval, {"double_dividers": "yes"}),
+                   cab({"name": "W", "width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"})],
         "L": [cab({"name": f"L{i}", "shape": "L-shaped", "corner": corner, "corner_doors": doors, "fronts": fronts, "place": "origin"})
               for i, (corner, doors, fronts) in enumerate([("left", "hinged left", "overlay"), ("left", "hinged right", "overlay"),
                                                            ("right", "hinged left", "overlay"), ("right", "hinged right", "inset")])],

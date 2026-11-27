@@ -220,7 +220,7 @@
         "slots": [{ "kind": "menu", "name": "Settings: Doors and fronts" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
-          "required": ["fronts", "reveal", "handles", "handle_position", "hinge_angle", "front_style", "groove_shape", "groove_spacing", "groove_depth"],
+          "required": ["fronts", "reveal", "handles", "handle_position", "hinge_angle", "front_style", "groove_shape", "groove_spacing", "groove_depth", "double_dividers"],
           "properties": {
             "fronts": { "type": "string", "title": "Fronts", "description": "How new cabinets' doors and drawer fronts sit.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "overlay", "title": "Overlay", "description": "In front, covering the board edges."}, {"const": "inset", "title": "Inset", "description": "Inside the opening, flush."}], "x-solidcraft-help": "https://github.com/TomasDJo/solidcraft-woodwork/blob/main/docs/usage.md#fronts-overlay-or-inset" },
             "reveal": { "type": "number", "title": "Reveal (mm)", "description": "New cabinets' gap round the fronts, 0.5 to 6 mm.", "minimum": 0.5, "maximum": 6, "default": 2 },
@@ -230,7 +230,8 @@
             "front_style": { "type": "string", "title": "Front style", "description": "New cabinets' fronts: plain, or grooves cut into their faces.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "flat", "title": "Flat"}, {"const": "vertical", "title": "Vertical grooves"}, {"const": "horizontal", "title": "Horizontal grooves"}] },
             "groove_shape": { "type": "string", "title": "Groove shape", "description": "Square: a flat bottom. Round: a half round, fluted.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "square", "title": "Square"}, {"const": "round", "title": "Round"}], "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "vertical", "horizontal"]} },
             "groove_spacing": { "type": "number", "title": "Groove spacing", "description": "About how far apart the grooves are; evened out over each front.", "default": 50, "minimum": 0.375, "maximum": 300, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "vertical", "horizontal"]} },
-            "groove_depth": { "type": "number", "title": "Groove depth", "description": "How deep the grooves are; they are twice as wide.", "default": 3, "minimum": 0.015, "maximum": 10, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "vertical", "horizontal"]} }
+            "groove_depth": { "type": "number", "title": "Groove depth", "description": "How deep the grooves are; they are twice as wide.", "default": 3, "minimum": 0.015, "maximum": 10, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "vertical", "horizontal"]} },
+            "double_dividers": { "type": "string", "title": "Double dividers", "description": "Where two overlay doors meet on a divider: two boards side by side instead of one, so each door covers a whole board and takes standard hinges.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "no", "title": "No"}, {"const": "yes", "title": "Yes"}] }
           }
         }
       },

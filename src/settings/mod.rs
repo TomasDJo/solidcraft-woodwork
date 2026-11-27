@@ -58,6 +58,7 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("drawer_thickness", "", Length(12.0, 10.0, 25.0), Box),
         ("drawer_bottom", "", Length(6.0, 3.175, 19.0), Box),
         ("fronts", "", Choice("overlay"), Cabinets),
+        ("double_dividers", "", Choice("no"), Box),
         ("handle_position", "", Choice("auto"), Cabinets),
         ("front_style", "", Choice("flat"), Cabinets),
         ("groove_shape", "", Choice("square"), Cabinets),
@@ -228,7 +229,7 @@ pub fn design(entry: &str, params: &mut Value, stored: &Value) {
                     None => default,
                 };
                 match key {
-                    "labels" | "finger_bottom" => json!(v == "yes"),
+                    "labels" | "finger_bottom" | "double_dividers" => json!(v == "yes"),
                     _ => json!(v),
                 }
             }
@@ -640,6 +641,7 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
             "groove_shape",
             "groove_spacing",
             "groove_depth",
+            "double_dividers",
         ],
     ),
     (

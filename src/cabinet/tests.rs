@@ -1545,3 +1545,59 @@ fn grooved_fronts() {
     // no fronts: nothing to groove, so a depth too deep for a front is not refused
     assert!(fits(json!({"front_style": "vertical", "groove_depth": 10})));
 }
+
+#[test]
+fn double_dividers_give_each_door_its_own_board() {
+    // 3 overlay doors on 2 double dividers (#176): each divider is two boards side by side, so
+    // every door covers a whole board: plain hinges, and the middle door's plates go into the
+    // board it hangs on
+    let p = json!({"width": 900, "dividers": 2, "doors": 3, "double_dividers": true, "shelf_pins": true});
+    let (commands, summary) = build(&p).unwrap();
+    let cell = "(((Cabinet_width - 2*Cabinet_thickness) - 4*Cabinet_thickness) / 3)";
+    // (900 - 6 boards of 18) / 3
+    assert_eq!(summary["inner"]["width"], 264.0);
+    assert_eq!(
+        named(&commands, "Cabinet Divider 1 L")["corner"][0],
+        format!("Cabinet_thickness + ({cell} + 2*Cabinet_thickness) * 1 - 2*Cabinet_thickness - Cabinet_width/2")
+    );
+    assert_eq!(
+        named(&commands, "Cabinet Divider 2 R")["corner"][0],
+        format!("Cabinet_thickness + ({cell} + 2*Cabinet_thickness) * 2 - Cabinet_thickness - Cabinet_width/2")
+    );
+    assert!(commands.iter().all(|c| c.1["name"] != "Cabinet Divider 1"));
+    let names: Vec<&str> = commands
+        .iter()
+        .filter_map(|c| c.1["name"].as_str())
+        .collect();
+    assert!(names.iter().all(|n| !n.ends_with("(half overlay)")));
+    let models = crate::hardware::wanted(&commands);
+    assert!(!models.contains(&crate::hardware::hinge(crate::hardware::HALF_OVERLAY)));
+    let plates = |board: &str| {
+        let all = commands.iter().filter(|c| c.1["targets"] == json!([board]));
+        all.filter(|c| c.1["name"].as_str().unwrap().contains(" hinge plate "))
+            .count()
+    };
+    // Door 2 hinges on its left (the default): divider 1's right board
+    let boards = [
+        "Side L",
+        "Divider 1 L",
+        "Divider 1 R",
+        "Divider 2 L",
+        "Side R",
+    ];
+    let counts = boards.map(|b| plates(&format!("Cabinet {b}")));
+    assert_eq!(counts, [4, 0, 4, 0, 4]);
+    // each board carries shelves on its outer face: blind pin holes
+    assert_ne!(
+        named(&commands, "Cabinet Divider 1 L pins")["height"],
+        "Cabinet_thickness"
+    );
+    // where the doors do not meet on every divider, or inset, the dividers stay single
+    for p in [
+        json!({"width": 900, "dividers": 2, "doors": 2, "double_dividers": true}),
+        json!({"width": 900, "dividers": 2, "doors": 3, "double_dividers": true, "fronts": "inset"}),
+    ] {
+        let (commands, _) = build(&p).unwrap();
+        named(&commands, "Cabinet Divider 1");
+    }
+}

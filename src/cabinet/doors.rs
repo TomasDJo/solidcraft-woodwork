@@ -35,6 +35,7 @@ pub fn build(cabinet: &Cabinet) {
         handle_at,
         hinge_right,
         inset,
+        double,
         door_h: door_h_mm,
         ..
     } = cabinet.input;
@@ -76,16 +77,16 @@ pub fn build(cabinet: &Cabinet) {
         };
         let at = |z: &str| kit.at(&cup_x, eback, z);
         let toward = [if left { -1 } else { 1 }, 0, 0];
-        // The hinge's arm: straight to a side, cranked 9.5 mm to a divider (half overlay), or
-        // 18 mm for an inset door.
+        // The hinge's arm: straight to a side or a double divider's board, cranked 9.5 mm to a
+        // divider (half overlay), or 18 mm for an inset door.
         let on_side = matches!(
             (left, i == 0, i + 1 == count),
             (true, true, _) | (false, _, true)
         );
         let crank = match (inset, on_side) {
             (true, _) => 18.0,
-            (false, true) => 0.0,
-            (false, false) => hardware::HALF_OVERLAY,
+            (false, false) if !double => hardware::HALF_OVERLAY,
+            (false, _) => 0.0,
         };
         hardware::cup_holes(kit, &part, at, [[0, -1, 0], toward], Some(crank), &cups);
         // The handle is on the side away from the hinges.
@@ -109,17 +110,23 @@ pub fn build(cabinet: &Cabinet) {
         kit.hinge(&part, None, "hinge", line, None, turn, kit.hinge_angle);
         // The plates' screw holes in the side the door hangs on: `HW_pitch` apart about each
         // cup's height, `HW_setback` behind the front of the opening (the shelf pins' line).
-        // ponytail: a hinge edge in the middle of the cabinet (three doors or more) gets no
-        // plate holes: they would go into a divider.
+        // ponytail: a hinge edge on a single divider (three doors or more) gets no plate holes:
+        // the next door's hinges could want the same place. A double divider's board is the
+        // door's own (#176): door i hangs on divider i's right board or divider i + 1's left.
         let side = match (left, i == 0, i + 1 == count) {
-            (true, true, _) => Some(("Side L", et.clone(), -1)),
-            (false, _, true) => Some(("Side R", format!("{ew} - {et}"), 1)),
+            (true, true, _) => Some(("Side L".to_string(), et.clone(), -1)),
+            (false, _, true) => Some(("Side R".to_string(), format!("{ew} - {et}"), 1)),
+            (true, ..) if double => Some((format!("Divider {i} R"), cabinet.cell_x(i as u32), -1)),
+            (false, ..) if double => {
+                let x = format!("{} - 2*{et}", cabinet.cell_x(i as u32 + 1));
+                Some((format!("Divider {} L", i + 1), x, 1))
+            }
             _ => None,
         };
         if let Some((board, x, into)) = side {
             let y = format!("{ein} + HW_setback");
             let at = |z: &str| kit.at(&x, &y, z);
-            hardware::plate_holes(kit, board, at, [into, 0, 0], &cups, et);
+            hardware::plate_holes(kit, &board, at, [into, 0, 0], &cups, et);
         }
     }
 }
