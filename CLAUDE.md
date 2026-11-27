@@ -926,6 +926,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   is the same for every angle. Hinges a door: `fittings::cup_heights`, 2 up to 900 mm, 3 to
   1600, 4 to 2000, 5 above (the first two cups at the ends keep their names). The cup's two
   screw holes (45 apart, 9.5 off its centre) are not cut: 2 commands a cup more.
+  **Strip runners** (`strips`, #146; `Input::strip`, with `runner` for the play): the dado runners' drawer (bottom under a box `2*(strip_t + play)` narrower than the opening, no stop) on `<Side> strip <n>` boards (`<Prefix>_strip_thickness` 12, `_strip_height` 18, parameters only, no field; `edit::SIZES`) under the bottom from `ein`, `eshelf_d` deep, made with `panel` in the cabinet's component; no `runner_depth`. The cut list counts no slides for a drawer whose `Side L strip <n>` body is there; the strips' screw holes are not drilled.
   **Undermount** (`under_partial`, `under_full`; `Input::under`): box inside = opening - 42 mm
   (`21 mm - bt` a side, so `drawer_thickness` over 16 is refused), box as long as the slide
   (`hardware::UNDER`, `under_length` against the inside depth), bottom `UNDER_RECESS` 13 mm up,

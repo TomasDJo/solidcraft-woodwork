@@ -47,6 +47,7 @@ pub fn build(cabinet: &Cabinet) {
         kind,
         box_t,
         runner,
+        strip,
         under,
         box_fingers: fingers,
         integrated,
@@ -88,9 +89,19 @@ pub fn build(cabinet: &Cabinet) {
     };
     // Wooden runners: the box stands `play` clear of each side, on a bottom wider than it that
     // runs in a groove `depth` deep in each side, `play` short of its end and round it.
+    // On strip runners (#146) there is no groove: the bottom runs on a strip on each side.
+    let strip = strip.map(|[st, sh]| {
+        [
+            kit.parameter("strip_thickness", st, "drawer runner strip thickness"),
+            kit.parameter("strip_height", sh, "drawer runner strip height"),
+        ]
+    });
     let wood = runner.map(|[depth, play]| {
         [
-            kit.parameter("runner_depth", depth, "wooden runner groove depth"),
+            match strip {
+                Some(_) => String::new(),
+                None => kit.parameter("runner_depth", depth, "wooden runner groove depth"),
+            },
             kit.parameter("runner_play", play, "wooden runner play round the bottom"),
         ]
     });
@@ -105,7 +116,13 @@ pub fn build(cabinet: &Cabinet) {
     // Undermount slides (Blum's rule): the box 42 mm narrower inside than the opening, and as
     // long as the slide.
     let (box_w, gap_x) = match (&wood, under) {
-        (Some([_, play]), _) => (format!("({eiw} - 2*{play})"), play.clone()),
+        (Some([_, play]), _) => match &strip {
+            Some([st, _]) => (
+                format!("({eiw} - 2*({st} + {play}))"),
+                format!("({st} + {play})"),
+            ),
+            None => (format!("({eiw} - 2*{play})"), play.clone()),
+        },
         (_, true) => (
             format!("({eiw} - 42 mm + 2*{bt})"),
             format!("(21 mm - {bt})"),
@@ -384,7 +401,10 @@ pub fn build(cabinet: &Cabinet) {
             continue;
         }
         if let Some([depth, play]) = &wood {
-            let out = format!("{et} - {depth} + {play}");
+            let out = match strip {
+                Some(_) => format!("{et} + {play}"),
+                None => format!("{et} - {depth} + {play}"),
+            };
             let length = format!("{ew} - 2*({out})");
             panel(
                 &format!("{drawer} Bottom"),
@@ -392,6 +412,21 @@ pub fn build(cabinet: &Cabinet) {
                 [&length, &box_d, &bb],
             );
             kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
+            // Its strip on each side, under the bottom from the front of the opening to the
+            // back, in the cabinet's component: `<Side> strip <n>`, a board of the cut list.
+            // ponytail: the strips' screw holes are not drilled.
+            if let Some([st, sh]) = &strip {
+                let sides = [
+                    ("Side L", et.clone()),
+                    ("Side R", format!("{ew} - {et} - {st}")),
+                ];
+                for (side, sx) in sides {
+                    let part = format!("{side} strip {}", i + 1);
+                    let sz = format!("{z} - {sh}");
+                    panel(&part, [&sx, ein, &sz], [st, eshelf_d, sh]);
+                }
+                continue;
+            }
             // Its groove in each side, from the front to the back, in the cabinet's component:
             // named `<Side> runner <n>`, which the cut list notes.
             let (gz, gh) = (format!("{z} - {play}"), format!("{bb} + 2*{play}"));

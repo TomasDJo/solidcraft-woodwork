@@ -228,6 +228,18 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   `Name_runner_depth` (3 mm up to the panel thickness less 6) and `Name_runner_play`. With no
   stop, the drawer pulls out two thirds of its box's depth. The cut list notes the grooved
   sides and counts no slides. A 9 mm bottom (Drawer bottom thickness) runs better than 6.
+- **Strip runners** (Slide type Strip runners, #146): the same, for a workshop without a router
+  or dado blade. Instead of a groove, a wooden strip (`Name Side L strip 1` and on, 12 mm thick
+  and 18 mm high) is screwed to each side under each drawer, from the front of the opening to
+  the back. The drawer's bottom is wider than its box and rests on the strips' tops, and the
+  box stands the strip's thickness plus 1 mm of play clear of each side. Change the sizes in
+  the parameters `Name_strip_thickness` (6 to 30 mm), `Name_strip_height` (10 to 60 mm) and
+  `Name_runner_play`. The strips are boards in the cut list, and no slides are counted. Their
+  screw holes are not drilled.
+
+  ![Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.](images/strip-runners.png)
+
+  *Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.*
 - **Slide length** (Auto, set by the cabinet's depth): the standard side-mount
   ball-bearing lengths, 250, 270 and 300 to 650 mm in steps of 50, or 10 to 28 in in steps of
   2. **Auto**
@@ -713,7 +725,7 @@ the Worktop dialog: they differ from run to run); and the joinery (**Joinery**, 
 chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel diameter**,
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
 face**, **Finger width**, **Finger-joint the bottom too**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
-**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, dado runners or undermount partial or full,
+**Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, dado runners, strip runners or undermount partial or full,
 **Fastener models**; see [Hinges and slides](#hinges-and-slides)), **Drawer box joints** (none or finger joints) and **Drawer front** (separate or integrated with the box). The dialog starts at what is stored, or at the
 defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowels, models
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
