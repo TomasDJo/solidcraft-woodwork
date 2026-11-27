@@ -191,5 +191,54 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
     Ok((commands, summary))
 }
 
+/// A connector bolt's hole through two touching sides, in mm: one size for M6 bolts.
+pub const BOLT_D: f64 = 9.0;
+
+/// The connector bolt holes (#198) where a side of one of `cabinets` touches a side of another:
+/// each the two sides, the first one's cabinet earlier in the list, and the hole's box in the
+/// world through both. Two rows of two, at a quarter and three quarters of where they touch,
+/// across and up. `measure` is `inspect.measure`'s reply, the cabinets where they stand.
+pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], [[f64; 3]; 2])> {
+    let all = measure["bodies"].as_array().cloned().unwrap_or_default();
+    let sides: Vec<(usize, String, [[f64; 3]; 2])> = (cabinets.iter().enumerate())
+        .flat_map(|(i, c)| ["Side L", "Side R"].map(|s| (i, format!("{c} {s}"))))
+        .filter_map(|(i, side)| {
+            let b = all.iter().find(|b| b["name"] == side.as_str())?;
+            let at = |end: &str| [0, 1, 2].map(|k| b["bbox"][end][k].as_f64().unwrap_or(f64::NAN));
+            Some((i, side, [at("min"), at("max")]))
+        })
+        .collect();
+    let mut holes = Vec::new();
+    for (i, sa, a) in &sides {
+        for (j, sb, b) in &sides {
+            if i >= j {
+                continue;
+            }
+            for k in 0..2 {
+                let touch = (a[1][k] - b[0][k]).abs() < 0.5 || (b[1][k] - a[0][k]).abs() < 0.5;
+                let span = |axis: usize| (a[0][axis].max(b[0][axis]), a[1][axis].min(b[1][axis]));
+                let ((o0, o1), (z0, z1)) = (span(1 - k), span(2));
+                if !touch || o1 - o0 < 4.0 * BOLT_D || z1 - z0 < 4.0 * BOLT_D {
+                    continue;
+                }
+                for f in [0.25, 0.75] {
+                    for g in [0.25, 0.75] {
+                        let (o, z) = (o0 + (o1 - o0) * f, z0 + (z1 - z0) * g);
+                        let mut hole = [[0.0; 3]; 2];
+                        hole[0][k] = a[0][k].min(b[0][k]);
+                        hole[1][k] = a[1][k].max(b[1][k]);
+                        for (axis, at) in [(1 - k, o), (2, z)] {
+                            hole[0][axis] = at - BOLT_D / 2.0;
+                            hole[1][axis] = at + BOLT_D / 2.0;
+                        }
+                        holes.push(([sa.clone(), sb.clone()], hole));
+                    }
+                }
+            }
+        }
+    }
+    holes
+}
+
 #[cfg(test)]
 mod tests;

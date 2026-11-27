@@ -81,3 +81,20 @@ def test_a_narrow_run_and_cabinets_at_different_heights(approval):
     assert box["A Side L"][2] == 170 and box["B Side L"][2] == 170, (box["A Side L"], box["B Side L"])
     cross = box["Cart Frame cross 1"]
     assert cross[0] == -9 and cross[3] == 9 and cross[4] - cross[1] == 524, cross  # along the depth, at x = 0
+
+
+def test_connector_bolts_join_the_cabinets_on_a_base(approval):
+    # A and B side by side on a base: four 9 mm holes through A Side R and B Side L, counted once
+    # as connector bolts. Run again, no hole is cut twice.
+    bare = {"width": 600, "shelves": 0, "doors": 0}
+    steps = [plugin(approval, "cabinet", {"name": "A", **bare}), select("A Side R"),
+             plugin(approval, "cabinet", {"name": "B", "place": "right", **bare}),
+             pick("A Side L", "B Side L"), plugin(approval, "base", {"name": "Bench"}),
+             pick(), plugin(approval, "base", {"name": "Bench"}), MEASURE, plugin(approval, "cutlist", {})]
+    results = designed(approval, NONE, steps)
+    assert results[4]["result"]["bolts"] == 4, results[4]["result"]
+    measure = results[7]
+    for touching, free in (("A Side R", "A Side L"), ("B Side L", "B Side R")):
+        assert cylinders(measure, touching) - cylinders(measure, free) == 4, (touching, cylinders(measure, touching))
+    hardware = {h["item"]: h["qty"] for h in results[8]["result"]["hardware"]}
+    assert hardware.get("Connector bolt, M6") == 4, hardware

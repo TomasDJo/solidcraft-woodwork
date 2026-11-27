@@ -1293,6 +1293,51 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     &format!("`{cabinet}` did not go up onto the base: it is held to a cabinet that is not on it, or stands loose; pick that cabinet too, or ground `{cabinet}`"),
                 )?;
             }
+            // Connector bolts through the sides that touch (#198), each cut in its cabinet's own
+            // component; a hole already there (a run again) is left as it is.
+            // ponytail: a cut the cabinet does not remember: Edit cabinet makes its side whole
+            // again (run Mobile base again), and a cabinet moved away keeps its old holes.
+            let timeline = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": "summary"}),
+            )?;
+            let had: Vec<&str> = (timeline["timeline"].as_array().into_iter().flatten())
+                .filter_map(|f| f["name"].as_str())
+                .collect();
+            let tree = run("component.list", json!({}))?;
+            let mut cuts: Vec<(String, Commands)> = Vec::new();
+            let holes = base::bolts(&now, &cabinets);
+            for (n, (sides, world)) in holes.iter().enumerate() {
+                for (side, what) in sides.iter().zip(["bolt", "hole"]) {
+                    let feature = format!("{side} connector {what} {}", n + 1);
+                    let cabinet = select::owner(&now, side).unwrap_or_default().to_string();
+                    if had.contains(&feature.as_str()) || cabinet.is_empty() {
+                        continue;
+                    }
+                    let (corner, size) =
+                        worktop::local(*world, &edit::placement(&tree, &cabinet)?.1);
+                    let along = (0..3)
+                        .max_by(|&a, &b| size[a].total_cmp(&size[b]))
+                        .unwrap_or(0);
+                    let base =
+                        [0, 1, 2].map(|i| corner[i] + if i == along { 0.0 } else { size[i] / 2.0 });
+                    let mut axis = [0, 0, 0];
+                    axis[along] = 1;
+                    let args = json!({
+                        "base": base.map(kit::mm), "axis": axis, "diameter": kit::mm(base::BOLT_D),
+                        "height": kit::mm(size[along]), "operation": "cut", "targets": [side],
+                        "name": feature,
+                    });
+                    match cuts.iter_mut().find(|c| c.0 == cabinet) {
+                        Some(c) => c.1.push(("solid.cylinder", args)),
+                        None => cuts.push((cabinet, vec![("solid.cylinder", args)])),
+                    }
+                }
+            }
+            for (cabinet, commands) in cuts {
+                inside(&cabinet, commands, run)?;
+            }
+            summary["bolts"] = json!(holes.len());
             let mut values = edit::remember("base", &params, &name);
             values[edit::KEY]["cabinets"] = json!(cabinets);
             run(

@@ -270,6 +270,13 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             bodies.iter().filter(|b| crate::fittings::is_leg(b)).count() as u64,
         ),
         (
+            "Connector bolt, M6",
+            features
+                .iter()
+                .filter(|f| f.contains(" connector bolt "))
+                .count() as u64,
+        ),
+        (
             "Caster, locking",
             bodies
                 .iter()
