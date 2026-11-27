@@ -567,7 +567,7 @@ def test_grooved_fronts(approval):
 def test_bottom_tab(approval):
     # Handle holes Bottom tab (#181): each drawer's bottom (12 mm here) runs forward under its
     # front, 20 mm past the face, as wide as Tab width (150 mm here), rounded at the front; the
-    # front is cut away up to the bottom's top there and scooped above it. No tab board, and
+    # front is cut away up to the bottom's top there, with no scoop. No tab board, and
     # the cut list's bottom is 20 mm longer than without (plus the box front it passes).
     steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "tab"}), MEASURE, plugin(approval, "cutlist")]
     plain = designed(approval, {"drawer_bottom": 12}, [plugin(approval, "cabinet", {"drawers": 2}), MEASURE])
@@ -579,7 +579,7 @@ def test_bottom_tab(approval):
         bottom, face, was = box["Cabinet Drawer 1 Bottom"], box[name], boxes(plain[1])["Cabinet Drawer 1 Bottom"]
         assert round(face[1] - bottom[1], 3) == 20, (bottom, face)
         assert round(bottom[5] - bottom[2], 3) == 12 and bottom[4] == was[4], (bottom, was)
-        assert cylinders(results[1], name) > 0, name
+        assert cylinders(results[1], name) == 0, name  # no scoop (#244)
         assert cylinders(results[1], "Cabinet Drawer 1 Bottom") >= 2, front
         parts = results[2]["result"]["parts"]
         lengths = sorted(max(p["length"], p["width"]) for p in parts if "Bottom" in " ".join(p["parts"]) and "Drawer" in " ".join(p["parts"]))
@@ -659,12 +659,11 @@ def test_glass_doors(approval):
     results = cli([made, low, tab, MEASURE, plugin(approval, "cutlist")])
     results = [results[0], results[3], results[4]]
     # (476 long, the 6 x 8 groove, then the notch 120 wide, through the 18 mm thickness, from the
-    # lower edge up to the bottom's top: an 18 mm panel and 8 mm up, then the 6 mm bottom; and the
-    # scoop's half round of 10 mm radius, 120 long, over it)
+    # lower edge up to the bottom's top: an 18 mm panel and 8 mm up, then the 6 mm bottom; no
+    # scoop over it, #244)
     rail = volume(results[1], "T Drawer 1 Front rail bottom")
-    scoop = 3.14159265 * 10 ** 2 / 2 * 120
-    expected = 476 * 18 * 60 - 476 * 6 * 8 - 120 * 18 * (18 + 8 + 6) - scoop
-    assert abs(rail - expected) < 0.01 * scoop, (rail, expected)
+    expected = 476 * 18 * 60 - 476 * 6 * 8 - 120 * 18 * (18 + 8 + 6)
+    assert abs(rail - expected) < 1, (rail, expected)
     assert cylinders(results[1], "E Drawer 1 Front rail bottom") == 2, cylinders(results[1], "E Drawer 1 Front rail bottom")
     m = results[1]
     for n in (1, 2):

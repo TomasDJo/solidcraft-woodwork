@@ -746,7 +746,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   a parameter while drawers have the tab, `edit::SIZES`) and `TAB_OUT` past the front's face;
   a `<front> tab notch` from the front's lower edge up to the bottom's top (`Kit::targets`),
   a `Box front tab slot` when the bottom stands behind a box front (not on runners, not
-  integrated), and a `tab scoop` (`GROOVE_D`) above. The front keeps its height (the gaps
+  integrated); no scoop (#244). The front keeps its height (the gaps
   stay); the bottom stays at its height, above the front's lower edge, as the lowest drawer's
   must clear the carcass. The cut list measures the bottom with its tab (mesh: it fills no box).
 - **Grooved fronts** (`front_style` flat, vertical, horizontal: per cabinet with a Settings
