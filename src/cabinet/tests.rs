@@ -863,6 +863,24 @@ fn a_graduated_drawer_stack() {
 }
 
 #[test]
+fn a_plinth_edited_away_sets_its_parameter_to_0() {
+    // Apply settings and the next Edit take the sizes from the parameters (`edit::merge`), so a
+    // height left at 100 would bring the plinth back
+    let p = json!({"plinth": 0, "_existing": {"plinth": 100.0}});
+    let (commands, _) = build(&p).unwrap();
+    let zero = json!({"name": "Cabinet_plinth", "expression": "0 mm"});
+    assert!(commands
+        .iter()
+        .any(|c| c.0 == "parameters.change" && c.1 == zero));
+    // a cabinet that never had one makes no parameter
+    assert!(!build(&json!({"plinth": 0}))
+        .unwrap()
+        .0
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet_plinth"));
+}
+
+#[test]
 fn a_drawer_front_height_is_auto_or_the_minimum_or_more() {
     // inset drawers only: 100 mm is the lowest; beside doors 18 mm boards need 102 mm
     let p = |dh: f64| build(&json!({"drawers": 3, "fronts": "inset", "drawer_height": dh}));

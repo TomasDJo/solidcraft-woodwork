@@ -178,6 +178,21 @@ def test_apply_settings_keeps_what_is_per_cabinet(approval):
     assert box["B Bottom"][2] == 120, box["B Bottom"]
 
 
+def test_apply_settings_keeps_an_edit_to_no_plinth(approval):
+    # A made with a plinth, then edited to none. Settings with confirmat and a 120 plinth, then
+    # Apply settings to all: A gets confirmat and still has no plinth. Its plinth parameter used
+    # to stay at 100 after the Edit, and Apply settings read the sizes from the parameters.
+    light = {"shelves": 0, "depth": 300}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": "yes", "place": "origin", **light}),
+                   select("A Side L"), plugin(approval, "edit", {"plinth": "no"}),
+                   setting(approval, {"joints": "confirmat", "plinth": 120}),
+                   plugin(approval, "rebuild", {}), MEASURE])
+    reply = results[4]["result"]
+    assert reply["applied"] == ["A"] and "plinth" not in reply["changed"]["A"], reply
+    box = boxes(results[5])
+    assert box["A Bottom"][2] == 0 and "A Plinth" not in box, box["A Bottom"]
+
+
 def test_apply_settings_follows_a_changed_default(approval):
     # A, B and C on the default board plinth, W a wall cabinet with no plinth chosen. Settings
     # Plinth type Legs, then Apply settings to all: the three still had the old default, so they

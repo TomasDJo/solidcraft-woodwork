@@ -123,8 +123,13 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         false => shortest[..3].iter().fold(f64::MAX, |a, b| a.min(*b)),
     };
     joinery.fits(CARCASS, shortest, p, "the shortest joint")?;
+    // As on the box cabinet: a plinth taken away sets its parameter to 0.
     let epl = match plinth > 0.0 {
         true => kit.parameter("plinth", plinth, "plinth height"),
+        false if kit.has("plinth") => {
+            kit.parameter("plinth", 0.0, "plinth height");
+            mm(0.0)
+        }
         false => mm(0.0),
     };
     // As on the box cabinet.

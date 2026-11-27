@@ -812,3 +812,14 @@ fn shaker_corner_doors() {
     let (commands, _) = build(&p).unwrap();
     named(&commands, "Cabinet Door rail top");
 }
+
+#[test]
+fn a_plinth_edited_away_sets_its_parameter_to_0() {
+    // as on the box cabinet: a stale height would bring the plinth back on Apply settings
+    let p = json!({"plinth": 0, "_existing": {"plinth": 100.0}});
+    let (commands, _) = build(&p).unwrap();
+    let zero = json!({"name": "Cabinet_plinth", "expression": "0 mm"});
+    assert!(commands
+        .iter()
+        .any(|c| c.0 == "parameters.change" && c.1 == zero));
+}
