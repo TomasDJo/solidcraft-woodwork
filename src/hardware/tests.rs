@@ -268,7 +268,7 @@ fn the_models_are_counted_against_the_command_limit() {
     assert_eq!(cost(&cut), n - 2 + 4 + 4 + 1 + PARAMETERS.len() + made);
     // a cabinet the models would take over the limit is made without them
     let big = json!({"width": 2400, "height": 2400, "dividers": 7, "doors": 8, "shelves": 3,
-                     "handles": "pull"});
+                     "handles": "pull", "door_handles": "pull"});
     let mut off = big.clone();
     off["hardware_models"] = json!("off");
     let (with, summary) = crate::cabinet::build(&big).unwrap();

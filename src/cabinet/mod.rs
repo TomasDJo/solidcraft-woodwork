@@ -731,7 +731,7 @@ impl Cabinet<'_> {
     /// front is the box from `lo` to `lo + size`, its back face towards +y.
     fn grip(&self, body: &str, lo: [&str; 3], size: [&str; 3], top: bool) {
         let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
-        fittings::grip(self.kit, body, self.input.handles, at, lo, size, 0, 1, top);
+        fittings::grip(self.kit, body, self.handles(body), at, lo, size, 0, 1, top);
     }
 
     /// A door or drawer front (`fittings::front`): one board, or a shaker front when the
@@ -747,7 +747,28 @@ impl Cabinet<'_> {
     /// A front from `z`, `h` high, cut back by the grip gap at its grip edge (`top`, else the
     /// bottom) when it has a grip edge (`fittings::gripped`).
     fn gripped(&self, z: &str, h: &str, top: bool) -> (String, String) {
-        fittings::gripped(self.egap.as_deref(), z, h, top)
+        let gap = self
+            .egap
+            .as_deref()
+            .filter(|_| self.input.handles == "grip");
+        fittings::gripped(gap, z, h, top)
+    }
+
+    /// `gripped` for a door, by the doors' handles.
+    fn gripped_door(&self, z: &str, h: &str, top: bool) -> (String, String) {
+        let gap = self
+            .egap
+            .as_deref()
+            .filter(|_| self.input.door_handles == "grip");
+        fittings::gripped(gap, z, h, top)
+    }
+
+    /// The handles of a front by its part: a door's are the doors' (`Input::door_handles`).
+    fn handles(&self, body: &str) -> &str {
+        match body.starts_with("Door") {
+            true => self.input.door_handles,
+            false => self.input.handles,
+        }
     }
 
     /// Grooves in a front's face (`fittings::front_grooves`), the front as for `grip`.
@@ -761,7 +782,7 @@ impl Cabinet<'_> {
     /// Screw holes for a knob (one) or a pull (two), through a front from its back face.
     /// `along` is the axis the pull lies on: 0 across, 2 upright.
     fn handle(&self, body: &str, x: &str, z: &str, along: usize) {
-        let offsets = fittings::screw_offsets(self.input.handles);
+        let offsets = fittings::screw_offsets(self.handles(body));
         for (j, offset) in offsets.iter().enumerate() {
             let mut at = [x.to_string(), self.eback.clone(), z.to_string()];
             at[along] = format!("{} + {}", at[along], mm(*offset));

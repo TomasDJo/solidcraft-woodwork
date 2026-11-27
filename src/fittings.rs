@@ -193,6 +193,19 @@ pub fn screw_heights(handles: &str, handle_z: &str) -> Vec<String> {
     screws.collect()
 }
 
+/// The doors' handles (`door_handles`, Woodwork settings' Doors); `handles` is the drawer
+/// fronts' (Drawers), which may also be a bottom tab.
+pub fn door_handles(p: &Value) -> Result<&str, String> {
+    match p
+        .get("door_handles")
+        .and_then(Value::as_str)
+        .unwrap_or("none")
+    {
+        h @ ("none" | "knob" | "pull" | "grip" | "groove") => Ok(h),
+        _ => Err("door_handles must be none, knob, pull, grip or groove".into()),
+    }
+}
+
 /// Whether a handle-less front of `t` mm keeps wood behind its grip: a grip edge's bevel
 /// leaves `GRIP_LAND`, and a finger groove must not come through.
 pub fn profile_fits(handles: &str, t: f64) -> Result<(), String> {
@@ -537,6 +550,7 @@ pub fn frame(
     size: impl Fn(&str, f64) -> Result<f64, String>,
     t: f64,
     smallest_door: Option<f64>,
+    drawers: bool,
 ) -> Result<Option<[f64; 2]>, String> {
     if !matches!(
         p.get("front_style").and_then(Value::as_str),
@@ -557,8 +571,11 @@ pub fn frame(
             framed(fw)
         ));
     }
+    // the drawer handles where there are drawers, the door handles where there are doors
     let handles = p.get("handles").and_then(Value::as_str);
-    if matches!(handles, Some("grip" | "groove")) {
+    let drawer_grip = drawers && matches!(handles, Some("grip" | "groove"));
+    let door_grip = smallest_door.is_some() && matches!(door_handles(p)?, "grip" | "groove");
+    if drawer_grip || door_grip {
         return Err("a grip edge or finger groove needs flat fronts, not shaker or glass".into());
     }
     Ok(Some([fw, pt]))

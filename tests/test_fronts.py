@@ -707,3 +707,17 @@ def test_drawer_back_taller_than_sides(approval):
         cut = full - volume(results[1], "Cabinet Drawer 1 Box back")
         expected = 0 if joints == "none" else 2 * 5 * 12 * 12 * 100 / 9
         assert abs(cut - expected) < 200, (joints, cut, expected)
+
+
+def test_door_and_drawer_handles(approval):
+    # Drawer handles and Door handles are two Woodwork settings (Drawers, Doors), no Cabinet
+    # field. A bottom tab on the drawer and a pull on the door (two holes beside the two hinge
+    # cups); Edit changes the door's to a knob, and the drawer front still has no hole.
+    made = plugin(approval, "cabinet", {"doors": 1, "drawers": 1, "height": 900, "drawer_height": 250,
+                                        "handles": "tab", "door_handles": "pull"})
+    results = cli([made, MEASURE, select("Cabinet Door"),
+                   plugin(approval, "edit", {"doors": 1, "drawers": 1, "handles": "tab", "door_handles": "knob"}), MEASURE])
+    assert cylinders(results[1], "Cabinet Door") == 4, cylinders(results[1], "Cabinet Door")
+    assert cylinders(results[1], "Cabinet Drawer 1 Front") == 0
+    assert cylinders(results[4], "Cabinet Door") == 3, cylinders(results[4], "Cabinet Door")
+    assert cylinders(results[4], "Cabinet Drawer 1 Front") == 0

@@ -43,6 +43,8 @@ pub struct Input<'a> {
     pub mount_t: f64,
     pub mount_h: f64,
     pub handles: &'a str,
+    /// The doors' handles (`door_handles`); `handles` is the drawer fronts'.
+    pub door_handles: &'a str,
     pub handle_at: &'a str,
     /// Grooves cut into the fronts' faces (`front_style`, #182): `None` for flat fronts.
     pub grooves: Option<crate::fittings::Grooves<'a>>,
@@ -75,7 +77,7 @@ pub struct Input<'a> {
     pub box_t: [f64; 2],
     /// The box's side and back heights in mm, 0 for the full height and the sides' (#221).
     pub box_h: [f64; 2],
-    /// The drawer bottom's tab with Handle holes Bottom tab (#181), in mm.
+    /// The drawer bottom's tab with Drawer handles Bottom tab (#181), in mm.
     pub tab_w: f64,
     /// Wooden runners (`slide_type` wood): the bottom runs in a groove in each side, this deep,
     /// with this much play round it. `None` on metal slides.
@@ -363,6 +365,8 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "handles must be none, knob, pull, grip, groove or tab",
     )?;
     crate::fittings::profile_fits(handles, t)?;
+    let door_handles = crate::fittings::door_handles(p)?;
+    crate::fittings::profile_fits(door_handles, t)?;
     // only checked on a cabinet with fronts to cut them into
     let grooves = match doors > 0.0 || drawers > 0.0 {
         true => crate::fittings::grooves(p, size, t, doors > 0.0)?,
@@ -371,7 +375,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let door_w = (w - 2.0 * o - (doors + 1.0) * g) / doors.max(1.0);
     let smallest = (doors > 0.0).then_some(door_w.min(door_h));
     let frame = match doors > 0.0 || drawers > 0.0 {
-        true => crate::fittings::frame(p, size, t, smallest)?,
+        true => crate::fittings::frame(p, size, t, smallest, drawers > 0.0)?,
         false => None,
     };
     let handle_at = crate::fittings::handle_position(p)?;
@@ -390,10 +394,20 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !(glass && framed_drawers && matches!(handles, "knob" | "pull") && handle_at == "middle"),
         "a glass drawer front's handle must be at the top or the bottom (Handle position): in the middle it would go through the glass",
     )?;
-    let fronts = [door_h, front_h, drawer_h].into_iter();
-    let lowest = fronts.filter(|&h| h > 0.0).fold(f64::MAX, f64::min);
-    let grip_gap = match doors > 0.0 || drawers > 0.0 {
-        true => crate::fittings::grip_gap(handles, handle_at, size, lowest)?,
+    // the fronts with a grip edge: the doors, the drawers, or both
+    let mut gripped = Vec::new();
+    if doors > 0.0 && door_handles == "grip" {
+        gripped.push(door_h);
+    }
+    if drawers > 0.0 && handles == "grip" {
+        gripped.extend([front_h, drawer_h]);
+    }
+    let lowest = gripped
+        .into_iter()
+        .filter(|&h| h > 0.0)
+        .fold(f64::MAX, f64::min);
+    let grip_gap = match lowest < f64::MAX {
+        true => crate::fittings::grip_gap("grip", handle_at, size, lowest)?,
         false => None,
     };
     // a grip edge's drawer box is the gap lower too: it must still fit (`box_front`); a sink
@@ -403,7 +417,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => front_h,
     };
     check(
-        grip_gap.is_none_or(|gap| drawers == 0.0 || lowest_drawer - gap >= box_front),
+        grip_gap.is_none_or(|gap| {
+            drawers == 0.0 || handles != "grip" || lowest_drawer - gap >= box_front
+        }),
         "the drawer fronts are too low for that grip gap: a drawer box would be under 50 mm",
     )?;
     let hinge_right = match p
@@ -416,7 +432,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         _ => return Err("door_hinge must be left or right".into()),
     };
     check(
-        matches!(handles, "none" | "tab")
+        door_handles == "none"
             || doors == 0.0
             || (w - 2.0 * o - (doors + 1.0) * g) / doors >= 150.0,
         "doors are too narrow for handles",
@@ -550,6 +566,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         mount_t,
         mount_h,
         handles,
+        door_handles,
         handle_at,
         grooves,
         frame,

@@ -91,6 +91,8 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         ),
         "handles must be none, knob, pull, grip, groove or tab",
     )?;
+    // only doors: they take the doors' handles
+    let handles = crate::fittings::door_handles(p)?;
     crate::fittings::profile_fits(handles, t)?;
     let grooves = match doors {
         true => crate::fittings::grooves(p, size, t, true)?,
@@ -99,7 +101,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     // ponytail: the doors' least size by the carcass (a leg's front less the other's depth)
     let smallest = (a.min(b) - d).min(h - plinth);
     let frame = match doors {
-        true => crate::fittings::frame(p, size, t, Some(smallest))?,
+        true => crate::fittings::frame(p, size, t, Some(smallest), false)?,
         false => None,
     };
     let handle_at = crate::fittings::handle_position(p)?;
