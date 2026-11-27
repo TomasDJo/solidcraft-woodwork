@@ -64,18 +64,28 @@ def test_plate_holes_go_into_the_pin_holes_or_clear_of_them(approval):
 
 
 def test_three_doors_and_a_right_hung_one(approval):
-    # Three doors hinge left, right, left: plate holes in Side L only (the other hinge edges are
-    # on dividers, which get none). A single door hinged right: the plate on Side R. Inches.
+    # Three doors over two dividers (#157): the end doors hinge on the sides (plate holes in
+    # both), so only the middle one hinges on a divider, which it covers half of: half overlay
+    # hinges (the 9.5 mm cranked model, and their own line in the cut list's hardware), and
+    # no plate holes in the divider. Inset, the three alternate as before (left, right, left):
+    # the third hangs on a divider, so Side R gets no plate holes. A single door hinged right:
+    # the plate on Side R. Inches.
     results = designed(approval, NONE, [plugin(approval, "cabinet", {"name": "T", "width": 900, "dividers": 2, "doors": 3}),
                    plugin(approval, "cabinet", {"name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
                                                 "thickness": 0.75, "back_thickness": 0.25, "doors": 1, "door_hinge": "right"}),
-                   MEASURE, faces("R Door"), faces("R Side R")])
-    measure = results[2]
+                   plugin(approval, "cabinet", {"name": "I", "width": 900, "dividers": 2, "doors": 3, "fronts": "inset"}),
+                   MEASURE, faces("R Door"), faces("R Side R"), plugin(approval, "cutlist")])
+    measure = results[3]
     assert [cylinders(measure, f"T Door {n}") for n in (1, 2, 3)] == [2, 2, 2]
-    assert (cylinders(measure, "T Side L"), cylinders(measure, "T Side R")) == (4, 0)
-    assert cylinders(measure, "R Side L") == 0 and len(holes(results[4], 2.5)) == 4
+    assert (cylinders(measure, "T Side L"), cylinders(measure, "T Side R")) == (4, 4)
+    cranked = sorted(n.split(" (")[1] for n in models(measure, "HW hinge crank 9.5 (T:1/"))
+    assert len(cranked) == 2 and all(n.startswith("T:1/T Door 2:1/") for n in cranked), cranked
+    hardware = {h["item"]: h["qty"] for h in results[-1]["result"]["hardware"]}
+    assert (hardware["Hinge, cup"], hardware["Hinge, cup, half overlay"]) == (4 + 2 + 6, 2), hardware
+    assert (cylinders(measure, "I Side L"), cylinders(measure, "I Side R")) == (4, 0)
+    assert cylinders(measure, "R Side L") == 0 and len(holes(results[5], 2.5)) == 4
     # 18 in wide: the right edge at 9 in less the reveal, the cup 22.5 mm in from it
-    assert [h[0] for h in holes(results[3], 17.5)] == [round(9 * 25.4 - 2 - 22.5, 1)] * 2, holes(results[3], 17.5)
+    assert [h[0] for h in holes(results[4], 17.5)] == [round(9 * 25.4 - 2 - 22.5, 1)] * 2, holes(results[4], 17.5)
 
 
 def test_slides_drill_the_sides_and_the_boxes(approval):

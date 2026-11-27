@@ -793,6 +793,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   which the cut list counts) and the plate's two holes in the side it hangs on (`<Side> hinge
   plate n.k`, cut after `Kit::hinge` so the cabinet is active), `HW_setback` behind the front
   of the opening (`ein`, the shelf pins' line); a hinge edge on a divider gets no plate holes.
+  With three overlay doors or more (inset ones alternate as asked) the end doors hinge on the
+  sides whatever `door_hinge` says
+  (`cabinet::doors::hinged_left`), so only the doors between hang on a divider (the first of
+  them on the side `door_hinge` says, the rest alternating); such an
+  overlay door covers half of it and gets half overlay hinges (`hardware::HALF_OVERLAY`, the
+  9.5 mm crank), its cups named `<Door> hinge cup n (half overlay)`, which the cut list counts
+  as "Hinge, cup, half overlay" apart from "Hinge, cup" (#157). No double dividers.
   A drawer box's sides (`<Drawer n Left> slide k`, cut before `Kit::close` while the drawer is
   active) and the carcass sides (`<Side> Drawer n slide k`, after), whole pitches apart as the slide's length allows; the box is
   `2*HW_slide_t` narrower than the opening, and one shallower than 250 mm is refused

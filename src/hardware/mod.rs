@@ -107,7 +107,11 @@ pub fn cup_holes(
     // modelled.
     let cut = kit.models == "cut" && crank.is_some();
     for (j, z) in cups.iter().enumerate() {
-        let what = format!("hinge cup {}", j + 1);
+        // A half overlay hinge's cups say so, for the cut list's hardware.
+        let what = match crank == Some(HALF_OVERLAY) {
+            true => format!("hinge cup {} (half overlay)", j + 1),
+            false => format!("hinge cup {}", j + 1),
+        };
         if !cut {
             fittings::hole(kit, door, at(z), into, "HW_cup_d", "HW_cup_depth", &what);
         }
@@ -205,6 +209,9 @@ pub const MEMBERS: [(&str, f64, f64); 3] = [
     (SLIDE_MIDDLE, 3.0, 40.0),
     (SLIDE_DRAWER, 4.0, 35.0),
 ];
+
+/// A half overlay hinge's crank, for a door that covers half of a divider.
+pub const HALF_OVERLAY: f64 = 9.5;
 
 /// The hinge model for an arm cranked `crank` mm: 0 (straight, full overlay), 9.5 or 18.
 pub fn hinge(crank: f64) -> String {

@@ -127,7 +127,8 @@ fn hardware_is_counted_from_names() {
     let named =
         |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
     let design = json!({"timeline": named(&[
-        "A Door hinge cup 1", "A Door hinge cup 2", "A Door handle 1", "A Door handle 2",
+        "A Door hinge cup 1", "A Door hinge cup 2",
+        "A Door 2 hinge cup 1 (half overlay)", "A Door 2 hinge cup 2 (half overlay)", "A Door handle 1", "A Door handle 2",
         "A Side L pins", "A Side R pins", "A 2 Drawer 1 Front handle 1",
         "A joint Side L Bottom pilot", "A joint Side L Bottom row",
         "C Bottom return dowel 1", "C Bottom return dowel 2",
@@ -157,7 +158,7 @@ fn hardware_is_counted_from_names() {
     bodies.push(json!({"name": "A 2 Top", "face_types": {"cylinder": 3}}));
     let list = hardware(&json!({"bodies": bodies}), &design);
     let expected = json!([
-        {"item": "Hinge, cup", "qty": 2}, {"item": "Drawer slide, partial extension, 18 in, pair", "qty": 1},
+        {"item": "Hinge, cup", "qty": 2}, {"item": "Hinge, cup, half overlay", "qty": 2}, {"item": "Drawer slide, partial extension, 18 in, pair", "qty": 1},
         {"item": "Drawer slide, full extension, 450 mm, pair", "qty": 1}, {"item": "Drawer slide, pair", "qty": 1},
         {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
         {"item": "Dowel, 8 x 60 mm", "qty": 2}, {"item": "Adjustable leg", "qty": 3},

@@ -73,7 +73,7 @@ component can hold its cabinets.
 | **Plinth / toe kick set-back** (Woodwork settings) | With a Board or Notched sides plinth: how far the board, or the notch, is back from the front. 50 mm (2 in) by default, 0 to 200, less than the depth less a panel. The parameter `Name_plinth_setback`. |
 | **Shelf pin holes** | 32 mm system rows of 5 mm holes; the shelves rest on them. Off, the shelves are fixed and joined by Joinery inside (a cabinet made before 0.2.0 keeps them unjoined, as it has no method). |
 | **Doors** | Doors with 35 mm hinge cup holes, and the hinge plates' screw holes in the sides: one, two, or one per compartment. |
-| **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. |
+| **First door hinged** | The side the first door is hinged on. The next ones alternate, and two doors always open from the middle. With three overlay doors or more the end doors always hinge on the sides, so only the doors between hinge on a divider; this is then the side the first of those hinges on (Right: the middle one of three hinges on its right), and the rest alternate. |
 | **Drawer box thickness**, **Drawer bottom thickness** (Woodwork settings) | The drawer boxes' sides, front and back (12 mm by default, 10 to 25) and their bottoms between the sides (6 mm, 3 to 19). The box keeps its outside size; the front, back and bottom get smaller. The parameters `Name_drawer_thickness` and `Name_drawer_bottom`: change them in Parameters for one cabinet, and Edit keeps them. |
 | **Fronts** (Woodwork settings) | Overlay: the doors and drawer fronts cover the carcass edges. Inset: they sit inside the opening between the panels, their faces flush with the carcass front; the shelves, dividers and drawer boxes stand back behind them. Inset doors in a cabinet with one door per compartment each fill their own compartment. |
 | **Reveal** | The gap around and between the fronts, 0.5 to 6 mm (2 by default), always in mm, also on an inch cabinet. Overlay: also how far the fronts stop short of the carcass's outside edges. Inset: the gap all round inside the opening. On a cabinet with doors or drawers it is the design parameter `Name_reveal`: change it in Parameters and the fronts follow. |
@@ -130,8 +130,17 @@ needs them. Change one in Parameters and every cabinet's holes follow:
 
 - Each door gets its cups (two up to 900 mm high, three up to 1600, four up to 2000, five
   above: about 100 mm from the ends and the rest evenly between) and the side it hangs on a
-  plate's two holes beside each cup. With three doors or more, a door hinged in the middle of
-  the cabinet gets its cups only: its plate would go on a divider, which is not drilled.
+  plate's two holes beside each cup. With three overlay doors or more, a door hinged in the middle of
+  the cabinet hangs on a divider that it covers only half of (the next door covers the
+  other half): it gets half overlay hinges, the model's arm cranked 9.5 mm and a line of
+  their own in the cut list's hardware ("Hinge, cup, half overlay"), and its cups only: the
+  plate would go on the divider, which is not drilled. The end doors always hinge on the
+  sides, so as few doors as possible hang on a divider (one of three). Inset doors each fill
+  their own compartment and simply alternate from the first; one hinged on a divider gets
+  its cups only.
+
+  ![Three doors: the end ones hinge on the sides, the middle one on a divider with half overlay hinges.](images/divider-hinges.png)
+
 - Each drawer box gets two holes in each side, in the middle of its height, and the carcass
   side beside it two more at the same height: `HW_setback` behind the front, and as many whole
   `HW_pitch` further as the slide's length leaves before `HW_setback` from its end. A sink
