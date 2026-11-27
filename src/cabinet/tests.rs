@@ -1860,6 +1860,16 @@ fn a_bottom_tab_sticks_out_under_the_front() {
     let p = json!({"drawers": 2, "handles": "tab", "tab_width": 150});
     let (commands, _) = build(&p).unwrap();
     assert!(!any(&commands, "handle") && !any(&commands, "notch"));
+    // a sink base's false front has no bottom: it keeps its place and height
+    let sink = |handles: &str| {
+        let p = json!({"kind": "sink", "drawers": 2, "handles": handles, "fronts": "inset"});
+        named(&build(&p).unwrap().0, "Cabinet False front").clone()
+    };
+    let (tab, plain) = (sink("tab"), sink("none"));
+    assert_eq!(
+        (&tab["corner"], &tab["height"]),
+        (&plain["corner"], &plain["height"])
+    );
     assert!(!any(&commands, "Bottom groove") && !has(&commands, "Cabinet Drawer 1 Tab"));
     assert_eq!(
         named(&commands, "Cabinet_tab_width")["expression"],
@@ -2482,6 +2492,13 @@ fn the_drawer_bottom_sits_in_a_groove() {
     assert!(commands
         .iter()
         .any(|c| c.1["name"] == "Cabinet Drawer 1 Bottom groove"));
+    // an integrated front keeps 3 mm outside the groove; a separate front has no groove
+    let thin =
+        json!({"drawers": 2, "drawer_front": "integrated", "thickness": 6, "back_thickness": 3});
+    assert!(build(&thin)
+        .unwrap_err()
+        .contains("at least 9 mm thick for the bottom's groove"));
+    assert!(build(&json!({"drawers": 2, "thickness": 6, "back_thickness": 3})).is_ok());
     // on runners and strips the bottom carries the box: no groove
     for slide in ["wood", "strips"] {
         let (commands, _) = build(&json!({"drawers": 2, "slide_type": slide})).unwrap();

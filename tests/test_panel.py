@@ -122,3 +122,11 @@ def test_a_filler_in_inches_on_a_sink_base(approval):
     assert ",yes,L1," in filler, filler
     back = next(line for line in csv.splitlines() if line.endswith('"S Filler R return"'))
     assert ",yes,," in back, back
+
+
+def test_end_panel_beside_bottom_tab_drawers(approval):
+    # A bottom tab makes the fronts inset (#247): the end panel is flush with the carcass front.
+    results = cli([plugin(approval, "cabinet", {"name": "T", "drawers": 2, "handles": "tab"}),
+                   select("T Side R"), plugin(approval, "panel", {"kind": "end"}), MEASURE])
+    box = boxes(results[-1])
+    assert box["T End panel R"][1] == box["T Side R"][1], (box["T End panel R"], box["T Side R"])

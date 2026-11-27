@@ -569,6 +569,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !(drawers > 0.0 && tabbed && mixed && drawers_top),
         "a bottom tab needs the drawers under the doors, not over them",
     )?;
+    // the bottom's groove (#247) goes into an integrated front too: leave 3 mm outside it
+    check(
+        !(integrated && drawers > 0.0 && !tabbed && !strips && !grooved)
+            || t >= super::drawers::BOTTOM_GROOVE + 3.0,
+        "integrated drawer fronts must be at least 9 mm thick for the bottom's groove",
+    )?;
     Ok(Input {
         kind,
         w,

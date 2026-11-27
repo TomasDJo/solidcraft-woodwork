@@ -82,7 +82,9 @@ component can hold its cabinets.
 
 ![Grip edges on the doors (left) and finger grooves on the drawers (right): no handles.](images/grip-edges.png)
 
-![Bottom tab: each drawer's bottom panel sticks out under its front to pull by.](images/bottom-tab.png)
+![Bottom tab: inset fronts stand on each drawer's bottom, which sticks out past them to pull by.](images/bottom-tab.png)
+
+![A drawer cut through: its bottom sits in a groove 10 mm up in the box front, sides and back.](images/bottom-groove.png)
 
 **Front style** (Woodwork settings, and Edit for one cabinet): **Flat** (the default), or
 **Vertical grooves** or **Horizontal grooves** cut into the face of every door and drawer front,

@@ -173,8 +173,9 @@ pub fn build(cabinet: &Cabinet) {
         let (z, front_h) = cabinet.gripped(&z, front_h, top);
         let front_h = &front_h;
         // Bottom tab (#247, inset fronts): the bottom is the drawer's lowest part, at the front's
-        // lower edge, and the front and the box stand on it; the box clears only above.
-        let tabbed = tab_p.is_some();
+        // lower edge, and the front and the box stand on it; the box clears only above. A sink
+        // base's false front has no bottom to stand on: it keeps its place.
+        let tabbed = tab_p.is_some() && !(sink && i + 1 == count);
         let box_h = match tabbed {
             true => format!("({front_h} - {lift})"),
             false => format!("({front_h} - 2*{lift})"),
