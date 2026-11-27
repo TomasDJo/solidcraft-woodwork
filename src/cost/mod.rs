@@ -74,7 +74,7 @@ pub fn estimate(list: &Value, text: &str) -> Result<Value, String> {
         line(
             name.clone(),
             qty,
-            "sheets",
+            if qty == 1.0 { "sheet" } else { "sheets" },
             exact(&name),
             format!("{name} = ?"),
         );

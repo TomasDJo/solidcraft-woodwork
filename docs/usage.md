@@ -870,7 +870,7 @@ Give your prices in **Woodwork settings** (Settings: Cut list and worktop), in *
   works too (`3,2`).
 
 The cut list then adds `cost` to its reply: a line for each sheet, the banding and each piece
-of hardware with its price and total, the `total` of what has a price, and `missing`: an entry
+of hardware with its quantity, unit (`sheet` for one, `sheets` for more, `m`, `pcs`), price and total, the `total` of what has a price, and `missing`: an entry
 for each line that has none yet, such as `Birch plywood 12 = ?`, ready to fill in and copy into
 Prices. So the first run, with Prices empty, lists every price the design needs. With Prices
 filled in, the PDF has a **Cost** table after the hardware (a line without a price says so), and

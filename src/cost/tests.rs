@@ -88,3 +88,11 @@ fn totals_add_up_banding_keeps_its_length_and_csv_quotes() {
         "{csv}"
     );
 }
+
+#[test]
+fn one_sheet_is_a_sheet() {
+    // the PDF reads "1 sheet", "3 sheets"
+    let cost = estimate(&list(), "").unwrap();
+    assert_eq!(cost["lines"][0]["unit"], "sheets"); // 3 of 18 mm
+    assert_eq!(cost["lines"][1]["unit"], "sheet"); // 1 of 6 mm
+}
