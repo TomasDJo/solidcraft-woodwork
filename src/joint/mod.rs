@@ -438,13 +438,15 @@ impl<'a> Joinery<'a> {
                     rod["diameter"] = json!("6 mm");
                     rod["height"] = json!(bolt);
                 });
+                // The housing before the shank: the shank's cut into a board that already has
+                // the housing is about a third cheaper than the other way round (#173).
                 let reach = format!("{bolt} - {thread}");
-                cut("bolt", start.clone(), j.into, "8 mm".into(), reach.clone());
                 let centre = shift(&start, j.into, &reach);
                 let face = shift(&centre, neg(j.out), &format!("{t}/2"));
                 let depth = format!("min({t} - 3 mm, {d} * 0.85)");
                 cut("housing", face, j.out, d.into(), depth);
                 self.fastener(|_| {});
+                cut("bolt", start.clone(), j.into, "8 mm".into(), reach);
                 "cams"
             }
             "biscuit" => {

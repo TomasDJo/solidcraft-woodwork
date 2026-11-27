@@ -640,8 +640,8 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   one has one. Material is not matched.
 - **Joinery at build** (`src/joint/`): the cabinet's `joints` (a Woodwork setting, filled in by
   `settings::design`; carcass: sides to bottom and top, a sink base's rails one fastener each,
-  `Joint::single`) is `none`, `dowels` (the default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, shank and cam housing in the end board from the face
-  away from `Joint::out`; `<Prefix>_cam_d`, `_cam_bolt`), `pocket` (a 9.5 mm pocket and a pilot,
+  `Joint::single`) is `none`, `dowels` (the default), `confirmat` or `screws` (4 x 50 mm, a thinner confirmat: `SCREW`), `cam` (thread hole in the face board, cam housing and shank in the end board from the face
+  away from `Joint::out`, the housing cut first: the shank into it is about a third cheaper than the other way round, #173; `<Prefix>_cam_d`, `_cam_bolt`), `pocket` (a 9.5 mm pocket and a pilot,
   cylinders on an axis at 15 degrees, a fixed angle: plugin runs take a non-axis `axis`; the
   pocket in the end board's `out` face, or the other with `pocket_face: inside`), `biscuit` (a box cut through both boards
   and a pattern, sizes from the `biscuit` choice, `SLOTS`, not parameters; a count parameter per
