@@ -205,3 +205,25 @@ def test_cabinets_ride_on_the_base_through_edit_and_a_new_frame(approval):
     taller = boxes(results[16])
     assert taller["A Side L"][2] == 200 and taller["Bench Frame front"][5] == 200, (taller["A Side L"], taller["Bench Frame front"])
     assert "A link" in [j["name"] for j in results[17]["joints"]], results[17]
+
+
+def test_a_base_under_cabinets_along_a_line_follows_the_line(approval):
+    # #215 step 2: A along a line from its right end, a base under it. The line grows from
+    # 1200 to 1500 mm (its right end moves 300 to the right); Apply settings puts A back on the
+    # line and makes the base again under it: both 300 further right, A still on the frame and
+    # held to it.
+    line = [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]
+    results = designed(approval, NONE, [
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "Wall line"}},
+        {"command": "sketch.line", "params": {"points": [[200, 500], [1400, 500]]}},
+        {"command": "sketch.dimension", "params": {"entities": ["l1"], "value": "1200 mm"}},
+        {"command": "sketch.finish", "params": {}},
+        plugin(approval, "cabinet", {"name": "A", "depth": 400, "place": "line", "line": line, "start_at": "right"}),
+        pick("A Side L"), plugin(approval, "base", {"name": "Bench"}), MEASURE,
+        {"command": "parameters.change", "params": {"name": "d1", "expression": "1500 mm"}},
+        plugin(approval, "rebuild", {}), MEASURE, {"command": "joint.list", "params": {}}])
+    before, after = boxes(results[7]), boxes(results[10])
+    assert after["A Side R"][3] - before["A Side R"][3] == 300, (before["A Side R"], after["A Side R"])
+    assert after["Bench Frame front"][3] - before["Bench Frame front"][3] == 300, after["Bench Frame front"]
+    assert after["A Side L"][2] == 170, after["A Side L"]
+    assert "A link" in [j["name"] for j in results[11]["joints"]], results[11]
