@@ -100,3 +100,16 @@ def test_connector_bolts_join_the_cabinets_on_a_base(approval):
         assert cylinders(measure, touching) - cylinders(measure, free) == 4, (touching, cylinders(measure, touching))
     hardware = {h["item"]: h["qty"] for h in results[8]["result"]["hardware"]}
     assert hardware.get("Connector bolt, M6") == 4, hardware
+
+
+def test_screws_fix_the_cabinets_to_the_frame(approval):
+    # A on a base, Plinth No: its bottom rests on the frame's front and back boards, two 4.5 mm
+    # holes down through it into each, counted as frame screws. Run again, none is cut twice.
+    steps = [plugin(approval, "cabinet", {"name": "A", "width": 600, "shelves": 0, "doors": 0}),
+             pick("A Side L"), plugin(approval, "base", {"name": "Bench"}),
+             pick("A Side L"), plugin(approval, "base", {"name": "Bench"}), MEASURE, plugin(approval, "cutlist", {})]
+    results = designed(approval, NONE, steps)
+    assert results[2]["result"]["screws"] == 4, results[2]["result"]
+    assert cylinders(results[5], "A Bottom") >= 4, cylinders(results[5], "A Bottom")
+    hardware = {h["item"]: h["qty"] for h in results[6]["result"]["hardware"]}
+    assert hardware.get("Frame screw, 4 x 50 mm") == 4, hardware

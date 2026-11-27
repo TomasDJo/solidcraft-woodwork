@@ -186,3 +186,29 @@ fn connector_bolts_go_through_the_touching_sides() {
     let m = json!({"bodies": [turned("A Side R", 582.0), turned("B Side L", 600.0)]});
     assert_eq!(bolts(&m, &names[..2]).len(), 4);
 }
+
+#[test]
+fn screws_go_down_through_the_bottoms_into_the_frame() {
+    // A's bottom from x 18 to 582, y 0 to 560, on the frame's front and back boards (18 thick,
+    // top at 170): two holes each, on their middle lines; the left board under Side L, none
+    let body = |name: &str, min: [f64; 3], max: [f64; 3]| json!({"name": name, "bbox": {"min": min, "max": max}});
+    let m = json!({"bodies": [
+        body("A Bottom", [18.0, 0.0, 170.0], [582.0, 560.0, 188.0]),
+        body("Bench Frame front", [0.0, 0.0, 100.0], [600.0, 18.0, 170.0]),
+        body("Bench Frame back", [0.0, 542.0, 100.0], [600.0, 560.0, 170.0]),
+        body("Bench Frame left", [0.0, 18.0, 100.0], [18.0, 542.0, 170.0]),
+        body("Other Frame front", [0.0, 0.0, 100.0], [600.0, 18.0, 170.0]),
+    ]});
+    let holes = screws(&m, &["A".to_string()], "Bench");
+    assert_eq!(holes.len(), 4);
+    assert_eq!(
+        (holes[0].0.as_str(), holes[0].1.as_str(), holes[0].2),
+        ("A Bottom", "Bench Frame front", 1)
+    );
+    assert_eq!(holes[0].3, [[156.75, 6.75, 170.0], [161.25, 11.25, 188.0]]);
+    assert_eq!(holes[3].1, "Bench Frame back");
+    // a bottom that does not rest on the frame (a plinth under it) gets none
+    let mut high = m.clone();
+    high["bodies"][0]["bbox"]["min"][2] = json!(270.0);
+    assert!(screws(&high, &["A".to_string()], "Bench").is_empty());
+}
