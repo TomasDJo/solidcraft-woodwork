@@ -299,10 +299,7 @@ fn rebuild(
     // stood and is held to the base again; a line still sets its width and height, not where it
     // stands.
     let was = &about["metadata"][edit::KEY]["link"];
-    let base = (was["place"] == "base")
-        .then(|| was["to"].as_str())
-        .flatten()
-        .filter(|b| (tree["components"].as_array().into_iter().flatten()).any(|c| c["name"] == *b));
+    let base = live_base(about, &tree);
     let found = found.filter(|_| base.is_none());
     let params = &params;
     run("component.activate", json!({"component": parent}))?;
@@ -488,6 +485,27 @@ fn link(
         }),
     )?;
     noted(other, place, name, run)
+}
+
+/// The mobile base a cabinet's `component.metadata` (`about`) notes it is held to, when that
+/// base is still in the design (`component.list`'s `tree`): then the base places it (#215).
+fn live_base<'a>(about: &'a Value, tree: &Value) -> Option<&'a str> {
+    let was = &about["metadata"][edit::KEY]["link"];
+    let base = was["to"].as_str().filter(|_| was["place"] == "base")?;
+    let mut all = tree["components"].as_array().into_iter().flatten();
+    all.any(|c| c["name"] == base).then_some(base)
+}
+
+/// Before the base `base` is made again: the cabinets it holds lose their links with it, so
+/// they are grounded where they stand and go up or down to the new frame as any grounded one.
+fn release(base: &str, tree: &Value, run: Run) -> Result<(), String> {
+    for cabinet in edit::hanging(tree, &run("joint.list", json!({}))?, base) {
+        run(
+            "occurrence.ground",
+            json!({"occurrence": format!("{cabinet}:1"), "grounded": true}),
+        )?;
+    }
+    Ok(())
 }
 
 /// Holds the cabinet `name` to the mobile base `base` where it stands, with a rigid link
@@ -1309,14 +1327,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let built = base::build(&params, &plans)?;
             let lift = built.1["lift"].as_f64().unwrap_or(0.0);
             if again {
-                // The cabinets it held lose their links with it: grounded where they stand, so
-                // they go up or down to the new frame as any grounded one does.
-                for cabinet in edit::hanging(&tree, &run("joint.list", json!({}))?, &name) {
-                    run(
-                        "occurrence.ground",
-                        json!({"occurrence": format!("{cabinet}:1"), "grounded": true}),
-                    )?;
-                }
+                release(&name, &tree, run)?;
                 run("component.delete", json!({"component": name}))?;
             }
             let tree = run("component.list", json!({}))?;

@@ -855,7 +855,8 @@ frame under all of them and stands them on it:
   another keeps its link to that one and rides along with it. An Edit or Apply settings puts the
   cabinet back on the base and links it again. A cabinet placed Along a line stays on the base
   too: the line still sets its width and height, but the base holds where it stands. The base
-  does not follow the line yet. If you move the line, run Mobile base again.
+  does not follow the line yet: moving the line moves neither the base nor its cabinets, and
+  running Mobile base again makes the frame where the cabinets stand, not on the line.
 - **Connector bolts** join the cabinets: where a side of one touches a side of another, four
   9 mm holes (for M6 connector bolts) go through both, at a quarter and three quarters of where
   they touch, across and up. Run again, a hole already there is not cut twice. An Edit of a

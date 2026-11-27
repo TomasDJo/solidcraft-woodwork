@@ -911,3 +911,78 @@ fn a_base_refuses_a_cabinet_that_would_not_stand_on_it() {
     let err = execute("base", &params, &mut run).unwrap_err();
     assert!(err.contains("`B` did not go up onto the base"), "{err}");
 }
+
+/// `component.list` with cabinet A (occurrence 7, at x 100, y 200, z 170) and the base Bench (3).
+fn on_a_base() -> Value {
+    let at = json!([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [100, 200, 170, 1]]);
+    json!({"components": [
+        {"name": "A", "occurrences": [{"id": 7, "transform": at, "grounded": true}]},
+        {"name": "Bench", "occurrences": [{"id": 3, "grounded": true}]},
+    ]})
+}
+
+#[test]
+fn a_cabinet_is_held_to_its_base_and_notes_it() {
+    let mut asked = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        asked.push(json!([command, args]));
+        Ok(match command {
+            "component.list" => on_a_base(),
+            "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet"}}}),
+            _ => json!({}),
+        })
+    };
+    on_base("Bench", "A", &mut run).unwrap();
+    let find = |name: &str| asked.iter().find(|a| a[0] == name).map(|a| a[1].clone());
+    // no longer grounded: it rides on the base
+    assert_eq!(
+        find("occurrence.ground").unwrap(),
+        json!({"occurrence": "A:1", "grounded": false})
+    );
+    let joint = find("joint.create").unwrap();
+    assert_eq!(
+        (&joint["type"], &joint["name"]),
+        (&json!("rigid"), &json!("A link"))
+    );
+    assert_eq!(
+        (&joint["a"]["occurrence"], &joint["b"]["occurrence"]),
+        (&json!("Bench:1"), &json!("A:1"))
+    );
+    // both frames at the cabinet's origin, so nothing moves
+    assert_eq!(joint["a"]["frame"]["origin"], json!([100.0, 200.0, 170.0]));
+    let noted = find("component.metadata.set").unwrap();
+    assert_eq!(
+        noted["values"][edit::KEY]["link"],
+        json!({"to": "Bench", "place": "base"})
+    );
+}
+
+#[test]
+fn only_a_base_still_there_places_a_cabinet_again() {
+    let noted = |to: &str, place: &str| json!({"metadata": {edit::KEY: {"link": {"to": to, "place": place}}}});
+    let tree = on_a_base();
+    assert_eq!(live_base(&noted("Bench", "base"), &tree), Some("Bench"));
+    // a base deleted since: the cabinet goes back as it stood alone (its line, if any)
+    assert_eq!(live_base(&noted("Gone", "base"), &tree), None);
+    // a link to a neighbour is not a base's
+    assert_eq!(live_base(&noted("Bench", "right"), &tree), None);
+    assert_eq!(live_base(&json!({}), &tree), None);
+}
+
+#[test]
+fn a_base_made_again_grounds_the_cabinets_it_held_first() {
+    let mut asked = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        asked.push(json!([command, args]));
+        Ok(match command {
+            "joint.list" => json!({"joints": [{"name": "A link", "a": 3, "b": 7}]}),
+            _ => json!({}),
+        })
+    };
+    release("Bench", &on_a_base(), &mut run).unwrap();
+    assert_eq!(
+        asked[1],
+        json!(["occurrence.ground", {"occurrence": "A:1", "grounded": true}])
+    );
+    assert_eq!(asked.len(), 2);
+}
