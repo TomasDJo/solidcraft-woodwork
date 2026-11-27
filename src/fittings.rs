@@ -20,6 +20,9 @@ pub const HANDLE_END: f64 = 100.0; // and from its top or bottom to the nearest 
 pub const GROOVE_D: f64 = 20.0; // a finger groove: a half round, 20 mm high and 10 deep
 pub const GROOVE_EDGE: f64 = 25.0; // its middle, from the front's edge
 pub const GRIP_LAND: f64 = 6.0; // a grip edge's 45-degree bevel leaves this much of the edge
+pub const TAB_W: f64 = 120.0; // a drawer bottom's tab (#181): its width across the front,
+pub const TAB_OUT: f64 = 20.0; // how far it sticks out in front of the front,
+pub const TAB_R: f64 = 10.0; // and the radius of its two front corners
 
 /// The top row of pins, counted in pitches above the bottom panel. Pin holes sit on a 32 mm
 /// grid there, two pitches clear of both ends of the clear height.
@@ -171,7 +174,7 @@ const HINGES: [f64; 3] = [900.0, 1600.0, 2000.0];
 /// Where the screws of a knob (one) or a pull (two) sit, from the handle's middle.
 pub fn screw_offsets(handles: &str) -> &'static [f64] {
     match handles {
-        "none" | "grip" | "groove" => &[],
+        "none" | "grip" | "groove" | "tab" => &[],
         "knob" => &[0.0],
         _ => &[-PULL / 2.0, PULL / 2.0],
     }
@@ -198,6 +201,10 @@ pub fn profile_fits(handles: &str, t: f64) -> Result<(), String> {
         "grip" if t <= GRIP_LAND => Err(format!("a grip edge needs fronts over {GRIP_LAND} mm")),
         "groove" if t <= GROOVE_D / 2.0 => Err(format!(
             "a finger groove needs fronts over {} mm",
+            GROOVE_D / 2.0
+        )),
+        "tab" if t <= GROOVE_D / 2.0 => Err(format!(
+            "a bottom tab's scoop needs fronts over {} mm",
             GROOVE_D / 2.0
         )),
         _ => Ok(()),

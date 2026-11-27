@@ -313,8 +313,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     let handles = p.get("handles").and_then(Value::as_str).unwrap_or("none");
     check(
-        matches!(handles, "none" | "knob" | "pull" | "grip" | "groove"),
-        "handles must be none, knob, pull, grip or groove",
+        matches!(
+            handles,
+            "none" | "knob" | "pull" | "grip" | "groove" | "tab"
+        ),
+        "handles must be none, knob, pull, grip, groove or tab",
     )?;
     crate::fittings::profile_fits(handles, t)?;
     // only checked on a cabinet with fronts to cut them into
@@ -333,7 +336,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         _ => return Err("door_hinge must be left or right".into()),
     };
     check(
-        handles == "none" || doors == 0.0 || (w - 2.0 * o - (doors + 1.0) * g) / doors >= 150.0,
+        matches!(handles, "none" | "tab")
+            || doors == 0.0
+            || (w - 2.0 * o - (doors + 1.0) * g) / doors >= 150.0,
         "doors are too narrow for handles",
     )?;
     check(

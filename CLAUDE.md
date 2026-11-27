@@ -726,6 +726,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   a door's top or bottom by `fittings::grip_on_top` (auto by floor or wall unit, also on a
   tall door; middle is the top), on the corner's folding door only. `fittings::profile_fits`
   refuses a front too thin for it. Both run a millimetre past the front's ends.
+  `tab` (#181, drawers only; doors and a sink base's false front get nothing): in
+  `cabinet::drawers` right after the front, `<Drawer> Tab` (a `Kit` body, `drawer_bottom` thick,
+  `TAB_W` wide, from the front's back face to `TAB_OUT` past its face; `Tab front` and `Tab corner
+  1/2` joined, `TAB_R` round) in a `<front> tab notch` at the front's lower edge, and a `tab scoop`
+  (`GROOVE_D` cylinder) above it: 6 commands a drawer. The front keeps its height (the gaps stay)
+  and the bottom is unchanged: the box's bottom cannot reach the front's lower edge, which on the
+  lowest drawer is beside the carcass bottom. The cut list lists the tab as its own part.
 - **Grooved fronts** (`front_style` flat, vertical, horizontal: per cabinet with a Settings
   default, as `fronts`; `groove_shape` square or round, `groove_spacing`, `groove_depth`:
   design-wide, the parameters `<Prefix>_groove_spacing` and `_groove_depth` on a cabinet with
