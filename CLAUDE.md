@@ -202,8 +202,9 @@ table says which).
   `drawer_side_height`, `drawer_back_height` (#221: box only, 0 the full height and the sides', a
   parameter only when set, the board's height `min(<box>, <param>)` and the back's `min(<side>,
   <param>)` per drawer, so a taller value (dialog, Parameters, Edit) is capped, not refused, and
-  a sink's false front sets no limit; `input` refuses only 1 to 49 mm; on finger joints the
-  back param is not used, the back as high as its own sides, whose corner rows it pairs with); the cut list's `banding`, `cut_sizes`
+  a sink's false front sets no limit; `input` refuses only 1 to 49 mm; on finger joints too
+  (#233): the back corners' fingers over the back's own height, their own pair of rows when it
+  differs from the sides', `fingers 3` and `4`); the cut list's `banding`, `cut_sizes`
   (its field `size`), `sheet`, `kerf`, `trim` (mm in every unit, `Def::Mm`); a worktop's
   `worktop_material` and `worktop_thickness` (its `material` and `thickness`; a worktop made
   again keeps its remembered ones). `settings::table` is the one list: key, the entry's field,

@@ -653,3 +653,20 @@ def test_glass_doors(approval):
         assert cylinders(m, f"D Drawer {n} Front rail top") == 1, cylinders(m, f"D Drawer {n} Front rail top")
     bought = results[2]["result"]["hardware"]
     assert {"item": "Glass, 4 mm, 492 x 253 mm", "qty": 4} in bought, bought
+
+
+def test_drawer_back_height(approval):
+    # Drawer back height (#233) on a plain and a finger-jointed box: the back is 80 mm high, the
+    # sides keep the box's height; finger-jointed, the back's corners are cut over its own 80 mm
+    # (an odd count of 12 mm boards' fingers: 7 of 11.4 mm), so it is lighter than a plain 80.
+    for joints in ("none", "finger"):
+        results = designed(approval, {"drawer_back_height": 80, "drawer_joints": joints},
+                           [plugin(approval, "cabinet", {"drawers": 2}), MEASURE], "--save",
+                           str(ROOT / "dist" / f"back-height-{joints}.sc"))
+        box = boxes(results[1])
+        back, side = box["Cabinet Drawer 1 Box back"], box["Cabinet Drawer 1 Left"]
+        assert round(back[5] - back[2], 3) == 80 and back[2] == side[2], (back, side)
+        assert side[5] - side[2] > 200, side
+        full = (back[3] - back[0]) * (back[4] - back[1]) * 80
+        cut = volume(results[1], "Cabinet Drawer 1 Box back")
+        assert (cut < full - 1000) == (joints == "finger"), (joints, cut, full)

@@ -116,7 +116,7 @@ pub fn build(cabinet: &Cabinet) {
         ("drawer_back_height", heights[1], "drawer box back height"),
     ]
     .map(|(key, mm_value, comment)| {
-        let used = mm_value > 0.0 && !(fingers && key == "drawer_back_height");
+        let used = mm_value > 0.0;
         used.then(|| kit.parameter(key, mm_value, comment))
     });
     // Undermount slides (Blum's rule): the box 42 mm narrower inside than the opening, and as
@@ -288,10 +288,10 @@ pub fn build(cabinet: &Cabinet) {
             Some(p) => format!("min({box_h}, {p})"),
             None => box_h.clone(),
         };
-        // finger-jointed, the back's corners pair with the sides', so it is as high as they are
+        // finger-jointed too: its corners' fingers are laid out over its own height (below)
         let back_h = match &back_p {
-            Some(p) if !fingers => format!("min({side_h}, {p})"),
-            _ => side_h.clone(),
+            Some(p) => format!("min({side_h}, {p})"),
+            None => side_h.clone(),
         };
         let right = format!("{x} + {box_w} - {bt}");
         let inner_x = format!("{x} + {bt}");
@@ -340,41 +340,55 @@ pub fn build(cabinet: &Cabinet) {
             // The four upright corners: an odd count of fingers as wide as the boards are
             // thick, the sides keeping the outer ones; one box cut per board at each corner and
             // two patterns up the box, shared by the four (as `joint::finger` does the shell).
-            // over the sides' height, which the back's is too here, the front above them left
-            // whole
-            let half = format!("floor(({side_h}) / (2*{bt}))");
-            let w = format!("(({side_h}) / (2*{half} + 1))");
-            let (mut sides, mut ends) = (Vec::new(), Vec::new());
+            // The front corners over the sides' height, the front above them left whole; the
+            // back's over its own (#221), lower when Drawer back height asks, the sides whole
+            // above it. Each height its own pair of rows.
             let front_t = if integrated { et.clone() } else { bt.clone() };
+            let mut runs: Vec<(String, Vec<String>, Vec<String>)> = Vec::new();
             for (side, sx) in [("Left", x.clone()), ("Right", right.clone())] {
                 let boards = [
-                    ("Box front", side_y.clone(), front_t.clone()),
-                    ("Box back", back_y.clone(), bt.clone()),
+                    ("Box front", side_y.clone(), front_t.clone(), side_h.clone()),
+                    ("Box back", back_y.clone(), bt.clone(), back_h.clone()),
                 ];
-                for (end, ey, deep) in boards {
-                    for (board, other, first, list) in [
-                        (side, end, w.clone(), &mut sides),
-                        (end, side, mm(0.0), &mut ends),
-                    ] {
+                for (end, ey, deep, run) in boards {
+                    let w = format!("(({run}) / (2*floor(({run}) / (2*{bt})) + 1))");
+                    let at = match runs.iter().position(|r| r.0 == run) {
+                        Some(at) => at,
+                        None => {
+                            runs.push((run.clone(), Vec::new(), Vec::new()));
+                            runs.len() - 1
+                        }
+                    };
+                    for (board, other, first, is_side) in
+                        [(side, end, w.clone(), true), (end, side, mm(0.0), false)]
+                    {
                         let target = [format!("{} {drawer} {board}", kit.name)];
                         let part = format!("{drawer} {board} finger {other}");
                         let z0 = format!("{bz} + {first}");
                         kit.panel(&part, [&sx, &ey, &z0], [&bt, &deep, &w], Some(&target));
+                        let list = if is_side {
+                            &mut runs[at].1
+                        } else {
+                            &mut runs[at].2
+                        };
                         list.push(format!("{} {part}", kit.name));
                     }
                 }
             }
-            for (k, (features, count)) in [(sides, half.clone()), (ends, format!("({half} + 1)"))]
-                .into_iter()
-                .enumerate()
-            {
-                kit.push((
-                    "solid.pattern.rectangular",
-                    json!({
-                        "features": features, "name": format!("{} {drawer} fingers {}", kit.name, k + 1),
-                        "dir1": [0, 0, 1], "count1": count, "spacing1": format!("2*{w}"),
-                    }),
-                ));
+            let mut k = 0;
+            for (run, sides, ends) in runs {
+                let half = format!("floor(({run}) / (2*{bt}))");
+                let w = format!("(({run}) / (2*{half} + 1))");
+                for (features, count) in [(sides, half.clone()), (ends, format!("({half} + 1)"))] {
+                    k += 1;
+                    kit.push((
+                        "solid.pattern.rectangular",
+                        json!({
+                            "features": features, "name": format!("{} {drawer} fingers {k}", kit.name),
+                            "dir1": [0, 0, 1], "count1": count, "spacing1": format!("2*{w}"),
+                        }),
+                    ));
+                }
             }
         }
         // The slide (or runner): straight out of the front, as far as its type travels.
