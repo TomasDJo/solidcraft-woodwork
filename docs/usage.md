@@ -85,7 +85,7 @@ component can hold its cabinets.
 **Front style** (Woodwork settings, and Edit for one cabinet): **Flat** (the default), or
 **Vertical grooves** or **Horizontal grooves** cut into the face of every door and drawer front,
 corner doors too. Woodwork settings give their **Groove shape** (Square: a flat bottom; Round: a
-half round, fluted), **Groove spacing** (50 mm by default: about how far apart they are, evened
+half round, fluted; V: a 90 degree V, #182), **Groove spacing** (50 mm by default: about how far apart they are, evened
 out over each front so the strips between them are alike) and **Groove depth** (3 mm; the grooves
 are twice as wide). Each groove runs the front's whole length. They are the parameters
 `Name_groove_spacing` and `Name_groove_depth`, and the count follows a resize. A groove must stay
@@ -93,6 +93,14 @@ clear of the hinge cups behind it: on a cabinet with doors at most the thickness
 (4 mm on an 18 mm door), without doors at most half the thickness.
 
 ![Grooved fronts: vertical square grooves on the doors (left), round horizontal ones on the drawers (right).](images/grooved-fronts.png)
+
+A V groove's size is fixed when the cabinet is built, from its depth then: changing
+`Name_groove_depth` afterwards changes square and round grooves, not V ones. Use Apply settings
+to rebuild them. The V grooves' place, length and count still follow a resize.
+
+![V-grooved fronts: vertical V grooves on the doors (left), horizontal ones on the drawers (right).](images/v-grooves.png)
+
+*V-grooved fronts: vertical V grooves on the doors (left), horizontal ones on the drawers (right).*
 
 **Front style: Shaker** makes each door and drawer front a frame and panel: two stiles (full
 height) and two rails between them, **Frame width** wide (Woodwork settings, 60 mm by default,

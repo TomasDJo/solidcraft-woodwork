@@ -1622,6 +1622,47 @@ fn grooved_fronts() {
         named(&commands, "Cabinet Drawer 2 Front front grooves")["dir1"],
         json!([0, 0, 1])
     );
+    // V (#182): a triangle sketched square to the groove at its start, a millimetre in front of
+    // the face, 3 mm deep and 2 x 3 wide there, extruded up the door as a cut, then patterned
+    let p = json!({"doors": 1, "front_style": "vertical", "groove_shape": "v"});
+    let (commands, _) = build(&p).unwrap();
+    let sketch = named(&commands, "Cabinet Door front groove V");
+    assert_eq!(sketch["plane"]["y_dir"], json!([0, 1, 0]));
+    assert_eq!(
+        sketch["plane"]["x_dir"],
+        json!([1, 0, 0]),
+        "its normal up the door"
+    );
+    let i = commands
+        .iter()
+        .position(|c| c.1["name"] == "Cabinet Door front groove V")
+        .unwrap();
+    assert_eq!(
+        commands[i + 1].1["points"],
+        json!([[-4.0, -1.0], [0.0, 3.0], [4.0, -1.0]])
+    );
+    let cut = named(&commands, "Cabinet Door front groove");
+    assert_eq!(
+        (
+            cut["sketch"].clone(),
+            cut["operation"].clone(),
+            cut["targets"].clone()
+        ),
+        (
+            json!("Cabinet Door front groove V"),
+            json!("cut"),
+            json!(["Cabinet Door"])
+        )
+    );
+    assert!(cut["distance"].as_str().unwrap().ends_with(" + 2 mm"));
+    let row = named(&commands, "Cabinet Door front grooves");
+    assert_eq!(row["features"], json!(["Cabinet Door front groove"]));
+    // horizontal on a drawer: the sketch's normal along the front's width
+    let p = json!({"drawers": 1, "front_style": "horizontal", "groove_shape": "v"});
+    let (commands, _) = build(&p).unwrap();
+    let sketch = named(&commands, "Cabinet Drawer 1 Front front groove V");
+    assert_eq!(sketch["plane"]["x_dir"], json!([0, 0, -1]));
+    assert!(build(&json!({"doors": 1, "front_style": "vertical", "groove_shape": "w"})).is_err());
     // flat: none, and no parameters
     let (commands, _) = build(&json!({"doors": 1})).unwrap();
     assert!(!commands.iter().any(|c| c.1.to_string().contains("groove_")));
