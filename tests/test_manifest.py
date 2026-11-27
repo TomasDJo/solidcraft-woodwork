@@ -112,12 +112,12 @@ def test_choices_have_titles(approval):
     # The settings dropdown (`runtime.ribbon_groups`, SolidCraft 0.50): one Model-tab button
     # listing exactly the settings' section entries, each with a menu slot of its own.
     sections = [e["name"] for e in manifest["runtime"]["entries"] if e["name"].startswith("settings-")]
-    assert sections == [f"settings-{s}" for s in ("general", "fronts", "drawers", "plinth", "joinery", "cutlist", "display")]
+    assert sections == [f"settings-{s}" for s in ("general", "fronts", "doors", "drawers", "plinth", "joinery", "cutlist", "display")]
     assert manifest["runtime"]["ribbon_groups"] == [
         {"label": "Woodwork settings", "icon": "icons/settings.svg", "entries": sections}], manifest["runtime"]["ribbon_groups"]
-    titles = ["General", "Doors and fronts", "Drawers", "Plinth / toe kick and wall mount", "Joinery", "Cut list and worktop", "Display"]
+    titles = ["General", "Fronts", "Doors", "Drawer", "Plinth and wall mount", "Joinery", "Cut list and worktop", "Display"]
     slots = {e["name"]: e.get("slots") for e in manifest["runtime"]["entries"] if e["name"].startswith("settings")}
-    assert slots == {"settings": None} | {s: [{"kind": "menu", "name": f"Settings: {t}"}] for s, t in zip(sections, titles)}, slots
+    assert slots == {s: [{"kind": "menu", "name": f"{t} settings"}] for s, t in zip(sections, titles)}, slots
     # Each function names its icon, and the package has it (the settings' dialogs share one).
     for entry in manifest["runtime"]["entries"]:
         icon = entry["input_schema"]["x-solidcraft-icon"]

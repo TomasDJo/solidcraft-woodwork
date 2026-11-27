@@ -264,15 +264,24 @@ fn a_panel_is_made_in_its_cabinet_and_kept() {
 
 #[test]
 fn settings_patch_then_show_and_the_hook_names_our_data() {
-    assert_eq!(
-        calls("settings"),
-        [
-            "storage.get",
-            "storage.patch",
-            "storage.get",
-            "material.list"
-        ]
-    );
+    // the internal entry and every section's (Doors since #211)
+    for entry in [
+        "settings",
+        "settings-fronts",
+        "settings-doors",
+        "settings-display",
+    ] {
+        assert_eq!(
+            calls(entry),
+            [
+                "storage.get",
+                "storage.patch",
+                "storage.get",
+                "material.list"
+            ],
+            "{entry}"
+        );
+    }
     let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
         asked.push(json!([command, args]));

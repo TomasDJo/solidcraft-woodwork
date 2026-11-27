@@ -1757,9 +1757,10 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                       "message": message}),
             )
         }
-        // the entry for scripts, and one with a dialog per section: the same storage
-        "settings" | "settings-general" | "settings-fronts" | "settings-drawers"
-        | "settings-plinth" | "settings-joinery" | "settings-cutlist" | "settings-display" => {
+        // `settings` (no manifest entry: the unit tests) and one entry a section, one storage
+        "settings" | "settings-general" | "settings-fronts" | "settings-doors"
+        | "settings-drawers" | "settings-plinth" | "settings-joinery" | "settings-cutlist"
+        | "settings-display" => {
             let stored = run("storage.get", json!({}))?;
             run(
                 "storage.patch",

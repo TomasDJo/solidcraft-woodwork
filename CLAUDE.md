@@ -80,8 +80,9 @@ table says which).
   with a plinth height of 0. Not expressed: Settings' Back against a Cabinet's Wall mount (two
   dialogs), Edit's Wall mount against Back (an option, not a field), Picked cabinets with Apply
   No (a keyword on the reserved `selection` may turn Run off).
-  **Settings' sections (#128 step 2):** an entry per group, `settings-general`, `-fronts`,
-  `-drawers`, `-plinth`, `-joinery`, `-cutlist`, `-display` (menu "Settings: <group>", the
+  **Settings' sections (#128 step 2):** an entry per group, `settings-general`, `-fronts`
+  (what doors and drawer fronts share), `-doors` (hinge opening, double dividers),
+  `-drawers`, `-plinth`, `-joinery`, `-cutlist`, `-display` (menu "<Group> settings", the
   settings icon), each with only its fields. Same `execute` branch and storage: a run sends only
   its fields, so `patch` leaves the rest as stored. The hook (`settings::fields`) answers only
   the entry's fields (`settings::SECTIONS`), as a reply naming a field the schema lacks is
@@ -90,9 +91,9 @@ table says which).
   hidden by the hook when the stored `plinth_type` is legs or casters.
   `units` is a setting, in General only: the other entries' sizes are in the stored unit (the
   hook scales by it and hints "In mm, as set in General"; `patch` takes it when the run gives no
-  `units`). `settings`, for scripts, has no slot, no hook and no properties: with no conditions
-  `plugin.run` passes its fields through unchecked, so it takes any setting; agents
-  use the section tools. `runtime.ribbon_groups` (SolidCraft 0.50, tangency-labs/solidcraft#20089)
+  `units`). There is no bare `settings` entry (it showed as an empty button): scripts and agents
+  run the section entries, and `build.plugin(approval, "settings", {...})` splits the fields
+  into one run a section (`build.settings_steps`, General first with the units). `runtime.ribbon_groups` (SolidCraft 0.50, tangency-labs/solidcraft#20089)
   puts the section entries behind one "Woodwork settings" button in the Model tab's Plugins
   group; it affects only those buttons, not the Plugins menu or the slot tabs, and an entry a
   user pinned keeps its own button. `tests/test_manifest.py` checks the group lists exactly the
@@ -189,7 +190,7 @@ table says which).
   the unit tests give them; a corner skips `joints_inner` and `slide_type` and takes dowels for
   a stored dado), so `make` remembers them and Edit rebuilds from those, not from the settings.
   Over `plugin.run` and the tools they cannot be passed (undeclared, refused on an entry with
-  conditions): a script runs `settings` first. The Settings dialog's choices keep `keep` (the
+  conditions): a script runs the settings' section entries first. The Settings dialog's choices keep `keep` (the
   test helper sends schema defaults) but the hook answers the stored value or the default, so
   each size's `x-solidcraft-visible-when` on the method works; `build.plugin` sends Settings no
   number (the hook fills them). Slide length stays per cabinet: Auto at build (it goes by the
@@ -306,7 +307,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `edit`, `material`, `panel`, `base`, `worktop`, `cutlist`, `drawing`, `settings` and `rebuild`, all edit.
+Entries today: `cabinet`, `edit`, `material`, `panel`, `base`, `worktop`, `cutlist`, `drawing`, the eight `settings-<section>` entries and `rebuild`, all edit.
 A selection field (an array) has no `default`: the app's dialog refuses one with any keyword but
 type, title, description, `maxItems` and the conditions, and the menu then says "This entry needs to
 be run from the agent or CLI" (0.49.0, `selection_field`). `test_manifest` checks it.

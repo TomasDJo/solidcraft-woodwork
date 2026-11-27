@@ -191,15 +191,10 @@
           }}
         },
       {
-        "name": "settings",
-        "effect": "edit",
-        "input_schema": { "type": "object", "x-solidcraft-icon": "icons/settings.svg", "properties": {} }
-      },
-      {
         "name": "settings-general",
         "effect": "edit",
         "dialog_hook": true,
-        "slots": [{ "kind": "menu", "name": "Settings: General" }],
+        "slots": [{ "kind": "menu", "name": "General settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
           "required": ["units", "material", "thickness", "back", "back_thickness", "labels"],
@@ -217,22 +212,34 @@
         "name": "settings-fronts",
         "effect": "edit",
         "dialog_hook": true,
-        "slots": [{ "kind": "menu", "name": "Settings: Doors and fronts" }],
+        "slots": [{ "kind": "menu", "name": "Fronts settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
-          "required": ["fronts", "reveal", "handles", "handle_position", "hinge_angle", "front_style", "groove_shape", "groove_spacing", "groove_depth", "frame_width", "panel_thickness", "double_dividers"],
+          "required": ["fronts", "reveal", "handles", "handle_position", "front_style", "groove_shape", "groove_spacing", "groove_depth", "frame_width", "panel_thickness"],
           "properties": {
             "fronts": { "type": "string", "title": "Fronts", "description": "How new cabinets' doors and drawer fronts sit.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "overlay", "title": "Overlay", "description": "In front, covering the board edges."}, {"const": "inset", "title": "Inset", "description": "Inside the opening, flush."}], "x-solidcraft-help": "https://github.com/TomasDJo/solidcraft-woodwork/blob/main/docs/usage.md#fronts-overlay-or-inset" },
             "reveal": { "type": "number", "title": "Reveal (mm)", "description": "New cabinets' gap round the fronts, 0.5 to 6 mm.", "minimum": 0.5, "maximum": 6, "default": 2 },
             "handles": { "type": "string", "title": "Handle holes", "description": "New cabinets' handle holes.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "none", "title": "None"}, {"const": "knob", "title": "Knob"}, {"const": "pull", "title": "Pull"}, {"const": "grip", "title": "Grip edge"}, {"const": "groove", "title": "Finger groove"}, {"const": "tab", "title": "Bottom tab"}] },
             "handle_position": { "type": "string", "title": "Handle position", "description": "Where the handle holes go on a door.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "auto", "title": "Auto", "description": "Top on a floor unit, bottom on a wall unit."}, {"const": "top", "title": "Top"}, {"const": "middle", "title": "Middle"}, {"const": "bottom", "title": "Bottom"}], "x-solidcraft-visible-when": {"field": "handles", "in": ["keep", "knob", "pull", "grip", "groove"]} },
-            "hinge_angle": { "type": "string", "title": "Hinge opening", "description": "How far new cabinets' doors open.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "95", "title": "95 degrees"}, {"const": "110", "title": "110 degrees"}, {"const": "165", "title": "165 degrees"}] },
             "front_style": { "type": "string", "title": "Front style", "description": "New cabinets' fronts: plain, or grooves cut into their faces.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "flat", "title": "Flat"}, {"const": "vertical", "title": "Vertical grooves"}, {"const": "horizontal", "title": "Horizontal grooves"}, {"const": "shaker", "title": "Shaker", "description": "A frame of stiles and rails round a thinner panel."}, {"const": "glass", "title": "Glass", "description": "Doors as Shaker with a 4 mm glass pane; drawer fronts as Shaker."}] },
             "groove_shape": { "type": "string", "title": "Groove shape", "description": "Square: a flat bottom. Round: a half round, fluted.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "square", "title": "Square"}, {"const": "round", "title": "Round"}], "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "vertical", "horizontal"]} },
             "groove_spacing": { "type": "number", "title": "Groove spacing", "description": "About how far apart the grooves are; evened out over each front.", "default": 50, "minimum": 0.375, "maximum": 300, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "vertical", "horizontal"]} },
             "groove_depth": { "type": "number", "title": "Groove depth", "description": "How deep the grooves are; they are twice as wide.", "default": 3, "minimum": 0.015, "maximum": 10, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "vertical", "horizontal"]} },
             "frame_width": { "type": "number", "title": "Frame width", "description": "A shaker front's stiles and rails, 55 to 150 mm wide; a door's stile takes the hinge cups.", "default": 60, "minimum": 2.1, "maximum": 150, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "shaker", "glass"]} },
-            "panel_thickness": { "type": "number", "title": "Panel thickness", "description": "The thinner panel in a shaker front's frame, set in a groove.", "default": 6, "minimum": 0.118, "maximum": 25, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "shaker", "glass"]} },
+            "panel_thickness": { "type": "number", "title": "Panel thickness", "description": "The thinner panel in a shaker front's frame, set in a groove.", "default": 6, "minimum": 0.118, "maximum": 25, "x-solidcraft-visible-when": {"field": "front_style", "in": ["keep", "shaker", "glass"]} }
+          }
+        }
+      },
+      {
+        "name": "settings-doors",
+        "effect": "edit",
+        "dialog_hook": true,
+        "slots": [{ "kind": "menu", "name": "Doors settings" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/settings.svg",
+          "required": ["hinge_angle", "double_dividers"],
+          "properties": {
+            "hinge_angle": { "x-solidcraft-help": "https://github.com/TomasDJo/solidcraft-woodwork/blob/main/docs/usage.md#hinges-and-slides", "type": "string", "title": "Hinge opening", "description": "How far new cabinets' doors open.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "95", "title": "95 degrees"}, {"const": "110", "title": "110 degrees"}, {"const": "165", "title": "165 degrees"}] },
             "double_dividers": { "type": "string", "title": "Double dividers", "description": "Where two overlay doors meet on a divider: two boards side by side instead of one, so each door covers a whole board and takes standard hinges.", "default": "keep", "oneOf": [{"const": "keep", "title": "Keep"}, {"const": "no", "title": "No"}, {"const": "yes", "title": "Yes"}] }
           }
         }
@@ -241,7 +248,7 @@
         "name": "settings-drawers",
         "effect": "edit",
         "dialog_hook": true,
-        "slots": [{ "kind": "menu", "name": "Settings: Drawers" }],
+        "slots": [{ "kind": "menu", "name": "Drawer settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
           "required": ["drawer_thickness", "drawer_bottom", "drawer_side_height", "drawer_back_height", "drawer_joints", "drawer_front", "slide_type", "strip_thickness", "strip_height"],
@@ -262,7 +269,7 @@
         "name": "settings-plinth",
         "effect": "edit",
         "dialog_hook": true,
-        "slots": [{ "kind": "menu", "name": "Settings: Plinth / toe kick and wall mount" }],
+        "slots": [{ "kind": "menu", "name": "Plinth and wall mount settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
           "required": ["plinth", "plinth_type", "plinth_setback", "cleat_height", "cleat_thickness"],
@@ -279,7 +286,7 @@
         "name": "settings-joinery",
         "effect": "edit",
         "dialog_hook": true,
-        "slots": [{ "kind": "menu", "name": "Settings: Joinery" }],
+        "slots": [{ "kind": "menu", "name": "Joinery settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
           "required": ["joints", "joints_inner", "joint_spacing", "joint_edge", "dowel_d", "dowel_length", "dado_depth", "biscuit", "cam_d", "cam_bolt", "finger_width", "finger_bottom", "pocket_face"],
@@ -304,7 +311,7 @@
         "name": "settings-cutlist",
         "effect": "edit",
         "dialog_hook": true,
-        "slots": [{ "kind": "menu", "name": "Settings: Cut list and worktop" }],
+        "slots": [{ "kind": "menu", "name": "Cut list and worktop settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
           "required": ["banding", "cut_sizes", "sheet", "kerf", "trim", "worktop_material", "worktop_thickness"],
@@ -324,7 +331,7 @@
         "name": "settings-display",
         "effect": "edit",
         "dialog_hook": true,
-        "slots": [{ "kind": "menu", "name": "Settings: Display" }],
+        "slots": [{ "kind": "menu", "name": "Display settings" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/settings.svg",
           "required": ["hardware_models", "fastener_models", "see_through", "camera"],
@@ -337,7 +344,7 @@
         }
       }
     ],
-    "ribbon_groups": [{ "label": "Woodwork settings", "icon": "icons/settings.svg", "entries": ["settings-general", "settings-fronts", "settings-drawers", "settings-plinth", "settings-joinery", "settings-cutlist", "settings-display"] }],
+    "ribbon_groups": [{ "label": "Woodwork settings", "icon": "icons/settings.svg", "entries": ["settings-general", "settings-fronts", "settings-doors", "settings-drawers", "settings-plinth", "settings-joinery", "settings-cutlist", "settings-display"] }],
     "commands": ["sketch.inspect", "model.edges", "parameters.rename", "solid.box", "solid.combine", "solid.move", "occurrence.copy", "solid.cylinder", "solid.extrude", "sketch.line", "solid.chamfer", "solid.pattern.rectangular", "parameters.add", "timeline.group", "timeline.delete", "component.create", "component.activate", "occurrence.move", "occurrence.ground", "component.list", "component.metadata", "component.metadata.set", "component.delete", "parameters.change", "model.mesh", "model.faces", "joint.as_built", "joint.create", "joint.edit", "joint.list", "construct.axis.two_planes", "sketch.create", "sketch.text", "sketch.finish", "joint.limits", "material.list", "material.create", "material.assign", "material.edit", "inspect.measure", "document.inspect", "select.clear", "view.fit", "drawing.list", "drawing.create", "drawing.open", "drawing.close", "drawing.set", "drawing.sheet.add", "drawing.sheet.delete", "drawing.properties.set", "drawing.view.base", "drawing.view.projected", "drawing.dimension.add", "drawing.note.add", "storage.get", "storage.patch"],
     "permissions": { "files": [{ "name": "cutlists", "read": false, "write": true }], "clock": true },
     "limits": { "fuel": 500000000, "memory_mib": 64, "deadline_ms": 30000 }

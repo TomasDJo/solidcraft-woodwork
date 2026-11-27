@@ -705,16 +705,19 @@ birch plywood, MDF, white melamine or oak. New cabinets get one in their dialog.
 
 ## Woodwork settings
 
-Woodwork settings is a dialog per group: **Settings: General** (units, material, board
-thickness, back, labels), **Doors and fronts** (fronts, reveal, handles, hinge opening),
-**Drawers** (box boards, box joints, slide type), **Plinth / toe kick and wall mount**,
-**Joinery** (the methods and their sizes), **Cut list and worktop**, and **Display** (hardware
-and fastener models, see-through boards, camera). On the Model tab they are under one
+Woodwork settings is a dialog per group: **General settings** (units, material, board
+thickness, back, labels), **Fronts settings** (what doors and drawer fronts share: overlay or
+inset, reveal, handles and their position, front style and its sizes), **Doors settings**
+(hinge opening, double dividers), **Drawer settings** (box boards, box joints, front, slide
+type), **Plinth and wall mount settings**, **Joinery settings** (the methods and their sizes),
+**Cut list and worktop settings**, and **Display settings** (hardware and fastener models,
+see-through boards, camera). On the Model tab they are under one
 **Woodwork settings** button: click it, or its arrow, and pick a group. Each is also in the
 **Plugins > Woodwork** menu. A run of one changes only its own settings; the others keep what
 is stored. Units is in General and is kept: the other dialogs give their sizes in it, and each
-size's hint says which. A script uses `woodwork.settings`, which takes any of the settings, its
-sizes in the `units` it gives (else the stored one).
+size's hint says which. A script runs the same entries (`woodwork.settings-general`,
+`woodwork.settings-joinery`, ...), each with its own settings, its sizes in the stored units
+(General sets them).
 
 The defaults new cabinets start with in this design: material, panel thickness, reveal, handle
 holes, plinth height and plinth type. Set the ones you want and run it; Keep or an empty field
@@ -739,7 +742,7 @@ defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowe
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
 them later leaves the cabinets made before as they are, and Apply settings gives them the
 methods, the models, the hinge opening and the slide type stored. A corner cabinet takes the
-carcass method (dowels for a dado). A script cannot give them to `woodwork.cabinet` (an unknown field is refused): it runs `woodwork.settings` first, such as
+carcass method (dowels for a dado). A script cannot give them to `woodwork.cabinet` (an unknown field is refused): it runs `woodwork.settings-joinery` first, such as
 `{"joints": "confirmat", "joint_spacing": 300}`. A size that shows only with a choice needs the
 choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `back`,
 `plinth_setback` with `plinth_type`).
@@ -751,7 +754,7 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
   a new design starts with none.
 - **Camera after a run**: Fit (the default) frames the result after a cabinet, corner, edit or
   worktop run; Leave as it is keeps your view, for when you or a script set the camera. A
-  script sets it with `woodwork.settings {"camera": "leave"}` (or `"fit"`).
+  script sets it with `woodwork.settings-display {"camera": "leave"}` (or `"fit"`).
 - **See-through boards**: On makes the boards' materials (birch plywood, MDF, white melamine)
   see-through, 35 % opaque, so the joints, fasteners and hinges inside show; Off makes them
   solid again. It changes the materials when Settings runs (the preview shows it as you choose),
@@ -1004,7 +1007,7 @@ the field empty.
 
 *The cut list's PDF with a cost estimate from the prices in Woodwork settings.*
 
-Give your prices in **Woodwork settings** (Settings: Cut list and worktop), in **Prices**, as
+Give your prices in **Woodwork settings** (Cut list and worktop settings), in **Prices**, as
 `name = price` entries separated by `;`:
 
     Birch plywood 18 = 80; Birch plywood 6 = 35; Banding = 0.5; Hinge = 3.2; Drawer slide = 12
@@ -1150,7 +1153,7 @@ quarter turn) is drawn from its own front.
   every field the dialog would show. Cabinet is the exception (0.46,
   Woodwork settings): a field left out takes the stored setting, and only then must every
   field be there. The joinery and hardware are no fields of theirs at all: set them with
-  `woodwork.settings` first.
+  the settings' section entries (`woodwork.settings-joinery`, ...) first.
 - **A cabinet made by 0.1.7 or earlier** in a run is held along the run only: its neighbours
   do not follow its depth.
 - **A design made with the plugin is ordinary bodies, joints and parameters.** It opens in

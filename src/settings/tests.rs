@@ -432,6 +432,16 @@ fn a_section_dialog_gets_only_its_fields() {
             "{plinth}"
         );
     }
+    // Doors (#211) has the doors-only settings, Fronts what doors and drawer fronts share
+    let doors = fields("settings-doors", &json!({}), &json!({}));
+    let fronts = fields("settings-fronts", &json!({}), &json!({}));
+    for key in ["hinge_angle", "double_dividers"] {
+        assert!(
+            doors.get(key).is_some() && fronts.get(key).is_none(),
+            "{key}"
+        );
+    }
+    assert!(fronts.get("reveal").is_some() && doors.get("reveal").is_none());
     // every setting is in one section
     let mut keys: Vec<&str> = SECTIONS.iter().flat_map(|s| s.1.iter().copied()).collect();
     let mut wanted = kept();
