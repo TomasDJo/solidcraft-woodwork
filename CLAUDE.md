@@ -757,19 +757,17 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   the drawers by their own handles (`gripped_door`, `gripped`). Fronts' Handle position and
   Grip gap stay shared, without a condition (a condition cannot name another entry's field).
   `build.plugin` gives a test's `handles` (not `tab`) to the doors too, as one field did before.
-  `tab` (#181, drawers only; a sink base's false front gets nothing): the drawer's
-  `Bottom` runs forward under the front as the tab: `cabinet::drawers`' `tab`, after each
-  branch's bottom, joins `Bottom tab 1/2` (boxes) and `corner 1/2` (cylinders, `TAB_R`) to it,
-  `min(<Prefix>_tab_width, box inside)` wide (`tab_width`, Woodwork settings' Drawers, 120 mm,
-  a parameter while drawers have the tab, `edit::SIZES`) and `TAB_OUT` (12 mm) past the front's face,
-  with a `Bottom tab cove` cut along it from below (#256: `COVE_R` 6 mm, its axis
+  `tab` (#181, drawers only; doors and a sink base's false front get nothing; #247): the
+  cabinet's fronts are inset (`input`: `fronts` overlay is taken as inset, and Panel's overlay
+  check skips a tab cabinet), the drawer's `Bottom` its lowest part at the front's lower edge,
+  under the box (from the front's face to the box's back, as wide as the box) with the front
+  (`bb` shorter) and the box's boards standing on it (`bz = z + bb`, as on runners); the box clears
+  only above (`lift`). `tab` joins `Bottom tab 1/2` (boxes) and `corner 1/2` (cylinders,
+  `TAB_R`) to it, `min(<Prefix>_tab_width, box_w)` wide (`tab_width`, Woodwork settings' Drawers,
+  120 mm, a parameter while drawers have the tab, `edit::SIZES`) and `TAB_OUT` (12 mm) past the
+  front's face, with a `Bottom tab cove` cut along it from below (#256: `COVE_R` 6 mm, its axis
   `COVE_R - min(COVE_DEPTH, bottom/2)` under the underside, so it cuts `min(COVE_DEPTH,
-  bottom/2)` deep, half `TAB_OUT` in front of the face);
-  a `<front> tab notch` from the front's lower edge up to the bottom's top (`Kit::targets`),
-  a `Box front tab slot` when the bottom stands behind a box front (not on runners, not
-  integrated); no scoop (#244). The front keeps its height (the gaps
-  stay); the bottom stays at its height, above the front's lower edge, as the lowest drawer's
-  must clear the carcass. The cut list measures the bottom with its tab (mesh: it fills no box).
+  bottom/2)` deep, half `TAB_OUT` in front of the face). No notch, no groove. Refused with undermount slides, strips and drawers over doors.
 - **Grooved fronts** (`front_style` flat, vertical, horizontal: per cabinet with a Settings
   default, as `fronts`; `groove_shape` square or round, `groove_spacing`, `groove_depth`:
   design-wide, the parameters `<Prefix>_groove_spacing` and `_groove_depth` on a cabinet with
@@ -797,7 +795,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   instead, `GLASS_T` 4 mm, not in `Kit::targets` (no hole into it). A glass drawer front's
   handle is at `frame_width/2` into its top rail on Handle position Top or Auto, the bottom rail
   on Bottom; middle is refused (`input`, with `Input::framed_drawers`, which
-  `cabinet::drawers` uses too). The tab's notch cuts `Kit::targets` (the bottom rail). `fittings::is_glass` (a name
+  `cabinet::drawers` uses too). `fittings::is_glass` (a name
   ending ` glass`): `lib.rs` gives those bodies `material::GLASS` (always `GLASS_OPACITY`, not
   in `BOARDS`, so See-through boards leaves it) and the Material entry skips them; the cut
   list leaves them out of the boards and buys them as `Glass, 4 mm, L x W mm` by size.
@@ -993,6 +991,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   1600, 4 to 2000, 5 above (the first two cups at the ends keep their names). The cup's two
   screw holes (45 apart, 9.5 off its centre) are not cut: 2 commands a cup more.
   **Strip runners** (`strips`, #146; `Input::strip`, with `runner` for the play): the dado runners' drawer (bottom under a box `2*(strip_t + play)` narrower than the opening, no stop) on `<Side> strip <n>` boards (`<Prefix>_strip_thickness` 12, `_strip_height` 18: Woodwork settings' Drawers `strip_thickness`, `strip_height`, `Box`, shown with Slide type Strip runners; then parameters, `edit::SIZES`) under the bottom from `ein`, `eshelf_d` deep (the box's base raised by `max(0, strip_h - BOX_CLEAR)` and the box that much lower, so the strip clears the carcass bottom, rail or drawer below; play less than the strip's thickness), made with `panel` in the cabinet's component; no `runner_depth`. On dado and strip runners (no stop) the box runs to the back and stops against it (#257; not under a sink, `eshelf_d/2`, and with Back None nothing stops it): `box_d` is `eshelf_d + ein - eback` (from a reveal before an overlay carcass), not `BOX_BEHIND` short, in `drawers`, `input` (travel) and `from_drawers`. The cut list counts no slides for a drawer whose `Side L strip <n>` body is there; the strips' screw holes are not drilled.
+  **Bottom groove** (#247, every box but on runners or with a tab): `drawers`' `grooved`: the
+  `Bottom` `BOTTOM_GROOVE` 6 mm larger on each edge, its underside `BOTTOM_UP` 10 mm over the box's
+  base (undermount: at `UNDER_RECESS`), and one box cut of its size from `Left`, `Right`, `Box front`
+  and `Box back` (`<Drawer> Bottom groove`): stopped in a finger-jointed box's front and back. The
+  back keeps its height (four-sided groove, not a slide-in bottom).
   **Undermount** (`under_partial`, `under_full`; `Input::under`): box inside = opening - 42 mm
   (`21 mm - bt` a side, so `drawer_thickness` over 16 is refused), box as long as the slide
   (`hardware::UNDER`, `under_length` against the inside depth), bottom `UNDER_RECESS` 13 mm up,

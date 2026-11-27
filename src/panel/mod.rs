@@ -128,7 +128,8 @@ pub fn build(
     // panel comes forward to their faces. Inset ones are flush with the carcass.
     let count = |key: &str| made[key].as_f64().unwrap_or(0.0);
     let fronts = count("doors") > 0.0 || count("drawers") > 0.0;
-    let overlay = fronts && made["fronts"] != "inset";
+    // a bottom tab makes the fronts inset (#247)
+    let overlay = fronts && made["fronts"] != "inset" && made["handles"] != "tab";
     let er = format!("{prefix}_reveal");
     let yf = match overlay {
         true => format!("(-{er} - {prefix}_thickness)"),
