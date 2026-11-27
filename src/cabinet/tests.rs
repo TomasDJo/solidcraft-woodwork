@@ -1412,18 +1412,18 @@ fn grip_edges_and_finger_grooves() {
         );
         cutter["center"][2].as_str().unwrap().to_string()
     };
+    // the door stops the grip gap short of its grip edge (#230): the bevel is on that edge
     let top = edge(json!({"doors": 1, "handles": "grip"}));
     let wall = edge(json!({"doors": 1, "handles": "grip", "depth": 320}));
-    assert_eq!(wall, "0 mm + 0 mm + Cabinet_reveal");
+    assert_eq!(wall, "0 mm + 0 mm + Cabinet_reveal + Cabinet_grip_gap");
     assert!(
-        top.starts_with(&format!("{wall} + Cabinet_height - ")),
+        top.starts_with("0 mm + 0 mm + Cabinet_reveal + (Cabinet_height - "),
         "{top}"
     );
-    // middle is the top edge too
-    assert_eq!(
-        edge(json!({"doors": 1, "handles": "grip", "handle_position": "middle"})),
-        top
-    );
+    assert!(top.ends_with(" - Cabinet_grip_gap)"), "{top}");
+    // a grip edge in the middle: refused
+    let why = build(&json!({"doors": 1, "handles": "grip", "handle_position": "middle"}));
+    assert!(why.unwrap_err().contains("not the middle"));
     assert_eq!(
         edge(json!({"doors": 1, "handles": "grip", "handle_position": "bottom", "depth": 320})),
         wall
@@ -2011,4 +2011,83 @@ fn drawer_sides_and_back_can_be_lower() {
             .as_str()
             .unwrap()
             .contains("Cabinet_drawer_side_height")));
+}
+
+#[test]
+fn grip_edges_follow_handle_position_and_leave_a_gap() {
+    let named = |commands: &Commands, name: &str| {
+        let found = (commands.iter()).find(|c| c.1["name"] == name && c.0 != "component.create");
+        found.unwrap_or_else(|| panic!("no {name}")).1.clone()
+    };
+    // a drawer front with a grip edge: the grip gap short of its top, its box with it, and the
+    // bevel on the new top edge; the gap is a parameter
+    let p = json!({"drawers": 2, "handles": "grip"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(commands
+        .iter()
+        .any(|c| c.0 == "parameters.add" && c.1["name"] == "Cabinet_grip_gap"));
+    let front = named(&commands, "Cabinet Drawer 1 Front");
+    assert!(front["height"]
+        .as_str()
+        .unwrap()
+        .ends_with(" - Cabinet_grip_gap)"));
+    let side = named(&commands, "Cabinet Drawer 1 Left");
+    assert!(side["height"]
+        .as_str()
+        .unwrap()
+        .contains(" - Cabinet_grip_gap)"));
+    let cutter = named(&commands, "Cabinet Drawer 1 Front grip cutter");
+    let z = cutter["center"][2].as_str().unwrap();
+    assert!(z.ends_with(" - Cabinet_grip_gap)"), "{z}");
+    // Handle position Bottom: the bottom edge, the front starting the gap higher; a groove too
+    let p = json!({"drawers": 2, "handles": "grip", "handle_position": "bottom"});
+    let (commands, _) = build(&p).unwrap();
+    let front = named(&commands, "Cabinet Drawer 1 Front");
+    assert!(front["corner"][2]
+        .as_str()
+        .unwrap()
+        .ends_with(" + Cabinet_grip_gap"));
+    let z = named(&commands, "Cabinet Drawer 1 Front grip cutter")["center"][2].clone();
+    assert!(z.as_str().unwrap().ends_with(" + Cabinet_grip_gap"), "{z}");
+    let p = json!({"drawers": 2, "handles": "groove", "handle_position": "bottom"});
+    let (commands, _) = build(&p).unwrap();
+    let groove = named(&commands, "Cabinet Drawer 1 Front groove");
+    assert!(groove["base"][2].as_str().unwrap().ends_with(" + 25 mm"));
+    assert!(!commands
+        .iter()
+        .any(|c| c.1.to_string().contains("grip_gap")));
+    // refused: a grip edge in the middle of a drawer front, a gap out of range, or one that
+    // leaves too little of a front
+    let refused = |p: Value| build(&p).is_err();
+    assert!(refused(
+        json!({"drawers": 2, "handles": "grip", "handle_position": "middle"})
+    ));
+    assert!(refused(
+        json!({"drawers": 2, "handles": "grip", "grip_gap": 60})
+    ));
+    assert!(refused(
+        json!({"drawers": 7, "height": 720, "handles": "grip", "grip_gap": 30})
+    ));
+    // a drawer box under the gap must still fit: six fronts of 118 less 20 leave less than the
+    // 102 mm a box takes behind an 18 mm front
+    assert!(refused(json!({"drawers": 6, "handles": "grip"})));
+    assert!(!refused(json!({"drawers": 6, "handles": "groove"})));
+    // a sink base's 110 mm false front has no box: 90 mm after the gap is fine
+    let sink = json!({"kind": "sink", "drawers": 2, "drawer_height": 110, "handles": "grip"});
+    assert!(!refused(sink));
+    // a grip edge's door with horizontal grooves: they are spread over the shortened door
+    let p = json!({"doors": 1, "handles": "grip", "front_style": "horizontal"});
+    let (commands, _) = build(&p).unwrap();
+    let row = named(&commands, "Cabinet Door front grooves");
+    assert!(
+        row["spacing1"]
+            .as_str()
+            .unwrap()
+            .contains(" - Cabinet_grip_gap)"),
+        "{row}"
+    );
+    // a groove in the middle stays allowed (on the top edge)
+    assert!(
+        build(&json!({"drawers": 2, "handles": "groove", "handle_position": "middle"})).is_ok()
+    );
 }

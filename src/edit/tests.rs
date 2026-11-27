@@ -456,3 +456,17 @@ fn a_design_wide_setting_is_refused_not_ignored() {
     )
     .is_ok());
 }
+
+#[test]
+fn the_grip_gap_comes_from_its_parameter() {
+    // an inch cabinet with grip edges: the gap as the design has it now, in the cabinet's unit
+    let made = remember(
+        "cabinet",
+        &json!({"units": "in", "handles": "grip", "grip_gap": 0.75}),
+        "A",
+    );
+    let design = json!({"params": [{"name": "A_grip_gap", "value": 25.4}]});
+    let (_, params) = merge(&made[KEY], &json!({}), &design).unwrap();
+    assert_eq!(params["grip_gap"], 1.0);
+    assert_eq!(params["_existing"]["grip_gap"], 25.4);
+}

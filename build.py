@@ -80,7 +80,8 @@ MOVED = {
                  "drawer_side_height": ("drawer_side_height", 0), "drawer_back_height": ("drawer_back_height", 0),
                  "front_style": ("front_style", "flat"), "groove_shape": ("groove_shape", "square"),
                  "groove_spacing": ("groove_spacing", 50), "groove_depth": ("groove_depth", 3),
-                 "frame_width": ("frame_width", 60), "panel_thickness": ("panel_thickness", 6)},
+                 "frame_width": ("frame_width", 60), "panel_thickness": ("panel_thickness", 6),
+                 "grip_gap": ("grip_gap", 20)},
     "cutlist": {"banding": ("banding", "1"), "size": ("cut_sizes", "finished"), "sheet": ("sheet", "2440x1220"),
                 "kerf": ("kerf", 4), "trim": ("trim", 10)},
     "worktop": {"material": ("worktop_material", "Oak"), "thickness": ("worktop_thickness", 38)},
@@ -90,7 +91,7 @@ MOVED = {
 DESIGN_WIDE = {"joints": "dowels", "joints_inner": "dowels", "hardware_models": "on", "hinge_angle": "110",
                "slide_type": "full", "reveal": 2, "plinth_setback": 50,
                "groove_shape": "square", "groove_spacing": 50, "groove_depth": 3,
-               "frame_width": 60, "panel_thickness": 6}
+               "frame_width": 60, "panel_thickness": 6, "grip_gap": 20}
 
 
 def plugin(approval, entry, params=None):

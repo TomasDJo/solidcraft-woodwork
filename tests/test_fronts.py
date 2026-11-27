@@ -446,7 +446,9 @@ def test_grip_edges(approval):
     # Handle-less fronts: a grip edge takes a 45-degree bevel, 12 mm along both faces of an 18 mm
     # door, from the back of its top edge (a floor unit's, auto) or bottom edge (a wall unit's);
     # a finger groove a 20 mm half round from the front face, 25 mm under a drawer front's top.
-    # Each runs the front's whole width (596), and no handle holes are drilled.
+    # Each runs the front's whole width (596), and no handle holes are drilled. A grip edge's
+    # front stops the grip gap (20 mm) short of its grip edge (#230), the bevel on the new edge;
+    # on a drawer with Handle position Bottom it is the bottom edge.
     results = cli([plugin(approval, "cabinet", {"name": "G", "doors": 1, "handles": "grip"}),
                    plugin(approval, "cabinet", {"name": "N", "doors": 1}),
                    plugin(approval, "cabinet", {"name": "W", "doors": 1, "handles": "grip", "depth": 320}),
@@ -454,19 +456,27 @@ def test_grip_edges(approval):
                    plugin(approval, "cabinet", {"name": "M", "drawers": 2}),
                    plugin(approval, "corner", {"name": "C", "doors": "hinged right", "handles": "grip"}),
                    plugin(approval, "corner", {"name": "D", "doors": "hinged right"}),
+                   plugin(approval, "cabinet", {"name": "B", "drawers": 2, "handles": "grip",
+                                                "handle_position": "bottom"}),
                    MEASURE, faces("G Door"), faces("W Door"), faces("R Drawer 2 Front"), faces("C Door return"),
+                   faces("B Drawer 1 Front"),
                    {"command": "parameters.change", "params": {"name": "G_width", "expression": "800 mm"}},
                    {"command": "parameters.change", "params": {"name": "N_width", "expression": "800 mm"}},
                    MEASURE],
                   "--save", str(ROOT / "dist" / "grip-edges.sc"))
-    m = results[7]
+    m = results[8]
     bevel, groove = 12 * 12 / 2 * 596, 3.14159265 * 10 ** 2 / 2 * 596
-    assert abs(volume(m, "N Door") - volume(m, "G Door") - bevel) < 0.002 * bevel, (volume(m, "N Door"), volume(m, "G Door"))
-    assert abs(volume(m, "N Door") - volume(m, "W Door") - bevel) < 0.002 * bevel, volume(m, "W Door")
+    cut = 596 * 18 * 20 + bevel  # the gap's slab and the bevel
+    assert abs(volume(m, "N Door") - volume(m, "G Door") - cut) < 0.002 * cut, (volume(m, "N Door"), volume(m, "G Door"))
+    assert abs(volume(m, "N Door") - volume(m, "W Door") - cut) < 0.002 * cut, volume(m, "W Door")
     for n in (1, 2):
         cut = volume(m, f"M Drawer {n} Front") - volume(m, f"R Drawer {n} Front")
         assert abs(cut - groove) < 0.01 * groove, (n, cut)
-    assert boxes(m)["G Door"] == boxes(m)["N Door"] and cylinders(m, "G Door") == cylinders(m, "N Door")
+    assert boxes(m)["G Door"] == boxes(m)["N Door"][:5] + [698] and cylinders(m, "G Door") == cylinders(m, "N Door")
+    assert boxes(m)["W Door"][2] == 22, boxes(m)["W Door"]
+    # the drawer front from 2 + 20 up to 359, its box a gap higher too (16 + 20 + 2 over the bottom)
+    assert boxes(m)["B Drawer 1 Front"][2:6:3] == [22, 359], boxes(m)["B Drawer 1 Front"]
+    assert boxes(m)["B Drawer 1 Left"][2] == boxes(m)["M Drawer 1 Left"][2] + 20, boxes(m)["B Drawer 1 Left"]
     assert cylinders(m, "R Drawer 1 Front") == 1 and cylinders(m, "M Drawer 1 Front") == 0
 
     def slanted(faces):
@@ -474,20 +484,23 @@ def test_grip_edges(approval):
         face = next(f for f in faces["faces"] if abs(abs((f["plane_normal"] or [0, 0, 0])[2]) - 0.7071) < 0.001)
         return [round(v, 3) + 0 for v in face["centroid"]], [round(v, 4) + 0 for v in face["plane_normal"]]
 
-    # The door's back face is at y = -282, its top edge at 718: the bevel's middle 6 mm in from both.
-    assert slanted(results[8]) == ([0, -288, 712], [0, 0.7071, 0.7071]), slanted(results[8])
-    # The wall unit's door is from 2 up and its back face at y = -162: the bottom edge.
-    assert slanted(results[9]) == ([0, -168, 8], [0, 0.7071, -0.7071]), slanted(results[9])
+    # The door's back face is at y = -282, its top edge at 718 - 20: the bevel's middle 6 mm in from both.
+    assert slanted(results[9]) == ([0, -288, 692], [0, 0.7071, 0.7071]), slanted(results[9])
+    # The wall unit's door is from 2 + 20 up and its back face at y = -162: the bottom edge.
+    assert slanted(results[10]) == ([0, -168, 28], [0, 0.7071, -0.7071]), slanted(results[10])
+    # The drawer front's bevel on its bottom edge (22).
+    assert slanted(results[13])[1] == [0, 0.7071, -0.7071] and slanted(results[13])[0][2] == 28, slanted(results[13])
     # The groove's round face, 25 mm under the top drawer front's top (718), on its front face.
     top = boxes(m)["R Drawer 2 Front"]
-    round_face = next(f for f in results[10]["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 10) < 0.01)
+    round_face = next(f for f in results[11]["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 10) < 0.01)
     assert abs(round_face["cylinder"]["origin"][2] - (top[5] - 25)) < 0.01 and abs(round_face["cylinder"]["origin"][1] - top[1]) < 0.01, round_face
     # The L corner's folding door, on the return: its bevel faces the corner, at its top.
     assert volume(m, "D Door return") - volume(m, "C Door return") > 0.99 * 72 * (boxes(m)["C Door return"][4] - boxes(m)["C Door return"][1])
     # The bevel follows a resize: the door 796 wide.
-    m = results[14]
-    assert abs(volume(m, "N Door") - volume(m, "G Door") - 72 * 796) < 0.002 * 72 * 796, volume(m, "G Door")
-    centre, normal = slanted(results[11])
+    m = results[16]
+    cut = 796 * 18 * 20 + 72 * 796
+    assert abs(volume(m, "N Door") - volume(m, "G Door") - cut) < 0.002 * cut, volume(m, "G Door")
+    centre, normal = slanted(results[12])
     assert normal[1] == 0 and normal[2] == 0.7071 and centre[2] == boxes(m)["C Door return"][5] - 6, (centre, normal)
 
 

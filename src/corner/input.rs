@@ -26,6 +26,7 @@ pub struct Input<'a> {
     pub handle_at: &'a str,
     pub grooves: Option<crate::fittings::Grooves<'a>>,
     pub frame: Option<[f64; 2]>,
+    pub grip_gap: Option<f64>,
     pub glass: bool,
     pub right: bool,
     pub diagonal: bool,
@@ -102,6 +103,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => None,
     };
     let handle_at = crate::fittings::handle_position(p)?;
+    let grip_gap = match doors {
+        true => crate::fittings::grip_gap(handles, handle_at, size, h - plinth)?,
+        false => None,
+    };
     let inset = match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
         "overlay" => false,
         "inset" => doors,
@@ -185,6 +190,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handle_at,
         grooves,
         frame,
+        grip_gap,
         glass: p.get("front_style").and_then(Value::as_str) == Some("glass"),
         right,
         diagonal,

@@ -69,7 +69,9 @@ pub fn build(cabinet: &Cabinet) {
         kit.open(&part);
         // a shaker door's own name is its hinge stile's, which takes the cups
         let left = hinged_left(i, count, first, inset);
-        cabinet.front(&part, [&x0, efront, z0], [&door_w, et, door_h], left, true);
+        // a grip edge's door stops the grip gap short of its grip edge (#230)
+        let (gz, gh) = cabinet.gripped(z0, door_h, grip_top);
+        cabinet.front(&part, [&x0, efront, &gz], [&door_w, et, &gh], left, true);
         // The hinge cups, from the door's back face, `HW_cup_inset` in from its hinge edge.
         let cup_x = match left {
             true => format!("{x0} + HW_cup_inset"),
@@ -96,8 +98,8 @@ pub fn build(cabinet: &Cabinet) {
             false => format!("{x0} + {edge}"),
         };
         cabinet.handle(&part, &handle_x, &handle_z, 2);
-        cabinet.grooves(&part, [&x0, efront, z0], [&door_w, et, door_h]);
-        cabinet.grip(&part, [&x0, efront, z0], [&door_w, et, door_h], grip_top);
+        cabinet.grooves(&part, [&x0, efront, &gz], [&door_w, et, &gh]);
+        cabinet.grip(&part, [&x0, efront, &gz], [&door_w, et, &gh], grip_top);
         // The hinge: turning outwards up to `hinge_angle` (110 degrees by default) about the
         // front edge on the door's hinge side. A cup hinge carries the door out and round so that its edge clears the door of
         // the next cabinet; about the back edge it would swing a panel thickness into it. An

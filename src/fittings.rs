@@ -796,6 +796,49 @@ pub fn front_grooves(
     ));
 }
 
+/// `grip_gap` (#230): with a grip edge, how far a front stops short of its grip edge, in mm,
+/// so a finger fits in the gap behind the bevel; `None` for other handles. A grip edge goes on
+/// the top or the bottom edge, never the middle, and leaves the front `MIN_GRIPPED` high.
+pub fn grip_gap(
+    handles: &str,
+    at: &str,
+    size: impl Fn(&str, f64) -> Result<f64, String>,
+    lowest_front: f64,
+) -> Result<Option<f64>, String> {
+    if handles != "grip" {
+        return Ok(None);
+    }
+    if at == "middle" {
+        return Err(
+            "a grip edge goes on the top or the bottom edge (Handle position), not the middle"
+                .into(),
+        );
+    }
+    let gap = size("grip_gap", GRIP_GAP)?;
+    if !(5.0..=50.0).contains(&gap) {
+        return Err("the grip gap must be 5 to 50 mm".into());
+    }
+    if lowest_front - gap < MIN_GRIPPED {
+        return Err(format!(
+            "the fronts are too low for a {gap} mm grip gap: {MIN_GRIPPED} mm must be left"
+        ));
+    }
+    Ok(Some(gap))
+}
+
+pub const GRIP_GAP: f64 = 20.0; // `grip_gap`'s default
+const MIN_GRIPPED: f64 = 80.0; // what a grip gap must leave of a front
+
+/// A front from `z`, `h` high, with a grip edge `gap` (the parameter) shorter at its grip edge
+/// (`top`, else the bottom); as it is without one.
+pub fn gripped(gap: Option<&str>, z: &str, h: &str, top: bool) -> (String, String) {
+    match (gap, top) {
+        (None, _) => (z.to_string(), h.to_string()),
+        (Some(g), true) => (z.to_string(), format!("({h} - {g})")),
+        (Some(g), false) => (format!("{z} + {g}"), format!("({h} - {g})")),
+    }
+}
+
 /// Whether a door's grip edge or groove (`handles` grip or groove) is along its top edge, else
 /// its bottom: auto by the kind of unit (also on a tall door), and middle is the top.
 pub fn grip_on_top(at: &str, floor: bool) -> bool {

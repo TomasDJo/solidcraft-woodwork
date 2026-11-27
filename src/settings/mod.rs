@@ -64,6 +64,7 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("fronts", "", Choice("overlay"), Cabinets),
         ("double_dividers", "", Choice("no"), Box),
         ("handle_position", "", Choice("auto"), Cabinets),
+        ("grip_gap", "", Length(20.0, 5.0, 50.0), Cabinets),
         ("front_style", "", Choice("flat"), Cabinets),
         ("groove_shape", "", Choice("square"), Cabinets),
         ("groove_spacing", "", Length(50.0, 10.0, 300.0), Cabinets),
@@ -473,6 +474,7 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
         ("back thickness", "back_thickness"),
         ("drawer box", "drawer_thickness"),
         ("front grooves", "groove_depth"),
+        ("grip gap", "grip_gap"),
         ("glass drawer", "handles"),
         ("shaker", "frame_width"),
         ("cleat thickness", "cleat_thickness"),
@@ -520,7 +522,9 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
 pub fn on_cabinet(field: &'static str) -> &'static str {
     match field {
         "cleat_height" | "cleat_thickness" => "wall_mount",
-        "back_thickness" | "drawer_thickness" | "groove_depth" | "frame_width" => "shape",
+        "back_thickness" | "drawer_thickness" | "groove_depth" | "frame_width" | "grip_gap" => {
+            "shape"
+        }
         f => f,
     }
 }
@@ -644,6 +648,7 @@ pub const SECTIONS: [(&str, &[&str]); 8] = [
             "reveal",
             "handles",
             "handle_position",
+            "grip_gap",
             "front_style",
             "groove_shape",
             "groove_spacing",
