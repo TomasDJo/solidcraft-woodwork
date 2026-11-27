@@ -1027,7 +1027,15 @@ set to inches or feet it lists inches as fractions to 1/32. It also:
   cabinet's width on top, bottom, shelves and drawer bottoms, and along the drawer box's
   sides, front and back. Such a part must not be turned on the sheet. Other materials (MDF,
   White melamine) have the longest side as the length, and so do plinths and the drawer
-  box's sides, front and back.
+  box's sides, front and back;
+- warns of doors that hit another cabinet's front (`clashes`, and a `Clash` line in the CSV):
+  a door hinged on its cabinet's side swings past 90 degrees (every hinge opening does) in
+  front of the next cabinet, so a door or drawer front (an integrated one too) right beside its hinge edge meets it
+  when both are open, such as "A Door (open) meets B Drawer 1 Front (open)". Hinge the door on
+  its other side, or put a filler between. Box cabinets standing in quarter turns, with their
+  doors and fronts shut in the design. Each door already turns about its front edge on the
+  hinge side, which is where a concealed hinge's swing ends up, so open doors stand where real
+  ones do.
 
 In Woodwork settings, for the whole design: **Edge banding**, the tape's thickness: none, 0.4, 1 (the default) or 2 mm. **Sizes**
 (shown when there is banding): finished, as in the model, or cut, the size to saw: the finished

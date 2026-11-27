@@ -397,6 +397,107 @@ pub fn notched(design: &Value) -> Vec<String> {
 /// What a notched side's line in the cut list says.
 pub const NOTCHED: &str = "notched for the toe kick; size over the notch";
 
+/// The CSV's lines for `clashes`, a quoted field each (quotes in a name doubled).
+pub fn clash_csv(clashes: &[String]) -> String {
+    let lines = clashes.iter().map(|c| {
+        format!(
+            "Clash,\"{}\"
+",
+            c.replace('"', "\"\"")
+        )
+    });
+    lines.collect()
+}
+
+/// Doors that can hit another cabinet's front when both are open (#140). A box cabinet's door
+/// hinged on a side (the side has `hinge plate` holes) turns about its front edge there; opened
+/// past 90 degrees, as every hinge opening does (95 to 165), it swings in front of the next
+/// cabinet, and meets a door or a drawer front standing right beside its hinge edge when that
+/// is open too. One line per pair: "<door> (open) meets <front> (open)". Fronts are told by
+/// their names (` Door`, ` Front`) and must be shut: a board thin across the front.
+/// ponytail: box cabinets in quarter turns only, and doors already open in the design (not
+/// thin) are skipped; a door hinged on a divider never reaches past its cabinet.
+pub fn clashes(measure: &Value, design: &Value) -> Vec<String> {
+    let bodies: Vec<(&str, [f64; 6])> = (measure["bodies"].as_array().into_iter().flatten())
+        .filter_map(|b| {
+            let get = |k: &str, i: usize| b["bbox"][k][i].as_f64();
+            let mut bx = [0.0; 6];
+            for i in 0..3 {
+                bx[i] = get("min", i)?;
+                bx[i + 3] = get("max", i)?;
+            }
+            Some((b["name"].as_str()?, bx))
+        })
+        .collect();
+    let find = |name: &str| bodies.iter().find(|b| b.0 == name).map(|b| b.1);
+    let mid = |b: [f64; 6], i: usize| (b[i] + b[i + 3]) / 2.0;
+    let features = design["timeline"].as_array().into_iter().flatten();
+    let names: Vec<&str> = features.filter_map(|f| f["name"].as_str()).collect();
+    // a shut front: thin (a board's thickness) across the axis `across`, the other one along
+    let shut = |b: [f64; 6], across: usize| b[across + 3] - b[across] <= 40.0;
+    // an integrated drawer front is the box's `Box front`, its drawer with no `Front` (#163)
+    let is_front = |n: &str| {
+        let integrated = n
+            .strip_suffix(" Box front")
+            .is_some_and(|d| find(&format!("{d} Front")).is_none());
+        n.contains(" Door") || n.ends_with(" Front") || integrated
+    };
+    let mut found = Vec::new();
+    for (side_name, side) in bodies.iter().filter(|b| b.0.ends_with(" Side L")) {
+        let cabinet = &side_name[..side_name.len() - " Side L".len()];
+        let Some(other) = find(&format!("{cabinet} Side R")) else {
+            continue;
+        };
+        if find(&format!("{cabinet} Back return")).is_some() {
+            continue; // a corner cabinet
+        }
+        // the width runs between the sides; the fronts face along the other horizontal axis
+        let along = usize::from(
+            (mid(*side, 1) - mid(other, 1)).abs() > (mid(*side, 0) - mid(other, 0)).abs(),
+        );
+        let across = 1 - along;
+        let own = |n: &&(&str, [f64; 6])| {
+            n.0.starts_with(&format!("{cabinet} Door")) && shut(n.1, across)
+        };
+        for (hinge, toward) in [("Side L", *side), ("Side R", other)] {
+            let plate = format!("{cabinet} {hinge} hinge plate ");
+            if !names.iter().any(|n| n.starts_with(&plate)) {
+                continue;
+            }
+            // the door nearest that side, and its edge there
+            let centre = (mid(*side, along) + mid(other, along)) / 2.0;
+            let sign = if mid(toward, along) < centre {
+                -1.0
+            } else {
+                1.0
+            };
+            let edge = |b: [f64; 6]| if sign < 0.0 { b[along] } else { b[along + 3] };
+            let door = bodies
+                .iter()
+                .filter(own)
+                .max_by(|a, b| (sign * edge(a.1)).total_cmp(&(sign * edge(b.1))));
+            let Some((door, d)) = door else { continue };
+            let hinge_edge = edge(*d);
+            for (front, f) in bodies
+                .iter()
+                .filter(|b| is_front(b.0) && !b.0.starts_with(&format!("{cabinet} ")))
+            {
+                // beside the hinge edge, outwards, at most 60 mm on (an integrated front starts
+                // a side and a slide's gap in); in the same front plane
+                // and overlapping in height
+                let near = if sign < 0.0 { f[along + 3] } else { f[along] };
+                let gap = sign * (near - hinge_edge);
+                let plane = (mid(*f, across) - mid(*d, across)).abs() <= 30.0;
+                let height = f[2] < d[5] && d[2] < f[5];
+                if shut(*f, across) && (0.0..=60.0).contains(&gap) && plane && height {
+                    found.push(format!("{door} (open) meets {front} (open)"));
+                }
+            }
+        }
+    }
+    found
+}
+
 /// The sides grooved for wooden drawer runners (`<Side> runner <n>`), as `notched`.
 pub fn grooved(design: &Value) -> Vec<String> {
     let features = design["timeline"].as_array().into_iter().flatten();
