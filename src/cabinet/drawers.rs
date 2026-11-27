@@ -247,10 +247,12 @@ pub fn build(cabinet: &Cabinet) {
             Some(p) => format!("min({box_h}, {p})"),
             None => box_h.clone(),
         };
-        // finger-jointed too: its corners' fingers are laid out over its own height (below)
-        let back_h = match &back_p {
-            Some(p) => format!("min({side_h}, {p})"),
-            None => side_h.clone(),
+        // The back up to the box's height (#242), lower or taller than the sides; its corners
+        // join them over the height they share (finger-jointed: their fingers, below), and above
+        // the sides it stands whole.
+        let (back_h, back_run) = match &back_p {
+            Some(p) => (format!("min({box_h}, {p})"), format!("min({side_h}, {p})")),
+            None => (side_h.clone(), side_h.clone()),
         };
         let right = format!("{x} + {box_w} - {bt}");
         let inner_x = format!("{x} + {bt}");
@@ -383,7 +385,7 @@ pub fn build(cabinet: &Cabinet) {
             for (side, sx) in [("Left", x.clone()), ("Right", right.clone())] {
                 let boards = [
                     ("Box front", side_y.clone(), front_t.clone(), side_h.clone()),
-                    ("Box back", back_y.clone(), bt.clone(), back_h.clone()),
+                    ("Box back", back_y.clone(), bt.clone(), back_run.clone()),
                 ];
                 for (end, ey, deep, run) in boards {
                     let w = format!("(({run}) / (2*floor(({run}) / (2*{bt})) + 1))");

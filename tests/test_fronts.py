@@ -690,3 +690,21 @@ def test_drawer_back_height(approval):
         full = (back[3] - back[0]) * (back[4] - back[1]) * 80
         cut = volume(results[1], "Cabinet Drawer 1 Box back")
         assert (cut < full - 1000) == (joints == "finger"), (joints, cut, full)
+
+
+def test_drawer_back_taller_than_sides(approval):
+    # A 200 mm back over 100 mm sides (#242), butted and finger-jointed: the back stands at its
+    # own height; finger-jointed, its corners are cut only over the 100 mm it shares with the
+    # sides (12 mm boards: 4 + 5 fingers of 100/9 mm, the back's 5 at each corner, 12 x 12 each,
+    # about 16000 mm3 in all), whole above them.
+    for joints in ("none", "finger"):
+        results = designed(approval, {"drawer_side_height": 100, "drawer_back_height": 200, "drawer_joints": joints},
+                           [plugin(approval, "cabinet", {"drawers": 2}), MEASURE], "--save",
+                           str(ROOT / "dist" / f"back-taller-{joints}.sc"))
+        box = boxes(results[1])
+        back, side = box["Cabinet Drawer 1 Box back"], box["Cabinet Drawer 1 Left"]
+        assert round(back[5] - back[2], 3) == 200 and round(side[5] - side[2], 3) == 100, (back, side)
+        full = (back[3] - back[0]) * (back[4] - back[1]) * 200
+        cut = full - volume(results[1], "Cabinet Drawer 1 Box back")
+        expected = 0 if joints == "none" else 2 * 5 * 12 * 12 * 100 / 9
+        assert abs(cut - expected) < 200, (joints, cut, expected)
