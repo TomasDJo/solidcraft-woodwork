@@ -17,6 +17,7 @@ without doors.
 - [Woodwork settings](#woodwork-settings)
 - [Apply settings](#apply-settings)
 - [Panel](#panel)
+- [Mobile base](#mobile-base)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
 - [Drawing](#drawing)
@@ -715,6 +716,37 @@ It is then not linked to the first: it does not follow when that one's width cha
 drawing's width is over all, the panels included; its views take the panels in. On a cabinet turned a quarter (one placed past a
 corner cabinet's return) a panel is not tested yet: check it lands at the side, or add it
 before turning the cabinet.
+
+## Mobile base
+
+![A mobile base: one frame on locking casters under a run of two cabinets.](images/base.png)
+
+*A mobile base: one frame on locking casters under a run of two cabinets.*
+
+For a workbench that rolls: pick a board of each cabinet and run **Mobile base**. It makes one
+frame under all of them and stands them on it:
+
+- **The frame:** boards on edge round the cabinets' joint footprint (seen from above, their sides
+  and backs), `Name Frame front`, `back`, `left` and `right`, and a `Frame cross` board under each
+  place where two cabinets meet, so every cabinet side stands on a board (where two cross boards
+  cross, halve them into each other: the cut list gives both their whole length). **Frame height** (70 mm)
+  is how tall they stand, **Board thickness** (18 mm) their thickness, **Material** theirs.
+- **Casters:** a block (`Name Block 1` and on, 90 x 90 mm) in each corner with a locking caster
+  under it, screwed into the block; a frame longer than 1500 mm gets a pair in its middle too.
+  **Caster height** (100 mm) is from the floor to the frame's underside.
+- **The cabinets** go up onto the frame, each to its top (by Caster height plus Frame height
+  from the floor). Make them with **Plinth** No: the frame is their plinth. A cabinet placed
+  against another is held to it, so it goes up with it: pick the run's first cabinet too. One
+  that would not end on the frame (held to a cabinet that is not picked) is refused, by name.
+- **Made again:** run Mobile base with the same **Name** to make it again, for example after a
+  cabinet got wider or with another frame height. With nothing picked it takes the cabinets it
+  remembers, and they go up or down to the new frame's top.
+- The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`.
+
+Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
+again. Quarter turns only, and in a component that stands on the origin. Not in it yet (#101):
+bolting the cabinets to each other and to the frame, and a worktop height that sets a tool
+cabinet's height.
 
 ## Worktop
 

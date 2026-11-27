@@ -1,6 +1,7 @@
 //! Woodworking plugin for SolidCraft. The modules are plain Rust that turn parameters into
 //! app commands, so `cargo test` covers them; only `guest` touches the wasm bindings.
 
+mod base;
 mod cabinet;
 mod corner;
 mod cost;
@@ -1212,6 +1213,95 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             params["side"] = json!(side);
             let bodies = panel(&name, &params, &measure, run)?;
             Ok(json!({"cabinet": name, "side": side, "bodies": bodies}))
+        }
+        "base" => {
+            // A mobile base (#101) under the picked cabinets: a frame on casters in a component
+            // of its own, at world coordinates like a worktop, and the cabinets stood on it.
+            // Run again with its name, it is made again (over the cabinets it remembers when
+            // none is picked), and the cabinets go up or down to its new top.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let names = body_names(run)?;
+            let tree = run("component.list", json!({}))?;
+            let components: Vec<&str> = (tree["components"].as_array().into_iter().flatten())
+                .filter_map(|c| c["name"].as_str())
+                .collect();
+            let mut params = params.clone();
+            let name = params["name"].as_str().unwrap_or("Base").trim().to_string();
+            let mut cabinets: Vec<String> = Vec::new();
+            for body in select::picked(&params, &design) {
+                let cabinet = select::owner(&names, &body)
+                    .ok_or(format!("`{body}` is not part of a cabinet"))?;
+                if !cabinets.iter().any(|c| c == cabinet) {
+                    cabinets.push(cabinet.to_string());
+                }
+            }
+            let again = components.contains(&name.as_str());
+            if again {
+                let about = run("component.metadata", json!({"component": name}))?;
+                let ours = &about["metadata"][edit::KEY];
+                check(
+                    ours["entry"] == "base",
+                    &format!("name: `{name}` is taken; choose another"),
+                )?;
+                if cabinets.is_empty() {
+                    let all = ours["cabinets"].as_array().into_iter().flatten();
+                    cabinets = all.filter_map(|c| c.as_str().map(String::from)).collect();
+                }
+            }
+            let measure = measured(names, &cabinets, run)?;
+            // a cabinet deleted since the base remembered it is left out
+            cabinets.retain(|c| select::named(&measure, c).is_ok());
+            let (plans, floors) = base::plans(&measure, &cabinets)?;
+            params["name"] = json!(name);
+            let built = base::build(&params, &plans)?;
+            let lift = built.1["lift"].as_f64().unwrap_or(0.0);
+            if again {
+                run("component.delete", json!({"component": name}))?;
+            }
+            // ponytail: made in the active component at world coordinates, as a worktop is, so
+            // that component must stand on the origin, unturned.
+            let (mut summary, made) = component(built, &params, "Birch plywood", run)?;
+            run(
+                "occurrence.ground",
+                json!({"occurrence": made["occurrence"], "grounded": true}),
+            )?;
+            // The cabinets on the frame: each grounded one moved up by its own height to go; one
+            // held to its neighbour goes with it.
+            let mut raised = Map::new();
+            for (cabinet, floor) in cabinets.iter().zip(&floors) {
+                let up = lift - floor;
+                let (_, _, grounded) = edit::placement(&tree, cabinet)?;
+                if grounded && up.abs() > 1e-6 {
+                    run(
+                        "occurrence.move",
+                        json!({"occurrence": format!("{cabinet}:1"), "space": "world",
+                            "translate": [0, 0, up], "move_grounded": true}),
+                    )?;
+                }
+                raised.insert(cabinet.clone(), json!(up));
+            }
+            // Each must stand on the frame now: one held to a cabinet that is not on it (or
+            // not grounded and held by nothing) did not move, and the run is refused.
+            let now = measured(body_names(run)?, &cabinets, run)?;
+            let (_, after) = base::plans(&now, &cabinets)?;
+            for (cabinet, floor) in cabinets.iter().zip(after) {
+                check(
+                    (floor - lift).abs() < 0.5,
+                    &format!("`{cabinet}` did not go up onto the base: it is held to a cabinet that is not on it, or stands loose; pick that cabinet too, or ground `{cabinet}`"),
+                )?;
+            }
+            let mut values = edit::remember("base", &params, &name);
+            values[edit::KEY]["cabinets"] = json!(cabinets);
+            run(
+                "component.metadata.set",
+                json!({"component": name, "values": values}),
+            )?;
+            summary["cabinets"] = json!(cabinets);
+            summary["raised"] = Value::Object(raised);
+            Ok(summary)
         }
         "worktop" => {
             // A worktop over the selected cabinets, in a component of its own on the origin.

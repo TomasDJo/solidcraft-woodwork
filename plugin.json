@@ -95,6 +95,23 @@
         }
       },
       {
+        "name": "base",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Mobile base" }, { "kind": "ribbon", "name": "Mobile base" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/base.svg",
+          "required": ["selection", "caster_height", "frame_height", "thickness", "material", "name"],
+          "properties": {
+            "selection": { "type": "array", "title": "Selected cabinets", "description": "A board of each cabinet to stand on the base; none: the cabinets the base of this name stands under." },
+            "caster_height": { "type": "number", "title": "Caster height (mm)", "description": "From the floor to the frame's underside: the locking casters under it.", "default": 100, "minimum": 50, "maximum": 300 },
+            "frame_height": { "type": "number", "title": "Frame height (mm)", "description": "How tall the frame's boards stand on edge.", "default": 70, "minimum": 30, "maximum": 300 },
+            "thickness": { "type": "number", "title": "Board thickness (mm)", "description": "The frame's boards; 18 mm is usual.", "default": 18, "minimum": 3, "maximum": 50 },
+            "material": { "type": "string", "title": "Material", "description": "The frame's boards.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}] },
+            "name": { "type": "string", "title": "Name", "description": "Run again with this name to make it again, after a cabinet changed.", "default": "Base", "minLength": 1, "maxLength": 40 }
+          }
+        }
+      },
+      {
         "name": "worktop",
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Worktop" }, { "kind": "ribbon", "name": "Worktop" }],

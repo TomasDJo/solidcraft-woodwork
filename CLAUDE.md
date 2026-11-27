@@ -274,6 +274,7 @@ table says which).
 | `src/edit/` | Edit cabinet: what a cabinet's component remembers (`component.metadata.set` under our key), and merging that with the Edit dialog and the design's parameters |
 | `src/joint/` | Joinery chosen at build: a `Joint` (where one board's end meets another's face) and the cabinet's `Joinery` (its methods, their sizes as parameters, the cuts, the fastener models and counts) that the builders share |
 | `src/panel/` | End panel or filler (with its return) on one end of a box cabinet: boards inside its component, sized by expressions over its parameters. `lib.rs` runs them in the cabinet's component (on the origin: `inside`), remembers them for Edit, and refuses Place against a side that has one |
+| `src/base/` | Mobile base (#101, entry `base`): `base::plans` (each picked cabinet's plan box from its sides and backs, and the lowest point of its bodies) and `base::build`: at world coordinates with a `Kit` (numeric, like the worktop), `<Name> Frame front/back/left/right` on edge round the joint footprint, `Frame cross n` at each joint along the long way, `Block n` in the corners (and a middle pair past 1500 mm) with `fittings::caster` under each; summary `lift` (caster + frame height). `lib.rs` makes it in a component, grounds it, moves each grounded cabinet up by `lift - floor` (`move_grounded`; a held one follows its link) and remembers `cabinets` in the component's metadata (entry `base`); run again by name, it deletes and makes it again over the picked or remembered cabinets |
 | `src/worktop/` | Worktop over the selected cabinets: measures their feet (a corner cabinet's two legs), groups them into runs by the way they face, joins runs in corners (butt or mitre) and makes each piece a box or an extruded outline at world coordinates; dog holes and a cut-out in piece 1. `lib.rs` finds the cabinets (a picked worktop's remembered ones), replaces a worktop of that name, makes the component and grounds it |
 | `src/material.rs` | Board materials: create on first use, assign; See-through boards (`see_through`, `opacity`) |
 | `src/cutlist/` | Cut list, edge banding and grain from `inspect.measure`, and the sheets to buy from the cutting layouts |
@@ -298,7 +299,7 @@ The pattern: a module is plain Rust that turns input into `Vec<(command, json ar
 from the app first (selection, measurements, the active component) is fetched in `lib.rs` and
 passed in.
 
-Entries today: `cabinet`, `edit`, `material`, `panel`, `worktop`, `cutlist`, `drawing`, `settings` and `rebuild`, all edit.
+Entries today: `cabinet`, `edit`, `material`, `panel`, `base`, `worktop`, `cutlist`, `drawing`, `settings` and `rebuild`, all edit.
 A selection field (an array) has no `default`: the app's dialog refuses one with any keyword but
 type, title, description, `maxItems` and the conditions, and the menu then says "This entry needs to
 be run from the agent or CLI" (0.49.0, `selection_field`). `test_manifest` checks it.

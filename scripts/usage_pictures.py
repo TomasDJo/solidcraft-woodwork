@@ -132,6 +132,11 @@ SHOTS = [
       lambda: run("settings", {"prices": "Birch plywood 18 = 80; Birch plywood 6 = 35; Banding = 0.5; "
                                          "Hinge = 3.2; Drawer slide = 12; Shelf pin = 0.1; Knob = 2.5"})],
      "pdf"),
+    ("base", "A mobile base: one frame on locking casters under a run of two cabinets.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, "handles": "knob", "height": 760}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "drawers": 3, "handles": "pull", "height": 760}),
+      pick("A Side L", "B Side L"), lambda: run("base", {"name": "Bench"})],
+     cam([300, 0, 500], 3000, yaw=-0.4, pitch=0.12)),
     ("panel", "Panel: an end panel on the right, a filler with its return on the left.",
      [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"), lambda: run("panel", {"kind": "end"}),
       pick("A Side L"), lambda: run("panel", {"kind": "filler", "width": 50})], ONE),

@@ -124,6 +124,8 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Shared parameter groups for matched cabinets (#137): Match selected points every cabinet of a run at `Run_<first>_height` and the rest, so deleting a cabinet breaks none and changing one cabinet's own parameter takes only it out
 - [x] Prices and a cost estimate (#56): Woodwork settings' Prices (`name = price` text), the cut list prices each sheet by material and thickness, the banding a metre and the hardware a piece (longest matching name), lists what has no price yet, and shows it in its reply, the PDF and the CSV
 
+- [x] Mobile base (#101): one frame of boards on edge under the picked cabinets' footprint, a cross board where two meet, a block and a locking caster in each corner (and a middle pair on a long frame), the cabinets stood on it; made again by its name
+
 ## Open
 
 Cabinets:
