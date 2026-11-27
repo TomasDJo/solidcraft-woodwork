@@ -794,12 +794,21 @@ frame under all of them and stands them on it:
 - **Made again:** run Mobile base with the same **Name** to make it again, for example after a
   cabinet got wider or with another frame height. With nothing picked it takes the cabinets it
   remembers, and they go up or down to the new frame's top.
-- The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`.
+- **Connector bolts** join the cabinets: where a side of one touches a side of another, four
+  9 mm holes (for M6 connector bolts) go through both, at a quarter and three quarters of where
+  they touch, across and up. Run again, a hole already there is not cut twice. An Edit of a
+  cabinet makes its side whole again: run Mobile base again afterwards.
+- The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`
+  and the bolts as `Connector bolt, M6`.
+
+![Connector bolts: four 9 mm holes through the touching sides of two cabinets on a base, seen through the boards.](images/base-bolts.png)
+
+*Connector bolts: four 9 mm holes through the touching sides of two cabinets on a base, seen through the boards.*
 
 Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
 again. Quarter turns only, and in a component that stands on the origin. Not in it yet
-([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)): bolting the cabinets to
-each other and to the frame, a worktop height that sets a tool cabinet's height, and following
+([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)): fixing the cabinets
+to the frame, a worktop height that sets a tool cabinet's height, and following
 a cabinet that changes size.
 
 ## Worktop

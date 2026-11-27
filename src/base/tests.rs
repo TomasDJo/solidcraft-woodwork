@@ -159,3 +159,30 @@ fn the_dialogs_bounds_are_the_builders() {
         );
     }
 }
+
+#[test]
+fn connector_bolts_go_through_the_touching_sides() {
+    // A from x 0 to 600, B beside it to 1200, C apart at 2000: four holes through A Side R and
+    // B Side L, none to C
+    let side = |name: &str, x0: f64| json!({"name": name, "bbox": {"min": [x0, 0, 170], "max": [x0 + 18.0, 560, 890]}});
+    let m = json!({"bodies": [side("A Side L", 0.0), side("A Side R", 582.0), side("B Side L", 600.0),
+        side("B Side R", 1182.0), side("C Side L", 2000.0), side("C Side R", 2582.0)]});
+    let names = ["A", "B", "C"].map(String::from);
+    let holes = bolts(&m, &names);
+    assert_eq!(holes.len(), 4);
+    assert!(holes
+        .iter()
+        .all(|h| h.0 == ["A Side R".to_string(), "B Side L".to_string()]));
+    assert_eq!(holes.iter().map(|h| h.1).collect::<Vec<_>>(), [1, 2, 3, 4]);
+    // through both sides, at a quarter of the depth and of the height
+    assert_eq!(holes[0].2, [[582.0, 135.5, 345.5], [618.0, 144.5, 354.5]]);
+    assert_eq!(holes[3].2[0], [582.0, 415.5, 705.5]);
+    // picked in another order, or only some of them: the same pairs, numbers and holes
+    let again = bolts(&m, &["C", "B", "A"].map(String::from));
+    assert_eq!(again, holes);
+    assert_eq!(bolts(&m, &["B", "A"].map(String::from)), holes);
+    // a run along Y is found the same way
+    let turned = |name: &str, y0: f64| json!({"name": name, "bbox": {"min": [0, y0, 0], "max": [560, y0 + 18.0, 720]}});
+    let m = json!({"bodies": [turned("A Side R", 582.0), turned("B Side L", 600.0)]});
+    assert_eq!(bolts(&m, &names[..2]).len(), 4);
+}
