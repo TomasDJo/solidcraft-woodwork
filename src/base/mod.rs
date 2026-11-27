@@ -195,10 +195,11 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
 pub const BOLT_D: f64 = 9.0;
 
 /// The connector bolt holes (#198) where a side of one of `cabinets` touches a side of another:
-/// each the two sides, the first one's cabinet earlier in the list, and the hole's box in the
-/// world through both. Two rows of two, at a quarter and three quarters of where they touch,
+/// each the two sides in name order (the first gets the bolt the cut list counts), the hole's
+/// number in that pair, 1 to 4, and its box in the world through both. None of it depends on
+/// the order the cabinets are picked in, so a run again finds the same holes by name. Two rows of two, at a quarter and three quarters of where they touch,
 /// across and up. `measure` is `inspect.measure`'s reply, the cabinets where they stand.
-pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], [[f64; 3]; 2])> {
+pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], usize, [[f64; 3]; 2])> {
     let all = measure["bodies"].as_array().cloned().unwrap_or_default();
     let sides: Vec<(usize, String, [[f64; 3]; 2])> = (cabinets.iter().enumerate())
         .flat_map(|(i, c)| ["Side L", "Side R"].map(|s| (i, format!("{c} {s}"))))
@@ -221,6 +222,10 @@ pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], [[f64; 3
                 if !touch || o1 - o0 < 4.0 * BOLT_D || z1 - z0 < 4.0 * BOLT_D {
                     continue;
                 }
+                let pair = match sa < sb {
+                    true => [sa.clone(), sb.clone()],
+                    false => [sb.clone(), sa.clone()],
+                };
                 for f in [0.25, 0.75] {
                     for g in [0.25, 0.75] {
                         let (o, z) = (o0 + (o1 - o0) * f, z0 + (z1 - z0) * g);
@@ -231,7 +236,7 @@ pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], [[f64; 3
                             hole[0][axis] = at - BOLT_D / 2.0;
                             hole[1][axis] = at + BOLT_D / 2.0;
                         }
-                        holes.push(([sa.clone(), sb.clone()], hole));
+                        holes.push((pair.clone(), holes.len() % 4 + 1, hole));
                     }
                 }
             }

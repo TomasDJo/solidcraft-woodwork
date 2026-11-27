@@ -85,12 +85,14 @@ def test_a_narrow_run_and_cabinets_at_different_heights(approval):
 
 def test_connector_bolts_join_the_cabinets_on_a_base(approval):
     # A and B side by side on a base: four 9 mm holes through A Side R and B Side L, counted once
-    # as connector bolts. Run again, no hole is cut twice.
+    # as connector bolts. Run again with the cabinets picked the other way round, no hole is cut
+    # twice.
     bare = {"width": 600, "shelves": 0, "doors": 0}
     steps = [plugin(approval, "cabinet", {"name": "A", **bare}), select("A Side R"),
              plugin(approval, "cabinet", {"name": "B", "place": "right", **bare}),
              pick("A Side L", "B Side L"), plugin(approval, "base", {"name": "Bench"}),
-             pick(), plugin(approval, "base", {"name": "Bench"}), MEASURE, plugin(approval, "cutlist", {})]
+             pick("B Side L", "A Side L"), plugin(approval, "base", {"name": "Bench"}), MEASURE,
+             plugin(approval, "cutlist", {})]
     results = designed(approval, NONE, steps)
     assert results[4]["result"]["bolts"] == 4, results[4]["result"]
     measure = results[7]

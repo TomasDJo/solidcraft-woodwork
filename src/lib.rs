@@ -1307,9 +1307,10 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let tree = run("component.list", json!({}))?;
             let mut cuts: Vec<(String, Commands)> = Vec::new();
             let holes = base::bolts(&now, &cabinets);
-            for (n, (sides, world)) in holes.iter().enumerate() {
-                for (side, what) in sides.iter().zip(["bolt", "hole"]) {
-                    let feature = format!("{side} connector {what} {}", n + 1);
+            for (sides, n, world) in &holes {
+                for (k, (side, what)) in sides.iter().zip(["bolt", "hole"]).enumerate() {
+                    let other = &sides[1 - k];
+                    let feature = format!("{side} connector {what} {n} to {other}");
                     let cabinet = select::owner(&now, side).unwrap_or_default().to_string();
                     if had.contains(&feature.as_str()) || cabinet.is_empty() {
                         continue;

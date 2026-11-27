@@ -138,7 +138,7 @@ fn hardware_is_counted_from_names() {
         "A 3 Drawer 1 Right slide 1 (450 mm, full extension)",
         "A 3 Drawer 2 Left slide 1 (18 in, partial extension)",
         // a connector bolt is counted at its first side
-        "A Side R connector bolt 1", "B Side L connector hole 1",
+        "A Side R connector bolt 1 to B Side L", "B Side L connector hole 1 to A Side R",
     ])});
     let mut bodies = named(&[
         "A Shelf 1",
