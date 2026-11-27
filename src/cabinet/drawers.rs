@@ -13,6 +13,7 @@ pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
 pub const BOX_CLEAR: f64 = 8.0;
 pub const BOX_BEHIND: f64 = 10.0; // room behind a box on slides, which stop it themselves
 const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front's edge
+const FALSE_BACK: f64 = 0.8; // a runner drawer's false back: its front face at this of the box depth
 
 /// A stack of drawers: a front, overlay or inset, and behind it a box that runs on slides. They
 /// are alike, or the top one is `drawer_height` and the rest share what is left, or beside
@@ -386,6 +387,16 @@ pub fn build(cabinet: &Cabinet) {
             [&end_x, &back_y, &bz],
             [&end_w, &bt, &back_h],
         );
+        // Runner and strip drawers (#258): a false back between the sides, as high as them, its
+        // front face at `FALSE_BACK` of the box depth: a stop line that keeps the contents in the
+        // front part, as a runner drawer pulled too far tips out.
+        if wood.is_some() {
+            panel(
+                &format!("{drawer} False back"),
+                [&inner_x, &format!("{y} + {FALSE_BACK}*{box_d}"), &bz],
+                [&inner_w, &bt, &side_h],
+            );
+        }
         if fingers {
             // The four upright corners: an odd count of fingers as wide as the boards are
             // thick, the sides keeping the outer ones; one box cut per board at each corner and

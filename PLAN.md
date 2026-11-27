@@ -164,6 +164,7 @@ Cabinets:
 - [x] Drawer side and back heights (#221): lower box sides and back in Woodwork settings, parameters capped by the box and the sides
 - [x] Grooved fronts (#182): vertical or horizontal, square, round or V grooves on doors and drawer fronts, the count following a resize
 - [x] Strip runners (#146): Slide type Strip runners, a 12 x 18 mm strip on each side under each drawer, the bottom wider than the box resting on them, no groove; strips in the cut list (screw holes not drilled)
+- [x] False back in runner drawers (#258): a board between the box's sides at four fifths of its depth, on dado and strip runners
 - [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
 - [x] Doors meeting on a divider: with three doors or more the end doors hinge on the sides, and a door hinged on a divider gets half overlay hinges (the 9.5 mm cranked model, its own line in the hardware list) (#157)
 - [x] Double dividers where overlay doors meet, so every door gets full overlay hinges (#176)
