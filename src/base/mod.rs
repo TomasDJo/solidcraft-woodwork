@@ -59,6 +59,26 @@ pub fn plans(measure: &Value, cabinets: &[String]) -> Result<(Vec<[f64; 4]>, Vec
     Ok((plans, floors))
 }
 
+/// A timber frame's section `(thickness, width)` in mm (`frame_material: timber`): the timber's
+/// thickness is the frame's across, its width the frame's height, standing on edge. 48 x 98 by
+/// default (Norway's common stud). `None` for a frame of boards.
+pub fn timber(p: &Value) -> Result<Option<(f64, f64)>, String> {
+    if p["frame_material"] != "timber" {
+        return Ok(None);
+    }
+    let t = p["timber_thickness"].as_f64().unwrap_or(48.0);
+    let w = p["timber_width"].as_f64().unwrap_or(98.0);
+    check(
+        (20.0..=150.0).contains(&t),
+        "timber thickness must be 20 to 150 mm",
+    )?;
+    check(
+        (30.0..=300.0).contains(&w),
+        "timber width must be 30 to 300 mm",
+    )?;
+    Ok(Some((t, w)))
+}
+
 /// The frame's commands and summary for the cabinets' `plans`: Caster height (the frame's
 /// underside above the floor), Frame height and Thickness (its boards on edge). The summary's
 /// `lift` is how high the cabinets stand, the frame's top.
@@ -69,18 +89,24 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
     }
     let kit = Kit::new(&p)?;
     let caster = kit.size(&p, "caster_height", 100.0)?;
-    let h = kit.size(&p, "frame_height", 70.0)?;
-    let t = kit.size(&p, "thickness", 18.0)?;
     // mm only (no Units field), so the dialog's bounds are these
     check(
         (fittings::CASTER_MIN..=300.0).contains(&caster),
         "caster height must be 50 to 300 mm",
     )?;
-    check(
-        (30.0..=300.0).contains(&h),
-        "frame height must be 30 to 300 mm",
-    )?;
-    check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
+    let (t, h) = match timber(&p)? {
+        Some(section) => section,
+        None => {
+            let h = kit.size(&p, "frame_height", 70.0)?;
+            let t = kit.size(&p, "thickness", 18.0)?;
+            check(
+                (30.0..=300.0).contains(&h),
+                "frame height must be 30 to 300 mm",
+            )?;
+            check((3.0..=50.0).contains(&t), "thickness must be 3 to 50 mm")?;
+            (t, h)
+        }
+    };
     let [x0, y0, x1, y1] = plans.iter().fold(
         [
             f64::INFINITY,

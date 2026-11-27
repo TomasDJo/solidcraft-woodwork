@@ -559,6 +559,23 @@ fn sheets_from_cutting_layouts() {
     let laid = &list["layouts"][0]["parts"];
     assert_eq!(laid.as_array().unwrap().len(), 1);
     assert_eq!(laid[0]["part"], "Kitchen Worktop Tool shelf");
+    // a timber frame is bought by length per section, laid out on no sheet
+    let frame = json!({"bodies": [
+        body("Base Frame front", "Softwood timber", [1200.0, 45.0, 70.0]),
+        body("Base Frame back", "Softwood timber", [1200.0, 45.0, 70.0]),
+        body("Base Frame left", "Softwood timber", [45.0, 470.0, 70.0]),
+    ]});
+    let list = cutlist(&frame, &BTreeMap::new(), false, &json!({})).unwrap();
+    assert_eq!(list["sheets"], json!([]));
+    assert_eq!(list["timber"].as_array().unwrap().len(), 3);
+    assert_eq!(
+        list["timber_metres"],
+        json!([{"material": "Softwood timber", "section": "45 x 70 mm", "metres": 2.87}])
+    );
+    assert!(list["csv"]
+        .as_str()
+        .unwrap()
+        .contains("\"Softwood timber\",45 x 70 mm,2.87"));
     // an oak door 400 high and 1300 wide fits the sheet only with its grain across it
     let door = json!({"bodies": [
         body("A Side L", "Oak", [18.0, 560.0, 400.0]),

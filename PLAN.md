@@ -131,6 +131,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Connector bolts between the cabinets on a mobile base (#198): four 9 mm holes through each pair of touching sides, counted in the cut list
 - [x] Cabinets held to their mobile base by a link, kept by Edit and Apply settings, also along a line (#215 step 1; the base following the line is open)
 - [x] Frame screws on a mobile base (#198): two 4.5 mm holes down through each cabinet's bottom into each frame board it rests on, counted in the cut list
+- [x] Mobile base of timber (#219): any section, 48 x 98 by default, bought in running metres per section in the cut list
 - [ ] Mobile base leftovers (#198): a tool cabinet's height from the worktop height, following a cabinet that changes size
 
 - [x] Bolt holes for the tool's feet in the tool station's shelf (#172): Bolt spacing across and front to back, four (or two) 8 mm holes round the tool's middle
