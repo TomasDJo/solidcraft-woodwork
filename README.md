@@ -24,8 +24,9 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   - Doors, drawers, or drawers above or below doors, overlay or inset, that open on their
     joints. Holes for shelf pins, handles, hinges and drawer slides, or no handles at all:
     a grip edge bevelled behind the front, a finger groove along it, or a tab under a drawer
-    front to pull by. Drawers on metal slides, dado runners or wooden strip runners.
-  - Fronts flat, Shaker (a frame round a panel), glass doors in a Shaker frame, or with
+    front to pull by. Drawers on metal slides, dado runners or wooden strip runners, with
+    lower sides and back if you like.
+  - Fronts flat, Shaker (a frame round a panel), glass in a Shaker frame, or with
     vertical or horizontal grooves, and drawer fronts separate or integrated (the drawer
     box's own front is the front). Where overlay doors meet on a divider: half overlay
     hinges, or double dividers so every door gets standard hinges.
@@ -49,9 +50,10 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Material**: birch plywood, MDF, white melamine or oak, for a whole cabinet or just the
   parts you pick (the doors, say).
 - **Panel**: an end panel or a filler on one side of a cabinet, following its size.
-- **Mobile base**: one frame on locking casters under a group of cabinets, bolted to each
-  other and, when made without a plinth, screwed down to the frame, for a workbench that
-  rolls.
+- **Mobile base**: one frame of boards or timber on locking casters under a group of
+  cabinets, with stiffeners across it, bolted to each other and, when made without a plinth,
+  screwed down to the frame, for a workbench that rolls. The base holds its cabinets and
+  follows a line they stand along. Pick a board of it to change it or add cabinets.
 - **Worktop**: over the picked cabinets, with butt or mitred corners, dog holes, a sink
   cut-out, an opening for a benchtop tool set flush with the top (its shelf drilled for
   the tool's bolts), and a side wing on two legs past one end.
@@ -82,7 +84,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line; Mobile base with connector bolts and frame screws; handle-less fronts (grip edge, finger groove, bottom tab), Shaker, glass and grooved fronts, and integrated drawer fronts; drawers on wooden strip runners; half overlay hinges or double dividers where doors meet on a divider; a cost estimate in the cut list; Match selected as one shared group per run; the worktop's side wing and tool bolt holes; Woodwork settings as a dialog per group under one ribbon dropdown; and links from the dialogs' fields to the usage guide. |
+| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line; Mobile base of boards or timber, with stiffeners, connector bolts and frame screws, that you can edit and add cabinets to; handle-less fronts (grip edge, finger groove, bottom tab), Shaker, glass and grooved fronts, and integrated drawer fronts; drawers on wooden strip runners, and lower drawer sides and backs; half overlay hinges or double dividers where doors meet on a divider; a cost estimate in the cut list; Match selected as one shared group per run; the worktop's side wing and tool bolt holes; Woodwork settings as a dialog per group under one ribbon dropdown; and links from the dialogs' fields to the usage guide. |
 | 0.49 | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
 | 0.47 | 0.4.0 | Tested on 0.47.0; works on 0.46 too. Joinery and hardware are design-wide Woodwork settings, one dialog for box and corner cabinets, and hinges, slides and fasteners as models. |
 | 0.46 | 0.3.0 | Tested on 0.46.1. Dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults. |
