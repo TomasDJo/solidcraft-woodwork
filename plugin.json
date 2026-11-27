@@ -119,6 +119,18 @@
         }
       },
       {
+        "name": "bolts",
+        "effect": "edit",
+        "slots": [{ "kind": "menu", "name": "Connector bolts" }, { "kind": "ribbon", "name": "Connector bolts" }],
+        "input_schema": {
+          "type": "object", "x-solidcraft-icon": "icons/bolts.svg",
+          "required": ["selection"],
+          "properties": {
+            "selection": { "type": "array", "title": "Selected cabinets", "description": "A board of each cabinet to bolt together; four M6 bolts go through each pair of touching sides, counterbored for the head and washer." }
+          }
+        }
+      },
+      {
         "name": "worktop",
         "effect": "edit",
         "slots": [{ "kind": "menu", "name": "Worktop" }, { "kind": "ribbon", "name": "Worktop" }],

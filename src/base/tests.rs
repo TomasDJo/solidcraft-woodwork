@@ -370,6 +370,15 @@ fn connector_bolts_go_through_the_touching_sides() {
     // through both sides, at a quarter of the depth and of the height
     assert_eq!(holes[0].2, [[582.0, 135.5, 345.5], [618.0, 144.5, 354.5]]);
     assert_eq!(holes[3].2[0], [582.0, 415.5, 705.5]);
+    // a counterbore (#260) 20 across and 6 deep on each side's outer face: A Side R's at x 582,
+    // B Side L's at 618
+    let [a, b] = holes[0].3;
+    assert_eq!(a, [[582.0, 130.0, 340.0], [588.0, 150.0, 360.0]]);
+    assert_eq!((b[0][0], b[1][0]), (612.0, 618.0));
+    // sides too narrow for a counterbore a quarter in get no bolts
+    let low = |name: &str, x0: f64| json!({"name": name, "bbox": {"min": [x0, 0, 0], "max": [x0 + 18.0, 560, 79]}});
+    let m2 = json!({"bodies": [low("A Side R", 582.0), low("B Side L", 600.0)]});
+    assert!(bolts(&m2, &names[..2]).is_empty());
     // picked in another order, or only some of them: the same pairs, numbers and holes
     let again = bolts(&m, &["C", "B", "A"].map(String::from));
     assert_eq!(again, holes);

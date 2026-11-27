@@ -293,6 +293,14 @@ pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Va
                 .count() as u64,
         ),
         (
+            // one under the bolt's head and one under its nut, each in a counterbore (#260)
+            "Washer, M6",
+            features
+                .iter()
+                .filter(|f| f.contains(" connector counterbore "))
+                .count() as u64,
+        ),
+        (
             "Frame screw, 4 x 50 mm",
             features
                 .iter()

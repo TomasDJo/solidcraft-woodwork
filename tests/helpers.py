@@ -4,7 +4,10 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import tempfile
 import threading
+from pathlib import Path
 
 from build import LOCAL, PKG, ROOT, cli, entry_step, env, flat, is_settings, plugin  # noqa: F401 (the tests use them through `import *`)
 
@@ -98,3 +101,15 @@ def handle_heights(faces):
     """The heights of the 5 mm screw holes in a door, from `model.faces`: lowest first."""
     holes = [f for f in faces["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 2.5) < 0.01]
     return sorted(round(f["centroid"][2], 3) for f in holes)
+
+
+def refused(script):
+    """The error of a script whose last step fails, from solidcraft-cli's JSON report."""
+    from build import CLI
+    with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
+        path, out = Path(folder) / "script.json", Path(folder) / "results.json"
+        path.write_text(json.dumps(flat(script)), encoding="utf-8")
+        done = subprocess.run([CLI, "run", str(path), "--results", "--quiet", "--json-out", str(out)],
+                              cwd=ROOT, env=env(), capture_output=True)
+        assert done.returncode != 0, "the script was not refused"
+        return json.loads(out.read_text(encoding="utf-8"))["error"]["error"]

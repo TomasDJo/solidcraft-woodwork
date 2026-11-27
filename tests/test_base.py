@@ -35,22 +35,6 @@ def test_a_base_under_a_run_lifts_it_and_is_made_again(approval):
     assert again["Bench Frame front"][5] == 200 and len([n for n in again if n.startswith("Bench Frame front")]) == 1
 
 
-def refused(script):
-    """The error of a script whose last step fails, from solidcraft-cli's JSON report."""
-    import json
-    import tempfile
-    from pathlib import Path
-
-    from build import CLI, env, flat
-    with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
-        path, out = Path(folder) / "script.json", Path(folder) / "results.json"
-        path.write_text(json.dumps(flat(script)), encoding="utf-8")
-        done = subprocess.run([CLI, "run", str(path), "--results", "--quiet", "--json-out", str(out)],
-                              cwd=ROOT, env=env(), capture_output=True)
-        assert done.returncode != 0, "the script was not refused"
-        return json.loads(out.read_text(encoding="utf-8"))["error"]["error"]
-
-
 def test_a_cabinet_that_cannot_go_up_is_refused(approval):
     # B is held to A; a base under B alone cannot lift it (A stays on the floor): the run is
     # refused with a message naming B, so nothing is made.
@@ -214,7 +198,7 @@ def test_a_stiffener_on_a_corner_block_is_refused(approval):
 
 def test_connector_bolts_join_the_cabinets_on_a_base(approval):
     # A and B side by side on a base: four 9 mm holes through A Side R and B Side L, counted once
-    # as connector bolts. Run again with the cabinets picked the other way round, no hole is cut
+    # as connector bolts, each counterbored on both sides for a washer. Run again with the cabinets picked the other way round, no hole is cut
     # twice.
     bare = {"width": 600, "shelves": 0, "doors": 0}
     steps = [plugin(approval, "cabinet", {"name": "A", **bare}), select("A Side R"),
@@ -226,9 +210,10 @@ def test_connector_bolts_join_the_cabinets_on_a_base(approval):
     assert results[4]["result"]["bolts"] == 4, results[4]["result"]
     measure = results[7]
     for touching, free in (("A Side R", "A Side L"), ("B Side L", "B Side R")):
-        assert cylinders(measure, touching) - cylinders(measure, free) == 4, (touching, cylinders(measure, touching))
+        # each hole and its counterbore (#260)
+        assert cylinders(measure, touching) - cylinders(measure, free) == 8, (touching, cylinders(measure, touching))
     hardware = {h["item"]: h["qty"] for h in results[8]["result"]["hardware"]}
-    assert hardware.get("Connector bolt, M6") == 4, hardware
+    assert hardware.get("Connector bolt, M6") == 4 and hardware.get("Washer, M6") == 8, hardware
 
 
 def test_screws_fix_the_cabinets_to_the_frame(approval):
