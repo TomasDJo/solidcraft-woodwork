@@ -1142,14 +1142,15 @@ fn apply_settings_says_why_a_line_was_not_read_for_a_cabinet_on_a_base() {
         "{reply}"
     );
     drop(inner);
-    // held to the base again, not placed along the line, and the base not made again
+    // held to the base again, not placed along the line; and the base made again under it, as
+    // Apply settings does for every base (#198), so its frame follows a resize
     assert!(called
         .iter()
         .any(|(c, a)| c == "joint.create" && a["a"]["occurrence"] == "Bench:1"));
     assert!(!called
         .iter()
         .any(|(c, a)| c == "occurrence.move" && a.get("translate").is_some()));
-    assert!(!called
+    assert!(called
         .iter()
         .any(|(c, a)| c == "component.delete" && a["component"] == "Bench"));
 }

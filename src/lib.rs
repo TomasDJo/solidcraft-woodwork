@@ -204,8 +204,15 @@ fn apply(
     // Measured only what is built again: its boards' materials, and its panels.
     let measure = measured(names_only, &names, run)?;
     let mut todo = Vec::new();
+    // The mobile bases these cabinets stand on: each made again at the end (#198), so its frame
+    // follows a cabinet that changed size, whether or not the settings change the cabinet.
+    let tree = run("component.list", json!({}))?;
+    let mut rebased: Vec<String> = Vec::new();
     for name in names {
         let about = run("component.metadata", json!({"component": name}))?;
+        if let Some(base) = live_base(&about, &tree).filter(|b| !rebased.iter().any(|r| r == b)) {
+            rebased.push(base.to_string());
+        }
         let ours = &about["metadata"][edit::KEY];
         let Some(entry) = ours["entry"]
             .as_str()
@@ -227,7 +234,6 @@ fn apply(
         }
     }
     let (mut applied, mut changes, mut lines) = (Vec::new(), Map::new(), Map::new());
-    let mut rebased: Vec<String> = Vec::new();
     let count = todo.len();
     for (i, (name, about, entry, params, changed)) in todo.into_iter().enumerate() {
         let message = format!("{name} ({} of {count})", i + 1);
@@ -253,8 +259,8 @@ fn apply(
         changes.insert(name.clone(), json!(changed));
         applied.push(name);
     }
-    // The bases of cabinets that went back onto their lines, made again under them with what
-    // they remember (#215): as Mobile base run again by its name, nothing picked.
+    // The bases, made again under their cabinets with what they remember (#215, #198): as Mobile
+    // base run again by its name, nothing picked, so a frame follows a resize and a line.
     for base in &rebased {
         let about = run("component.metadata", json!({"component": base}))?;
         let mut again = about["metadata"][edit::KEY]["params"].clone();
@@ -1247,10 +1253,19 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             if changed.iter().any(|c| c == "height") {
                 params["height_line"] = json!([]);
             }
+            let tree = run("component.list", json!({}))?;
+            let base = live_base(&about, &tree).map(String::from);
             let mut summary = rebuild(
                 &name, &about, &entry, &params, &design, &measure, false, run,
             )?;
             summary["edited"] = json!(true);
+            // A new size on a mobile base: the frame is numeric, so it is made again by a run of
+            // its own (#198), which an Edit has no room for in its 256 commands.
+            if let Some(base) = base.filter(|_| base::resized(&changed)) {
+                summary["base"] = json!(format!(
+                    "{base} still has its old frame: run Mobile base {base} again, or Apply settings, to fit it"
+                ));
+            }
             summary["changed"] = json!(changed);
             Ok(summary)
         }
