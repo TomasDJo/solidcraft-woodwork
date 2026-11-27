@@ -83,6 +83,30 @@ def test_a_narrow_run_and_cabinets_at_different_heights(approval):
     assert cross[0] == -9 and cross[3] == 9 and cross[4] - cross[1] == 524, cross  # along the depth, at x = 0
 
 
+def test_cabinets_back_to_back_of_different_widths_get_boards_that_do_not_cross(approval):
+    # #216: A 600 wide, B 800 wide turned round behind it, back to back, both from A's left side
+    # (as Along a line places them). The frame's boards and blocks share no volume: the board
+    # along the frame at A's right side stops at the board across where A and B meet.
+    turned = [{"command": "occurrence.ground", "params": {"occurrence": "B:1", "grounded": False}},
+              {"command": "occurrence.move", "params": {"occurrence": "B:1", "to_matrix": [
+                  -1, 0, 0, 100, 0, -1, 0, 560, 0, 0, 1, 0]}},
+              {"command": "occurrence.ground", "params": {"occurrence": "B:1", "grounded": True}}]
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "A", "width": 600}),
+        plugin(approval, "cabinet", {"name": "B", "width": 800, "place": "origin"}), *turned,
+        pick("A Side L", "B Side L"),
+        plugin(approval, "base", {"name": "Cart"}),
+        MEASURE])
+    box = boxes(results[7])
+    assert box["B Side L"][1] == 280 and box["B Side L"][4] == 840, box["B Side L"]
+    frame = {n: b for n, b in box.items() if n.startswith(("Cart Frame", "Cart Block"))}
+    names = sorted(frame)
+    crossing = [(a, b) for i, a in enumerate(names) for b in names[i + 1:]
+                if all(frame[a][k] < frame[b][k + 3] - 0.01 and frame[b][k] < frame[a][k + 3] - 0.01 for k in range(3))]
+    assert crossing == [], crossing
+    assert box["Cart Frame cross 2"][0] == 291 and box["Cart Frame cross 2"][4] == 271, box["Cart Frame cross 2"]
+
+
 def test_connector_bolts_join_the_cabinets_on_a_base(approval):
     # A and B side by side on a base: four 9 mm holes through A Side R and B Side L, counted once
     # as connector bolts. Run again with the cabinets picked the other way round, no hole is cut

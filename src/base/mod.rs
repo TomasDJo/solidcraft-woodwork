@@ -127,9 +127,9 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
     board("Frame left", lo, slo + t, t, short - 2.0 * t);
     board("Frame right", hi - t, slo + t, t, short - 2.0 * t);
     // A cross board where two cabinets meet, centred on the joint: across the frame where they
-    // meet along its long way, along it where they stand side by side across it (a narrow run).
-    // ponytail: two cross boards that cross overlap, to be halved into each other; the cut list
-    // gives both their whole length, as halving needs.
+    // meet along its long way, along it where they stand side by side across it (a narrow run,
+    // or cabinets back to back). One along the frame runs only under the cabinets with that edge,
+    // in pieces between the boards across it, so no two boards overlap (#216).
     let inside = |axis: usize, from: f64, to: f64| {
         let mut at: Vec<f64> = (plans.iter())
             .flat_map(|p| [p[axis], p[axis + 2]])
@@ -152,14 +152,20 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
         );
     }
     for j in inside(1 - long, slo, shi) {
-        n += 1;
-        board(
-            &format!("Frame cross {n}"),
+        let edged = plans
+            .iter()
+            .filter(|p| (p[1 - long] - j).abs() < 1.0 || (p[3 - long] - j).abs() < 1.0);
+        let stops: Vec<f64> = joints.iter().map(|c| c - t / 2.0).collect();
+        for (a, b) in pieces(
+            edged.map(|p| (p[long], p[long + 2])),
             lo + t,
-            j - t / 2.0,
-            len - 2.0 * t,
+            hi - t,
+            &stops,
             t,
-        );
+        ) {
+            n += 1;
+            board(&format!("Frame cross {n}"), a, j - t / 2.0, b - a, t);
+        }
     }
     // Blocks in the corners, and on a long frame two more by the middle (beside the cross
     // board nearest it), each with a caster under its middle.
@@ -189,6 +195,36 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
     summary["lift"] = json!(caster + h);
     summary["casters"] = json!(n);
     Ok((commands, summary))
+}
+
+/// The stretches `(from, to)` a cross board covers: the union of `spans`, within `lo..hi`, less a
+/// board `t` thick starting at each of `stops`. Stretches shorter than 1 mm are dropped.
+fn pieces(
+    spans: impl Iterator<Item = (f64, f64)>,
+    lo: f64,
+    hi: f64,
+    stops: &[f64],
+    t: f64,
+) -> Vec<(f64, f64)> {
+    let mut cuts: Vec<(f64, f64)> = spans
+        .map(|(a, b)| (a.max(lo), b.min(hi)))
+        .filter(|(a, b)| b > a)
+        .collect();
+    cuts.sort_by(|x, y| x.0.total_cmp(&y.0));
+    let mut out: Vec<(f64, f64)> = Vec::new();
+    for (a, b) in cuts {
+        match out.last_mut() {
+            Some(last) if a <= last.1 + 1.0 => last.1 = last.1.max(b),
+            _ => out.push((a, b)),
+        }
+    }
+    for &s in stops {
+        out = (out.into_iter())
+            .flat_map(|(a, b)| [(a, b.min(s)), (a.max(s + t), b)])
+            .filter(|(a, b)| b - a >= 1.0)
+            .collect();
+    }
+    out
 }
 
 /// A connector bolt's hole through two touching sides, in mm: one size for M6 bolts.
