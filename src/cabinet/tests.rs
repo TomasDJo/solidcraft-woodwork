@@ -1178,6 +1178,10 @@ fn a_cabinet_sized_from_its_drawers_inside() {
     );
     let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
     assert!((input.shelf_d - 10.0 - 2.0 * 12.0 - 672.0).abs() < 1e-9);
+    // an integrated front (#163) is no box board: one 12 mm board less in the depth
+    p["drawer_front"] = json!("integrated");
+    from_drawers(&mut p).unwrap();
+    assert_eq!(p["depth"], json!(712.0));
     // wooden runners leave 1 mm a side instead of a slide; inches in inches
     let mut p = json!({"units": "in", "drawers": 1, "slide_type": "wood", "thickness": 0.75,
                        "sizing": "drawer", "drawer_width": 20, "drawer_depth": 18});
@@ -1357,4 +1361,51 @@ fn grip_edges_and_finger_grooves() {
     );
     assert!(thin("knob", 6.0));
     assert!(build(&json!({"doors": 1, "handles": "rail"})).is_err());
+}
+
+#[test]
+fn an_integrated_drawer_front_is_the_box_front() {
+    // #163: no front of its own; the box's front takes the separate front's place, size and
+    // handle holes, overlay or inset
+    for fronts in ["overlay", "inset"] {
+        let base = json!({"drawers": 2, "handles": "pull", "fronts": fronts});
+        let (separate, _) = build(&base).unwrap();
+        let mut p = base.clone();
+        p["drawer_front"] = json!("integrated");
+        let (commands, _) = build(&p).unwrap();
+        assert!(!commands
+            .iter()
+            .any(|c| c.1["name"] == "Cabinet Drawer 1 Front"));
+        let (front, own) = (
+            named(&separate, "Cabinet Drawer 1 Front"),
+            named(&commands, "Cabinet Drawer 1 Box front"),
+        );
+        for key in ["corner", "length", "width", "height"] {
+            assert_eq!(own[key], front[key], "{fronts} {key}");
+        }
+        let handle = named(&commands, "Cabinet Drawer 1 Box front handle 2");
+        assert_eq!(handle["targets"], json!(["Cabinet Drawer 1 Box front"]));
+        // the sides stay at box size, behind the front
+        let side = |c: &[(&str, Value)]| named(c, "Cabinet Drawer 1 Left").clone();
+        assert_eq!(side(&commands), side(&separate));
+        // the bottom starts at the front's back face, as the sides do: no slot under the front
+        let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+        assert_eq!(
+            bottom["corner"][1],
+            side(&commands)["corner"][1],
+            "{fronts}"
+        );
+    }
+    // finger-jointed: the sides run forward through the front, the front cut where they go
+    let p = json!({"drawers": 2, "drawer_front": "integrated", "drawer_joints": "finger"});
+    let (commands, _) = build(&p).unwrap();
+    let side = named(&commands, "Cabinet Drawer 1 Left");
+    assert_eq!(
+        side["corner"][1],
+        "-Cabinet_reveal - Cabinet_thickness - Cabinet_depth/2"
+    );
+    let cut = named(&commands, "Cabinet Drawer 1 Box front finger Left");
+    assert_eq!(cut["targets"], json!(["Cabinet Drawer 1 Box front"]));
+    assert_eq!(cut["width"], "Cabinet_thickness");
+    assert!(build(&json!({"drawers": 1, "drawer_front": "applied"})).is_err());
 }

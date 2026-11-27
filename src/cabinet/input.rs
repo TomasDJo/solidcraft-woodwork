@@ -65,6 +65,8 @@ pub struct Input<'a> {
     pub under: bool,
     /// Finger joints at the drawer boxes' corners (`drawer_joints`, #131).
     pub box_fingers: bool,
+    /// The box's own front board is the drawer front (`drawer_front` integrated, #163).
+    pub integrated: bool,
     pub drawers_top: bool,
     /// The doors' height, and the lowest drawer front's lower edge.
     pub door_h: f64,
@@ -130,6 +132,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         None | Some("none") => false,
         Some("finger") => true,
         _ => return Err("drawer_joints must be none or finger".into()),
+    };
+    let integrated = match p.get("drawer_front").and_then(Value::as_str) {
+        None | Some("separate") => false,
+        Some("integrated") => true,
+        _ => return Err("drawer_front must be separate or integrated".into()),
     };
     // the slides' screws go 8 mm into the box's sides (`HW_box_screw_depth`)
     check(
@@ -419,6 +426,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         runner: wood.then_some(runner),
         under,
         box_fingers,
+        integrated,
         drawers_top,
         door_h,
         drawer_z,

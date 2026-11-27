@@ -88,7 +88,8 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
         true => inside[0] + 42.0 + 2.0 * input.t, // Blum's rule
         false => inside[0] + 2.0 * (bt + clear + input.t),
     };
-    let mut box_d = inside[1] + 2.0 * bt;
+    // An integrated front (#163) stands before the box: one box board in the depth, not two.
+    let mut box_d = inside[1] + if input.integrated { bt } else { 2.0 * bt };
     let mut shelf_d = match input.kind {
         "sink" => 2.0 * box_d,
         _ => box_d + drawers::BOX_BEHIND,

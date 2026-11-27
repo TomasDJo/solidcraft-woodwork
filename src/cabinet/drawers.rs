@@ -49,6 +49,7 @@ pub fn build(cabinet: &Cabinet) {
         runner,
         under,
         box_fingers: fingers,
+        integrated,
         ..
     } = cabinet.input;
     let sink = kind == "sink";
@@ -143,13 +144,13 @@ pub fn build(cabinet: &Cabinet) {
             break;
         }
         kit.open(&drawer);
-        panel(
-            &format!("{drawer} Front"),
-            [&x0, efront, &z],
-            [&front_w, et, front_h],
-        );
-        cabinet.handle(&format!("{drawer} Front"), &format!("{ew}/2"), &handle_z, 0);
-        let front = format!("{drawer} Front");
+        // Integrated (#163): no front of its own, the box's front board takes its size and place.
+        let front = match integrated {
+            true => format!("{drawer} Box front"),
+            false => format!("{drawer} Front"),
+        };
+        panel(&front, [&x0, efront, &z], [&front_w, et, front_h]);
+        cabinet.handle(&front, &format!("{ew}/2"), &handle_z, 0);
         cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], true);
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
@@ -166,17 +167,27 @@ pub fn build(cabinet: &Cabinet) {
         let right = format!("{x} + {box_w} - {bt}");
         let inner_x = format!("{x} + {bt}");
         let inner_w = format!("{box_w} - 2*{bt}");
-        let inner_y = format!("{y} + {bt}");
-        let inner_d = format!("{box_d} - 2*{bt}");
+        // An integrated front stands before the box, so the bottom starts right behind it.
+        let (inner_y, inner_d) = match integrated {
+            true => (y.clone(), format!("{box_d} - {bt}")),
+            false => (format!("{y} + {bt}"), format!("{box_d} - 2*{bt}")),
+        };
+        // Finger-jointed into an integrated front, the sides run forward through it.
+        // ponytail: an inset front on runners with less play than reveal leaves the fingers
+        // proud of the front's edge by the difference.
+        let (side_y, side_d) = match integrated && fingers {
+            true => (efront.clone(), format!("({box_d} + {et})")),
+            false => (y.clone(), box_d.clone()),
+        };
         panel(
             &format!("{drawer} Left"),
-            [&x, &y, &bz],
-            [&bt, &box_d, &box_h],
+            [&x, &side_y, &bz],
+            [&bt, &side_d, &box_h],
         );
         panel(
             &format!("{drawer} Right"),
-            [&right, &y, &bz],
-            [&bt, &box_d, &box_h],
+            [&right, &side_y, &bz],
+            [&bt, &side_d, &box_h],
         );
         // With finger joints (#131) the box's front and back run through the sides to the
         // outside, as wide as the box.
@@ -184,11 +195,13 @@ pub fn build(cabinet: &Cabinet) {
             true => (x.clone(), box_w.clone()),
             false => (inner_x.clone(), inner_w.clone()),
         };
-        panel(
-            &format!("{drawer} Box front"),
-            [&end_x, &y, &bz],
-            [&end_w, &bt, &box_h],
-        );
+        if !integrated {
+            panel(
+                &format!("{drawer} Box front"),
+                [&end_x, &y, &bz],
+                [&end_w, &bt, &box_h],
+            );
+        }
         panel(
             &format!("{drawer} Box back"),
             [&end_x, &back_y, &bz],
@@ -201,8 +214,13 @@ pub fn build(cabinet: &Cabinet) {
             let half = format!("floor(({box_h}) / (2*{bt}))");
             let w = format!("(({box_h}) / (2*{half} + 1))");
             let (mut sides, mut ends) = (Vec::new(), Vec::new());
+            let front_t = if integrated { et.clone() } else { bt.clone() };
             for (side, sx) in [("Left", x.clone()), ("Right", right.clone())] {
-                for (end, ey) in [("Box front", y.clone()), ("Box back", back_y.clone())] {
+                let boards = [
+                    ("Box front", side_y.clone(), front_t.clone()),
+                    ("Box back", back_y.clone(), bt.clone()),
+                ];
+                for (end, ey, deep) in boards {
                     for (board, other, first, list) in [
                         (side, end, w.clone(), &mut sides),
                         (end, side, mm(0.0), &mut ends),
@@ -210,7 +228,7 @@ pub fn build(cabinet: &Cabinet) {
                         let target = [format!("{} {drawer} {board}", kit.name)];
                         let part = format!("{drawer} {board} finger {other}");
                         let z0 = format!("{bz} + {first}");
-                        kit.panel(&part, [&sx, &ey, &z0], [&bt, &bt, &w], Some(&target));
+                        kit.panel(&part, [&sx, &ey, &z0], [&bt, &deep, &w], Some(&target));
                         list.push(format!("{} {part}", kit.name));
                     }
                 }

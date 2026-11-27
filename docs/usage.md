@@ -299,6 +299,15 @@ as the cabinet is made:
   **Drawer box joints** (Woodwork settings): Finger joints give the drawer boxes the same
   at their four corners, the box's front and back running through the sides, fingers as wide as
   the box boards are thick, the sides keeping the outer ones.
+  **Drawer front** (Woodwork settings): Separate (the default) puts a front board on the drawer
+  box; Integrated leaves it out and makes the box's own front board the front, as big, thick
+  and placed as the separate front would be (overlay or inset), drilled for the handle, in the
+  cabinet's material. The rest of the box stays as it was, butted against the front, or with
+  Drawer box joints Finger, its sides' fingers running through the front and showing on its
+  face. The box's bottom starts right behind the front. The cut list then has one board fewer a
+  drawer. A sink base's false front stays.
+
+  ![Integrated drawer fronts with finger joints: the box's own front is the front.](images/integrated-fronts.png)
 - **None**: butted boards, no holes (as cabinets made before 0.2.0, which an Edit keeps so).
 
 **Joinery inside** does the same for fixed shelves (without **Shelf pin holes** the shelves are
@@ -627,7 +636,7 @@ chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel d
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
 face**, **Finger width**, **Finger-joint the bottom too**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
 **Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, dado runners or undermount partial or full,
-**Fastener models**; see [Hinges and slides](#hinges-and-slides)) and **Drawer box joints** (none or finger joints). The dialog starts at what is stored, or at the
+**Fastener models**; see [Hinges and slides](#hinges-and-slides)), **Drawer box joints** (none or finger joints) and **Drawer front** (separate or integrated with the box). The dialog starts at what is stored, or at the
 defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowels, models
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
 them later leaves the cabinets made before as they are, and Apply settings gives them the

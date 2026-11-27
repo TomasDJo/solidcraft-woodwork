@@ -379,6 +379,31 @@ fn banding_and_grain_by_part() {
 }
 
 #[test]
+fn an_integrated_drawer_front_is_banded_as_a_front() {
+    // #163: a box front with no `Drawer 1 Front` is the front; beside one it is the box's
+    let mut design = cabinet(false);
+    let bodies = design["bodies"].as_array_mut().unwrap();
+    let body = |name: &str, max: [f64; 3]| json!({"name": name, "material": "Oak", "bbox": {"min": [0, 0, 0], "max": max}});
+    bodies.push(body("A Drawer 1 Box front", [596.0, 18.0, 180.0]));
+    bodies.push(body("A Drawer 2 Box front", [476.0, 12.0, 150.0]));
+    bodies.push(body("A Drawer 2 Front", [596.0, 18.0, 181.0]));
+    let list = cutlist(&design, &BTreeMap::new(), false, &json!({})).unwrap();
+    let banding = |part: &str| row(&list, part)["banding"].clone();
+    let band = |l: u64, w: u64| json!({"length": l, "width": w});
+    assert_eq!(banding("A Drawer 1 Box front"), band(2, 2));
+    assert_eq!(banding("A Drawer 2 Box front"), band(0, 0));
+    assert_eq!(banding("A Drawer 2 Front"), band(2, 2));
+    // a cabinet whose name holds the words keeps them
+    let design = json!({"bodies": [
+        body("A Box front Side L", [18.0, 560.0, 400.0]),
+        body("A Box front Drawer 1 Box front", [596.0, 18.0, 180.0]),
+    ]});
+    let list = cutlist(&design, &BTreeMap::new(), false, &json!({})).unwrap();
+    let banded = &row(&list, "A Box front Drawer 1 Box front")["banding"];
+    assert_eq!(banded, &band(2, 2));
+}
+
+#[test]
 fn cut_size_takes_off_the_banding() {
     let options = json!({"banding": "2", "size": "cut"});
     let list = cutlist(&cabinet(false), &BTreeMap::new(), false, &options).unwrap();

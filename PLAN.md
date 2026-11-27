@@ -94,6 +94,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [x] Sink base: a cabinet kind with two rails instead of a top, no shelves
 - [x] Sink base with drawers: a false front before the sink, half-depth boxes below (#55)
+- [x] Integrated drawer fronts: the box's own front board is the front, a Woodwork setting (#163)
 - [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
 - [x] Cut list saved as a printable PDF, with tick boxes for boards and hardware
 - [x] Edge banding and grain direction in the cut list
