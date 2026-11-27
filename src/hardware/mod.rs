@@ -232,11 +232,12 @@ pub fn hinge(crank: f64) -> String {
 }
 
 /// The slide types, as the `slide_type` field names them, and as the cut list does.
-pub const SLIDE_TYPES: [(&str, &str); 6] = [
+pub const SLIDE_TYPES: [(&str, &str); 7] = [
     ("partial", "partial extension"),
     ("full", "full extension"),
     ("over", "over-travel"),
     ("wood", "dado runners"),
+    ("strips", "strip runners"),
     ("under_partial", "undermount partial extension"),
     ("under_full", "undermount full extension"),
 ];

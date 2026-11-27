@@ -214,10 +214,15 @@ pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Va
             *slides.entry(length).or_default() += 1;
         }
     }
-    // a drawer on wooden runners (`<Name> Side L runner <n>`) has no slides
+    // a drawer on wooden runners (`<Name> Side L runner <n>`) or strips (`<Name> Side L strip
+    // <n>`, a body) has no slides
+    // (split at the last ` Drawer `, as a cabinet's own name may hold one)
     let runners = |b: &String| {
-        let runner = b.replacen(" Drawer ", " Side L runner ", 1);
-        features.contains(&runner.trim_end_matches(" Front").to_string())
+        let Some((cabinet, n)) = b.trim_end_matches(" Front").rsplit_once(" Drawer ") else {
+            return false;
+        };
+        features.contains(&format!("{cabinet} Side L runner {n}"))
+            || bodies.contains(&format!("{cabinet} Side L strip {n}"))
     };
     let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front") && !runners(b);
     let counts = [

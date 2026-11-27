@@ -1168,6 +1168,67 @@ fn wooden_runners_run_the_bottom_in_grooves_in_the_sides() {
 }
 
 #[test]
+fn strip_runners_carry_the_bottom_on_a_strip_on_each_side() {
+    let p = json!({"drawers": 2, "slide_type": "strips"});
+    let (commands, _) = build(&p).unwrap();
+    assert_eq!(
+        named(&commands, "Cabinet_strip_thickness")["expression"],
+        "12 mm"
+    );
+    assert_eq!(
+        named(&commands, "Cabinet_strip_height")["expression"],
+        "18 mm"
+    );
+    // no groove, so no groove depth
+    assert!(!has(&commands, "Cabinet_runner_depth"));
+    // the box a strip and the play clear of each side; the bottom wider, over the strips
+    let left = named(&commands, "Cabinet Drawer 1 Left");
+    assert!(left["corner"][0]
+        .as_str()
+        .unwrap()
+        .contains("Cabinet_strip_thickness + Cabinet_runner_play"));
+    let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    let out = "Cabinet_thickness + Cabinet_runner_play";
+    assert_eq!(bottom["length"], format!("Cabinet_width - 2*({out})"));
+    // a strip on each side per drawer, a body, under the bottom
+    for side in [
+        "Side L strip 1",
+        "Side R strip 1",
+        "Side L strip 2",
+        "Side R strip 2",
+    ] {
+        let strip = named(&commands, &format!("Cabinet {side}"));
+        assert!(
+            strip.get("operation").is_none() || strip["operation"] == "new",
+            "{strip}"
+        );
+        assert_eq!(strip["length"], "Cabinet_strip_thickness");
+        assert_eq!(strip["height"], "Cabinet_strip_height");
+    }
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"].as_str().is_some_and(|n| n.contains(" runner "))));
+    // no slide holes or models
+    assert!(!commands.iter().any(|c| c.1.to_string().contains("HW_")));
+    // the bottom goes up by the strip's height less BOX_CLEAR, so the strip clears what is below
+    let rise = "max(0 mm, Cabinet_strip_height - 8 mm)";
+    assert!(
+        bottom["corner"][2].as_str().unwrap().contains(rise),
+        "{}",
+        bottom["corner"]
+    );
+    assert!(
+        left["height"].as_str().unwrap().contains(rise),
+        "{}",
+        left["height"]
+    );
+    // strips too thin are refused, and play that leaves the bottom nothing to bear on
+    assert!(build(&json!({"drawers": 1, "slide_type": "strips", "strip_thickness": 3})).is_err());
+    let bare = json!({"drawers": 1, "slide_type": "strips", "runner_play": 12});
+    assert!(build(&bare).is_err());
+}
+
+#[test]
 fn a_cabinet_sized_from_its_drawers_inside() {
     // 16 x 16 Gridfinity bins: 672 mm inside; 12 mm box sides, 12.7 mm slides, 18 mm panels,
     // 10 mm behind the box and a 6 mm back 12 mm in from the rear

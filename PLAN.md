@@ -156,6 +156,7 @@ Cabinets:
 - [x] Shared hardware models (#70): a simple hinge (cup and arm in the door, mounting plate on the side) in each cup and a slide's two members on each drawer, copies of definitions in `Woodwork hardware` at the root, moving with the doors and drawers; field Hardware models (shown, none, or cutting the cups for SolidCraft 0.47)
 - [x] Drawer slide length: standard lengths in mm or inches, Auto the longest that fits, a field to choose one; the models, screw holes and the cut list's hardware line follow it
 - [x] Slide type (partial, full extension, over-travel) and hinge opening (95, 110, 165 degrees) set the joints' limits; hinges per door by its height (2 to 5)
+- [x] Strip runners (#146): Slide type Strip runners, a 12 x 18 mm strip on each side under each drawer, the bottom wider than the box resting on them, no groove; strips in the cut list (screw holes not drilled)
 - [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
 - [x] Doors meeting on a divider: with three doors or more the end doors hinge on the sides, and a door hinged on a divider gets half overlay hinges (the 9.5 mm cranked model, its own line in the hardware list) (#157)
 - [x] Double dividers where overlay doors meet, so every door gets full overlay hinges (#176)

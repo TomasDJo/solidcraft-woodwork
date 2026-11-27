@@ -815,3 +815,50 @@ fn glass_panes_are_bought_by_size() {
         json!([{"item": "Glass, 4 mm, 612 x 492 mm", "qty": 1}])
     );
 }
+
+#[test]
+fn drawers_on_strips_or_runners_count_no_slides() {
+    let named =
+        |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
+    let pairs = |list: &Value| -> u64 {
+        (list.as_array().into_iter().flatten())
+            .filter(|h| h["item"] == "Drawer slide, pair")
+            .filter_map(|h| h["qty"].as_u64())
+            .sum()
+    };
+    // A's drawer 1 on strips, drawer 2 on slides; a cabinet named with ` Drawer ` in it too
+    let bodies = named(&[
+        "A Drawer 1 Front",
+        "A Side L strip 1",
+        "A Drawer 2 Front",
+        "B Drawer C Drawer 1 Front",
+        "B Drawer C Side L strip 1",
+    ]);
+    let list = hardware(
+        &json!({"bodies": bodies}),
+        &BTreeMap::new(),
+        &json!({"timeline": []}),
+    );
+    assert_eq!(pairs(&list), 1, "{list}");
+    // without the strip it counts again
+    let bodies = named(&["A Drawer 1 Front"]);
+    assert_eq!(
+        pairs(&hardware(
+            &json!({"bodies": bodies}),
+            &BTreeMap::new(),
+            &json!({"timeline": []})
+        )),
+        1
+    );
+    // a groove (dado runners) is a feature, also under such a name
+    let design = json!({"timeline": named(&["B Drawer C Side L runner 1"])});
+    let bodies = named(&["B Drawer C Drawer 1 Front"]);
+    assert_eq!(
+        pairs(&hardware(
+            &json!({"bodies": bodies}),
+            &BTreeMap::new(),
+            &design
+        )),
+        0
+    );
+}
