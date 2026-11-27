@@ -473,6 +473,7 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
         ("back thickness", "back_thickness"),
         ("drawer box", "drawer_thickness"),
         ("front grooves", "groove_depth"),
+        ("glass drawer", "handles"),
         ("shaker", "frame_width"),
         ("cleat thickness", "cleat_thickness"),
         ("cleat", "cleat_height"),

@@ -760,8 +760,11 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   the middle of the other stile (`handle_edge`). Drawer fronts lower than `framed` (2 frames +
   60 mm), and integrated ones, stay flat; such a door is refused. The cut list's `role` takes
   ` rail top`/` rail bottom` across, ` stile` and a front's ` panel` upright.
-  `glass` (`Input::glass`): a door's panel is `<part> glass` instead, `GLASS_T` 4 mm, not in
-  `Kit::targets` (no hole into it); drawer fronts stay shaker. `fittings::is_glass` (a name
+  `glass` (`Input::glass`): a framed front's panel (doors and drawer fronts) is `<part> glass`
+  instead, `GLASS_T` 4 mm, not in `Kit::targets` (no hole into it). A glass drawer front's
+  handle is at `frame_width/2` into its top rail on Handle position Top or Auto, the bottom rail
+  on Bottom; middle is refused (`input`, with `Input::framed_drawers`, which
+  `cabinet::drawers` uses too). The tab's notch cuts `Kit::targets` (the bottom rail). `fittings::is_glass` (a name
   ending ` glass`): `lib.rs` gives those bodies `material::GLASS` (always `GLASS_OPACITY`, not
   in `BOARDS`, so See-through boards leaves it) and the Material entry skips them; the cut
   list leaves them out of the boards and buys them as `Glass, 4 mm, L x W mm` by size.
