@@ -715,7 +715,10 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
     let side = choice("wing", "none", &["none", "left", "right"])?;
     if side != "none" {
         let long = size("wing_length", 600.0)?;
-        check(long > 0.0, "wing length must be more than 0")?;
+        check(
+            long >= LEG_IN + LEG,
+            "wing length must be at least 70 mm, so both legs stand under the wing",
+        )?;
         let square = match side.as_str() {
             "left" => (first.left.0 - first.left.1).abs() < 1e-6,
             _ => (first.right_end.0 - first.right_end.1).abs() < 1e-6,

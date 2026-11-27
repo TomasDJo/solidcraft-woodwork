@@ -554,6 +554,19 @@ fn a_side_wing_carries_the_top_on_past_an_end_on_two_legs() {
     .unwrap();
     assert_eq!(named(&commands, "Worktop Wing")["corner"][0], "-300 mm");
     assert!(build(&json!({"wing": "up"}), &names(&["A"]), &m).is_err());
+    // too short for its legs: refused, 70 mm is enough
+    let short = build(
+        &json!({"wing": "right", "wing_length": 4}),
+        &names(&["A"]),
+        &m,
+    );
+    assert!(short.unwrap_err().contains("at least 70 mm"));
+    assert!(build(
+        &json!({"wing": "right", "wing_length": 70}),
+        &names(&["A"]),
+        &m
+    )
+    .is_ok());
 }
 
 #[test]

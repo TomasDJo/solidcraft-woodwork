@@ -226,3 +226,9 @@ def test_side_wing_on_two_legs(approval):
             leg = found[f"Worktop Wing Leg {n}"]
             assert round(leg[2], 1) == round(found["S Side L"][2], 1) and round(leg[5], 1) == round(top[2], 1), leg
             assert round(leg[3], 1) == round(top[3] + 570, 1), leg
+    # a wing too short for its legs is refused
+    script = ROOT / "dist" / "refused-wing.json"
+    script.write_text(json.dumps(flat([cabinet, pick("S Top"),
+                                       plugin(approval, "worktop", {"wing": "right", "wing_length": 4})])), encoding="utf-8")
+    done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
+    assert done.returncode and "wing length must be at least 70 mm" in done.stderr, done.stderr
