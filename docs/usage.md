@@ -79,7 +79,7 @@ component can hold its cabinets.
 | **Handle holes** | Drills the doors and drawer fronts for a knob (one 5 mm hole) or a pull (two, 128 mm apart). |
 | **Handle position** (Woodwork settings) | Near the top, in the middle or near the bottom of a door. On Auto: near the top on a floor unit, near the bottom on a wall unit. On a drawer front the handle lies across: in the middle on Auto, or 40 mm from the front's top or bottom edge. |
 | **Labels** (Woodwork settings) | Writes each board's name on it, the name the cut list has, as text in a sketch on the board's face. It stays in the middle of the board when the cabinet changes size. |
-| **Selected cabinet**, **Match selected**, **Place** | See [Building a run](#building-a-run-place-and-match-selected). **Line**, **Start at**, **Offset**, **Faces** and **Width from line** show with Place Along a line: see [Along a line](#along-a-line). |
+| **Selected cabinet**, **Match selected**, **Place** | See [Building a run](#building-a-run-place-and-match-selected). **Line**, **Start at**, **Offset**, **Faces**, **Width from line** and **Height from line** show with Place Along a line: see [Along a line](#along-a-line). |
 | **Material** | The board material of every panel. Change it later with [Material](#material). |
 | **Name** | The prefix of the panel names. A name that is taken is numbered: Cabinet, Cabinet 2, Cabinet 3; after Base 1 comes Base 2. |
 
@@ -490,17 +490,34 @@ back on that line, at the line's height.
 | **Offset** | From that end to the cabinet's side, 0 by default. At the middle, how far right of the middle the cabinet's middle is (a negative offset moves it left). |
 | **Faces** | **Away from the wall**: for an edge or a face, the cabinet faces away from the face; for a sketch line, it faces the rest of what is drawn in that sketch (the room), or -Y (-X for a line along Y) when the sketch has only the line. **Flip** turns it the other way. The preview shows which. |
 | **Width from line** | The cabinet is as wide as the line, less the offset (at the middle, less the offset at each end). Width is then greyed. It does not go with **Size by** the drawers' inside, which works the width out from the boxes: pick one. |
+| **Height from line** | Optional: pick a second line, a sketch line or an edge running any way, and the cabinet is as tall as it is long (plinth included), for example a line drawn up to the underside of a window. Leave it empty for the Height field. |
+
+![Width from line: one cabinet fills the wall between two side walls.](images/line-fill.png)
+
+*Width from line: one cabinet fills the wall between two side walls.*
 
 - **Quarter turns only:** the line must be level and run along X or Y. Any other line is
   refused, as Place, the worktop and the cut list read cabinets square to the axes.
-- **A sketch line with a length dimension is followed.** With Width from line, the cabinet's
-  `Name_width` parameter becomes that dimension (less the offset), so changing the dimension in
-  the sketch, or in Parameters, makes the cabinet as wide, with no rebuild. A dimension the app
-  named (`d1`) is renamed after the sketch and the line first (`Wall_line_l1`). The cabinet
-  stays centred where it stands, so it grows to both sides; it is not moved with the line.
-- **Anything else is read once:** an edge or face of a body, or a sketch line without a driving
-  length dimension (or one only measured, a reference dimension). After changing it, run
-  Cabinet again. The summary says which it was.
+- **It grows away from its start.** The cabinet's place follows its own sizes: made wider in
+  Parameters (or by its line), its side at Start at stays where it is (both sides move out from
+  the middle with Middle); made deeper, its back stays on the line.
+- **A sketch line with a length dimension is followed at once.** With Width from line, the
+  cabinet's `Name_width` parameter becomes that dimension (less the offset), and with Height from
+  line `Name_height` becomes the height line's, so changing the dimension in the sketch, or in
+  Parameters, resizes the cabinet with no rebuild. A dimension the app named (`d1`) is renamed
+  after the sketch and the line first (`Wall_line_l1`).
+- **Apply settings reads the lines again.** The cabinet remembers the lines it was placed by,
+  and **Apply settings** builds it again from them: its width, height and place, so an edge or
+  face of a wall, or a sketch line without a driving length dimension (or one only measured, a
+  reference dimension), is followed by running Apply settings after changing it. A cabinet along
+  a line is built again by every Apply settings run for that reason. A body's edges and faces
+  are found again by their number on the body, so a change that renumbers them (a cut into the
+  wall) can make it read another one: pick the line again then. A line that can't be read any
+  more (deleted, suppressed, or no longer along X or Y) leaves the cabinet where it stands, and
+  Apply settings' result says why under `lines`, beside what each cabinet along a line read.
+  The summary of each Cabinet run says what follows what.
+- **Edit keeps it on the line too.** A width or height typed in Edit is the cabinet's own from
+  then on: that size no longer comes from its line.
 - The dialog's first pick field is **Selected cabinet**, which takes what is selected when the
   dialog opens; the **Line** field starts empty, so click it before picking the line.
 

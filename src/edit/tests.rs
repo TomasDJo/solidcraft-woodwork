@@ -15,11 +15,13 @@ fn a_cabinet_remembers_how_it_was_made() {
     let kept = remember("cabinet", &params, "A 2");
     let ours = &kept[KEY];
     assert_eq!(ours["entry"], "cabinet");
-    // under the name it got, and without where it was placed (the line too: Edit builds it
-    // where it stands) or what it was matched to; the width it got from the line stays
+    // under the name it got, and without where it was placed or what it was matched to; the
+    // line it stands along stays, for Apply settings to read again (not the expression made
+    // from it, which the width parameter keeps)
     assert_eq!(
         ours["params"],
-        json!({"width": 600, "doors": 2, "name": "A 2"})
+        json!({"width": 600, "doors": 2, "name": "A 2", "line": [{"type": "edge"}],
+            "start_at": "right", "offset": 50, "faces": "flip", "width_from_line": true})
     );
 }
 

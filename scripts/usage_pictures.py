@@ -112,6 +112,13 @@ SHOTS = [
                               "start_at": "right", "offset": 150,
                               "line": [{"type": "face", "body": "Wall", "index": 3}]})],
      cam([0, 0, 450], 3200, yaw=-0.4)),
+    ("line-fill", "Width from line: one cabinet fills the wall between two side walls.",
+     [*[{"command": "solid.box", "params": {"name": n, "body_name": n, "corner": c, "length": l, "width": w, "height": 1200}}
+        for n, c, l, w in (("Wall", [-800, 300, 0], 1600, 100), ("Wall L", [-900, -400, 0], 100, 800),
+                           ("Wall R", [800, -400, 0], 100, 800))],
+      lambda: run("cabinet", {"name": "A", "doors": 2, "dividers": 1, **BASE, "place": "line", "width_from_line": True,
+                              "line": [{"type": "face", "body": "Wall", "index": 3}]})],
+     cam([0, 0, 450], 3000, yaw=-0.35)),
     ("panel", "Panel: an end panel on the right, a filler with its return on the left.",
      [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"), lambda: run("panel", {"kind": "end"}),
       pick("A Side L"), lambda: run("panel", {"kind": "filler", "width": 50})], ONE),

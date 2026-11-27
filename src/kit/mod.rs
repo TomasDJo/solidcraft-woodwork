@@ -192,8 +192,12 @@ impl Kit {
         // A cabinet that is built again keeps its parameters, and whatever they are linked
         // to: one is only touched when the edit gave it another value.
         if let Some(now) = self.existing.get(key).and_then(Value::as_f64) {
-            if (now - mm_value).abs() > 1e-6 {
-                let expression = length;
+            // A size from a line keeps the line's expression: one already over it differs from
+            // the value read only by its rounding (an inch value to 1e-6 in, 1e-5 mm off).
+            let over = self.line[key].as_str();
+            let tolerance = if over.is_some() { 1e-3 } else { 1e-6 };
+            if (now - mm_value).abs() > tolerance {
+                let expression = over.map_or(length, String::from);
                 self.push((
                     "parameters.change",
                     json!({"name": id, "expression": expression}),
@@ -492,6 +496,8 @@ impl Kit {
         let summary = json!({
             "name": self.name,
             "size": { "width": size[0], "height": size[1], "depth": size[2] },
+            // the box's width and depth as expressions: Along a line places it by them
+            "centre": self.centre.borrow().clone(),
             "bodies": self.bodies.take(),
             "joints": self.joints.take(), // drive them to open doors and drawers
             "parameters": format!("{0}_width, {0}_height, ...", self.prefix),
