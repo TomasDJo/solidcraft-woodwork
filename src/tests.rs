@@ -1124,3 +1124,32 @@ fn apply_settings_puts_a_cabinet_on_a_base_back_on_its_line_then_makes_the_base_
     assert!(onto_line.is_some() && base_again.is_some(), "{called:?}");
     assert!(onto_line < base_again);
 }
+
+#[test]
+fn apply_settings_says_why_a_line_was_not_read_for_a_cabinet_on_a_base() {
+    // the line's sketch deleted: A stays on its base, and Apply settings' `lines` says why
+    let mut called = Vec::new();
+    let mut inner = on_bench(true, &mut called);
+    let mut run = |command: &str, args: Value| match command {
+        "document.inspect" => Ok(json!({"selection": [], "params": [], "sketches": [],
+            "bodies": [{"name": "A Side L"}, {"name": "A Side R"}]})),
+        _ => inner(command, args),
+    };
+    let reply = execute("rebuild", &json!({"selection": []}), &mut run).unwrap();
+    let said = reply["lines"]["A"].as_str().unwrap_or_default();
+    assert!(
+        said.contains("no longer in the design") && said.contains("left where it stood"),
+        "{reply}"
+    );
+    drop(inner);
+    // held to the base again, not placed along the line, and the base not made again
+    assert!(called
+        .iter()
+        .any(|(c, a)| c == "joint.create" && a["a"]["occurrence"] == "Bench:1"));
+    assert!(!called
+        .iter()
+        .any(|(c, a)| c == "occurrence.move" && a.get("translate").is_some()));
+    assert!(!called
+        .iter()
+        .any(|(c, a)| c == "component.delete" && a["component"] == "Bench"));
+}

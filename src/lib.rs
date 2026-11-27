@@ -324,7 +324,8 @@ fn rebuild(
     // follows the line and the cabinet rides on it.
     let read = found.as_ref().is_some_and(|f| f.is_ok());
     let (base, rebase) = on_base_or_line(base, follow_line, read);
-    let found = found.filter(|_| base.is_none());
+    // (a line that could not be read is kept: the reply says why, the base still holds it)
+    let found = found.filter(|f| base.is_none() || f.is_err());
     let params = &params;
     run("component.activate", json!({"component": parent}))?;
     let gone = run("component.delete", json!({"component": name}))?;
