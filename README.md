@@ -50,7 +50,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   parts you pick (the doors, say).
 - **Panel**: an end panel or a filler on one side of a cabinet, following its size.
 - **Mobile base**: one frame on locking casters under a group of cabinets, bolted to each
-  other and screwed down to the frame, for a workbench that rolls.
+  other and, when made without a plinth, screwed down to the frame, for a workbench that
+  rolls.
 - **Worktop**: over the picked cabinets, with butt or mitred corners, dog holes, a sink
   cut-out, an opening for a benchtop tool set flush with the top (its shelf drilled for
   the tool's bolts), and a side wing on two legs past one end.
