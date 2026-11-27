@@ -592,6 +592,21 @@ def test_v_grooved_fronts(approval):
     assert boxes(m)["C Door"] == boxes(m)["D Door"]
     cut = volume(results[9], "N Door") - volume(results[9], "V Door")
     assert abs(cut - 15 * v) < 0.002 * 15 * v, cut
+    # in an inch design the same 3 mm V (Groove depth 1/8 in), and a deeper Groove depth makes
+    # the V deeper too: 4 mm, 16 mm2 in section
+    inch = cli([{"command": "document.units", "params": {"units": "in"}},
+                plugin(approval, "cabinet", {"name": "V", "units": "in", "doors": 1, "front_style": "vertical",
+                                             "groove_shape": "v", "groove_depth": 0.125}),
+                plugin(approval, "cabinet", {"name": "N", "units": "in", "doors": 1}),
+                MEASURE,
+                {"command": "parameters.change", "params": {"name": "V_groove_depth", "expression": "4 mm"}},
+                MEASURE])
+    height = boxes(inch[3])["V Door"][5] - boxes(inch[3])["V Door"][2]
+    strips = round((boxes(inch[3])["V Door"][3] - boxes(inch[3])["V Door"][0]) / 50.8)
+    cut = volume(inch[3], "N Door") - volume(inch[3], "V Door")
+    assert abs(cut / (3.175 ** 2 * height) - (strips - 1)) < 0.02, (cut, strips)
+    deeper = volume(inch[5], "N Door") - volume(inch[5], "V Door")
+    assert abs(deeper / cut - (4 / 3.175) ** 2) < 0.02, (cut, deeper)
 
 
 def test_bottom_tab(approval):

@@ -94,10 +94,6 @@ clear of the hinge cups behind it: on a cabinet with doors at most the thickness
 
 ![Grooved fronts: vertical square grooves on the doors (left), round horizontal ones on the drawers (right).](images/grooved-fronts.png)
 
-A V groove's size is fixed when the cabinet is built, from its depth then: changing
-`Name_groove_depth` afterwards changes square and round grooves, not V ones. Use Apply settings
-to rebuild them. The V grooves' place, length and count still follow a resize.
-
 ![V-grooved fronts: vertical V grooves on the doors (left), horizontal ones on the drawers (right).](images/v-grooves.png)
 
 *V-grooved fronts: vertical V grooves on the doors (left), horizontal ones on the drawers (right).*

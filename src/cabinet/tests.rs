@@ -1639,7 +1639,11 @@ fn grooved_fronts() {
         .unwrap();
     assert_eq!(
         commands[i + 1].1["points"],
-        json!([[-4.0, -1.0], [0.0, 3.0], [4.0, -1.0]])
+        json!([
+            ["-(Cabinet_groove_depth + 1 mm)", "-1 mm"],
+            ["0 mm", "Cabinet_groove_depth"],
+            ["Cabinet_groove_depth + 1 mm", "-1 mm"]
+        ])
     );
     let cut = named(&commands, "Cabinet Door front groove");
     assert_eq!(

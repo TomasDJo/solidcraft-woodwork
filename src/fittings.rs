@@ -750,8 +750,8 @@ pub fn front_grooves(
         // A V (#182), 90 degrees, `depth` deep: a triangle sketched square to the groove at its
         // start, a millimetre before the face, extruded along the front as a cut. A turned box
         // and a combine would do it too, but those cannot be patterned (SolidCraft 0.50); an
-        // extrude can. ponytail: the triangle's size is the depth at build, in mm; its place
-        // and length follow the parameters, a changed `_groove_depth` only the other shapes.
+        // extrude can. Its points are expressions over the depth, with units, so it follows
+        // `_groove_depth` as the other shapes do.
         "v" => {
             p[step] = first;
             p[across] = face;
@@ -768,7 +768,6 @@ pub fn front_grooves(
             if normal[run] < 0 {
                 x[step] = -1;
             }
-            let d = g.mm[1];
             let sketch = format!("{name} V");
             kit.push((
                 "sketch.create",
@@ -777,7 +776,11 @@ pub fn front_grooves(
             ));
             kit.push((
                 "sketch.line",
-                json!({"points": [[-(d + 1.0), -1.0], [0.0, d], [d + 1.0, -1.0]], "closed": true}),
+                json!({"points": [
+                    [format!("-({depth} + 1 mm)"), "-1 mm"],
+                    ["0 mm", depth],
+                    [format!("{depth} + 1 mm"), "-1 mm"],
+                ], "closed": true}),
             ));
             kit.push(("sketch.finish", json!({})));
             kit.push((
