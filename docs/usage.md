@@ -911,6 +911,10 @@ frame under all of them and stands them on it:
 
 *A mobile base of 48 x 98 mm timber under a cabinet, bought in running metres.*
 
+![A long base seen from below: stiffeners across the frame and casters spaced evenly between the corners.](images/base-stiffeners.png)
+
+*A long base seen from below: stiffeners across the frame and casters spaced evenly between the corners.*
+
 Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
 again. Quarter turns only, and in a component that stands on the origin. Not in it yet
 ([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)): a worktop height that sets a tool cabinet's height, and following
