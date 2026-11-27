@@ -231,6 +231,9 @@ impl Piece {
     }
 }
 
+/// A bolt hole for the tool's feet in its shelf, in mm: an M6 bolt with play.
+const BOLT_D: f64 = 8.0;
+
 /// The selected cabinets' worktop pieces, longest first, and the height of its underside.
 pub fn plan(
     measure: &Value,
@@ -710,6 +713,7 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
             size("tool_y", 300.0)?,
             size("tool_clearance", 3.0)?,
         );
+        let (bx, by) = (size("bolt_x", 0.0)?, size("bolt_y", 0.0)?);
         let (w, d) = (w / 2.0 + gap, d / 2.0 + gap);
         let opening = [tx - w, ty - d, tx + w, ty + d];
         check(
@@ -779,9 +783,39 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
                 "new",
             ),
         ];
+        // Bolt holes for the tool's feet (#172): a rectangle of them round the tool's middle,
+        // `bolt_x` apart across and `bolt_y` front to back (0 and 0: none; one 0: a pair).
+        let mut centres: Vec<(f64, f64)> = Vec::new();
+        if bx > 0.0 || by > 0.0 {
+            for x in [tx - bx / 2.0, tx + bx / 2.0] {
+                for y in [ty - by / 2.0, ty + by / 2.0] {
+                    if !centres.contains(&(x, y)) {
+                        centres.push((x, y));
+                    }
+                }
+            }
+        }
+        let r = BOLT_D / 2.0;
+        for (n, &(x, y)) in centres.iter().enumerate() {
+            check(
+                x - r >= shelf[0] && x + r <= shelf[2] && y - r >= shelf[1] && y + r <= shelf[3],
+                "bolt spacing: the tool's bolt holes would be off its shelf",
+            )?;
+            let at = first.world(x, y);
+            kit.push((
+                "solid.cylinder",
+                json!({
+                    "diameter": mm(BOLT_D), "height": mm(BOARD),
+                    "base": [mm(at[0]), mm(at[1]), mm(shelf_top - BOARD)], "axis": "Z",
+                    "operation": "cut", "targets": [&bodies[0]],
+                    "name": format!("{name} Tool bolt hole {}", n + 1),
+                }),
+            ));
+        }
         parts.extend(bodies.iter().cloned());
         tool = json!({
             "cabinet": cabinet, "shelf_z": round(shelf_top), "bodies": bodies,
+            "bolt_holes": centres.len(),
             "cut": {"targets": cut, "min": space[0], "max": space[1]},
         });
     }
