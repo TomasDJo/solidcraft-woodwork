@@ -122,6 +122,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Place Along a line (#147, step 1): its back on a picked sketch line, model edge or wall face, from either end or the middle with an offset, facing away from the wall or flipped; quarter turns only; Width from line follows a sketch line's driving length dimension by expression
 - [x] Along a line, step 2 (#147): the cabinet grows away from its Start at end (its translation an expression over its own width and depth), Height from line (a second pick, following a sketch dimension), and Apply settings reading the remembered lines again (width, height and place), so an edge or undimensioned line is followed by a rebuild
 - [x] Shared parameter groups for matched cabinets (#137): Match selected points every cabinet of a run at `Run_<first>_height` and the rest, so deleting a cabinet breaks none and changing one cabinet's own parameter takes only it out
+- [x] Prices and a cost estimate (#56): Woodwork settings' Prices (`name = price` text), the cut list prices each sheet by material and thickness, the banding a metre and the hardware a piece (longest matching name), lists what has no price yet, and shows it in its reply, the PDF and the CSV
 
 ## Open
 

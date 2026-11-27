@@ -70,6 +70,8 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("sheet", "", Choice("2440x1220"), Cutlist),
         ("kerf", "", Mm(4.0, 0.0, 10.0), Cutlist),
         ("trim", "", Mm(10.0, 0.0, 50.0), Cutlist),
+        // free text, `name = price; ...` (`cost::prices`): a choice of no fixed values
+        ("prices", "", Choice(""), Cutlist),
         ("worktop_material", "material", Choice("Oak"), Worktop),
         (
             "worktop_thickness",
@@ -674,6 +676,7 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
             "sheet",
             "kerf",
             "trim",
+            "prices",
             "worktop_material",
             "worktop_thickness",
         ],

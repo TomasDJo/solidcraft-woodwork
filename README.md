@@ -47,7 +47,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   cut-out, and an opening for a benchtop tool set flush with the top.
 - **Drawing**: an A3 shop drawing per cabinet, with front, right and iso views, its sizes and
   its boards.
-- **Cut list**: every board with its size, edge banding and grain, the hardware to buy, and
+- **Cut list**: every board with its size, edge banding and grain, the hardware to buy, a cost
+  estimate from your prices, and
   cutting layouts for the sheets (saw kerf, trim, grain). As a printable PDF with a cutting
   diagram per sheet, CSV, part labels for A4 sticker sheets, or a DXF per sheet for a CNC.
 

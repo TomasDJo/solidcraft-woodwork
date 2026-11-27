@@ -3,6 +3,7 @@
 
 mod cabinet;
 mod corner;
+mod cost;
 mod cutlist;
 mod drawing;
 mod dxf;
@@ -1396,6 +1397,15 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &design);
+            // Prices from Woodwork settings: the estimate, and what has no price yet (#56).
+            let prices = params["prices"].as_str().unwrap_or_default();
+            list["cost"] = cost::estimate(&list, prices)?;
+            if !prices.trim().is_empty() {
+                let csv = cost::csv(&list["cost"]);
+                if let Some(text) = list["csv"].as_str().map(|t| t.to_string() + &csv) {
+                    list["csv"] = json!(text);
+                }
+            }
             if params["format"] == "dxf" && cutlist::file_name(entry, params)?.is_some() {
                 // The holes of each drilled board, for the DXF files: one command a board.
                 // ponytail: past the 256-command limit (less what this run used) the rest of
