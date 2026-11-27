@@ -194,6 +194,12 @@ pub fn build(cabinet: &Cabinet) {
             true => format!("{drawer} Box front"),
             false => format!("{drawer} Front"),
         };
+        // An integrated front is exactly as wide as the box (#223): reaching past its sides,
+        // their fingers would end in closed mortises in its back. The slide gap shows.
+        let (x0, front_w) = match integrated {
+            true => (format!("{et} + {gap_x}"), box_w.clone()),
+            false => (x0, front_w),
+        };
         cabinet.front(
             &front,
             [&x0, efront, &z],

@@ -492,8 +492,9 @@ def test_grip_edges(approval):
 
 
 def test_integrated_drawer_fronts(approval):
-    # Drawer front Integrated (#163): no front of its own, the box's front board where the
-    # separate front was (drilled for the knob), one board fewer a drawer in the cut list.
+    # Drawer front Integrated (#163): no front of its own, the box's front board as high and
+    # deep as the separate front (drilled for the knob), one board fewer a drawer in the cut
+    # list; and exactly as wide as the box, its edges flush with the box sides (#223).
     steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "knob"}), MEASURE, plugin(approval, "cutlist")]
     separate = designed(approval, {"drawer_front": "separate"}, steps)
     results = designed(approval, {"drawer_front": "integrated"}, steps)
@@ -501,7 +502,10 @@ def test_integrated_drawer_fronts(approval):
     assert "Cabinet Drawer 1 Front" not in box, sorted(box)
     for n in (1, 2):
         own, front = box[f"Cabinet Drawer {n} Box front"], boxes(separate[1])[f"Cabinet Drawer {n} Front"]
-        assert [round(v, 3) for v in own] == [round(v, 3) for v in front], (own, front)
+        same = [1, 2, 4, 5]  # depth and height
+        assert [round(own[i], 3) for i in same] == [round(front[i], 3) for i in same], (own, front)
+        left, right = box[f"Cabinet Drawer {n} Left"], box[f"Cabinet Drawer {n} Right"]
+        assert (own[0], own[3]) == (left[0], right[3]), (own, left, right)
     # the bottom starts at the front's back face (y1 of the front, y0 of the bottom)
     assert box["Cabinet Drawer 1 Bottom"][1] == box["Cabinet Drawer 1 Box front"][4], box
     holes = cylinders(results[1], "Cabinet Drawer 1 Box front")

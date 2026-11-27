@@ -467,6 +467,18 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => crate::hardware::travel(kind_of, slide.0),
     };
     let slide_type = (named, travel);
+    // An integrated front is only as wide as the box (#223), so a pull's two holes must fit it:
+    // the box as `drawers` makes it for each slide type.
+    let box_w = match (strips, grooved, under) {
+        (true, _, _) => inner_w - 2.0 * (strip[0] + play),
+        (_, true, _) => inner_w - 2.0 * runner[1],
+        (_, _, true) => inner_w - 42.0 + 2.0 * box_t[0],
+        _ => inner_w - 2.0 * SLIDE,
+    };
+    check(
+        !(integrated && drawers > 0.0 && handles == "pull") || box_w >= 150.0,
+        "integrated drawer fronts are too narrow for pulls",
+    )?;
     Ok(Input {
         kind,
         w,

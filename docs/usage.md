@@ -393,9 +393,11 @@ as the cabinet is made:
   at their four corners, the box's front and back running through the sides, fingers as wide as
   the box boards are thick, the sides keeping the outer ones.
   **Drawer front** (Woodwork settings): Separate (the default) puts a front board on the drawer
-  box; Integrated leaves it out and makes the box's own front board the front, as big, thick
-  and placed as the separate front would be (overlay or inset), drilled for the handle, in the
-  cabinet's material. The rest of the box stays as it was, butted against the front, or with
+  box; Integrated leaves it out and makes the box's own front board the front, as high, thick
+  and placed in depth as the separate front would be (overlay or inset), drilled for the
+  handle, in the cabinet's material, but only as wide as the drawer box: its edges are flush
+  with the box sides, so finger joints stay open and can be cut at home, and the slide gap
+  beside it shows. The rest of the box stays as it was, butted against the front, or with
   Drawer box joints Finger, its sides' fingers running through the front and showing on its
   face. The box's bottom starts right behind the front. The cut list then has one board fewer a
   drawer. A sink base's false front stays.

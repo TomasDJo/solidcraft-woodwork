@@ -684,7 +684,9 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   absent is `none`, so a cabinet made before rebuilds as it was.
   `drawer_front` (#163; separate / integrated; Woodwork settings, box only, design-wide like
   `drawer_joints`), read as `Input::integrated`: integrated makes no `Drawer <n> Front`; the
-  box's `Box front` takes its size, place, thickness (`et`) and handle holes, the sides, back
+  box's `Box front` takes its height, depth place, thickness (`et`) and handle holes, and the
+  box's x and width (#223: flush with the sides, so the fingers stay open; the slide gap
+  shows), the sides, back
   and bottom stay at box size behind it (butted); with finger joints the sides run forward
   through it (`side_y` = `efront`, `box_d + et` deep) and the corner cuts are `et` deep. The cut
   list bands it as a front when its drawer has no `Front` (`cutlist` before `role`). The hardware

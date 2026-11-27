@@ -1427,8 +1427,9 @@ fn grip_edges_and_finger_grooves() {
 
 #[test]
 fn an_integrated_drawer_front_is_the_box_front() {
-    // #163: no front of its own; the box's front takes the separate front's place, size and
-    // handle holes, overlay or inset
+    // #163: no front of its own; the box's front takes the separate front's height, depth and
+    // handle holes, overlay or inset; #223: but only the box's width, its edges flush with the
+    // box sides, so their fingers stay open
     for fronts in ["overlay", "inset"] {
         let base = json!({"drawers": 2, "handles": "pull", "fronts": fronts});
         let (separate, _) = build(&base).unwrap();
@@ -1442,9 +1443,15 @@ fn an_integrated_drawer_front_is_the_box_front() {
             named(&separate, "Cabinet Drawer 1 Front"),
             named(&commands, "Cabinet Drawer 1 Box front"),
         );
-        for key in ["corner", "length", "width", "height"] {
+        for key in ["width", "height"] {
             assert_eq!(own[key], front[key], "{fronts} {key}");
         }
+        assert_eq!(own["corner"][1], front["corner"][1], "{fronts}");
+        assert_eq!(own["corner"][2], front["corner"][2], "{fronts}");
+        let left = named(&commands, "Cabinet Drawer 1 Left");
+        assert_eq!(own["corner"][0], left["corner"][0], "{fronts}");
+        let box_w = "((Cabinet_width - 2*Cabinet_thickness) - 2*HW_slide_t)";
+        assert_eq!(own["length"], box_w, "{fronts}");
         let handle = named(&commands, "Cabinet Drawer 1 Box front handle 2");
         assert_eq!(handle["targets"], json!(["Cabinet Drawer 1 Box front"]));
         // the sides stay at box size, behind the front
@@ -1470,6 +1477,18 @@ fn an_integrated_drawer_front_is_the_box_front() {
     assert_eq!(cut["targets"], json!(["Cabinet Drawer 1 Box front"]));
     assert_eq!(cut["width"], "Cabinet_thickness");
     assert!(build(&json!({"drawers": 1, "drawer_front": "applied"})).is_err());
+    // a pull's holes must fit the narrower integrated front (#223); a separate one is wider
+    let pull = |w: f64, front: &str| {
+        build(&json!({"width": w, "drawers": 2, "handles": "pull", "drawer_front": front})).is_ok()
+    };
+    assert!(!pull(180.0, "integrated") && pull(240.0, "integrated") && pull(180.0, "separate"));
+    // the box as the slide type makes it: 30 mm strips leave a 212 mm cabinet's box 114 wide
+    let strips = json!({"width": 212, "drawers": 2, "handles": "pull", "drawer_front": "integrated",
+                        "slide_type": "strips", "strip_thickness": 30});
+    assert!(build(&strips).is_err());
+    let mut runners = strips.clone();
+    runners["slide_type"] = json!("wood");
+    assert!(build(&runners).is_ok());
 }
 
 #[test]
