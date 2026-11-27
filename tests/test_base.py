@@ -111,7 +111,8 @@ def test_screws_fix_the_cabinets_to_the_frame(approval):
              pick("A Side L"), plugin(approval, "base", {"name": "Bench"}),
              pick("A Side L"), plugin(approval, "base", {"name": "Bench"}), MEASURE, plugin(approval, "cutlist", {}),
              pick("A Side L"), plugin(approval, "base", {"name": "Bench", "thickness": 40}), MEASURE,
-             plugin(approval, "cutlist", {})]
+             plugin(approval, "cutlist", {}), faces("A Bottom"),
+             {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}]
     results = designed(approval, NONE, steps)
     assert results[2]["result"]["screws"] == 4, results[2]["result"]
     holes = cylinders(results[5], "A Bottom")
@@ -121,3 +122,13 @@ def test_screws_fix_the_cabinets_to_the_frame(approval):
     assert cylinders(results[9], "A Bottom") == holes, cylinders(results[9], "A Bottom")
     hardware = {h["item"]: h["qty"] for h in results[10]["result"]["hardware"]}
     assert hardware.get("Frame screw, 4 x 50 mm") == 4, hardware
+    # the holes are on the 40 mm boards' middle lines (20 mm in from the front and the back,
+    # not 9), and only the four new cuts are left in the timeline
+    after = results[10:]
+    front, back = boxes(results[9])["Bench Frame front"][1], boxes(results[9])["Bench Frame back"][4]
+    # (a face's centroid is of its tessellation: to the millimetre)
+    ys = sorted({round(f["centroid"][1]) for f in after[1]["faces"]
+                 if abs((f.get("cylinder") or {}).get("radius", 0) - 2.25) < 0.01})
+    assert ys == [round(front + 20), round(back - 20)], (ys, front, back)
+    cuts = [f["name"] for f in after[2]["timeline"] if " frame screw " in f["name"]]
+    assert len(cuts) == 4 and all(f"{round(front + 20, 1):g}" in c or f"{round(back - 20, 1):g}" in c for c in cuts), cuts

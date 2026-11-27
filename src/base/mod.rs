@@ -304,5 +304,30 @@ pub fn screws(
     holes
 }
 
+/// A screw hole's feature name: its bottom, number and board, and where it is in the world to
+/// 0.1 mm, so a frame made again with other sizes gives other names.
+pub fn screw_name(screw: &(String, String, usize, [[f64; 3]; 2])) -> String {
+    let (bottom, board, n, w) = screw;
+    let at = |i: usize| ((w[0][i] + w[1][i]) / 2.0 * 10.0).round() / 10.0;
+    format!(
+        "{bottom} frame screw {n} into {board} at {}, {}",
+        at(0),
+        at(1)
+    )
+}
+
+/// The frame screw features of `cabinet`'s bottoms in the timeline (`had`) that are not
+/// `wanted` now: a run again deletes them before it cuts the new ones.
+pub fn stale_screws<'a>(had: &[&'a str], wanted: &[String], cabinet: &str) -> Vec<&'a str> {
+    let mine = format!("{cabinet} Bottom");
+    (had.iter().copied())
+        .filter(|f| {
+            f.split_once(" frame screw ")
+                .is_some_and(|(b, _)| b == mine || b == format!("{mine} return"))
+        })
+        .filter(|f| !wanted.iter().any(|w| w == f))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests;

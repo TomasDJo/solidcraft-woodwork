@@ -218,3 +218,38 @@ fn screws_go_down_through_the_bottoms_into_the_frame() {
     high["bodies"][0]["bbox"]["min"][2] = json!(270.0);
     assert!(screws(&high, &["A".to_string()], "Bench").is_empty());
 }
+
+#[test]
+fn a_frame_made_again_replaces_moved_screws_and_keeps_the_rest() {
+    let hole = |y: f64| [[156.75, y - 2.25, 170.0], [161.25, y + 2.25, 188.0]];
+    let screw =
+        |n: usize, board: &str, y: f64| ("A Bottom".to_string(), board.to_string(), n, hole(y));
+    // the front board grew from 18 to 40 mm: its middle line moved from y 9 to y 20
+    let old = screw_name(&screw(1, "Bench Frame front", 9.0));
+    let new = screw_name(&screw(1, "Bench Frame front", 20.0));
+    assert_eq!(
+        old,
+        "A Bottom frame screw 1 into Bench Frame front at 159, 9"
+    );
+    assert_ne!(old, new);
+    let back = screw_name(&screw(1, "Bench Frame back", 551.0));
+    let had = [
+        old.as_str(),
+        back.as_str(),
+        "B Bottom frame screw 1 into Bench Frame front at 759, 9",
+        "A Bottom return frame screw 2 into Bench Frame left at 9, 300",
+        "A Side L pins",
+    ];
+    // the moved one and the return's that is no longer wanted go; the unmoved back one, B's
+    // and anything else stay
+    let wanted = [new.clone(), back.clone()];
+    assert_eq!(
+        stale_screws(&had, &wanted, "A"),
+        [
+            old.as_str(),
+            "A Bottom return frame screw 2 into Bench Frame left at 9, 300"
+        ]
+    );
+    // an identical run again deletes nothing
+    assert!(stale_screws(&[back.as_str()], std::slice::from_ref(&back), "A").is_empty());
+}
