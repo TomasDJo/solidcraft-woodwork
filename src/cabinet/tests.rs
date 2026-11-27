@@ -1967,7 +1967,8 @@ fn drawer_sides_and_back_can_be_lower() {
     let (side, back, front) = (height("Left"), height("Box back"), height("Box front"));
     assert!(side.starts_with("min(") && side.ends_with(", Cabinet_drawer_side_height)"));
     assert_eq!(height("Right"), side);
-    assert_eq!(back, format!("min({side}, Cabinet_drawer_back_height)"));
+    // the back is capped by the box, not the sides (#242)
+    assert!(back.ends_with(", Cabinet_drawer_back_height)") && !back.contains("side_height"));
     assert!(!front.contains("_height)"), "{front}");
     // the slides' holes in the middle of the lower side
     let hole = named(
@@ -1995,6 +1996,26 @@ fn drawer_sides_and_back_can_be_lower() {
         let (commands, _) = build(&p).unwrap_or_else(|e| panic!("{p}: {e}"));
         let left = named(&commands, "Cabinet Drawer 1 Left")["height"].to_string();
         assert!(left.contains("min("), "{left}");
+    }
+    // a back taller than the sides (#242), butted and finger-jointed: as tall as asked, and a
+    // finger-jointed back's corner fingers only over the sides' height, whole above them
+    for joints in ["none", "finger"] {
+        let p = json!({"drawers": 2, "drawer_side_height": 100, "drawer_back_height": 200,
+                       "drawer_joints": joints});
+        let (commands, _) = build(&p).unwrap();
+        let height = |part: &str| {
+            named(&commands, &format!("Cabinet Drawer 1 {part}"))["height"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        };
+        let (side, back) = (height("Left"), height("Box back"));
+        assert!(!back.contains("side_height"), "{back}");
+        if joints == "finger" {
+            let cut = height("Box back finger Left");
+            let run = format!("min({side}, Cabinet_drawer_back_height)");
+            assert!(cut.contains(&run) && !cut.contains(&back), "{cut}");
+        }
     }
     // finger-jointed too (#233): the back is lower, its corner fingers laid out over its own
     // height in a pair of rows of their own, the front corners' over the sides'

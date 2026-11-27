@@ -200,8 +200,8 @@ table says which).
   (the height, 100 mm by default), `plinth_type`, `plinth_setback`, `labels` (stored `yes`/`no`,
   given as a bool), `cleat_height`, `cleat_thickness`, `drawer_thickness`, `drawer_bottom` (box only, parameters while the cabinet has boxes),
   `drawer_side_height`, `drawer_back_height` (#221: box only, 0 the full height and the sides', a
-  parameter only when set, the board's height `min(<box>, <param>)` and the back's `min(<side>,
-  <param>)` per drawer, so a taller value (dialog, Parameters, Edit) is capped, not refused, and
+  parameter only when set, the board's height `min(<box>, <param>)`, the back's too (#242: lower or taller
+  than the sides; its corners join them over `min(<side>, <param>)`, whole above) per drawer, so a taller value (dialog, Parameters, Edit) is capped, not refused, and
   a sink's false front sets no limit; `input` refuses only 1 to 49 mm; on finger joints too
   (#233): the back corners' fingers over the back's own height, their own pair of rows when it
   differs from the sides', `fingers 3` and `4`); the cut list's `banding`, `cut_sizes`
