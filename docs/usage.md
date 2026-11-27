@@ -609,6 +609,11 @@ the **Line** field and pick a line on the floor: a sketch line, an edge of a bod
 bottom edge), or a wall's face, which stands for its bottom edge. The new cabinet stands with its
 back on that line, at the line's height.
 
+Quicker: select the line first, then open Cabinet. With a sketch line (or an edge of a body that
+is not a cabinet's) selected, the dialog starts with **Place** on **Along a line** and that line in
+the **Line** field (#212). A selected board of a cabinet still means Place Auto, beside it. Change
+Place or Line and the dialog keeps your choice.
+
 | Field | What it does |
 |---|---|
 | **Start at** | **Left end** (the default), **Right end** or **Middle** of the line, as seen from the front of the cabinet. |

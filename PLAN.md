@@ -121,6 +121,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Version 0.4.0, for SolidCraft 0.47 (works on 0.46)
 - [x] Version 0.5.0, for SolidCraft 0.49
 - [x] Faster in a large design: placing, Edit, a panel, a worktop, Material and Apply settings measure only the cabinets they read (`inspect.measure` with `names_only`, then the bodies of those cabinets; a whole kitchen took over a second each time), and one pattern drills every panel's shelf-pin rows where their rows match (a feature less per panel)
+- [x] A sketch line or a free edge selected when the Cabinet dialog opens sets Place Along a line, on it (#212)
 - [x] Place Along a line (#147, step 1): its back on a picked sketch line, model edge or wall face, from either end or the middle with an offset, facing away from the wall or flipped; quarter turns only; Width from line follows a sketch line's driving length dimension by expression
 - [x] Along a line, step 2 (#147): the cabinet grows away from its Start at end (its translation an expression over its own width and depth), Height from line (a second pick, following a sketch dimension), and Apply settings reading the remembered lines again (width, height and place), so an edge or undimensioned line is followed by a rebuild
 - [x] Shared parameter groups for matched cabinets (#137): Match selected points every cabinet of a run at `Run_<first>_height` and the rest, so deleting a cabinet breaks none and changing one cabinet's own parameter takes only it out

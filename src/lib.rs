@@ -1987,6 +1987,16 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
             if let Some(all) = reply.as_object_mut() {
                 all.extend(settings::matched_sizes(values, &design));
             }
+            // A sketch line or a free edge selected (#212): Place Along a line, on it. Answered
+            // whatever Place is now, as a reply that drops a value puts the field back; a field
+            // the user changed keeps theirs.
+            if let Some(pick) = line::from_selection(values, &design) {
+                reply["place"] = json!({ "default": "line" });
+                reply["line"] = json!({ "default": [pick] });
+                // the other field Along a line shows that has no default: none (a script that
+                // left Place out is checked with it)
+                reply["height_line"] = json!({ "default": [] });
+            }
             // Mode Auto, a new cabinet (`select::auto`): the Edit fields hidden, and the
             // hint says so. (The hook cannot set Mode: a reply that does is refused whole.)
             if values["mode"] == "auto" {

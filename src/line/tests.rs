@@ -197,3 +197,26 @@ fn a_height_line_runs_any_way() {
     assert_eq!(edge_length(&edges, 9).unwrap(), 2400.0);
     assert!(edge_length(&edges, 99).is_err());
 }
+
+#[test]
+fn a_selected_sketch_line_or_free_edge_is_the_line_to_place_along() {
+    let design =
+        |selection: Value| json!({"bodies": ["Wall", "A Side L", "A Top"], "selection": selection});
+    // a sketch line, as `document.inspect` names it: the Line field's form
+    let line = json!([{"type": "sketch_curve", "sketch": 1, "id": "l1"}]);
+    assert_eq!(
+        from_selection(&json!({}), &design(line)),
+        Some(json!({"type": "external_sketch_curve", "sketch": 1, "id": "l1"}))
+    );
+    // a wall's edge, from the dialog's own selection field
+    let edge = json!({"type": "edge", "body": "Wall", "index": 4});
+    let values = json!({"selection": [edge.clone()]});
+    assert_eq!(from_selection(&values, &design(json!([]))), Some(edge));
+    // a cabinet's edge, a face or a body is Place Auto as before; nothing selected is nothing
+    let board = json!([{"type": "edge", "body": "A Top", "index": 2}]);
+    assert_eq!(from_selection(&json!({}), &design(board)), None);
+    let face = json!([{"type": "face", "body": "Wall", "index": 3}]);
+    assert_eq!(from_selection(&json!({}), &design(face)), None);
+    assert_eq!(from_selection(&json!({}), &design(json!(["Wall"]))), None);
+    assert_eq!(from_selection(&json!({}), &design(json!([]))), None);
+}

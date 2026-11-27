@@ -314,5 +314,23 @@ pub fn unnamed(param: &str) -> bool {
         .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
 }
 
+/// The Line field's pick from what is selected when the Cabinet dialog opens (#212): a sketch
+/// line, or a model edge that is no cabinet's (a board's edge is Place Auto against that board).
+/// The dialog's `selection` field when it holds something (it takes bodies, faces and edges),
+/// else the design's selection, `document.inspect`'s with the body names in `design`.
+pub fn from_selection(values: &Value, design: &Value) -> Option<Value> {
+    let field = values["selection"].as_array().filter(|s| !s.is_empty());
+    let item = field.or(design["selection"].as_array())?.first()?;
+    match item["type"].as_str()? {
+        "sketch_curve" | "external_sketch_curve" => Some(serde_json::json!({
+            "type": "external_sketch_curve", "sketch": item["sketch"].as_u64()?, "id": item["id"].as_str()?,
+        })),
+        "edge" if crate::select::owner(design, item["body"].as_str()?).is_none() => {
+            Some(item.clone())
+        }
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests;

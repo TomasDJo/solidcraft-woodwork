@@ -802,7 +802,14 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   along a line again (`changed: ["line"]`), as only the build reads it. A width or height typed in
   Edit turns that size's line off (`width_from_line: false`, `height_line: []`). Edges and faces
   are found again by index (ponytail: a cut into the wall can renumber them). Field order: Line
-  right under Place, Height from line after Width from line.
+  right under Place, Height from line after Width from line. A selection sets it up (#212): the
+  Cabinet hook's last block answers `place` and `line` defaults (and `height_line` `[]`, the one
+  other field it shows without a default) when `line::from_selection` finds a sketch curve (from
+  `document.inspect`'s selection, as `selection` takes no sketch curves; made
+  `external_sketch_curve`) or an edge of a body no cabinet owns; answered on every call, as a
+  reply that drops a value puts the field back, and a field the user edited keeps theirs.
+  `plugin.run` drops a given field that Place Auto hides and does not restore it once the hook
+  sets Place, so a script leaving Place out leaves those out too.
 - Place's Auto, the dialog's default, goes by the name of the selected board
   (`select::side`): `Side L`, `Side R` (or a panel on it) or `Top`, and the origin for anything else. From 0.46 a
   script must pass `place` (the entry has conditions, see Tools for agents).
