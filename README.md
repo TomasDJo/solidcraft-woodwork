@@ -37,8 +37,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     the line if you like. Match selected puts the cabinets of a run on one shared height,
     depth, thickness and plinth, so changing one parameter resizes the whole run.
 - **Woodwork settings**: what is the same for the whole design, a dialog per group: General
-  (board material and thickness), Doors and fronts, Drawers, Plinth / toe kick and wall mount,
-  Joinery, Cut list and worktop, and Display. On the Model tab they are under one **Woodwork
+  (board material and thickness), Fronts, Doors, Drawers, Plinth and wall mount, Joinery, Cut
+  list and worktop, and Display. On the Model tab they are under one **Woodwork
   settings** button with a dropdown; each is also in the menu. New cabinets start from them.
 - **Apply settings**: builds the picked cabinets, or all of them, again with the Woodwork
   settings, keeping each cabinet's own sizes and choices. It runs as a long job with progress

@@ -624,7 +624,7 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
 
 /// Settings' sections, an entry each (`settings-<section>`, the same fields in the manifest).
 /// The entry `settings` (no dialog, for scripts) takes them all, and Apply to.
-pub const SECTIONS: [(&str, &[&str]); 7] = [
+pub const SECTIONS: [(&str, &[&str]); 8] = [
     (
         "general",
         &[
@@ -643,16 +643,15 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
             "reveal",
             "handles",
             "handle_position",
-            "hinge_angle",
             "front_style",
             "groove_shape",
             "groove_spacing",
             "groove_depth",
             "frame_width",
             "panel_thickness",
-            "double_dividers",
         ],
     ),
+    ("doors", &["hinge_angle", "double_dividers"]),
     (
         "drawers",
         &[
