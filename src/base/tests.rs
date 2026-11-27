@@ -212,6 +212,31 @@ fn stiffeners_keep_the_boards_across_within_the_spacing() {
 }
 
 #[test]
+fn a_picked_board_names_its_base_and_fills_the_dialog() {
+    // #239
+    let files = ["base/Bench.json", "base/Bench_2.json", "edit/Bench.json"];
+    assert_eq!(owner("Bench Frame front", &files), Some("Bench"));
+    assert_eq!(owner("Bench 2 Block 3", &files), Some("Bench_2"));
+    assert_eq!(owner("Bench 2 Caster 1", &files), Some("Bench_2"));
+    assert_eq!(owner("Bench Side L", &files), None);
+    assert_eq!(owner("Other Frame front", &files), None);
+    // a cabinet called "Bench Frame" is no part of base Bench
+    assert_eq!(owner("Bench Frame Side L", &files), None);
+    assert_eq!(owner("Bench Frame stiffener 2", &files), Some("Bench"));
+    assert_eq!(owner("Bench Frame cross 1", &files), Some("Bench"));
+    assert_eq!(file("Bench 2"), "base/Bench_2.json");
+    let kept = json!({"name": "Bench", "frame_height": 100, "selection": ["x"], "_extra": 1});
+    let reply = fields(&kept);
+    assert_eq!(reply["frame_height"], json!({"default": 100}));
+    assert_eq!(reply["name"]["default"], "Bench");
+    assert!(reply["name"]["hint"]
+        .as_str()
+        .unwrap()
+        .starts_with("Editing Bench"));
+    assert!(reply.get("selection").is_none() && reply.get("_extra").is_none());
+}
+
+#[test]
 fn what_a_base_refuses() {
     let tiny = [[0.0, 0.0, 200.0, 200.0]];
     assert!(build(&json!({}), &tiny).unwrap_err().contains("too small"));

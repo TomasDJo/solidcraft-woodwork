@@ -312,3 +312,41 @@ def test_a_base_under_cabinets_along_a_line_follows_the_line(approval):
     assert after["Bench Frame front"][3] - before["Bench Frame front"][3] == 300, after["Bench Frame front"]
     assert after["A Side L"][2] == 170, after["A Side L"]
     assert "A link" in [j["name"] for j in results[11]["joints"]], results[11]
+
+
+def test_a_picked_base_board_edits_that_base_and_adds_cabinets(approval):
+    # #239: Bench under A with a 100 mm frame. Then C, apart, and Mobile base run with only its
+    # pick field given (a board of Bench and C's side), as the dialog does: the hook fills the rest
+    # from Bench's file (its name and its 100 mm frame), and the run adds C to Bench, both 200 up.
+    from build import PKG
+    face = lambda body: {"type": "face", "body": body, "index": 0}
+    bare = {"width": 600, "shelves": 0, "doors": 0}
+    raw = {"command": "plugin.run", "params": {"path": str(PKG), "approval": approval, "entry": "base",
+           "params": {"selection": [face("Bench Frame front"), face("C Side L")]}}}
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "A", **bare}),
+        plugin(approval, "cabinet", {"name": "C", "place": "origin", **bare}),
+        {"command": "occurrence.ground", "params": {"occurrence": "C:1", "grounded": False}},
+        {"command": "occurrence.move", "params": {"occurrence": "C:1", "translate": [600, 0, 0]}},
+        {"command": "occurrence.ground", "params": {"occurrence": "C:1", "grounded": True}},
+        pick("A Side L"),
+        plugin(approval, "base", {"name": "Bench", "frame_height": 100}),
+        pick(),
+        raw,
+        MEASURE])
+    summary, box = results[8]["result"], boxes(results[9])
+    assert summary["cabinets"] == ["A", "C"], summary
+    assert box["A Side L"][2] == 200 and box["C Side L"][2] == 200, (box["A Side L"], box["C Side L"])
+    assert box["Bench Frame front"][3] - box["Bench Frame front"][0] == 1200, box["Bench Frame front"]
+
+
+def test_a_base_under_eight_cabinets(approval):
+    # #239: a long job, so eight cabinets in a row (past the 256 host calls of an ordinary run)
+    # get their base, bolts and screws.
+    bare = {"width": 600, "shelves": 0, "doors": 0}
+    steps = [plugin(approval, "cabinet", {"name": "C1", **bare})]
+    for i in range(2, 9):
+        steps += [select(f"C{i - 1} Side R"), plugin(approval, "cabinet", {"name": f"C{i}", "place": "right", **bare})]
+    steps += [pick(*[f"C{i} Side L" for i in range(1, 9)]), plugin(approval, "base", {"name": "Long"})]
+    summary = designed(approval, NONE, steps)[-1]["result"]
+    assert len(summary["cabinets"]) == 8 and summary["bolts"] == 28, summary
