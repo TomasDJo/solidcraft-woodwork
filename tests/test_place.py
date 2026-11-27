@@ -230,3 +230,23 @@ def test_an_inch_cabinet_rebuilt_keeps_following_its_line(approval):
     assert box["A Side L"][0] == 250.8 and box["A Side R"][3] == 1700, (box["A Side L"], box["A Side R"])
     width = [p for p in results[9]["parameters"] if p["name"] == "A_width"]
     assert width[0]["expression"] == "Wall_line_l1 - 2 in", width
+
+
+def test_a_selected_sketch_line_sets_place_along_it(approval):
+    # #212: with a sketch line selected, a run that leaves Place and Line out (as the dialog
+    # opens) gets them from the hook: Along a line, on the selected line. The cabinet stands as
+    # one placed on that line by hand.
+    sketch = [{"command": "sketch.create", "params": {"plane": "XY", "name": "Wall line"}},
+              {"command": "sketch.line", "params": {"points": [[200, 500], [1400, 500]]}},
+              {"command": "sketch.finish", "params": {}}]
+    left_out = entry_step(approval, "cabinet", {"name": "A", "depth": 400})
+    # and the fields Along a line shows, as plugin.run takes a given field Place Auto hides out
+    for key in ("place", "line", "height_line", "width_from_line", "start_at", "offset", "faces"):
+        left_out["params"]["params"].pop(key, None)
+    by_hand = {"name": "A", "depth": 400, "place": "line",
+               "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]}
+    selected = {"command": "select.set", "params": {"items": [{"type": "sketch_curve", "sketch": 1, "id": "l1"}]}}
+    auto = cli([*sketch, selected, left_out, MEASURE])
+    hand = cli([*sketch, plugin(approval, "cabinet", by_hand), MEASURE])
+    assert auto[4]["result"].get("line"), auto[4]["result"]
+    assert boxes(auto[-1])["A Side L"] == boxes(hand[-1])["A Side L"], (boxes(auto[-1])["A Side L"], boxes(hand[-1])["A Side L"])

@@ -288,6 +288,37 @@ fn settings_patch_then_show_and_the_hook_names_our_data() {
 }
 
 #[test]
+fn a_selected_sketch_line_sets_place_line_and_the_line_in_the_hook() {
+    // #212: the design's selection, a sketch line: Place Along a line, on it
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => json!({"bodies": ["A Side L"], "selection": [
+                {"type": "sketch_curve", "sketch": 2, "id": "l1"}]}),
+            _ => json!({}),
+        })
+    };
+    let reply = dialog("cabinet", &json!({"mode": "new"}), &mut run).unwrap();
+    assert_eq!(reply["place"], json!({"default": "line"}));
+    let pick = json!({"type": "external_sketch_curve", "sketch": 2, "id": "l1"});
+    assert_eq!(reply["line"], json!({"default": [pick]}));
+    assert_eq!(reply["height_line"], json!({"default": []}));
+    // a cabinet's board selected: no answer for Place, so it stays Auto
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => {
+                json!({"bodies": ["A Side L"], "selection": [{"name": "A Side L"}]})
+            }
+            _ => json!({}),
+        })
+    };
+    let reply = dialog("cabinet", &json!({"mode": "new"}), &mut run).unwrap();
+    assert!(
+        reply.get("place").is_none() && reply.get("line").is_none(),
+        "{reply}"
+    );
+}
+
+#[test]
 fn the_edit_hook_reads_body_names_and_the_picked_cabinets_and_never_fails() {
     let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
