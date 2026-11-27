@@ -227,6 +227,7 @@ fn apply(
         }
     }
     let (mut applied, mut changes, mut lines) = (Vec::new(), Map::new(), Map::new());
+    let mut rebased: Vec<String> = Vec::new();
     let count = todo.len();
     for (i, (name, about, entry, params, changed)) in todo.into_iter().enumerate() {
         let message = format!("{name} ({} of {count})", i + 1);
@@ -238,13 +239,29 @@ fn apply(
             "document.inspect",
             json!({"bodies": false, "timeline": false}),
         )?;
-        let built = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
+        let built = rebuild(&name, &about, &entry, &params, &design, &measure, true, run)?;
         // along a line: what it read, or why it was left where it stood
         if let Some(said) = built["line"].as_str() {
             lines.insert(name.clone(), json!(said));
         }
+        if let Some(base) = built["rebase"]
+            .as_str()
+            .filter(|b| !rebased.iter().any(|r| r == b))
+        {
+            rebased.push(base.to_string());
+        }
         changes.insert(name.clone(), json!(changed));
         applied.push(name);
+    }
+    // The bases of cabinets that went back onto their lines, made again under them with what
+    // they remember (#215): as Mobile base run again by its name, nothing picked.
+    for base in &rebased {
+        let about = run("component.metadata", json!({"component": base}))?;
+        let mut again = about["metadata"][edit::KEY]["params"].clone();
+        again["name"] = json!(base);
+        again["selection"] = json!([]);
+        run("select.clear", json!({}))?;
+        execute("base", &again, run)?;
     }
     let with = if settings {
         "with the settings"
@@ -265,6 +282,7 @@ fn apply(
 /// name, place, links, the materials of the boards that had another than the rest, and its
 /// panels. `about` is its `component.metadata`, `design` and `measure` read before. Edit, and
 /// Apply settings.
+#[allow(clippy::too_many_arguments)]
 fn rebuild(
     name: &str,
     about: &Value,
@@ -272,6 +290,7 @@ fn rebuild(
     params: &Value,
     design: &Value,
     measure: &Value,
+    follow_line: bool,
     run: Run,
 ) -> Result<Value, String> {
     let name = name.to_string();
@@ -300,7 +319,13 @@ fn rebuild(
     // stands.
     let was = &about["metadata"][edit::KEY]["link"];
     let base = live_base(about, &tree);
-    let found = found.filter(|_| base.is_none());
+    // Apply settings (`follow_line`): a cabinet on a base along a line goes back onto its line,
+    // on the floor, and Apply settings makes its base again under it (`rebase`), so the base
+    // follows the line and the cabinet rides on it.
+    let read = found.as_ref().is_some_and(|f| f.is_ok());
+    let (base, rebase) = on_base_or_line(base, follow_line, read);
+    // (a line that could not be read is kept: the reply says why, the base still holds it)
+    let found = found.filter(|f| base.is_none() || f.is_err());
     let params = &params;
     run("component.activate", json!({"component": parent}))?;
     let gone = run("component.delete", json!({"component": name}))?;
@@ -385,6 +410,9 @@ fn rebuild(
                 json!({"occurrence": format!("{other}:1"), "grounded": true}),
             )?;
         }
+    }
+    if let Some(base) = rebase {
+        summary["rebase"] = json!(base);
     }
     // Back to where the user was working, unless that was inside the old cabinet.
     let inside = gone["deleted"]
@@ -494,6 +522,20 @@ fn live_base<'a>(about: &'a Value, tree: &Value) -> Option<&'a str> {
     let base = was["to"].as_str().filter(|_| was["place"] == "base")?;
     let mut all = tree["components"].as_array().into_iter().flatten();
     all.any(|c| c["name"] == base).then_some(base)
+}
+
+/// Who places a cabinet on the live base `base` in `rebuild`: the base (held to it again), or,
+/// in Apply settings (`follow_line`) with its line read, the line, and then the base is made
+/// again under it (the second). Neither without a base.
+fn on_base_or_line(
+    base: Option<&str>,
+    follow_line: bool,
+    read: bool,
+) -> (Option<&str>, Option<&str>) {
+    match follow_line && read {
+        true => (None, base),
+        false => (base, None),
+    }
 }
 
 /// Before the base `base` is made again: the cabinets it holds lose their links with it, so
@@ -1205,7 +1247,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             if changed.iter().any(|c| c == "height") {
                 params["height_line"] = json!([]);
             }
-            let mut summary = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
+            let mut summary = rebuild(
+                &name, &about, &entry, &params, &design, &measure, false, run,
+            )?;
             summary["edited"] = json!(true);
             summary["changed"] = json!(changed);
             Ok(summary)
