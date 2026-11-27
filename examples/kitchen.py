@@ -14,7 +14,8 @@ It uses every function of the plugin:
 - Place: each floor unit goes to the right of the one before it, by selecting that one, and is
   held to it: widen `Base_1_width` and the units after it move along
 - Match selected: only the first base and wall unit carry sizes. The others take height, depth,
-  thickness and plinth from the unit they are placed against, so `Base_1_height` sets the whole run
+  thickness and plinth from the unit they are placed against, sharing its run's parameters, so
+  `Run_Base_1_height` sets the whole run
 - Material: white melamine carcasses, then oak on the selected doors and drawer fronts
 - Woodwork settings: the joinery, fronts, labels, handle position and plinth height are design
   wide, set there before the cabinets that take them (wall units have Plinth No). Joinery:

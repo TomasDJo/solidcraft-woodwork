@@ -1031,6 +1031,11 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 let mut found = select::cabinet(&picked, &measure)?;
                 if matching {
                     params["_match"] = kit::matched(&found.name, &design)?;
+                    // the run's shared parameters, made and pointed at the first time
+                    let setup = params["_match"]["setup"].take();
+                    for step in setup.as_array().into_iter().flatten() {
+                        run(step[0].as_str().unwrap_or_default(), step[1].clone())?;
+                    }
                 }
                 // A panel on that side: the new cabinet stands beyond it, not linked, since the
                 // link holds the two sides' seats together.

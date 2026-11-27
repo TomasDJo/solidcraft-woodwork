@@ -471,7 +471,28 @@ stand square to the axes.
 - To take a cabinet out of a run, delete its link.
 
 **Match selected** links the new cabinet's height, depth, panel thickness and plinth (with its
-set-back) to the selected cabinet, so a whole run is resized by changing one cabinet's parameters.
+set-back) to a **shared group** of parameters for the run, so the whole run is resized by changing
+the group.
+
+![A matched run: three cabinets sized by their shared group, Run_A_height set to 850 mm.](images/match-run.png)
+
+*A matched run: three cabinets sized by their shared group, Run_A_height set to 850 mm.*
+
+- The first Match selected against a cabinet `A` makes the group, `Run_A_height`, `Run_A_depth`,
+  `Run_A_thickness`, `Run_A_plinth` (and `Run_A_plinth_setback` when it has one), with A's
+  expressions (one over A's own parameters, such as `A_height - 300 mm`, as its value, so the
+  run never hangs on A), and points both A's and the new cabinet's parameters at it (`A_height = Run_A_height`,
+  `B_height = Run_A_height`). Matching a cabinet that is already in a run joins that run: C
+  matched to B points at `Run_A_height` too, not at B.
+- **Change the run:** change `Run_A_height` in Parameters, and every cabinet in the run follows.
+- **Take one cabinet out:** give its own parameter a value (`B_height = 700 mm` in Parameters,
+  or a new height in Edit). Only that size leaves the run; the others stay in it.
+- **Delete a cabinet:** the group's parameters are not any cabinet's, so deleting a cabinet, A
+  included, and its parameters breaks none of the others.
+- Woodwork settings and Apply settings change a cabinet's thickness and plinth like any of its
+  sizes: a cabinet whose thickness or plinth they change leaves the run for that size.
+- A design made before the groups keeps its links (`B_height = A_height`); the next Match
+  selected against A makes A's run then, and B still follows A, which now follows the run.
 
 ### Along a line
 

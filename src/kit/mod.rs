@@ -73,22 +73,72 @@ pub fn free_name(name: &str, design: &Value) -> String {
 /// legs, or made before it was a field) keeps the dialog's.
 pub const MATCHED: [&str; 5] = ["height", "depth", "thickness", "plinth", "plinth_setback"];
 
+///
+/// Shared groups (#137): each matched size points at a parameter of the run, `Run_<A>_<key>`,
+/// not at the selected cabinet's own. The first match makes it (with the selected cabinet's
+/// expression) and points that cabinet's parameter at it too: `setup`, the commands `lib.rs`
+/// runs before the build. A cabinet already in a run (its parameter is just a `Run_` name)
+/// shares that one. So deleting any cabinet of the run breaks none of the others.
 pub fn matched(cabinet: &str, design: &Value) -> Result<Value, String> {
     let from = prefix(cabinet);
-    let mut values = serde_json::Map::new();
+    let all: Vec<&Value> = design["params"].as_array().into_iter().flatten().collect();
+    let taken = |n: &str| all.iter().any(|p| p["name"] == n);
+    let (mut values, mut names, mut setup) =
+        (serde_json::Map::new(), serde_json::Map::new(), vec![]);
     for key in MATCHED {
         let id = format!("{from}_{key}");
-        let all = design["params"].as_array().into_iter().flatten();
-        let found = all.into_iter().find(|p| p["name"] == id.as_str());
-        if let Some(v) = found.and_then(|p| p["value"].as_f64()) {
-            values.insert(key.into(), json!(v));
-        }
+        let Some(found) = all.iter().find(|p| p["name"] == id.as_str()) else {
+            continue;
+        };
+        let Some(v) = found["value"].as_f64() else {
+            continue;
+        };
+        values.insert(key.into(), json!(v));
+        let expression = found["expression"].as_str().unwrap_or_default().trim();
+        let group = match expression.starts_with("Run_") && taken(expression) {
+            true => expression.to_string(),
+            false => {
+                let stem = format!("Run_{from}_{key}");
+                let group = (1..)
+                    .map(|i| {
+                        if i == 1 {
+                            stem.clone()
+                        } else {
+                            format!("{stem}_{i}")
+                        }
+                    })
+                    .find(|n| !taken(n))
+                    .unwrap_or(stem);
+                let comment = format!("shared by the cabinets matched to {cabinet}");
+                // An expression over the cabinet's own parameters (`A_height - 300 mm`) would
+                // tie the run to that cabinet: the run takes its value instead.
+                // ponytail: a value, not the expression rewritten over the run's names.
+                let shared = match names_own(expression, &from) {
+                    true => format!("{v} mm"),
+                    false => expression.to_string(),
+                };
+                setup.push(json!(["parameters.add", {"name": group, "expression": shared, "comment": comment}]));
+                setup.push(json!(["parameters.change", {"name": id, "expression": group}]));
+                group
+            }
+        };
+        names.insert(key.into(), json!(group));
     }
     check(
         values.contains_key("height"),
         &format!("`{cabinet}` has no parameters to match"),
     )?;
-    Ok(json!({"prefix": from, "values": values}))
+    Ok(json!({"prefix": from, "values": values, "names": names, "setup": setup}))
+}
+
+/// Whether an expression names one of the cabinet `prefix`'s parameters (`A_height`, not
+/// `BA_height` or `Tall`).
+fn names_own(expression: &str, prefix: &str) -> bool {
+    let own = format!("{prefix}_");
+    expression.match_indices(&own).any(|(i, _)| {
+        let before = expression[..i].chars().next_back();
+        !before.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+    })
 }
 
 pub struct Kit {
@@ -205,10 +255,14 @@ impl Kit {
             }
             return id;
         }
-        // A matched size is the selected cabinet's parameter: change it there, both follow.
+        // A matched size is the run's parameter: change it there, the whole run follows.
         // Width from line: the line's dimension, so the cabinet follows it.
         let expression = match (self.link["values"].get(key), self.line[key].as_str()) {
-            (Some(_), _) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
+            // the run's shared parameter (#137), else (an older `_match`) the selected cabinet's
+            (Some(_), _) => match self.link["names"][key].as_str() {
+                Some(group) => group.to_string(),
+                None => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
+            },
             (None, Some(over)) => over.to_string(),
             (None, None) => length,
         };
