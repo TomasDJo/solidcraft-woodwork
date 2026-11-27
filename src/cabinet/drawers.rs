@@ -108,6 +108,9 @@ pub fn build(cabinet: &Cabinet) {
         ],
         false => return,
     };
+    // The bottom's tab (#181): a parameter while drawers have one.
+    let tab_p = (cabinet.input.handles == "tab")
+        .then(|| kit.parameter("tab_width", cabinet.input.tab_w, "drawer bottom tab width"));
     // Lower sides and back (#221): parameters only when asked, each capped by what it stands
     // beside, so a taller value in Parameters gives the full height instead of a box that
     // pokes out.
@@ -216,56 +219,7 @@ pub fn build(cabinet: &Cabinet) {
         cabinet.handle(&front, &format!("{ew}/2"), &handle_z, 0);
         cabinet.grooves(&front, [&x0, efront, &z], [&front_w, et, front_h]);
         cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], top);
-        // Bottom tab (#181): a board of the bottom's stock set into a notch in the front's lower
-        // edge, `TAB_W` wide, from the front's back face to `TAB_OUT` past its face with its
-        // front corners rounded, to pull by from below; the front is scooped above it. The rest
-        // of the front keeps its height, so the gaps between the drawers stay as they were.
-        if cabinet.input.handles == "tab" {
-            // never wider than the box inside: finger-jointed into an integrated front, the box
-            // sides run through the front down to the tab's height
-            let w = format!("min({}, {box_w} - 2*{bt})", mm(fittings::TAB_W));
-            let r = mm(fittings::TAB_R);
-            let tx = format!("{ew}/2 - {w}/2");
-            let ty0 = format!("{efront} - {}", mm(fittings::TAB_OUT));
-            let target = kit.targets(&front);
-            let (ny, nz) = (format!("{efront} - 1 mm"), format!("{z} - 1 mm"));
-            let (nd, nh) = (format!("{et} + 2 mm"), format!("{bb} + 1 mm"));
-            kit.panel(
-                &format!("{front} tab notch"),
-                [&tx, &ny, &nz],
-                [&w, &nd, &nh],
-                Some(&target),
-            );
-            let tab = format!("{drawer} Tab");
-            let depth = format!("{et} + {} - {r}", mm(fittings::TAB_OUT));
-            panel(&tab, [&tx, &format!("{ty0} + {r}"), &z], [&w, &depth, &bb]);
-            let into = [format!("{} {tab}", kit.name)];
-            kit.push((
-                "solid.box",
-                json!({
-                    "corner": kit.at(&format!("{tx} + {r}"), &ty0, &z),
-                    "length": format!("{w} - 2*{r}"), "width": format!("2*{r}"), "height": bb,
-                    "operation": "join", "targets": into, "name": format!("{} {tab} front", kit.name),
-                }),
-            ));
-            for (k, cx) in [format!("{tx} + {r}"), format!("{tx} + {w} - {r}")]
-                .into_iter()
-                .enumerate()
-            {
-                kit.push((
-                    "solid.cylinder",
-                    json!({
-                        "base": kit.at(&cx, &format!("{ty0} + {r}"), &z), "axis": [0, 0, 1],
-                        "diameter": format!("2*{r}"), "height": bb, "operation": "join",
-                        "targets": into, "name": format!("{} {tab} corner {}", kit.name, k + 1),
-                    }),
-                ));
-            }
-            // its axis half its diameter over the tab: the half round rises from the tab's top
-            let d = mm(fittings::GROOVE_D);
-            let scoop = kit.at(&tx, efront, &format!("{z} + {bb} + {d}/2"));
-            fittings::hole(kit, &front, scoop, [1, 0, 0], &d, &w, "tab scoop");
-        }
+        let front_z = z.clone();
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
         let (x, y, z) = (
@@ -305,6 +259,82 @@ pub fn build(cabinet: &Cabinet) {
         let (inner_y, inner_d) = match integrated {
             true => (y.clone(), format!("{box_d} - {bt}")),
             false => (format!("{y} + {bt}"), format!("{box_d} - 2*{bt}")),
+        };
+        // Bottom tab (#181): the bottom, its underside at `tz` and its front edge at `ty`, runs
+        // forward under the front to `TAB_OUT` past its face, `tab_width` wide (never wider than
+        // the box inside), its two front corners rounded. The front is cut away from its lower
+        // edge up to the bottom's top where the tab passes, and scooped above it; a box front
+        // the bottom stands behind is slotted for it.
+        let tab = |tz: &str, ty: &str, through_box: bool| {
+            let Some(tab_p) = &tab_p else { return };
+            let w = format!("min({tab_p}, {box_w} - 2*{bt})");
+            let r = mm(fittings::TAB_R);
+            let tx = format!("{ew}/2 - {w}/2");
+            let ty0 = format!("{efront} - {}", mm(fittings::TAB_OUT));
+            let notch = format!("({tz}) + {bb} - ({front_z}) + 1 mm");
+            kit.panel(
+                &format!("{front} tab notch"),
+                [
+                    &tx,
+                    &format!("{efront} - 1 mm"),
+                    &format!("{front_z} - 1 mm"),
+                ],
+                [&w, &format!("{et} + 2 mm"), &notch],
+                Some(&kit.targets(&front)),
+            );
+            if through_box {
+                let target = [format!("{} {drawer} Box front", kit.name)];
+                kit.panel(
+                    &format!("{drawer} Box front tab slot"),
+                    [&tx, &format!("{y} - 1 mm"), tz],
+                    [&w, &format!("{bt} + 2 mm"), &bb],
+                    Some(&target),
+                );
+            }
+            let bottom = [format!("{} {drawer} Bottom", kit.name)];
+            let name = format!("{} {drawer} Bottom tab", kit.name);
+            let boxes = [
+                (
+                    tx.clone(),
+                    format!("{ty0} + {r}"),
+                    w.clone(),
+                    format!("({ty}) - ({ty0}) - {r} + 1 mm"),
+                    "1",
+                ),
+                (
+                    format!("{tx} + {r}"),
+                    ty0.clone(),
+                    format!("{w} - 2*{r}"),
+                    format!("2*{r}"),
+                    "2",
+                ),
+            ];
+            for (bx, by, length, width, k) in boxes {
+                kit.push((
+                    "solid.box",
+                    json!({
+                        "corner": kit.at(&bx, &by, tz), "length": length, "width": width,
+                        "height": bb, "operation": "join", "targets": bottom, "name": format!("{name} {k}"),
+                    }),
+                ));
+            }
+            for (k, cx) in [format!("{tx} + {r}"), format!("{tx} + {w} - {r}")]
+                .into_iter()
+                .enumerate()
+            {
+                kit.push((
+                    "solid.cylinder",
+                    json!({
+                        "base": kit.at(&cx, &format!("{ty0} + {r}"), tz), "axis": [0, 0, 1],
+                        "diameter": format!("2*{r}"), "height": bb, "operation": "join",
+                        "targets": bottom, "name": format!("{name} corner {}", k + 1),
+                    }),
+                ));
+            }
+            // its axis half its diameter over the tab: the half round rises from the tab's top
+            let d = mm(fittings::GROOVE_D);
+            let scoop = kit.at(&tx, efront, &format!("{tz} + {bb} + {d}/2"));
+            fittings::hole(kit, &front, scoop, [1, 0, 0], &d, &w, "tab scoop");
         };
         // Finger-jointed into an integrated front, the sides run forward through it.
         // ponytail: an inset front on runners with less play than reveal leaves the fingers
@@ -415,6 +445,7 @@ pub fn build(cabinet: &Cabinet) {
                 [&inner_x, &inner_y, &lift_b],
                 [&inner_w, &inner_d, &bb],
             );
+            tab(&lift_b, &inner_y, !integrated);
             let back = format!("{drawer} Box back");
             let target = [format!("{} {back}", kit.name)];
             let (y0, hook_z) = (format!("{back_y} - 1 mm"), format!("{lift_b} + 7 mm"));
@@ -471,6 +502,7 @@ pub fn build(cabinet: &Cabinet) {
                 [&out, &y, &z],
                 [&length, &box_d, &bb],
             );
+            tab(&z, &y, false);
             kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
             // Its strip on each side, under the bottom from the front of the opening to the
             // back, in the cabinet's component: `<Side> strip <n>`, a board of the cut list.
@@ -507,6 +539,7 @@ pub fn build(cabinet: &Cabinet) {
             [&inner_x, &inner_y, &z],
             [&inner_w, &inner_d, &bb],
         );
+        tab(&z, &inner_y, !integrated);
         // The slides' screw holes, in the middle of the box side's height: into each box side
         // from outside, `HW_setback` behind the box's front and the last whole `HW_pitch`
         // before `HW_setback` from the slide's back end; and into the carcass side beside it,

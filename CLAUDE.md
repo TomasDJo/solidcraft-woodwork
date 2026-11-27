@@ -739,13 +739,16 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   that `MIN_GRIPPED` of the lowest front is left) shorter at its grip edge (`fittings::gripped`,
   `Cabinet::gripped`), a drawer's box with it, so a finger fits behind the bevel. `fittings::profile_fits`
   refuses a front too thin for it. Both run a millimetre past the front's ends.
-  `tab` (#181, drawers only; doors and a sink base's false front get nothing): in
-  `cabinet::drawers` right after the front, `<Drawer> Tab` (a `Kit` body, `drawer_bottom` thick,
-  `TAB_W` wide, from the front's back face to `TAB_OUT` past its face; `Tab front` and `Tab corner
-  1/2` joined, `TAB_R` round) in a `<front> tab notch` at the front's lower edge, and a `tab scoop`
-  (`GROOVE_D` cylinder) above it: 6 commands a drawer. The front keeps its height (the gaps stay)
-  and the bottom is unchanged: the box's bottom cannot reach the front's lower edge, which on the
-  lowest drawer is beside the carcass bottom. The cut list lists the tab as its own part.
+  `tab` (#181, drawers only; doors and a sink base's false front get nothing): the drawer's
+  `Bottom` runs forward under the front as the tab: `cabinet::drawers`' `tab`, after each
+  branch's bottom, joins `Bottom tab 1/2` (boxes) and `corner 1/2` (cylinders, `TAB_R`) to it,
+  `min(<Prefix>_tab_width, box inside)` wide (`tab_width`, Woodwork settings' Drawers, 120 mm,
+  a parameter while drawers have the tab, `edit::SIZES`) and `TAB_OUT` past the front's face;
+  a `<front> tab notch` from the front's lower edge up to the bottom's top (`Kit::targets`),
+  a `Box front tab slot` when the bottom stands behind a box front (not on runners, not
+  integrated), and a `tab scoop` (`GROOVE_D`) above. The front keeps its height (the gaps
+  stay); the bottom stays at its height, above the front's lower edge, as the lowest drawer's
+  must clear the carcass. The cut list measures the bottom with its tab (mesh: it fills no box).
 - **Grooved fronts** (`front_style` flat, vertical, horizontal: per cabinet with a Settings
   default, as `fronts`; `groove_shape` square or round, `groove_spacing`, `groove_depth`:
   design-wide, the parameters `<Prefix>_groove_spacing` and `_groove_depth` on a cabinet with

@@ -111,7 +111,7 @@ SHOTS = [
       lambda: run("cabinet", {"width": 900, "height": 720, "depth": 320, "dividers": 2, "doors": 3, "door_hinge": "right",
                               "shelves": 1, "handles": "pull"}),
       drive("Cabinet Door 1 hinge", 30), drive("Cabinet Door 2 hinge", 95)], cam([0, -200, 360], 1450, yaw=0.6, pitch=0.3)),
-    ("bottom-tab", "Bottom tab: a rounded tab under each drawer front's lower edge to pull by.",
+    ("bottom-tab", "Bottom tab: each drawer's bottom panel sticks out under its front to pull by.",
      [lambda: run("settings", {"drawer_bottom": 12}),
       lambda: run("cabinet", {"drawers": 3, "plinth": 100, "handles": "tab"}), drive("Cabinet Drawer 2 slide", 250)],
      cam([0, -300, 150], 900, yaw=-0.3, pitch=0.15)),
