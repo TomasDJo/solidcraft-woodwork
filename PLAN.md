@@ -126,6 +126,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Prices and a cost estimate (#56): Woodwork settings' Prices (`name = price` text), the cut list prices each sheet by material and thickness, the banding a metre and the hardware a piece (longest matching name), lists what has no price yet, and shows it in its reply, the PDF and the CSV
 
 - [x] Mobile base (#101): one frame of boards on edge under the picked cabinets' footprint, a cross board where two meet, a block and a locking caster in each corner (and a middle pair on a long frame), the cabinets stood on it; made again by its name
+- [ ] Mobile base leftovers (#198): bolting the cabinets to each other and to the frame, a tool cabinet's height from the worktop height, following a cabinet that changes size
 
 - [x] Bolt holes for the tool's feet in the tool station's shelf (#172): Bolt spacing across and front to back, four (or two) 8 mm holes round the tool's middle
 

@@ -22,14 +22,15 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   - A box cabinet with shelves, dividers, a back and a plinth / toe kick (a board, notched
     sides, legs or casters).
   - Doors, drawers, or drawers above or below doors, overlay or inset, that open on their
-    joints. Holes for shelf pins, handles, hinges and drawer slides.
+    joints. Holes for shelf pins, handles, hinges and drawer slides, or no handles at all:
+    a grip edge bevelled behind the front, or a finger groove along it.
   - A sink base (rails instead of a top), and corner cabinets: L-shaped with a pair of
     folding doors, or diagonal with one door.
   - Hangs on the wall on a French cleat, a hanging rail or a steel rail.
   - Placed against the cabinet you picked, and held to it, so a run stays together when a
     cabinet changes size. Or along a line: a sketch line, a wall's edge or face, as wide as
-    the line if you like. Match selected takes the picked cabinet's height,
-    depth and plinth.
+    the line if you like. Match selected puts the cabinets of a run on one shared height,
+    depth, thickness and plinth, so changing one parameter resizes the whole run.
 - **Woodwork settings**: what is the same for the whole design, a dialog per group: General
   (board material and thickness), Doors and fronts, Drawers, Plinth / toe kick and wall mount,
   Joinery, Cut list and worktop, and Display. On the Model tab they are under one **Woodwork
@@ -46,7 +47,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Mobile base**: one frame on locking casters under a group of cabinets, for a workbench
   that rolls.
 - **Worktop**: over the picked cabinets, with butt or mitred corners, dog holes, a sink
-  cut-out, and an opening for a benchtop tool set flush with the top.
+  cut-out, and an opening for a benchtop tool set flush with the top, its shelf drilled for
+  the tool's bolts.
 - **Drawing**: an A3 shop drawing per cabinet, with front, right and iso views, its sizes and
   its boards.
 - **Cut list**: every board with its size, edge banding and grain, the hardware to buy, a cost
@@ -66,13 +68,15 @@ Every size is a design parameter: change one in Parameters and the cabinet follo
    the [releases page](../../releases) instead. It may still change before the full release.
 2. In SolidCraft open **Preferences > Plugins** and choose **Install plugin...**
 
+Or find **Woodwork** in the SolidCraft Workshop and install it from there.
+
 The functions then appear under **Plugins > Woodwork**.
 
 ## SolidCraft versions
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.50+ | next | Tested on 0.50.0. Woodwork settings as a dialog per group, under one ribbon dropdown. |
+| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line, Mobile base, handle-less fronts (grip edge, finger groove), a cost estimate in the cut list, Match selected as one shared group per run, bolt holes for the tool station, and Woodwork settings as a dialog per group under one ribbon dropdown. |
 | 0.49 | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
 | 0.47 | 0.4.0 | Tested on 0.47.0; works on 0.46 too. Joinery and hardware are design-wide Woodwork settings, one dialog for box and corner cabinets, and hinges, slides and fasteners as models. |
 | 0.46 | 0.3.0 | Tested on 0.46.1. Dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults. |
