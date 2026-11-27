@@ -139,6 +139,7 @@ fn hardware_is_counted_from_names() {
         "A 3 Drawer 2 Left slide 1 (18 in, partial extension)",
         // a connector bolt is counted at its first side
         "A Side R connector bolt 1 to B Side L", "B Side L connector hole 1 to A Side R",
+        "A Bottom frame screw 1 into Bench Frame front",
     ])});
     let mut bodies = named(&[
         "A Shelf 1",
@@ -164,7 +165,7 @@ fn hardware_is_counted_from_names() {
         {"item": "Drawer slide, full extension, 450 mm, pair", "qty": 1}, {"item": "Drawer slide, pair", "qty": 1},
         {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
         {"item": "Dowel, 8 x 60 mm", "qty": 2}, {"item": "Adjustable leg", "qty": 3},
-        {"item": "Connector bolt, M6", "qty": 1}, {"item": "Caster, locking", "qty": 2},
+        {"item": "Connector bolt, M6", "qty": 1}, {"item": "Frame screw, 4 x 50 mm", "qty": 1}, {"item": "Caster, locking", "qty": 2},
         {"item": "Knob", "qty": 1}, {"item": "Pull, 128 mm", "qty": 1},
     ]);
     assert_eq!(list, expected);

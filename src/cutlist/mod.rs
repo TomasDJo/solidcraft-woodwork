@@ -277,6 +277,13 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
                 .count() as u64,
         ),
         (
+            "Frame screw, 4 x 50 mm",
+            features
+                .iter()
+                .filter(|f| f.contains(" frame screw "))
+                .count() as u64,
+        ),
+        (
             "Caster, locking",
             bodies
                 .iter()

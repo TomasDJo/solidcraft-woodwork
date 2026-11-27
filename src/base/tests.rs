@@ -186,3 +186,70 @@ fn connector_bolts_go_through_the_touching_sides() {
     let m = json!({"bodies": [turned("A Side R", 582.0), turned("B Side L", 600.0)]});
     assert_eq!(bolts(&m, &names[..2]).len(), 4);
 }
+
+#[test]
+fn screws_go_down_through_the_bottoms_into_the_frame() {
+    // A's bottom from x 18 to 582, y 0 to 560, on the frame's front and back boards (18 thick,
+    // top at 170): two holes each, on their middle lines; the left board under Side L, none
+    let body = |name: &str, min: [f64; 3], max: [f64; 3]| json!({"name": name, "bbox": {"min": min, "max": max}});
+    let m = json!({"bodies": [
+        body("A Bottom", [18.0, 0.0, 170.0], [582.0, 560.0, 188.0]),
+        body("Bench Frame front", [0.0, 0.0, 100.0], [600.0, 18.0, 170.0]),
+        body("Bench Frame back", [0.0, 542.0, 100.0], [600.0, 560.0, 170.0]),
+        body("Bench Frame left", [0.0, 18.0, 100.0], [18.0, 542.0, 170.0]),
+        body("Other Frame front", [0.0, 0.0, 100.0], [600.0, 18.0, 170.0]),
+    ]});
+    let holes = screws(&m, &["A".to_string()], "Bench");
+    assert_eq!(holes.len(), 4);
+    assert_eq!(
+        (holes[0].0.as_str(), holes[0].1.as_str(), holes[0].2),
+        ("A Bottom", "Bench Frame front", 1)
+    );
+    assert_eq!(holes[0].3, [[156.75, 6.75, 170.0], [161.25, 11.25, 188.0]]);
+    assert_eq!(holes[3].1, "Bench Frame back");
+    // a split corner's return bottom is screwed down too
+    let mut split = m.clone();
+    split["bodies"][0]["name"] = json!("A Bottom return");
+    let holes = screws(&split, &["A".to_string()], "Bench");
+    assert_eq!(holes.len(), 4);
+    assert_eq!(holes[0].0, "A Bottom return");
+    // a bottom that does not rest on the frame (a plinth under it) gets none
+    let mut high = m.clone();
+    high["bodies"][0]["bbox"]["min"][2] = json!(270.0);
+    assert!(screws(&high, &["A".to_string()], "Bench").is_empty());
+}
+
+#[test]
+fn a_frame_made_again_replaces_moved_screws_and_keeps_the_rest() {
+    let hole = |y: f64| [[156.75, y - 2.25, 170.0], [161.25, y + 2.25, 188.0]];
+    let screw =
+        |n: usize, board: &str, y: f64| ("A Bottom".to_string(), board.to_string(), n, hole(y));
+    // the front board grew from 18 to 40 mm: its middle line moved from y 9 to y 20
+    let old = screw_name(&screw(1, "Bench Frame front", 9.0));
+    let new = screw_name(&screw(1, "Bench Frame front", 20.0));
+    assert_eq!(
+        old,
+        "A Bottom frame screw 1 into Bench Frame front at 159, 9"
+    );
+    assert_ne!(old, new);
+    let back = screw_name(&screw(1, "Bench Frame back", 551.0));
+    let had = [
+        old.as_str(),
+        back.as_str(),
+        "B Bottom frame screw 1 into Bench Frame front at 759, 9",
+        "A Bottom return frame screw 2 into Bench Frame left at 9, 300",
+        "A Side L pins",
+    ];
+    // the moved one and the return's that is no longer wanted go; the unmoved back one, B's
+    // and anything else stay
+    let wanted = [new.clone(), back.clone()];
+    assert_eq!(
+        stale_screws(&had, &wanted, "A"),
+        [
+            old.as_str(),
+            "A Bottom return frame screw 2 into Bench Frame left at 9, 300"
+        ]
+    );
+    // an identical run again deletes nothing
+    assert!(stale_screws(&[back.as_str()], std::slice::from_ref(&back), "A").is_empty());
+}

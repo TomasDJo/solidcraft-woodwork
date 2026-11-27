@@ -245,5 +245,89 @@ pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], usize, [
     holes
 }
 
+/// A screw's clearance hole down through a cabinet's bottom into the frame, in mm: 4 x 50 mm
+/// screws.
+pub const SCREW_D: f64 = 4.5;
+
+/// The screw holes (#198) down through each of `cabinets`' `Bottom` (and `Bottom return`) into a board of the base
+/// `name`'s frame on which it rests: each the bottom, the board, the hole's number on that board,
+/// 1 or 2, and its box in the world through the bottom. Two on each board that runs under the
+/// bottom at least 100 mm, at a quarter and three quarters of that, on the board's middle line.
+/// `measure` has the cabinets' and the frame's bodies where they stand.
+pub fn screws(
+    measure: &Value,
+    cabinets: &[String],
+    name: &str,
+) -> Vec<(String, String, usize, [[f64; 3]; 2])> {
+    let all = measure["bodies"].as_array().cloned().unwrap_or_default();
+    let boxed = |b: &Value| {
+        let at = |end: &str| [0, 1, 2].map(|k| b["bbox"][end][k].as_f64().unwrap_or(f64::NAN));
+        [at("min"), at("max")]
+    };
+    let frame = format!("{name} Frame ");
+    let boards: Vec<(String, [[f64; 3]; 2])> = (all.iter())
+        .filter_map(|b| Some((b["name"].as_str()?.to_string(), boxed(b))))
+        .filter(|(n, _)| n.starts_with(&frame))
+        .collect();
+    let mut holes = Vec::new();
+    // a split corner cabinet's bottom is two boards
+    let bottoms = cabinets
+        .iter()
+        .flat_map(|c| [format!("{c} Bottom"), format!("{c} Bottom return")]);
+    for bottom in bottoms {
+        let Some(under) = all.iter().find(|b| b["name"] == bottom.as_str()).map(boxed) else {
+            continue;
+        };
+        for (board, b) in &boards {
+            // its long way, and the middle of its thickness across it
+            let k = usize::from(b[1][1] - b[0][1] > b[1][0] - b[0][0]);
+            let mid = (b[0][1 - k] + b[1][1 - k]) / 2.0;
+            let (lo, hi) = (under[0][k].max(b[0][k]), under[1][k].min(b[1][k]));
+            let on = (under[0][2] - b[1][2]).abs() < 0.5
+                && mid > under[0][1 - k] + SCREW_D
+                && mid < under[1][1 - k] - SCREW_D;
+            if !on || hi - lo < 100.0 {
+                continue;
+            }
+            for (n, f) in [0.25, 0.75].into_iter().enumerate() {
+                let mut hole = [[0.0; 3]; 2];
+                let along = lo + (hi - lo) * f;
+                for (axis, at) in [(k, along), (1 - k, mid)] {
+                    hole[0][axis] = at - SCREW_D / 2.0;
+                    hole[1][axis] = at + SCREW_D / 2.0;
+                }
+                (hole[0][2], hole[1][2]) = (under[0][2], under[1][2]);
+                holes.push((bottom.clone(), board.clone(), n + 1, hole));
+            }
+        }
+    }
+    holes
+}
+
+/// A screw hole's feature name: its bottom, number and board, and where it is in the world to
+/// 0.1 mm, so a frame made again with other sizes gives other names.
+pub fn screw_name(screw: &(String, String, usize, [[f64; 3]; 2])) -> String {
+    let (bottom, board, n, w) = screw;
+    let at = |i: usize| ((w[0][i] + w[1][i]) / 2.0 * 10.0).round() / 10.0;
+    format!(
+        "{bottom} frame screw {n} into {board} at {}, {}",
+        at(0),
+        at(1)
+    )
+}
+
+/// The frame screw features of `cabinet`'s bottoms in the timeline (`had`) that are not
+/// `wanted` now: a run again deletes them before it cuts the new ones.
+pub fn stale_screws<'a>(had: &[&'a str], wanted: &[String], cabinet: &str) -> Vec<&'a str> {
+    let mine = format!("{cabinet} Bottom");
+    (had.iter().copied())
+        .filter(|f| {
+            f.split_once(" frame screw ")
+                .is_some_and(|(b, _)| b == mine || b == format!("{mine} return"))
+        })
+        .filter(|f| !wanted.iter().any(|w| w == f))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests;

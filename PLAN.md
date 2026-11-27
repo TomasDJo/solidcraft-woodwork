@@ -128,7 +128,8 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 
 - [x] Mobile base (#101): one frame of boards on edge under the picked cabinets' footprint, a cross board where two meet, a block and a locking caster in each corner (and a middle pair on a long frame), the cabinets stood on it; made again by its name
 - [x] Connector bolts between the cabinets on a mobile base (#198): four 9 mm holes through each pair of touching sides, counted in the cut list
-- [ ] Mobile base leftovers (#198): fixing the cabinets to the frame, a tool cabinet's height from the worktop height, following a cabinet that changes size
+- [x] Frame screws on a mobile base (#198): two 4.5 mm holes down through each cabinet's bottom into each frame board it rests on, counted in the cut list
+- [ ] Mobile base leftovers (#198): a tool cabinet's height from the worktop height, following a cabinet that changes size
 
 - [x] Bolt holes for the tool's feet in the tool station's shelf (#172): Bolt spacing across and front to back, four (or two) 8 mm holes round the tool's middle
 - [x] Side wing on the worktop (#172): Side wing (left or right end) and Wing length, the first piece carried on past a square end on two 40 mm legs to the floor

@@ -826,8 +826,17 @@ frame under all of them and stands them on it:
   9 mm holes (for M6 connector bolts) go through both, at a quarter and three quarters of where
   they touch, across and up. Run again, a hole already there is not cut twice. An Edit of a
   cabinet makes its side whole again: run Mobile base again afterwards.
-- The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`
-  and the bolts as `Connector bolt, M6`.
+- **Frame screws** fix the cabinets to the frame: where a cabinet's bottom rests on a frame board
+  for at least 100 mm, two 4.5 mm holes (for 4 x 50 mm screws) go down through the bottom onto the
+  board's middle, at a quarter and three quarters of that length. A run again does not cut them
+  twice, one with other frame sizes moves them, and an Edit of the cabinet drops them until Mobile base runs again.
+  A cabinet with a plinth does not rest its bottom on the frame and gets none.
+- The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`,
+  the bolts as `Connector bolt, M6` and the screws as `Frame screw, 4 x 50 mm`.
+
+![Frame screws: two holes down through the cabinet's bottom into each frame board under it, seen through the boards.](images/base-screws.png)
+
+*Frame screws: two holes down through the cabinet's bottom into each frame board under it, seen through the boards.*
 
 ![Connector bolts: four 9 mm holes through the touching sides of two cabinets on a base, seen through the boards.](images/base-bolts.png)
 
@@ -835,8 +844,7 @@ frame under all of them and stands them on it:
 
 Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
 again. Quarter turns only, and in a component that stands on the origin. Not in it yet
-([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)): fixing the cabinets
-to the frame, a worktop height that sets a tool cabinet's height, and following
+([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)): a worktop height that sets a tool cabinet's height, and following
 a cabinet that changes size.
 
 ## Worktop
