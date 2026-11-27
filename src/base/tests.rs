@@ -237,6 +237,15 @@ fn a_picked_board_names_its_base_and_fills_the_dialog() {
 }
 
 #[test]
+fn a_new_footprint_needs_the_frame_again() {
+    // #198
+    let changed = |fields: &[&str]| fields.iter().map(|f| f.to_string()).collect::<Vec<_>>();
+    assert!(resized(&changed(&["shelves", "width"])));
+    assert!(resized(&changed(&["return"])));
+    assert!(!resized(&changed(&["height", "doors", "handles"])));
+}
+
+#[test]
 fn what_a_base_refuses() {
     let tiny = [[0.0, 0.0, 200.0, 200.0]];
     assert!(build(&json!({}), &tiny).unwrap_err().contains("too small"));

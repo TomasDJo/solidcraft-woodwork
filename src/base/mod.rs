@@ -435,6 +435,12 @@ pub fn screws(
     holes
 }
 
+/// Whether an Edit's `changed` fields change a cabinet's footprint, which its base's frame is
+/// sized from (#198): its width, depth or a corner's return, or its shape.
+pub fn resized(changed: &[String]) -> bool {
+    (changed.iter()).any(|c| matches!(c.as_str(), "width" | "depth" | "return" | "shape"))
+}
+
 /// The file (`storage@0.1`) where the base `name` keeps its dialog's values, for the dialog hook
 /// to read when a board of it is picked (#239).
 pub fn file(name: &str) -> String {

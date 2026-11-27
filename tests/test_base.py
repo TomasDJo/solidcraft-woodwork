@@ -292,6 +292,40 @@ def test_cabinets_ride_on_the_base_through_edit_and_a_new_frame(approval):
     assert "A link" in [j["name"] for j in results[17]["joints"]], results[17]
 
 
+def test_the_frame_follows_a_resize_on_apply_settings(approval):
+    # #198: A, 600 wide, on Bench. Edit makes it 800 wide: the frame stays 600 (it is numeric),
+    # and Edit's reply says to make it again. Apply settings, though A has nothing to change,
+    # makes Bench again under it: the frame is 800 long and A still stands on it.
+    bare = {"width": 600, "shelves": 0, "doors": 0}
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "A", **bare}),
+        pick("A Side L"), plugin(approval, "base", {"name": "Bench"}),
+        select("A Side L"), plugin(approval, "edit", {"width": 800}), MEASURE,
+        plugin(approval, "rebuild", {}), MEASURE])
+    said = results[4]["result"]
+    assert "run Mobile base Bench again" in said.get("base", ""), said
+    edited, applied = boxes(results[5]), boxes(results[7])
+    front = lambda box: round(box["Bench Frame front"][3] - box["Bench Frame front"][0])
+    assert front(edited) == 600 and front(applied) == 800, (edited["Bench Frame front"], applied["Bench Frame front"])
+    assert applied["A Side L"][2] == 170, applied["A Side L"]
+
+
+def test_the_frame_follows_a_resize_of_a_neighbour(approval):
+    # #198: B beside A (its link is to A, not to the base), both on Bench. Edit makes B 800
+    # wide: the reply still says to make Bench again, and Apply settings with only B picked does.
+    bare = {"width": 600, "shelves": 0, "doors": 0}
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "A", **bare}),
+        select("A Side R"), plugin(approval, "cabinet", {"name": "B", "place": "right", **bare}),
+        pick("A Side L", "B Side L"), plugin(approval, "base", {"name": "Bench"}),
+        select("B Side L"), plugin(approval, "edit", {"width": 800}),
+        plugin(approval, "rebuild", {"selection": [{"type": "body", "name": "B Side L"}]}), MEASURE])
+    said = results[6]["result"]
+    assert "run Mobile base Bench again" in said.get("base", ""), said
+    front = boxes(results[8])["Bench Frame front"]
+    assert round(front[3] - front[0]) == 1400, front
+
+
 def test_a_base_under_cabinets_along_a_line_follows_the_line(approval):
     # #215 step 2: A along a line from its right end, a base under it. The line grows from
     # 1200 to 1500 mm (its right end moves 300 to the right); Apply settings puts A back on the

@@ -887,6 +887,11 @@ frame under all of them and stands them on it:
   on Edit: the line still sets its width and height, but the base holds where it stands. Apply
   settings, which reads the lines again, puts such cabinets back on their lines and makes their
   base again under them, so the base follows the line and the cabinets ride on it.
+- **Following a resize:** the frame is made to fit the cabinets when it is made. After an Edit
+  that changes a cabinet's width, depth, return or shape, the frame stays as it was, and Edit's
+  reply says so: run Mobile base again by its Name, or Apply settings, which makes every base
+  under the cabinets it looks at again (also when it has nothing else to change), so the frame
+  fits them again.
 - **Connector bolts** join the cabinets: where a side of one touches a side of another, four
   9 mm holes (for M6 connector bolts) go through both, at a quarter and three quarters of where
   they touch, across and up. Run again, a hole already there is not cut twice. An Edit of a
@@ -916,9 +921,9 @@ frame under all of them and stands them on it:
 *A long base seen from below: stiffeners across the frame and casters spaced evenly between the corners.*
 
 Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
-again. Quarter turns only, and in a component that stands on the origin. Not in it yet
-([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)): a worktop height that sets a tool cabinet's height, and following
-a cabinet that changes size.
+again (Mobile base by its Name, or Apply settings). Quarter turns only, and in a component that
+stands on the origin. Not in it yet ([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)):
+a worktop height that sets a tool cabinet's height.
 
 ## Worktop
 
