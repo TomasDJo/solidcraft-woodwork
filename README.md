@@ -23,7 +23,12 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
     sides, legs or casters).
   - Doors, drawers, or drawers above or below doors, overlay or inset, that open on their
     joints. Holes for shelf pins, handles, hinges and drawer slides, or no handles at all:
-    a grip edge bevelled behind the front, or a finger groove along it.
+    a grip edge bevelled behind the front, a finger groove along it, or a tab under a drawer
+    front to pull by.
+  - Fronts flat, Shaker (a frame round a panel), glass doors in a Shaker frame, or with
+    vertical or horizontal grooves, and drawer fronts separate or integrated (the drawer
+    box's own front is the front). Where overlay doors meet on a divider: half overlay
+    hinges, or double dividers so every door gets standard hinges.
   - A sink base (rails instead of a top), and corner cabinets: L-shaped with a pair of
     folding doors, or diagonal with one door.
   - Hangs on the wall on a French cleat, a hanging rail or a steel rail.
@@ -44,11 +49,12 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Material**: birch plywood, MDF, white melamine or oak, for a whole cabinet or just the
   parts you pick (the doors, say).
 - **Panel**: an end panel or a filler on one side of a cabinet, following its size.
-- **Mobile base**: one frame on locking casters under a group of cabinets, for a workbench
-  that rolls.
+- **Mobile base**: one frame on locking casters under a group of cabinets, bolted to each
+  other and, when made without a plinth, screwed down to the frame, for a workbench that
+  rolls.
 - **Worktop**: over the picked cabinets, with butt or mitred corners, dog holes, a sink
-  cut-out, and an opening for a benchtop tool set flush with the top, its shelf drilled for
-  the tool's bolts.
+  cut-out, an opening for a benchtop tool set flush with the top (its shelf drilled for
+  the tool's bolts), and a side wing on two legs past one end.
 - **Drawing**: an A3 shop drawing per cabinet, with front, right and iso views, its sizes and
   its boards.
 - **Cut list**: every board with its size, edge banding and grain, the hardware to buy, a cost
@@ -76,7 +82,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line, Mobile base, handle-less fronts (grip edge, finger groove), a cost estimate in the cut list, Match selected as one shared group per run, bolt holes for the tool station, and Woodwork settings as a dialog per group under one ribbon dropdown, and links from the dialogs' fields to the usage guide. |
+| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line; Mobile base with connector bolts and frame screws; handle-less fronts (grip edge, finger groove, bottom tab), Shaker, glass and grooved fronts, and integrated drawer fronts; half overlay hinges or double dividers where doors meet on a divider; a cost estimate in the cut list; Match selected as one shared group per run; the worktop's side wing and tool bolt holes; Woodwork settings as a dialog per group under one ribbon dropdown; and links from the dialogs' fields to the usage guide. |
 | 0.49 | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
 | 0.47 | 0.4.0 | Tested on 0.47.0; works on 0.46 too. Joinery and hardware are design-wide Woodwork settings, one dialog for box and corner cabinets, and hinges, slides and fasteners as models. |
 | 0.46 | 0.3.0 | Tested on 0.46.1. Dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults. |
