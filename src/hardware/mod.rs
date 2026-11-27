@@ -343,7 +343,9 @@ pub fn is_model(body: &str) -> bool {
         .rsplit_once(" (")
         .filter(|(_, n)| n.trim_end_matches(')').parse::<u32>().is_ok());
     let body_of = copy.map_or(body, |(name, _)| name);
-    [HINGE, SLIDE].iter().any(|m| body.starts_with(m)) || body_of.ends_with(" fastener")
+    [HINGE, SLIDE].iter().any(|m| body.starts_with(m))
+        || [" fastener", " clip"].iter().any(|e| body_of.ends_with(e))
+        || body.contains(" pilaster ")
 }
 
 /// Takes the models out of `inspect.measure`'s reply: they are not boards, nor part of any

@@ -56,8 +56,9 @@ const SIZES: [&str; 34] = [
 /// them for the other kind and a run leaves them out. Shrink them as the two kinds catch up.
 /// Edit has only what is per cabinet; what is design-wide (joinery, hardware, thickness,
 /// reveal, the plinth's height and set-back) is Woodwork settings' and Apply settings'.
-const BOX_ONLY: [&str; 11] = [
+const BOX_ONLY: [&str; 12] = [
     "kind",
+    "shelf_support",
     "sizing",
     "drawer_width",
     "drawer_depth",
@@ -293,6 +294,7 @@ fn assumed(key: &str) -> Option<Value> {
         "back" => json!("groove"),
         "plinth_type" => json!("board"),
         "sizing" => json!("outside"),
+        "shelf_support" => json!("pins"),
         _ => return None,
     })
 }

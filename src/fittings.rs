@@ -8,6 +8,10 @@ use serde_json::{json, Value};
 pub const PITCH: f64 = 32.0; // 32 mm system: shelf pin holes
 pub const PIN_SETBACK: f64 = 37.0; // pin rows, from the front and from the back of the shelf
 pub const PIN_D: f64 = 5.0;
+/// A shelf pilaster strip's width and thickness, and so its dado's (#264).
+pub const STRIP: [f64; 2] = [16.0, 5.0];
+/// A pilaster clip: how far it stands out of the strip's face, and its height (#264).
+pub const CLIP: [f64; 2] = [10.0, 6.0];
 pub const DOOR_GAP: f64 = 2.0; // the default reveal: around and between the fronts
 pub const CUP_D: f64 = 35.0; // hinge cup
 pub const CUP_DEPTH: f64 = 13.0;

@@ -10,7 +10,7 @@ mod doors;
 mod drawers;
 mod input;
 
-use crate::fittings::{self, PinRows, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, CLIP, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH, STRIP};
 use crate::joint::{Joinery, Joint, BOTTOM, CARCASS, INNER};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
@@ -452,6 +452,9 @@ impl Cabinet<'_> {
                 let z = format!("{ebase} + {over}");
                 if !input.fixed {
                     panel(&part, [&x, ein, &z], [ecell, eshelf_d, et], false);
+                    if input.pilasters {
+                        self.clips(&part, &x, &z);
+                    }
                     continue;
                 }
                 // Fixed: joined at both ends, to a side or a divider, by the inside's method;
@@ -580,9 +583,10 @@ impl Cabinet<'_> {
             }
             _ => {}
         }
-        match input.pins {
-            true => self.pins(&dividers, &elast, &ebase),
-            false => Vec::new(),
+        match (input.pins, input.pilasters) {
+            (true, true) => self.strips(&dividers, &ebase, &ezone),
+            (true, false) => self.pins(&dividers, &elast, &ebase),
+            _ => Vec::new(),
         }
     }
 
@@ -652,6 +656,95 @@ impl Cabinet<'_> {
             }
         }
         boards
+    }
+
+    /// Pilaster strips (#264) instead of pin rows: in each face that carries shelves, a dado
+    /// `STRIP` wide and deep on the pin rows' front and back lines over the shelves' height,
+    /// and a strip in it, flush with the face: `<board> pilaster dado <row>` and the model
+    /// `<board> pilaster <row> (<length> mm)` (a name with ` pilaster ` is a hardware model,
+    /// which the cut list counts by that length). A divider carrying shelves on both faces has a
+    /// pair on each (`left`, `right`).
+    fn strips(&self, dividers: &[(String, String, i32)], base: &str, zone: &str) -> Commands {
+        let Cabinet {
+            kit,
+            input,
+            ew,
+            et,
+            ein,
+            eshelf_d,
+            ..
+        } = self;
+        // the face's x, the way into the board, and what tells two faces of one board apart
+        let mut faces = vec![
+            ("Side L".to_string(), et.clone(), -1, ""),
+            ("Side R".to_string(), format!("{ew} - {et}"), 1, ""),
+        ];
+        for (part, x, face) in dividers {
+            match face {
+                0 => {
+                    faces.push((part.clone(), x.clone(), 1, " left"));
+                    faces.push((part.clone(), format!("{x} + {et}"), -1, " right"));
+                }
+                -1 => faces.push((part.clone(), x.clone(), 1, "")),
+                _ => faces.push((part.clone(), format!("{x} + {et}"), -1, "")),
+            }
+        }
+        let [w, deep] = [mm(STRIP[0]), mm(STRIP[1])];
+        let length = (input.clear_h).round();
+        let rows = [
+            ("front", format!("{ein} + {}", mm(PIN_SETBACK))),
+            ("back", format!("{ein} + {eshelf_d} - {}", mm(PIN_SETBACK))),
+        ];
+        for (board, fx, into, which) in faces {
+            let x0 = match into {
+                1 => fx.clone(),
+                _ => format!("{fx} - {deep}"),
+            };
+            let target = [format!("{} {board}", kit.name)];
+            for (row, y) in &rows {
+                let y0 = format!("{y} - {w}/2");
+                let (corner, size) = ([x0.as_str(), &y0, base], [deep.as_str(), &w, zone]);
+                kit.panel(
+                    &format!("{board} pilaster dado {row}{which}"),
+                    corner,
+                    size,
+                    Some(&target),
+                );
+                let strip = format!("{board} pilaster {row}{which} ({length} mm)");
+                model(kit, &strip, corner, size);
+            }
+        }
+        // ponytail: made with the carcass, not with the holes after the joinery
+        Vec::new()
+    }
+
+    /// Four clips under a shelf on pilaster strips (#264): one model `<shelf> clip` at its
+    /// front left, out of the strip's face, and a pattern of it to the other three.
+    fn clips(&self, shelf: &str, x: &str, z: &str) {
+        let Cabinet {
+            kit,
+            ein,
+            ecell,
+            eshelf_d,
+            ..
+        } = self;
+        let [w, out, high] = [mm(STRIP[0]), mm(CLIP[0]), mm(CLIP[1])];
+        let clip = format!("{shelf} clip");
+        let y = format!("{ein} + {} - {w}/2", mm(PIN_SETBACK));
+        model(
+            kit,
+            &clip,
+            [x, &y, &format!("{z} - {high}")],
+            [&out, &w, &high],
+        );
+        kit.push((
+            "solid.pattern.rectangular",
+            json!({
+                "bodies": [format!("{} {clip}", kit.name)], "name": format!("{} {clip}s", kit.name),
+                "dir1": [1, 0, 0], "count1": 2, "spacing1": format!("{ecell} - {out}"),
+                "dir2": [0, 1, 0], "count2": 2, "spacing2": format!("{eshelf_d} - {}", mm(2.0 * PIN_SETBACK)),
+            }),
+        ));
     }
 
     /// One hole per panel, repeated up the panel and across to the rear row. Blind in the
@@ -801,6 +894,19 @@ impl Cabinet<'_> {
             );
         }
     }
+}
+
+/// A hardware model's box, as `Kit::panel` makes a board's but not one of the cabinet's
+/// bodies, so it takes no board material and stays the app's grey (#264).
+fn model(kit: &Kit, part: &str, corner: [&str; 3], size: [&str; 3]) {
+    let body = format!("{} {part}", kit.name);
+    kit.push((
+        "solid.box",
+        json!({
+            "length": size[0], "width": size[1], "height": size[2],
+            "corner": kit.at(corner[0], corner[1], corner[2]), "name": body, "body_name": body,
+        }),
+    ));
 }
 
 #[cfg(test)]

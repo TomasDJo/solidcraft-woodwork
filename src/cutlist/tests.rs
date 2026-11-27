@@ -996,3 +996,27 @@ fn clashes_take_integrated_fronts_and_quote_names() {
         ["A Door (open) meets B \"Tall\" Drawer 1 Front (open)"]
     );
 }
+
+#[test]
+fn pilaster_strips_and_clips_are_counted() {
+    // #264: the strips by their length, from the models' names; four clips a shelf
+    let named =
+        |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
+    let design = json!({"timeline": named(&[
+        "A Side L pilaster dado front", "A Side L pilaster front (652 mm)", "A Side L pilaster back (652 mm)",
+        "A Side R pilaster front (652 mm)", "A Side R pilaster back (652 mm)", "B Side L pilaster front (400 mm)",
+    ])});
+    let measure = json!({"bodies": named(&["A Side L", "A Shelf 1", "A Shelf 2"])});
+    let list = hardware(&measure, &BTreeMap::new(), &design);
+    let qty = |item: &str| {
+        list.as_array()
+            .unwrap()
+            .iter()
+            .find(|h| h["item"] == item)
+            .map(|h| h["qty"].clone())
+    };
+    assert_eq!(qty("Shelf clip"), Some(json!(8)));
+    assert_eq!(qty("Shelf pilaster strip, 652 mm"), Some(json!(4)));
+    assert_eq!(qty("Shelf pilaster strip, 400 mm"), Some(json!(1)));
+    assert_eq!(qty("Shelf pin, 5 mm"), None);
+}

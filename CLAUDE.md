@@ -801,6 +801,17 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   ending ` glass`): `lib.rs` gives those bodies `material::GLASS` (always `GLASS_OPACITY`, not
   in `BOARDS`, so See-through boards leaves it) and the Material entry skips them; the cut
   list leaves them out of the boards and buys them as `Glass, 4 mm, L x W mm` by size.
+- **Pilaster strips** (`shelf_support` pins / strips, #264; a Cabinet and Edit field shown with
+  Shelf pin holes on a box cabinet, `BOX_ONLY`, `Input::pilasters`): `Cabinet::strips` instead of
+  the pin rows, made with the carcass: each face carrying shelves (both of a single divider,
+  `left`/`right`) gets `<board> pilaster dado <front|back>` (`STRIP` 16 x 5, on the pin rows'
+  lines, over the shelf zone) and the body `<board> pilaster <row> (<len> mm)` in it, the length
+  `Input::clear_h` rounded at build (a resize leaves the name, as a slide's label); `clips` puts
+  `<shelf> clip` (`CLIP` 10 out, 6 high) at its front left and a 2 x 2 pattern of it.
+  `hardware::is_model` takes ` pilaster ` and ` clip` names, so measures hide them; the cut list
+  counts `Shelf clip` (four a shelf of a cabinet with `Side L pilaster dado front`) and `Shelf
+  pilaster strip, <len>` from the strips' names. Shelves keep the pin grid's heights. Corner
+  cabinets keep pins.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
 - A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
   from parameters takes whole parameters (`number(Width)`), not expressions. A board is told

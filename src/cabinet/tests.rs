@@ -2320,3 +2320,63 @@ fn doors_and_drawers_pick_their_own_handles() {
     assert!(shaker(0, 2, "pull", "grip") && !shaker(0, 2, "grip", "pull"));
     assert!(shaker(1, 0, "grip", "knob") && !shaker(1, 0, "knob", "grip"));
 }
+
+#[test]
+fn shelves_can_rest_on_pilaster_strips() {
+    // #264: a dado and a strip at the front and back of each face carrying shelves, both faces
+    // of a divider, no pin rows; four clips under each shelf (a clip and a 2 x 2 pattern)
+    let p = json!({"width": 900, "dividers": 1, "shelves": 2, "shelf_pins": true, "shelf_support": "strips"});
+    let (commands, _) = build(&p).unwrap();
+    let names: Vec<&str> = commands
+        .iter()
+        .filter_map(|c| c.1["name"].as_str())
+        .collect();
+    assert!(names.iter().all(|n| !n.ends_with(" pins")));
+    let dados: Vec<&&str> = names
+        .iter()
+        .filter(|n| n.contains(" pilaster dado "))
+        .collect();
+    // two sides with one face, the divider with two: 4 faces, front and back
+    assert_eq!(dados.len(), 8, "{dados:?}");
+    assert!(names.contains(&"Cabinet Divider 1 pilaster dado back right"));
+    let strip = commands
+        .iter()
+        .find(|c| {
+            c.1["name"]
+                .as_str()
+                .is_some_and(|n| n.starts_with("Cabinet Side L pilaster front ("))
+        })
+        .unwrap();
+    assert_eq!(
+        (&strip.1["length"], &strip.1["width"]),
+        (&json!("5 mm"), &json!("16 mm"))
+    );
+    assert!(strip.1.get("operation").is_none());
+    let dado = named(&commands, "Cabinet Side L pilaster dado front");
+    assert_eq!(dado["targets"], json!(["Cabinet Side L"]));
+    // the Side L dado goes into the side, from its inner face
+    assert_eq!(
+        dado["corner"][0],
+        "Cabinet_thickness - 5 mm - Cabinet_width/2"
+    );
+    let clips = commands
+        .iter()
+        .filter(|c| c.1["name"].as_str().is_some_and(|n| n.ends_with(" clip")));
+    assert_eq!(clips.count(), 4); // 2 compartments x 2 shelves
+    let pattern = named(&commands, "Cabinet Shelf 1.1 clips");
+    assert_eq!(
+        (&pattern["count1"], &pattern["count2"]),
+        (&json!(2), &json!(2))
+    );
+    // the models are hidden from measures
+    assert!(crate::hardware::is_model(
+        "Cabinet Side L pilaster front (652 mm)"
+    ));
+    assert!(crate::hardware::is_model("Cabinet Shelf 1.1 clip (3)"));
+    // pin holes as before, and fixed shelves take neither
+    let (pins, _) = build(&json!({"shelves": 2, "shelf_pins": true})).unwrap();
+    assert!(pins.iter().all(|c| !c.1.to_string().contains("pilaster")));
+    let (fixed, _) = build(&json!({"shelves": 2, "shelf_support": "strips"})).unwrap();
+    assert!(fixed.iter().all(|c| !c.1.to_string().contains("pilaster")));
+    assert!(build(&json!({"shelf_pins": true, "shelf_support": "rails"})).is_err());
+}

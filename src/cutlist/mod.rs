@@ -256,6 +256,13 @@ pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Va
                 .sum(),
         ),
         (
+            // four under each shelf on pilaster strips (#264)
+            "Shelf clip",
+            cabinets(" Side L pilaster dado front")
+                .map(|c| shelves(c) * 4)
+                .sum(),
+        ),
+        (
             "Confirmat screw, 7 x 50 mm",
             cabinets(" joint Side L Bottom pilot").map(holes).sum(),
         ),
@@ -302,6 +309,19 @@ pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Va
     let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
+    // pilaster strips by their length, in their models' names: `<board> pilaster front (652 mm)`
+    let mut strips: BTreeMap<&str, u64> = BTreeMap::new();
+    for f in features
+        .iter()
+        .filter(|f| f.contains(" pilaster ") && !f.contains(" dado "))
+    {
+        if let Some((_, length)) = f.rsplit_once(" (") {
+            *strips.entry(length.trim_end_matches(')')).or_default() += 1;
+        }
+    }
+    for (length, qty) in strips {
+        list.push(json!({"item": format!("Shelf pilaster strip, {length}"), "qty": qty}));
+    }
     // glass doors' panes by size, the two longer sides of each pane's box (or its own size)
     let mut panes: BTreeMap<String, u64> = BTreeMap::new();
     let all = measure["bodies"].as_array().into_iter().flatten();

@@ -67,6 +67,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Doors and drawers are sub-components with hinge and slide joints
 - [x] Drawers: a drawer unit with fronts and boxes sized for 12.7 mm slides
 - [x] Hardware list in the cut list: hinges, slides, shelf pins, screws, dowels, handles
+- [x] Shelf pilaster strips (#264): Shelf support Pin holes or Pilaster strips, dados with strip and clip models, strips by length and clips in the hardware list
 - [x] Handle holes in doors and drawer fronts: knob or 128 mm pull
 - [x] Corner cabinet: L-shaped, left or right, with doors
 - [x] Automatic names: a taken name gets the next free number

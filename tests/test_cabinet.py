@@ -296,3 +296,28 @@ def test_fields_that_cannot_combine_are_hidden_and_not_used(approval):
     box = boxes(results[3])
     assert "A Drawer 2 Front" in box and not [n for n in box if "Divider" in n], sorted(box)
     assert box["B Side L"][5] == 800 and round(box["B Side R"][3] - box["B Side L"][0]) == 600, box["B Side L"]
+
+
+def test_shelves_on_pilaster_strips(approval):
+    # #264: Shelf support Pilaster strips: no pin holes; a 16 x 5 mm dado at the front and back
+    # of each side over the shelves' height, a strip in each flush with the side's inner face,
+    # and four clips under each shelf. The cut list buys the strips by length and the clips.
+    results = designed(approval, NONE, [plugin(approval, "cabinet", {"shelves": 2, "shelf_pins": True, "shelf_support": "strips"}),
+                                        MEASURE, plugin(approval, "cutlist"),
+                                        plugin(approval, "cabinet", {"name": "Plain", "shelves": 2, "place": "origin"}), MEASURE])
+    measure = results[1]
+    assert cylinders(measure, "Cabinet Side L") == 0
+    every = boxes(measure, models=True)
+    strips = {n: b for n, b in every.items() if n.startswith("Cabinet Side L pilaster ")}
+    assert len(strips) == 2, sorted(every)
+    for box in strips.values():
+        assert (round(box[0], 3), round(box[3], 3), round(box[4] - box[1], 3)) == (-287, -282, 16), box
+    clips = [n for n in every if " clip" in n]
+    assert len(clips) == 8, clips
+    # the side lost the two dados
+    length = round(next(iter(strips.values()))[5] - next(iter(strips.values()))[2])
+    lost = volume(results[4], "Plain Side L") - volume(measure, "Cabinet Side L")
+    assert lost == 2 * 16 * 5 * length, (lost, length)
+    hardware = {h["item"]: h["qty"] for h in results[2]["result"]["hardware"]}
+    assert hardware["Shelf clip"] == 8 and hardware[f"Shelf pilaster strip, {length} mm"] == 4, hardware
+    assert "Shelf pin, 5 mm" not in hardware, hardware
