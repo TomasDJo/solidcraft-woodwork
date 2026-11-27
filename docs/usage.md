@@ -102,9 +102,17 @@ the parameters `Name_frame_width` and `Name_panel_thickness`. A door's own name 
 the stile it hangs on, which takes the hinge cups; the handle goes in the middle of the other
 stile. The rails are butted between the stiles (no tenon or dowels are cut). A door must be at
 least twice the frame width plus 60 mm each way; drawer fronts lower than that stay flat. A grip
-edge or finger groove needs flat fronts. Glass fronts are not made yet.
+edge or finger groove needs flat fronts.
 
 ![Shaker fronts: a frame of stiles and rails round a thinner panel, on doors and drawers.](images/shaker-fronts.png)
+
+**Front style: Glass** makes the doors Shaker frames round a 4 mm glass pane in the groove
+(`Name Door glass`, the see-through Glass material), and the drawer fronts Shaker with a wooden
+panel. No hole goes into the glass. The cut list buys the panes by size in the hardware list
+("Glass, 4 mm, 612 x 492 mm") and lists only the frame's boards; Material leaves the glass as
+it is.
+
+![Glass doors: the shaker frame round a glass pane, the shelf behind it showing.](images/glass-fronts.png)
 | **Labels** (Woodwork settings) | Writes each board's name on it, the name the cut list has, as text in a sketch on the board's face. It stays in the middle of the board when the cabinet changes size. |
 | **Selected cabinet**, **Match selected**, **Place** | See [Building a run](#building-a-run-place-and-match-selected). **Line**, **Start at**, **Offset**, **Faces**, **Width from line** and **Height from line** show with Place Along a line: see [Along a line](#along-a-line). |
 | **Material** | The board material of every panel. Change it later with [Material](#material). |

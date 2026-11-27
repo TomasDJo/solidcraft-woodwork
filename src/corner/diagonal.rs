@@ -97,6 +97,7 @@ pub fn door(corner: &Corner, on_return: bool) {
         [&len, et, &door_h],
         0,
         !at_end,
+        corner.glass,
     );
     let hole = |x: &str, z: &str, d: f64, depth: &str, what: String| {
         fittings::hole(

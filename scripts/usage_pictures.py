@@ -86,6 +86,8 @@ SHOTS = [
     ("shaker-fronts", "Shaker fronts: a frame of stiles and rails round a thinner panel, on doors and drawers.",
      row("cabinet", [{"doors": 2, **BASE, "front_style": "shaker"},
                      {"drawers": 2, **BASE, "front_style": "shaker"}]), TWO),
+    ("glass-fronts", "Glass doors: the shaker frame round a glass pane, the shelf behind it showing.",
+     [lambda: run("cabinet", {"doors": 2, **BASE, "front_style": "glass"})], ONE),
     ("open", "Doors and drawers open on their joints, with the hinge and slide models.",
      [lambda: run("cabinet", {"doors": 1, "drawers": 1, **BASE}),
       drive("Cabinet Door hinge", 100), drive("Cabinet Drawer 1 slide", 350)], cam([0, -200, 380], 2400, yaw=-0.9)),

@@ -173,7 +173,7 @@ fn hull(mut points: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 
 /// The hardware to buy, counted from what the plugin made: feature names in `timeline`
 /// (`document.inspect`'s reply) and bodies in `measure`.
-pub fn hardware(measure: &Value, design: &Value) -> Value {
+pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Value) -> Value {
     let named = |list: &Value| -> Vec<String> {
         let items = list.as_array().into_iter().flatten();
         items
@@ -297,6 +297,34 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
+    // glass doors' panes by size, the two longer sides of each pane's box (or its own size)
+    let mut panes: BTreeMap<String, u64> = BTreeMap::new();
+    let all = measure["bodies"].as_array().into_iter().flatten();
+    for pane in all.filter(|b| crate::fittings::is_glass(b["name"].as_str().unwrap_or(""))) {
+        let side = |i: usize| {
+            let (max, min) = (
+                pane["bbox"]["max"][i].as_f64(),
+                pane["bbox"]["min"][i].as_f64(),
+            );
+            max.zip(min).map_or(0.0, |(max, min)| max - min)
+        };
+        // a pane standing open is sized in its own component, as a turned board is (`turned`)
+        let name = pane["name"].as_str().unwrap_or_default();
+        let mut sides = (local.get(name).copied()).unwrap_or([side(0), side(1), side(2)]);
+        sides.sort_by(|a, b| b.total_cmp(a));
+        let item = format!(
+            "Glass, {} mm, {} x {} mm",
+            crate::fittings::GLASS_T,
+            sides[0].round(),
+            sides[1].round()
+        );
+        *panes.entry(item).or_default() += 1;
+    }
+    list.extend(
+        panes
+            .into_iter()
+            .map(|(item, qty)| json!({"item": item, "qty": qty})),
+    );
     // after the hinges
     let hinge = |h: &&Value| {
         h["item"]
@@ -584,7 +612,10 @@ pub fn cutlist(
     let bodies: Vec<&Value> = (measure["bodies"].as_array())
         .ok_or("inspect.measure returned no bodies")?
         .iter()
-        .filter(|b| !crate::fittings::is_foot(b["name"].as_str().unwrap_or("")))
+        .filter(|b| {
+            let name = b["name"].as_str().unwrap_or("");
+            !crate::fittings::is_foot(name) && !crate::fittings::is_glass(name)
+        })
         .collect();
     // A board's note: notched for the toe kick, grooved for runners, or both.
     let noted = |name: &str| {

@@ -1743,3 +1743,32 @@ fn shaker_fronts() {
         json!({"doors": 1, "front_style": "shaker", "frame_width": 50})
     ));
 }
+
+#[test]
+fn glass_doors() {
+    let named = |commands: &Commands, name: &str| {
+        let found = (commands.iter()).find(|c| c.1["name"] == name && c.0 != "component.create");
+        found.unwrap_or_else(|| panic!("no {name}")).1.clone()
+    };
+    // a 4 mm pane in the frame, in the panel's place; holes leave it out; the drawer front
+    // over the door gets a wooden panel
+    let p = json!({"doors": 1, "drawers": 1, "height": 900, "drawer_height": 250,
+        "handles": "knob", "front_style": "glass"});
+    let (commands, _) = build(&p).unwrap();
+    let pane = named(&commands, "Cabinet Door glass");
+    assert_eq!(pane["width"], "4 mm");
+    assert!(pane["corner"][1]
+        .as_str()
+        .unwrap()
+        .contains("(Cabinet_thickness - 4 mm)/2"));
+    assert_eq!(named(&commands, "Cabinet Door groove")["width"], "4 mm");
+    assert!(!commands.iter().any(|c| c.1["name"] == "Cabinet Door panel"));
+    let cup = named(&commands, "Cabinet Door hinge cup 1");
+    assert!(!cup["targets"].to_string().contains("glass"));
+    assert_eq!(cup["targets"].as_array().unwrap().len(), 4);
+    named(&commands, "Cabinet Drawer 1 Front panel");
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Drawer 1 Front glass"));
+    assert!(build(&json!({"doors": 1, "front_style": "glass", "handles": "groove"})).is_err());
+}

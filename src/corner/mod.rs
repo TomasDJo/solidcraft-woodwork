@@ -42,6 +42,7 @@ struct Corner<'a> {
     grooves: Option<(fittings::Grooves<'a>, [String; 2])>,
     /// Shaker doors' frame width and panel thickness parameters.
     eframe: Option<[String; 2]>,
+    glass: bool, // glass doors: a pane in the frame
     a: f64,
     b: f64,
     d: f64,
@@ -90,6 +91,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handle_at,
         grooves,
         frame,
+        glass,
         right,
         diagonal,
         split,
@@ -158,6 +160,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handle_at,
         grooves,
         eframe,
+        glass,
         a,
         b,
         d,

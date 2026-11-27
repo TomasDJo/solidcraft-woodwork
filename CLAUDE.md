@@ -751,7 +751,12 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   handle holes need no change (a cut into a target it misses is fine). A door's handle goes to
   the middle of the other stile (`handle_edge`). Drawer fronts lower than `framed` (2 frames +
   60 mm), and integrated ones, stay flat; such a door is refused. The cut list's `role` takes
-  ` rail top`/` rail bottom` across, ` stile` and a front's ` panel` upright. No glass yet.
+  ` rail top`/` rail bottom` across, ` stile` and a front's ` panel` upright.
+  `glass` (`Input::glass`): a door's panel is `<part> glass` instead, `GLASS_T` 4 mm, not in
+  `Kit::targets` (no hole into it); drawer fronts stay shaker. `fittings::is_glass` (a name
+  ending ` glass`): `lib.rs` gives those bodies `material::GLASS` (always `GLASS_OPACITY`, not
+  in `BOARDS`, so See-through boards leaves it) and the Material entry skips them; the cut
+  list leaves them out of the boards and buys them as `Glass, 4 mm, L x W mm` by size.
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
 - A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
   from parameters takes whole parameters (`number(Width)`), not expressions. A board is told

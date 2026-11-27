@@ -147,11 +147,14 @@ fn component(
     let board = params["material"].as_str().unwrap_or(default);
     if board != "none" {
         let bodies = summary["bodies"].as_array().into_iter().flatten();
-        let bodies: Vec<String> = bodies
+        let (glass, bodies): (Vec<String>, Vec<String>) = bodies
             .filter_map(|b| b.as_str())
             .map(String::from)
-            .collect();
+            .partition(|b| fittings::is_glass(b));
         material::assign(run, board, &bodies)?;
+        if !glass.is_empty() {
+            material::assign(run, "Glass", &glass)?;
+        }
     }
     // Back to where the user was working.
     let mut back = json!({"component": made["parent"]});
@@ -1162,6 +1165,11 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 }
                 _ => return Err("scope must be cabinet or parts".into()),
             };
+            // a glass door's pane stays glass
+            let bodies: Vec<String> = bodies
+                .into_iter()
+                .filter(|b| !fittings::is_glass(b))
+                .collect();
             if bodies.is_empty() {
                 return Err("select a cabinet or some of its parts first".into());
             }
@@ -1568,7 +1576,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             params["_corners"] = Value::Object(corners);
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
-            list["hardware"] = cutlist::hardware(&measure, &design);
+            list["hardware"] = cutlist::hardware(&measure, &local, &design);
             // Prices from Woodwork settings: the estimate, and what has no price yet (#56).
             let prices = params["prices"].as_str().unwrap_or_default();
             list["cost"] = cost::estimate(&list, prices)?;
