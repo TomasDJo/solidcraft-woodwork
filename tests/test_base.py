@@ -384,3 +384,23 @@ def test_a_base_under_eight_cabinets(approval):
     steps += [pick(*[f"C{i} Side L" for i in range(1, 9)]), plugin(approval, "base", {"name": "Long"})]
     summary = designed(approval, NONE, steps)[-1]["result"]
     assert len(summary["cabinets"]) == 8 and summary["bolts"] == 28, summary
+
+
+def test_a_base_on_feet_or_a_riser_on_the_floor(approval):
+    # #263: Under the frame Feet: four adjustable legs in the casters' places, 100 mm high, the
+    # cabinet 170 up and the cut list counting the legs. Made again as None: a riser on the floor,
+    # no blocks, legs or casters, the cabinet 70 up on the frame.
+    bare = {"width": 600, "shelves": 0, "doors": 0}
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "A", **bare}),
+        pick("A Side L"), plugin(approval, "base", {"name": "Bench", "under": "feet"}), MEASURE,
+        plugin(approval, "cutlist", {}),
+        pick("A Side L"), plugin(approval, "base", {"name": "Bench", "under": "none"}), MEASURE])
+    feet, riser = boxes(results[3]), boxes(results[7])
+    assert sorted(n for n in feet if " Leg " in n) == [f"Bench Leg {n}" for n in range(1, 5)], list(feet)
+    assert not any(" Caster " in n for n in feet), list(feet)
+    assert feet["A Side L"][2] == 170 and feet["Bench Leg 1"][2] == 0, (feet["A Side L"], feet["Bench Leg 1"])
+    hardware = {h["item"]: h["qty"] for h in results[4]["result"]["hardware"]}
+    assert hardware.get("Adjustable leg") == 4 and "Caster, locking" not in hardware, hardware
+    assert riser["Bench Frame front"][2] == 0 and riser["A Side L"][2] == 70, (riser["Bench Frame front"], riser["A Side L"])
+    assert not any(w in n for n in riser for w in (" Leg ", " Caster ", " Block ")), list(riser)

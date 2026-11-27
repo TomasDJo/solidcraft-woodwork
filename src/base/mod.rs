@@ -85,19 +85,28 @@ pub fn timber(p: &Value) -> Result<Option<(f64, f64)>, String> {
     Ok(Some((t, w)))
 }
 
-/// The frame's commands and summary for the cabinets' `plans`: Caster height (the frame's
-/// underside above the floor), Frame height and Thickness (its boards on edge). The summary's
-/// `lift` is how high the cabinets stand, the frame's top.
+/// The frame's commands and summary for the cabinets' `plans`: what stands under it (`under`:
+/// `casters`, the default, `feet`, or `none`: a riser on the floor, #263), Caster height (the
+/// frame's underside above the floor, for casters or feet), Frame height and Thickness (its
+/// boards on edge). The summary's `lift` is how high the cabinets stand, the frame's top.
 pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String> {
     let mut p = p.clone();
     if p.get("name").is_none() {
         p["name"] = json!("Base");
     }
     let kit = Kit::new(&p)?;
-    let caster = kit.size(&p, "caster_height", 100.0)?;
+    let under = p["under"].as_str().unwrap_or("casters");
+    check(
+        matches!(under, "casters" | "feet" | "none"),
+        "under the frame: casters, feet or none",
+    )?;
+    let caster = match under {
+        "none" => 0.0,
+        _ => kit.size(&p, "caster_height", 100.0)?,
+    };
     // mm only (no Units field), so the dialog's bounds are these
     check(
-        (fittings::CASTER_MIN..=300.0).contains(&caster),
+        under == "none" || (fittings::CASTER_MIN..=300.0).contains(&caster),
         "caster height must be 50 to 300 mm",
     )?;
     let (t, h) = match timber(&p)? {
@@ -218,21 +227,28 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
         }
     }
     // Blocks in the corners, and on a long frame pairs spaced evenly between them (#228), each
-    // with a caster under its middle.
+    // with a caster or a foot under its middle; a riser on the floor has neither.
     let mut n = 0;
-    for a in casters(lo + t, hi - t - BLOCK, &across, t)? {
+    let at = match under {
+        "none" => vec![],
+        _ => casters(lo + t, hi - t - BLOCK, &across, t)?,
+    };
+    for a in at {
         for b in [slo + t, shi - t - BLOCK] {
             n += 1;
             let part = format!("Block {n}");
             board(&part, a, b, BLOCK, BLOCK);
             let (ca, cb) = (a + BLOCK / 2.0, b + BLOCK / 2.0);
             let (x, y) = if long == 0 { (ca, cb) } else { (cb, ca) };
-            fittings::caster(&kit, n, &mm(x), &mm(y), &mm(caster), &mm(h), &part);
+            match under {
+                "feet" => fittings::leg(&kit, n, kit.at(&mm(x), &mm(y), &mm(0.0)), &mm(caster)),
+                _ => fittings::caster(&kit, n, &mm(x), &mm(y), &mm(caster), &mm(h), &part),
+            }
         }
     }
     let (commands, mut summary) = kit.finish(vec![], [w, caster + h, d]);
     summary["lift"] = json!(caster + h);
-    summary["casters"] = json!(n);
+    summary[if under == "feet" { "feet" } else { "casters" }] = json!(n);
     Ok((commands, summary))
 }
 

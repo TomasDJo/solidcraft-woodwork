@@ -93,6 +93,38 @@ fn a_frame_round_two_cabinets_with_a_cross_board_and_casters() {
 }
 
 #[test]
+fn a_frame_on_feet_or_on_the_floor() {
+    // #263: feet in the casters' places, as high; none: a riser on the floor, no blocks
+    let plans = [[0.0, 0.0, 600.0, 560.0]];
+    let named = |commands: &Commands, part: &str| {
+        (commands.iter())
+            .filter(|c| (c.1["body_name"].as_str()).is_some_and(|n| n.contains(part)))
+            .count()
+    };
+    let p = json!({"name": "F", "under": "feet", "caster_height": 80});
+    let (commands, summary) = build(&p, &plans).unwrap();
+    assert_eq!(
+        (named(&commands, " Leg "), named(&commands, " Caster ")),
+        (4, 0)
+    );
+    assert_eq!(
+        (summary["feet"].clone(), summary["lift"].clone()),
+        (json!(4), json!(150.0))
+    );
+    let p = json!({"name": "R", "under": "none", "caster_height": 80});
+    let (commands, summary) = build(&p, &plans).unwrap();
+    let all = boxes(&commands);
+    assert_eq!(
+        all.iter().find(|b| b.0 == "R Frame front").unwrap().1[2],
+        0.0
+    );
+    assert!(all.iter().all(|b| !b.0.contains(" Block ")));
+    assert_eq!(named(&commands, " Caster "), 0);
+    assert_eq!(summary["lift"], 70.0);
+    assert!(build(&json!({"under": "wheels"}), &plans).is_err());
+}
+
+#[test]
 fn a_long_frame_gets_casters_in_its_middle_and_runs_either_way() {
     // three cabinets 600 wide: 1800 long, so a middle pair beside the cross board at 600 or 1200
     let plans = [

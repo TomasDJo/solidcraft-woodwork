@@ -50,7 +50,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Material**: birch plywood, MDF, white melamine or oak, for a whole cabinet or just the
   parts you pick (the doors, say).
 - **Panel**: an end panel or a filler on one side of a cabinet, following its size.
-- **Mobile base**: one frame of boards or timber on locking casters under a group of
+- **Mobile base**: one frame of boards or timber on locking casters, feet or straight on the floor (a riser) under a group of
   cabinets, with stiffeners across it, bolted to each other and, when made without a plinth,
   screwed down to the frame, for a workbench that rolls. The base holds its cabinets and
   follows a line they stand along. Pick a board of it to change it or add cabinets.
