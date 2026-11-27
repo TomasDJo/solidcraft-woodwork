@@ -113,6 +113,9 @@ pub fn door(corner: &Corner, on_return: bool) {
     let at = |x: &str, y: &str, z: &str| json!([x, y, z]);
     let lo = [x0.as_str(), front.as_str(), z0.as_str()];
     fittings::grip(kit, "Door", handles, at, lo, [&len, et, &door_h], 0, 1, top);
+    if let Some((g, sizes)) = &corner.grooves {
+        fittings::front_grooves(kit, "Door", g, sizes, at, lo, [&len, et, &door_h], 0, 1);
+    }
     let screws = fittings::screw_heights(handles, &handle_z);
     for (j, z) in screws.iter().enumerate() {
         hole(&pull_x, z, HANDLE_D, et, format!("handle {}", j + 1));

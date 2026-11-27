@@ -484,6 +484,139 @@ fn place(at: &str, front_h: f64, floor: bool) -> &str {
     }
 }
 
+/// Grooved fronts (`front_style` vertical or horizontal, #182): `shape` square or round,
+/// `spacing` and `depth` in mm (the design-wide settings `groove_spacing`, `groove_depth`).
+#[derive(Clone, Copy)]
+pub struct Grooves<'a> {
+    pub style: &'a str,
+    pub shape: &'a str,
+    pub mm: [f64; 2],
+}
+
+/// The fields `front_style`, `groove_shape`, `groove_spacing` and `groove_depth` (the sizes as
+/// `size` reads them, in mm): `None` for flat fronts. A groove stays clear of the hinge cups
+/// behind it (`CUP_DEPTH`) on a cabinet with doors, and of half the front without.
+pub fn grooves<'a>(
+    p: &'a Value,
+    size: impl Fn(&str, f64) -> Result<f64, String>,
+    t: f64,
+    doors: bool,
+) -> Result<Option<Grooves<'a>>, String> {
+    let style = p.get("front_style").and_then(Value::as_str);
+    let shape = p.get("groove_shape").and_then(Value::as_str);
+    let (style, shape) = match (style.unwrap_or("flat"), shape.unwrap_or("square")) {
+        ("flat", _) => return Ok(None),
+        (s @ ("vertical" | "horizontal"), g @ ("square" | "round")) => (s, g),
+        ("vertical" | "horizontal", _) => return Err("groove_shape must be square or round".into()),
+        _ => return Err("front_style must be flat, vertical or horizontal".into()),
+    };
+    let [spacing, depth] = [size("groove_spacing", 50.0)?, size("groove_depth", 3.0)?];
+    let most = if doors { t - CUP_DEPTH - 1.0 } else { t / 2.0 };
+    if !(0.5..=most).contains(&depth) {
+        return Err(format!(
+            "the front grooves' depth must be 0.5 to {most} mm in a {t} mm front"
+        ));
+    }
+    if spacing < 4.0 * depth + 4.0 {
+        return Err("the front grooves are too close for their depth".into());
+    }
+    Ok(Some(Grooves {
+        style,
+        shape,
+        mm: [spacing, depth],
+    }))
+}
+
+/// The grooves' spacing and depth as the cabinet's parameters, made once a build.
+pub fn groove_sizes(kit: &Kit, g: &Grooves) -> [String; 2] {
+    [
+        kit.parameter("groove_spacing", g.mm[0], "front groove spacing"),
+        kit.parameter("groove_depth", g.mm[1], "front groove depth"),
+    ]
+}
+
+/// Grooves in a front's face, `sizes` apart about (the spacing evened out so the strips between
+/// are alike) and as deep, `2*depth` wide: square (a box cut) or round (a half-round cylinder
+/// cut), each run the front's whole length and a millimetre past it. One cut and one pattern,
+/// its count an expression, so they follow a resize. The front as for `grip`.
+#[allow(clippy::too_many_arguments)]
+pub fn front_grooves(
+    kit: &Kit,
+    part: &str,
+    g: &Grooves,
+    [spacing, depth]: &[String; 2],
+    at: impl Fn(&str, &str, &str) -> Value,
+    lo: [&str; 3],
+    size: [&str; 3],
+    along: usize,
+    back: i32,
+) {
+    let across = 1 - along;
+    // the grooves run along `run` and repeat along `step`
+    let (run, step) = match g.style {
+        "vertical" => (2, along),
+        _ => (along, 2),
+    };
+    let strips = format!("max(round(({}) / {spacing}), 2)", size[step]);
+    let pitch = format!("({}) / {strips}", size[step]);
+    let first = format!("{} + {pitch}", lo[step]);
+    let face = match back {
+        1 => lo[across].to_string(),
+        _ => format!("{} + {}", lo[across], size[across]),
+    };
+    let mut axis = [0, 0, 0];
+    axis[run] = 1;
+    let mut p = [String::new(), String::new(), String::new()];
+    let name = format!("{} {part} front groove", kit.name);
+    let length = format!("{} + 2 mm", size[run]);
+    p[run] = format!("{} - 1 mm", lo[run]);
+    match g.shape {
+        "round" => {
+            p[step] = first;
+            p[across] = face;
+            let d = format!("2*{depth}");
+            hole(
+                kit,
+                part,
+                at(&p[0], &p[1], &p[2]),
+                axis,
+                &d,
+                &length,
+                "front groove",
+            );
+        }
+        _ => {
+            // from a millimetre in front of the face to `depth` behind it
+            p[step] = format!("{first} - {depth}");
+            p[across] = match back {
+                1 => format!("{face} - 1 mm"),
+                _ => format!("{face} - {depth}"),
+            };
+            let mut dims = [String::new(), String::new(), String::new()];
+            dims[run] = length;
+            dims[step] = format!("2*{depth}");
+            dims[across] = format!("{depth} + 1 mm");
+            kit.push((
+                "solid.box",
+                json!({
+                    "corner": at(&p[0], &p[1], &p[2]), "length": dims[0], "width": dims[1],
+                    "height": dims[2], "operation": "cut",
+                    "targets": [format!("{} {part}", kit.name)], "name": name,
+                }),
+            ));
+        }
+    }
+    let mut dir = [0, 0, 0];
+    dir[step] = 1;
+    kit.push((
+        "solid.pattern.rectangular",
+        json!({
+            "features": [name], "dir1": dir, "count1": format!("{strips} - 1"),
+            "spacing1": pitch, "name": format!("{name}s"),
+        }),
+    ));
+}
+
 /// Whether a door's grip edge or groove (`handles` grip or groove) is along its top edge, else
 /// its bottom: auto by the kind of unit (also on a tall door), and middle is the top.
 pub fn grip_on_top(at: &str, floor: bool) -> bool {

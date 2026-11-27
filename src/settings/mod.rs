@@ -59,6 +59,10 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("drawer_bottom", "", Length(6.0, 3.175, 19.0), Box),
         ("fronts", "", Choice("overlay"), Cabinets),
         ("handle_position", "", Choice("auto"), Cabinets),
+        ("front_style", "", Choice("flat"), Cabinets),
+        ("groove_shape", "", Choice("square"), Cabinets),
+        ("groove_spacing", "", Length(50.0, 10.0, 300.0), Cabinets),
+        ("groove_depth", "", Length(3.0, 0.5, 10.0), Cabinets),
         // `plinth` is Cabinet's Yes or No (`design`)
         ("plinth", "", Length(100.0, 0.0, 500.0), Nothing),
         ("plinth_type", "", Choice("board"), Cabinets),
@@ -271,8 +275,9 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
 /// The per-cabinet fields that Settings also gives a default (Plinth's Yes or No through its
 /// height). A cabinet whose value is not the default it was built with chose its own, which
 /// Apply settings keeps; one that has that default follows the settings.
-pub const PER_CABINET: [&str; 7] = [
+pub const PER_CABINET: [&str; 8] = [
     "handles",
+    "front_style",
     "fronts",
     "back",
     "plinth",
@@ -460,6 +465,7 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
         // Woodwork settings' own fields
         ("back thickness", "back_thickness"),
         ("drawer box", "drawer_thickness"),
+        ("front grooves", "groove_depth"),
         ("cleat thickness", "cleat_thickness"),
         ("cleat", "cleat_height"),
         ("panels of", "thickness"),
@@ -505,7 +511,7 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
 pub fn on_cabinet(field: &'static str) -> &'static str {
     match field {
         "cleat_height" | "cleat_thickness" => "wall_mount",
-        "back_thickness" | "drawer_thickness" => "shape",
+        "back_thickness" | "drawer_thickness" | "groove_depth" => "shape",
         f => f,
     }
 }
@@ -630,6 +636,10 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
             "handles",
             "handle_position",
             "hinge_angle",
+            "front_style",
+            "groove_shape",
+            "groove_spacing",
+            "groove_depth",
         ],
     ),
     (

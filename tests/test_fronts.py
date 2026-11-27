@@ -455,3 +455,40 @@ def test_integrated_drawer_fronts(approval):
     assert holes == cylinders(separate[1], "Cabinet Drawer 1 Front") > 0, holes
     count = lambda r: sum(p["qty"] for p in r[2]["result"]["parts"])
     assert count(results) == count(separate) - 2, (count(results), count(separate))
+
+
+def test_grooved_fronts(approval):
+    # Vertical square grooves, 50 mm apart about and 3 deep, 6 wide, in a 596 x 716 door: 12
+    # strips, so 11 grooves up its whole height. Round horizontal ones in two 357 mm drawer
+    # fronts: 7 strips, 6 half rounds of 3 mm radius across each 596 mm front. Then the door
+    # 200 mm wider: 16 strips. Each against the same cabinet without grooves.
+    results = cli([plugin(approval, "cabinet", {"name": "V", "doors": 1, "front_style": "vertical"}),
+                   plugin(approval, "cabinet", {"name": "N", "doors": 1}),
+                   plugin(approval, "cabinet", {"name": "H", "drawers": 2, "front_style": "horizontal",
+                                                "groove_shape": "round"}),
+                   plugin(approval, "cabinet", {"name": "M", "drawers": 2}),
+                   plugin(approval, "corner", {"name": "C", "doors": "hinged left", "front_style": "vertical"}),
+                   plugin(approval, "corner", {"name": "D", "doors": "hinged left"}),
+                   MEASURE, faces("V Door"),
+                   {"command": "parameters.change", "params": {"name": "V_width", "expression": "800 mm"}},
+                   {"command": "parameters.change", "params": {"name": "N_width", "expression": "800 mm"}},
+                   MEASURE],
+                  "--save", str(ROOT / "dist" / "grooved-fronts.sc"))
+    m = results[6]
+    square, round_ = 6 * 3 * 716, 3.14159265 * 3 ** 2 / 2 * 596
+    cut = volume(m, "N Door") - volume(m, "V Door")
+    assert abs(cut - 11 * square) < 0.002 * 11 * square, cut
+    for n in (1, 2):
+        cut = volume(m, f"M Drawer {n} Front") - volume(m, f"H Drawer {n} Front")
+        assert abs(cut - 6 * round_) < 0.01 * 6 * round_, (n, cut)
+    assert boxes(m)["V Door"] == boxes(m)["N Door"]
+    # The grooves' bottoms are 3 mm behind the door's front face (y = -300), evenly across it.
+    bottoms = sorted(round(f["centroid"][0], 3) for f in results[7]["faces"]
+                     if f["plane_normal"] == [0.0, -1.0, 0.0] and abs(f["centroid"][1] + 297) < 0.01)
+    assert len(bottoms) == 11 and all(abs(b - (-298 + 596 / 12 * (k + 1))) < 0.01 for k, b in enumerate(bottoms)), bottoms
+    # Both of the L corner's doors are grooved: whole 716 mm grooves, against the flat ones.
+    for door in ("Door", "Door return"):
+        grooves = (volume(m, f"D {door}") - volume(m, f"C {door}")) / square
+        assert grooves >= 1 and abs(grooves - round(grooves)) < 0.002, (door, grooves)
+    cut = volume(results[10], "N Door") - volume(results[10], "V Door")
+    assert abs(cut - 15 * square) < 0.002 * 15 * square, cut

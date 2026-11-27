@@ -726,6 +726,14 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   a door's top or bottom by `fittings::grip_on_top` (auto by floor or wall unit, also on a
   tall door; middle is the top), on the corner's folding door only. `fittings::profile_fits`
   refuses a front too thin for it. Both run a millimetre past the front's ends.
+- **Grooved fronts** (`front_style` flat, vertical, horizontal: per cabinet with a Settings
+  default, as `fronts`; `groove_shape` square or round, `groove_spacing`, `groove_depth`:
+  design-wide, the parameters `<Prefix>_groove_spacing` and `_groove_depth` on a cabinet with
+  fronts; #182, `fittings::grooves`, `front_grooves`): one cut (a box, or a cylinder centred on
+  the face) the front's whole length and one pattern a front, `max(round(len/spacing), 2) - 1`
+  grooves at `len/strips`, so they follow a resize. A V groove is not made: a turned cutter
+  (`solid.move`) and its combine cannot be patterned ("cannot be patterned or mirrored yet").
+  The depth stays clear of the cups (`t - CUP_DEPTH - 1`, or `t/2` without doors).
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
 - A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
   from parameters takes whole parameters (`number(Width)`), not expressions. A board is told

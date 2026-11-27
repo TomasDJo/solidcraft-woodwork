@@ -24,6 +24,7 @@ pub struct Input<'a> {
     pub on_return: Option<bool>,
     pub handles: &'a str,
     pub handle_at: &'a str,
+    pub grooves: Option<crate::fittings::Grooves<'a>>,
     pub right: bool,
     pub diagonal: bool,
     /// The L's bottom, top and shelves each made as two boards dowelled together.
@@ -85,6 +86,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "handles must be none, knob, pull, grip or groove",
     )?;
     crate::fittings::profile_fits(handles, t)?;
+    let grooves = match doors {
+        true => crate::fittings::grooves(p, size, t, true)?,
+        false => None,
+    };
     let handle_at = crate::fittings::handle_position(p)?;
     let inset = match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
         "overlay" => false,
@@ -167,6 +172,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         on_return,
         handles,
         handle_at,
+        grooves,
         right,
         diagonal,
         split,

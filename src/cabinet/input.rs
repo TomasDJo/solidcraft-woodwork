@@ -40,6 +40,8 @@ pub struct Input<'a> {
     pub mount_h: f64,
     pub handles: &'a str,
     pub handle_at: &'a str,
+    /// Grooves cut into the fronts' faces (`front_style`, #182): `None` for flat fronts.
+    pub grooves: Option<crate::fittings::Grooves<'a>>,
     pub hinge_right: bool, // the first door is hinged on its right
     /// Inset fronts sit inside the carcass opening; overlay ones cover its edges.
     pub inset: bool,
@@ -305,6 +307,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "handles must be none, knob, pull, grip or groove",
     )?;
     crate::fittings::profile_fits(handles, t)?;
+    // only checked on a cabinet with fronts to cut them into
+    let grooves = match doors > 0.0 || drawers > 0.0 {
+        true => crate::fittings::grooves(p, size, t, doors > 0.0)?,
+        false => None,
+    };
     let handle_at = crate::fittings::handle_position(p)?;
     let hinge_right = match p
         .get("door_hinge")
@@ -413,6 +420,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         mount_h,
         handles,
         handle_at,
+        grooves,
         hinge_right,
         inset,
         reveal: g,

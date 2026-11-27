@@ -78,6 +78,18 @@ component can hold its cabinets.
 | **Handle position** (Woodwork settings) | Near the top, in the middle or near the bottom of a door. On Auto: near the top on a floor unit, near the bottom on a wall unit. On a drawer front the handle lies across: in the middle on Auto, or 40 mm from the front's top or bottom edge. With a grip edge or finger groove: the door's top edge (Top, Middle, or Auto on a floor unit) or its bottom edge (Bottom, or Auto on a wall unit). |
 
 ![Grip edges on the doors (left) and finger grooves on the drawers (right): no handles.](images/grip-edges.png)
+
+**Front style** (Woodwork settings, and Edit for one cabinet): **Flat** (the default), or
+**Vertical grooves** or **Horizontal grooves** cut into the face of every door and drawer front,
+corner doors too. Woodwork settings give their **Groove shape** (Square: a flat bottom; Round: a
+half round, fluted), **Groove spacing** (50 mm by default: about how far apart they are, evened
+out over each front so the strips between them are alike) and **Groove depth** (3 mm; the grooves
+are twice as wide). Each groove runs the front's whole length. They are the parameters
+`Name_groove_spacing` and `Name_groove_depth`, and the count follows a resize. A groove must stay
+clear of the hinge cups behind it: on a cabinet with doors at most the thickness less 14 mm
+(4 mm on an 18 mm door), without doors at most half the thickness.
+
+![Grooved fronts: vertical square grooves on the doors (left), round horizontal ones on the drawers (right).](images/grooved-fronts.png)
 | **Labels** (Woodwork settings) | Writes each board's name on it, the name the cut list has, as text in a sketch on the board's face. It stays in the middle of the board when the cabinet changes size. |
 | **Selected cabinet**, **Match selected**, **Place** | See [Building a run](#building-a-run-place-and-match-selected). **Line**, **Start at**, **Offset**, **Faces**, **Width from line** and **Height from line** show with Place Along a line: see [Along a line](#along-a-line). |
 | **Material** | The board material of every panel. Change it later with [Material](#material). |
