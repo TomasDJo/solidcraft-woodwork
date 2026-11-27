@@ -241,6 +241,22 @@ fn a_notched_side_says_so() {
 }
 
 #[test]
+fn the_cost_table_shows_whenever_prices_are_given() {
+    // Prices filled in, none for this design's lines: the table still shows, its lines saying
+    // "no price"; with Prices empty there is none
+    let mut l = list(1);
+    l["cost"] = json!({"given": true, "total": 0.0,
+        "lines": [{"item": "Birch plywood 18", "qty": 2, "unit": "sheets"}]});
+    let text = String::from_utf8_lossy(&render(&l, "Kitchen", false)).to_string();
+    assert!(
+        text.contains("(Cost)") && text.contains("(no price)"),
+        "{text}"
+    );
+    l["cost"]["given"] = json!(false);
+    assert!(!String::from_utf8_lossy(&render(&l, "Kitchen", false)).contains("(Cost)"));
+}
+
+#[test]
 fn an_l_board_is_drawn_as_an_l_in_the_diagram() {
     let mut listed = list(1);
     listed["layouts"] = json!([{"material": "Birch plywood", "thickness": 18.0, "size": [2440.0, 1220.0],

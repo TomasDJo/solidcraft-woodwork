@@ -126,6 +126,12 @@ SHOTS = [
       lambda: run("cabinet", {"name": "C", "place": "auto", "match": "selected", "doors": 1, "handles": "knob"}),
       {"command": "parameters.change", "params": {"name": "Run_A_height", "expression": "850 mm"}}],
      cam([600, 0, 420], 3000, yaw=-0.4)),
+    ("cost", "The cut list's PDF with a cost estimate from the prices in Woodwork settings.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "drawers": 3, "plinth": 100, "handles": "pull"}),
+      lambda: run("settings", {"prices": "Birch plywood 18 = 80; Birch plywood 6 = 35; Banding = 0.5; "
+                                         "Hinge = 3.2; Drawer slide = 12; Shelf pin = 0.1; Knob = 2.5"})],
+     "pdf"),
     ("panel", "Panel: an end panel on the right, a filler with its return on the left.",
      [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"), lambda: run("panel", {"kind": "end"}),
       pick("A Side L"), lambda: run("panel", {"kind": "filler", "width": 50})], ONE),
@@ -147,7 +153,33 @@ SHOTS = [
 ]
 
 
+def draw_pdf(name, steps):
+    """The cut list saved as a PDF (in a profile of its own, with its folder approved), its
+    hardware and cost tables drawn with PyMuPDF."""
+    import fitz
+    sys.path.insert(0, str(ROOT / "tests"))
+    from helpers import own_profile
+    folder = ROOT / "dist" / "cost-picture"
+    with own_profile(folder) as install:
+        install["params"]["approve"]["folders"].append(
+            {"name": "cutlists", "path": str(folder), "read": False, "write": True})
+        steps = [step() if callable(step) else step for step in steps]
+        cli([install, *flat(steps), run("cutlist", {"file": "Cost", "diagrams": "no"})])
+        page = next(p for p in fitz.open(folder / "Cost.pdf") if p.search_for("Hardware"))
+        top = page.search_for("Hardware")[0].y0 - 12
+        bottom = max(b[3] for b in page.get_text("blocks")) + 12
+        clip = fitz.Rect(0, top, page.rect.width, bottom)
+        shot = page.get_pixmap(clip=clip, matrix=fitz.Matrix(SIZE[0] / page.rect.width, SIZE[0] / page.rect.width))
+        png = folder / "shot.png"
+        shot.save(png)
+    from PIL import Image
+    Image.open(png).convert("RGB").quantize(128).save(OUT / f"{name}.png", optimize=True)
+    print(f"{name}.png  {(OUT / f'{name}.png').stat().st_size // 1024} KB")
+
+
 def draw(name, steps, options):
+    if options == "pdf":
+        return draw_pdf(name, steps)
     script = flat([step() if callable(step) else step for step in steps])
     with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
         path, png = Path(folder) / "script.json", Path(folder) / "shot.png"

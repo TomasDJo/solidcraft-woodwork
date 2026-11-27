@@ -733,7 +733,7 @@ pub fn cutlist(
             |placed: &[crate::nesting::Placed]| placed.iter().map(|p| p.w * p.h).sum::<f64>();
         let used: f64 = laid.iter().map(|placed| area(placed)).sum();
         sheets.push(json!({
-            "material": material, "thickness": shown(*t), "area_m2": round(*m2),
+            "material": material, "thickness": shown(*t), "thickness_mm": mm(*t), "area_m2": round(*m2),
             "sheets": laid.len(), "yield_pct": if laid.is_empty() { 0.0 } else { percent(used, laid.len()) },
         }));
         for placed in &laid {

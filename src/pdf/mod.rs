@@ -444,6 +444,31 @@ pub fn render(list: &Value, title: &str, diagrams: bool) -> Vec<u8> {
         doc.table(&hw_cols, &rows, true);
     }
 
+    // Cost (#56): with prices given, even if none matches: the lines priced and those without.
+    let lines = list["cost"]["lines"].as_array().unwrap_or(&none);
+    if list["cost"]["given"] == true {
+        let total = shown(&list["cost"]["total"]);
+        doc.heading(
+            "Cost",
+            &format!("estimate {total}, from the prices in Woodwork settings"),
+        );
+        let rows: Vec<Vec<String>> = (lines.iter())
+            .map(|l| {
+                let price = |k: &str| l.get(k).map_or("no price".to_string(), shown);
+                let qty = format!("{} {}", shown(&l["qty"]), shown(&l["unit"]));
+                vec![qty, price("price"), price("total"), shown(&l["item"])]
+            })
+            .collect();
+        // the item last: the one column that wraps
+        let cost_cols = [
+            ("QTY", M + 4.0, false, false),
+            ("PRICE", M + 110.0, true, false),
+            ("TOTAL", M + 160.0, true, false),
+            ("ITEM", M + 175.0, false, false),
+        ];
+        doc.table(&cost_cols, &rows, false);
+    }
+
     if diagrams {
         cutting_diagrams(&mut doc, list);
     }

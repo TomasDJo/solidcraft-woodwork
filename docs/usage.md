@@ -817,6 +817,34 @@ DXF, a drawing per sheet for a CNC router or CAD program (see [DXF](#dxf)). It g
 lists that SolidCraft asks you for when you install the plugin; without such a folder, leave
 the field empty.
 
+### Cost estimate
+
+![The cut list's PDF with a cost estimate from the prices in Woodwork settings.](images/cost.png)
+
+*The cut list's PDF with a cost estimate from the prices in Woodwork settings.*
+
+Give your prices in **Woodwork settings** (Settings: Cut list and worktop), in **Prices**, as
+`name = price` entries separated by `;`:
+
+    Birch plywood 18 = 80; Birch plywood 6 = 35; Banding = 0.5; Hinge = 3.2; Drawer slide = 12
+
+- **A sheet** is priced per sheet, by its material and thickness in mm, as the sheets to buy
+  name it: `White melamine 18` and `White melamine 6` are two prices.
+- **Banding** is one price a metre, for the metres the list adds up (waste included).
+- **Hardware** is priced a piece. The entry whose name an item starts with prices it, the
+  longest one if several do: `Hinge` prices every hinge line, and `Drawer slide, full extension`
+  goes before `Drawer slide`. Upper or lower case doesn't matter.
+- The numbers have no currency: the estimate is in whatever you gave them in. A decimal comma
+  works too (`3,2`).
+
+The cut list then adds `cost` to its reply: a line for each sheet, the banding and each piece
+of hardware with its price and total, the `total` of what has a price, and `missing`: an entry
+for each line that has none yet, such as `Birch plywood 12 = ?`, ready to fill in and copy into
+Prices. So the first run, with Prices empty, lists every price the design needs. With Prices
+filled in, the PDF has a **Cost** table after the hardware (a line without a price says so), and
+the CSV a Cost section with the total and the lines still without a price. Worktops, bought to
+length, are not priced.
+
 ### Cutting layouts
 
 The parts are laid out on sheets of the **Sheet size** chosen (2440 x 1220, the default,
