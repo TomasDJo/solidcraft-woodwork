@@ -265,8 +265,8 @@ pub fn build(cabinet: &Cabinet) {
         // Bottom tab (#181): the bottom, its underside at `tz` and its front edge at `ty`, runs
         // forward under the front to `TAB_OUT` past its face, `tab_width` wide (never wider than
         // the box inside), its two front corners rounded. The front is cut away from its lower
-        // edge up to the bottom's top where the tab passes, and scooped above it; a box front
-        // the bottom stands behind is slotted for it.
+        // edge up to the bottom's top where the tab passes (no scoop, #244); a box front the
+        // bottom stands behind is slotted for it.
         let tab = |tz: &str, ty: &str, through_box: bool| {
             let Some(tab_p) = &tab_p else { return };
             let w = format!("min({tab_p}, {box_w} - 2*{bt})");
@@ -333,10 +333,6 @@ pub fn build(cabinet: &Cabinet) {
                     }),
                 ));
             }
-            // its axis half its diameter over the tab: the half round rises from the tab's top
-            let d = mm(fittings::GROOVE_D);
-            let scoop = kit.at(&tx, efront, &format!("{tz} + {bb} + {d}/2"));
-            fittings::hole(kit, &front, scoop, [1, 0, 0], &d, &w, "tab scoop");
         };
         // Finger-jointed into an integrated front, the sides run forward through it.
         // ponytail: an inset front on runners with less play than reveal leaves the fingers

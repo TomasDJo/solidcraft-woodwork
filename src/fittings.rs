@@ -202,10 +202,6 @@ pub fn profile_fits(handles: &str, t: f64) -> Result<(), String> {
             "a finger groove needs fronts over {} mm",
             GROOVE_D / 2.0
         )),
-        "tab" if t <= GROOVE_D / 2.0 => Err(format!(
-            "a bottom tab's scoop needs fronts over {} mm",
-            GROOVE_D / 2.0
-        )),
         _ => Ok(()),
     }
 }

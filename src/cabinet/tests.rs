@@ -1704,7 +1704,7 @@ fn double_dividers_give_each_door_its_own_board() {
 fn a_bottom_tab_sticks_out_under_the_front() {
     // #181: the drawer's bottom runs forward under the front as the tab, `tab_width` wide (a
     // parameter, capped by the box inside) with rounded corners; the front is cut away from
-    // its lower edge up to the bottom's top, and scooped above; no handle holes, no tab board
+    // its lower edge up to the bottom's top, no scoop (#244); no handle holes, no tab board
     let has = |c: &[(&str, Value)], n: &str| c.iter().any(|c| c.1["name"] == n);
     let p = json!({"drawers": 2, "handles": "tab", "tab_width": 150});
     let (commands, _) = build(&p).unwrap();
@@ -1745,7 +1745,9 @@ fn a_bottom_tab_sticks_out_under_the_front() {
     // the box front stands before the bottom: slotted for it
     let slot = named(&commands, "Cabinet Drawer 1 Box front tab slot");
     assert_eq!(slot["targets"], json!(["Cabinet Drawer 1 Box front"]));
-    assert!(has(&commands, "Cabinet Drawer 1 Front tab scoop"));
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"].as_str().unwrap_or("").contains("scoop")));
     // the front keeps its height: the drawers' gaps do not change
     let (plain, _) = build(&json!({"drawers": 2, "handles": "none"})).unwrap();
     assert!(!has(&plain, "Cabinet_tab_width"));
@@ -1763,7 +1765,7 @@ fn a_bottom_tab_sticks_out_under_the_front() {
     let (commands, _) = build(&p).unwrap();
     assert!(has(&commands, "Cabinet Drawer 1 Bottom tab 1"));
     assert!(!has(&commands, "Cabinet Drawer 1 Box front tab slot"));
-    // doors take no tab, the front must keep wood behind the scoop, the width its bounds
+    // doors take no tab; with no scoop a thin front takes one too; the width has its bounds
     let (commands, _) = build(&json!({"doors": 2, "handles": "tab"})).unwrap();
     assert!(!commands
         .iter()
@@ -1772,7 +1774,7 @@ fn a_bottom_tab_sticks_out_under_the_front() {
         let p = json!({"drawers": 2, "handles": "tab", "thickness": t, "back_thickness": 3});
         build(&p).is_ok()
     };
-    assert!(!thin(10.0) && thin(12.0));
+    assert!(thin(8.0) && thin(10.0) && thin(12.0));
     assert!(build(&json!({"drawers": 2, "handles": "tab", "tab_width": 30})).is_err());
     // a box too narrow inside for the tab's two 10 mm corners: a 162 mm cabinet's opening is
     // 126, 30 mm strips with 11 mm play leave a 44 mm box, 20 inside (refused); 10 mm play, 22
