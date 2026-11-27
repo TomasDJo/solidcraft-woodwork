@@ -1742,6 +1742,24 @@ fn a_bottom_tab_sticks_out_under_the_front() {
         .as_str()
         .unwrap()
         .starts_with("min(Cabinet_tab_width, "));
+    // 12 mm past the front's face (#256)
+    let tip = named(&commands, "Cabinet Drawer 1 Bottom tab 2")["corner"][1].clone();
+    assert!(tip.as_str().unwrap().contains(" - 12 mm"), "{tip}");
+    // and a cove cut along it from below: a 12 mm cylinder across the part past the front, its
+    // axis under the underside, at most 3 mm (half the bottom) deep
+    let cove = named(&commands, "Cabinet Drawer 1 Bottom tab cove");
+    assert_eq!(
+        (cove["operation"].clone(), cove["axis"].clone()),
+        (json!("cut"), json!([1, 0, 0]))
+    );
+    assert_eq!(cove["targets"], json!(["Cabinet Drawer 1 Bottom"]));
+    assert_eq!(cove["diameter"], "2*6 mm");
+    let z = cove["base"][2].as_str().unwrap();
+    assert!(
+        z.ends_with(" - 6 mm + min(3 mm, Cabinet_drawer_bottom/2)"),
+        "{z}"
+    );
+    assert!(cove["base"][1].as_str().unwrap().contains(" - 6 mm"));
     let notch = named(&commands, "Cabinet Drawer 1 Front tab notch");
     assert_eq!(notch["targets"], json!(["Cabinet Drawer 1 Front"]));
     let front = named(&commands, "Cabinet Drawer 1 Front");

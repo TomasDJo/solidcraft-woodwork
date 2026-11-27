@@ -333,6 +333,19 @@ pub fn build(cabinet: &Cabinet) {
                     }),
                 ));
             }
+            // A cove under the part past the front, for a finger to hook from below (#256): a
+            // cylinder along the tab's width, its axis under the tab's underside, shallow.
+            let (cr, depth) = (mm(fittings::COVE_R), mm(fittings::COVE_DEPTH));
+            let cy = format!("{efront} - {}", mm(fittings::TAB_OUT / 2.0));
+            let cz = format!("{tz} - {cr} + min({depth}, {bb}/2)");
+            kit.push((
+                "solid.cylinder",
+                json!({
+                    "base": kit.at(&format!("{tx} - 1 mm"), &cy, &cz), "axis": [1, 0, 0],
+                    "diameter": format!("2*{cr}"), "height": format!("{w} + 2 mm"),
+                    "operation": "cut", "targets": bottom, "name": format!("{name} cove"),
+                }),
+            ));
         };
         // Finger-jointed into an integrated front, the sides run forward through it.
         // ponytail: an inset front on runners with less play than reveal leaves the fingers
