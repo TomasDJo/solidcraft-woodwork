@@ -414,6 +414,28 @@ fn a_cam_lock_is_a_bolt_into_the_face_and_a_cam_in_the_end_boards_inside_face() 
             .len(),
         12
     );
+    // the housing is cut before the shank, in the commands and in the row: the shank's cut
+    // into a board that has the housing is the cheaper one (#173)
+    let at = |name: &str| commands.iter().position(|c| c.1["name"] == name).unwrap();
+    let features = row(&commands, "K joint Side L Bottom cam housing")["features"].clone();
+    let in_row = |name: &str| {
+        features
+            .as_array()
+            .unwrap()
+            .iter()
+            .position(|f| f == name)
+            .unwrap()
+    };
+    for joint in ["Side L Bottom", "Side R Top"] {
+        let (housing, bolt) = (
+            format!("K joint {joint} cam housing"),
+            format!("K joint {joint} cam bolt"),
+        );
+        assert!(
+            at(&housing) < at(&bolt) && in_row(&housing) < in_row(&bolt),
+            "{joint}"
+        );
+    }
     let params = json!([{"name": "K_cams", "value": 12.0}, {"name": "K_cam_d", "value": 15.0}]);
     assert_eq!(
         hardware("K", &params),
