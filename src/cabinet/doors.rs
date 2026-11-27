@@ -2,9 +2,8 @@
 
 use super::input::Input;
 use super::Cabinet;
-use crate::fittings::{self, HANDLE_EDGE};
+use crate::fittings;
 use crate::hardware;
-use crate::kit::mm;
 
 /// Equal doors across the front. They hinge left, right, left..., or right, left, right...
 /// when the first is asked to hinge on its right; with three or more the end doors hinge on
@@ -68,9 +67,10 @@ pub fn build(cabinet: &Cabinet) {
             false => format!("{ein} + {er} + ({door_w} + {er}) * {i}"),
         };
         kit.open(&part);
-        kit.panel(&part, [&x0, efront, z0], [&door_w, et, door_h], None);
-        // The hinge cups, from the door's back face, `HW_cup_inset` in from its hinge edge.
+        // a shaker door's own name is its hinge stile's, which takes the cups
         let left = hinged_left(i, count, first, inset);
+        cabinet.front(&part, [&x0, efront, z0], [&door_w, et, door_h], left, true);
+        // The hinge cups, from the door's back face, `HW_cup_inset` in from its hinge edge.
         let cup_x = match left {
             true => format!("{x0} + HW_cup_inset"),
             false => format!("{x0} + {door_w} - HW_cup_inset"),
@@ -90,9 +90,10 @@ pub fn build(cabinet: &Cabinet) {
         };
         hardware::cup_holes(kit, &part, at, [[0, -1, 0], toward], Some(crank), &cups);
         // The handle is on the side away from the hinges.
+        let edge = fittings::handle_edge(cabinet.eframe.as_ref());
         let handle_x = match left {
-            true => format!("{x0} + {door_w} - {}", mm(HANDLE_EDGE)),
-            false => format!("{x0} + {}", mm(HANDLE_EDGE)),
+            true => format!("{x0} + {door_w} - {edge}"),
+            false => format!("{x0} + {edge}"),
         };
         cabinet.handle(&part, &handle_x, &handle_z, 2);
         cabinet.grooves(&part, [&x0, efront, z0], [&door_w, et, door_h]);

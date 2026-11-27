@@ -40,6 +40,8 @@ struct Corner<'a> {
     handle_at: &'a str,
     /// Grooved fronts and their spacing and depth parameters, on a cabinet with doors.
     grooves: Option<(fittings::Grooves<'a>, [String; 2])>,
+    /// Shaker doors' frame width and panel thickness parameters.
+    eframe: Option<[String; 2]>,
     a: f64,
     b: f64,
     d: f64,
@@ -87,6 +89,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handles,
         handle_at,
         grooves,
+        frame,
         right,
         diagonal,
         split,
@@ -134,6 +137,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         false => mm(reveal),
     };
     let grooves = grooves.map(|g| (g, fittings::groove_sizes(&kit, &g)));
+    let eframe = frame.map(|f| fittings::frame_sizes(&kit, f));
     let emount = fittings::mount_sizes(&kit, wall_mount, mount_t, mount_h, &et);
     // A rail on each wall.
     let steel = wall_mount == "steel";
@@ -153,6 +157,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         handles,
         handle_at,
         grooves,
+        eframe,
         a,
         b,
         d,

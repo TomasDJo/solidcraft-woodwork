@@ -776,3 +776,16 @@ fn finger_jointed_boards_are_noted() {
                                      {"name": "A Bottom finger Side R"}, {"name": "A fingers 1"}]});
     assert_eq!(fingered(&design), ["A Bottom", "A Side L"]);
 }
+
+#[test]
+fn shaker_boards_grain() {
+    // rails across the cabinet, stiles and the panel upright; the panel's edges in the groove
+    assert_eq!(role("Door rail top", 0).1, Some(0));
+    assert_eq!(role("Drawer 2 Front rail bottom", 0).1, Some(0));
+    assert_eq!(role("Door L stile", 0).1, Some(2));
+    // a corner's return door: its rails along the return
+    assert_eq!(role("Door return rail top", 0).1, Some(1));
+    let panel = role("Drawer 1 Front panel", 0);
+    assert!(matches!(panel, (Edges::None, Some(2))));
+    assert!(matches!(role("Door rail top", 0).0, Edges::All));
+}

@@ -92,6 +92,19 @@ clear of the hinge cups behind it: on a cabinet with doors at most the thickness
 (4 mm on an 18 mm door), without doors at most half the thickness.
 
 ![Grooved fronts: vertical square grooves on the doors (left), round horizontal ones on the drawers (right).](images/grooved-fronts.png)
+
+**Front style: Shaker** makes each door and drawer front a frame and panel: two stiles (full
+height) and two rails between them, **Frame width** wide (Woodwork settings, 60 mm by default,
+55 to 150), round a panel of **Panel thickness** (6 mm by default) centred in the front's
+thickness and set 8 mm into a groove all round. They are separate boards in the cut list (the
+rails' grain across, the stiles' and the panel's upright, the panel at its own thickness), and
+the parameters `Name_frame_width` and `Name_panel_thickness`. A door's own name (`Name Door`) is
+the stile it hangs on, which takes the hinge cups; the handle goes in the middle of the other
+stile. The rails are butted between the stiles (no tenon or dowels are cut). A door must be at
+least twice the frame width plus 60 mm each way; drawer fronts lower than that stay flat. A grip
+edge or finger groove needs flat fronts. Glass fronts are not made yet.
+
+![Shaker fronts: a frame of stiles and rails round a thinner panel, on doors and drawers.](images/shaker-fronts.png)
 | **Labels** (Woodwork settings) | Writes each board's name on it, the name the cut list has, as text in a sketch on the board's face. It stays in the middle of the board when the cabinet changes size. |
 | **Selected cabinet**, **Match selected**, **Place** | See [Building a run](#building-a-run-place-and-match-selected). **Line**, **Start at**, **Offset**, **Faces**, **Width from line** and **Height from line** show with Place Along a line: see [Along a line](#along-a-line). |
 | **Material** | The board material of every panel. Change it later with [Material](#material). |

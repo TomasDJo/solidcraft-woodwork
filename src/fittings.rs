@@ -147,7 +147,7 @@ pub fn hole(
         json!({
             "base": position, "axis": into,
             "diameter": d, "height": depth, "operation": "cut",
-            "targets": [format!("{name} {part}")],
+            "targets": kit.targets(part),
             "name": format!("{name} {part} {what}"),
         }),
     ));
@@ -512,10 +512,10 @@ pub fn grooves<'a>(
     let style = p.get("front_style").and_then(Value::as_str);
     let shape = p.get("groove_shape").and_then(Value::as_str);
     let (style, shape) = match (style.unwrap_or("flat"), shape.unwrap_or("square")) {
-        ("flat", _) => return Ok(None),
+        ("flat" | "shaker", _) => return Ok(None),
         (s @ ("vertical" | "horizontal"), g @ ("square" | "round")) => (s, g),
         ("vertical" | "horizontal", _) => return Err("groove_shape must be square or round".into()),
-        _ => return Err("front_style must be flat, vertical or horizontal".into()),
+        _ => return Err("front_style must be flat, vertical, horizontal or shaker".into()),
     };
     let [spacing, depth] = [size("groove_spacing", 50.0)?, size("groove_depth", 3.0)?];
     let most = if doors { t - CUP_DEPTH - 1.0 } else { t / 2.0 };
@@ -532,6 +532,159 @@ pub fn grooves<'a>(
         shape,
         mm: [spacing, depth],
     }))
+}
+
+/// Shaker fronts (`front_style` shaker, #183): the frame's stiles and rails `frame_width` wide
+/// round a `panel_thickness` panel, in mm (design-wide settings). `None` for other styles.
+/// The smallest door must leave room for its panel; a stile takes the hinge cups and the handle.
+pub fn frame(
+    p: &Value,
+    size: impl Fn(&str, f64) -> Result<f64, String>,
+    t: f64,
+    smallest_door: Option<f64>,
+) -> Result<Option<[f64; 2]>, String> {
+    if p.get("front_style").and_then(Value::as_str) != Some("shaker") {
+        return Ok(None);
+    }
+    let [fw, pt] = [size("frame_width", 60.0)?, size("panel_thickness", 6.0)?];
+    if !(55.0..=150.0).contains(&fw) {
+        return Err("a shaker frame must be 55 to 150 mm wide".into());
+    }
+    if !(3.0..=t - 6.0).contains(&pt) {
+        return Err(format!("a shaker panel must be 3 to {} mm thick", t - 6.0));
+    }
+    if smallest_door.is_some_and(|d| d < framed(fw)) {
+        return Err(format!(
+            "doors are too small for a {fw} mm shaker frame: {} mm or more",
+            framed(fw)
+        ));
+    }
+    let handles = p.get("handles").and_then(Value::as_str);
+    if matches!(handles, Some("grip" | "groove")) {
+        return Err("a grip edge or finger groove needs flat fronts, not shaker".into());
+    }
+    Ok(Some([fw, pt]))
+}
+
+/// The least width and height a front takes a frame of `fw` mm in: a panel of 60 mm or more.
+pub fn framed(fw: f64) -> f64 {
+    2.0 * fw + 60.0
+}
+
+/// The frame's width and panel thickness as the cabinet's parameters, made once a build.
+pub fn frame_sizes(kit: &Kit, mm: [f64; 2]) -> [String; 2] {
+    [
+        kit.parameter("frame_width", mm[0], "shaker frame width"),
+        kit.parameter("panel_thickness", mm[1], "shaker panel thickness"),
+    ]
+}
+
+/// How far a door's handle is from its opening edge: `HANDLE_EDGE`, or the middle of a shaker
+/// door's stile.
+pub fn handle_edge(frame: Option<&[String; 2]>) -> String {
+    match frame {
+        Some([fw, _]) => format!("{fw}/2"),
+        None => mm(HANDLE_EDGE),
+    }
+}
+
+/// How deep the panel sits in the frame's groove, each side.
+pub const PANEL_GROOVE: f64 = 8.0;
+
+/// A front as one board, or with `frame` (its width and panel thickness parameters) a shaker
+/// front: `<part>` is the stile at the low end of `along` (`main_low`) or at the high one, the
+/// other is `<part> stile`, between them `<part> rail bottom` and `rail top`, and `<part> panel`
+/// in the middle, centred in the front's thickness and `PANEL_GROOVE` into a groove all round
+/// (one box cut of the panel's size through the four frame boards). The front as for `grip`.
+/// Every later hole into the part cuts all five (`Kit::targets`).
+// ponytail: the rails butt between the stiles; a stub tenon or dowels are not cut
+#[allow(clippy::too_many_arguments)]
+pub fn front(
+    kit: &Kit,
+    part: &str,
+    frame: Option<&[String; 2]>,
+    at: impl Fn(&str, &str, &str) -> Value,
+    lo: [&str; 3],
+    size: [&str; 3],
+    along: usize,
+    main_low: bool,
+) {
+    let Some([fw, pt]) = frame else {
+        return kit.panel_at(part, at(lo[0], lo[1], lo[2]), size, None);
+    };
+    let across = 1 - along;
+    // a box from (along, across, up) `from`, of `extent`
+    let place = |from: [String; 3], extent: [String; 3]| {
+        let [a, c, z] = from;
+        let [sa, sc, sz] = extent;
+        let mut p = [String::new(), String::new(), z];
+        let mut s = [String::new(), String::new(), sz];
+        (p[along], p[across], s[along], s[across]) = (a, c, sa, sc);
+        (at(&p[0], &p[1], &p[2]), s)
+    };
+    let (a0, c0, z0) = (lo[along], lo[across], lo[2]);
+    let (la, lc, lz) = (size[along], size[across], size[2]);
+    let far = format!("{a0} + {la} - {fw}");
+    let (main, other) = match main_low {
+        true => (a0.to_string(), far),
+        false => (far, a0.to_string()),
+    };
+    let inner = format!("{la} - 2*{fw}");
+    let rail = format!("{a0} + {fw}");
+    let boards = [
+        (
+            part.to_string(),
+            main,
+            z0.to_string(),
+            fw.clone(),
+            lz.to_string(),
+        ),
+        (
+            format!("{part} stile"),
+            other,
+            z0.to_string(),
+            fw.clone(),
+            lz.to_string(),
+        ),
+        (
+            format!("{part} rail bottom"),
+            rail.clone(),
+            z0.to_string(),
+            inner.clone(),
+            fw.clone(),
+        ),
+        (
+            format!("{part} rail top"),
+            rail,
+            format!("{z0} + {lz} - {fw}"),
+            inner,
+            fw.clone(),
+        ),
+    ];
+    let mut all = Vec::new();
+    for (name, a, z, sa, sz) in boards {
+        let (corner, s) = place([a, c0.to_string(), z], [sa, lc.to_string(), sz]);
+        kit.panel_at(&name, corner, [&s[0], &s[1], &s[2]], None);
+        all.push(format!("{} {name}", kit.name));
+    }
+    let g = mm(PANEL_GROOVE);
+    let (corner, s) = place(
+        [
+            format!("{a0} + {fw} - {g}"),
+            format!("{c0} + ({lc} - {pt})/2"),
+            format!("{z0} + {fw} - {g}"),
+        ],
+        [
+            format!("{la} - 2*{fw} + 2*{g}"),
+            pt.clone(),
+            format!("{lz} - 2*{fw} + 2*{g}"),
+        ],
+    );
+    let size = [s[0].as_str(), &s[1], &s[2]];
+    kit.panel_at(&format!("{part} groove"), corner.clone(), size, Some(&all));
+    kit.panel_at(&format!("{part} panel"), corner, size, None);
+    all.push(format!("{} {part} panel", kit.name));
+    kit.pieces(part, all);
 }
 
 /// The grooves' spacing and depth as the cabinet's parameters, made once a build.

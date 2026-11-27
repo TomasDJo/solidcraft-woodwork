@@ -1,7 +1,7 @@
 //! The corner cabinet's doors: a bi-fold pair, the second hung on the first.
 
 use super::Corner;
-use crate::fittings::{self, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, HANDLE_D};
 use crate::hardware;
 use crate::kit::mm;
 
@@ -92,7 +92,10 @@ pub fn build(corner: &Corner, on_return: bool) {
             hole(pull, z, HANDLE_D, et, format!("handle {}", j + 1));
         }
     };
-    let (cup_c, edge) = ("HW_cup_inset", mm(HANDLE_EDGE));
+    let (cup_c, edge) = (
+        "HW_cup_inset",
+        fittings::handle_edge(corner.eframe.as_ref()),
+    );
     // On the back leg, facing the front.
     let face_y = &long_y; // the back leg door's back face
     let door_x = if on_return { &short_x } else { &long_x };
@@ -102,8 +105,21 @@ pub fn build(corner: &Corner, on_return: bool) {
             format!("{face_y} - {et}"),
             format!("{ea} - {o} - ({door_x})"),
         );
-        corner.panel("Door", [door_x, &y, &z0], [&w, et, &door_h], None);
         let x = corner.from(door_x, &w);
+        // a shaker door's own name is the stile with its cups: at the fold, or the leg's end
+        let at = |x: &str, y: &str, z: &str| kit.at(x, y, z);
+        let (lo, size) = ([x.as_str(), &y, &z0], [w.as_str(), et, &door_h]);
+        let main_low = on_return != corner.right;
+        fittings::front(
+            kit,
+            "Door",
+            corner.eframe.as_ref(),
+            at,
+            lo,
+            size,
+            0,
+            main_low,
+        );
         profile("Door", [&x, &y, &z0], [&w, et, &door_h], 0, 1, on_return);
         let cup_x = match on_return {
             true => format!("{short_x} + {cup_c}"),
@@ -125,9 +141,11 @@ pub fn build(corner: &Corner, on_return: bool) {
     let door_return = || {
         kit.open("Door return");
         let long = format!("{return_y} - {o}");
-        corner.panel("Door return", [face_x, &o, &z0], [et, &long, &door_h], None);
         let x = corner.from(face_x, et);
         let (lo, size) = ([x.as_str(), &o, &z0], [et.as_str(), &long, &door_h]);
+        let at = |x: &str, y: &str, z: &str| kit.at(x, y, z);
+        let frame = corner.eframe.as_ref();
+        fittings::front(kit, "Door return", frame, at, lo, size, 1, on_return);
         profile("Door return", lo, size, 1, -flip, !on_return);
         let cup_y = match on_return {
             true => format!("{o} + {cup_c}"),

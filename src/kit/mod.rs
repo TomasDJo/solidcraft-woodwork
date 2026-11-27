@@ -158,6 +158,9 @@ pub struct Kit {
     commands: RefCell<Commands>,
     bodies: RefCell<Vec<String>>,
     joints: RefCell<Vec<String>>,
+    /// A front made of several boards (`fittings::front`): its part and the boards, which every
+    /// hole into the part cuts (`targets`).
+    pieces: RefCell<Vec<(String, Vec<String>)>>,
 }
 
 impl Kit {
@@ -202,6 +205,7 @@ impl Kit {
             commands: RefCell::default(),
             bodies: RefCell::default(),
             joints: RefCell::default(),
+            pieces: RefCell::default(),
         })
     }
 
@@ -286,6 +290,20 @@ impl Kit {
     pub fn at(&self, x: &str, y: &str, z: &str) -> Value {
         let [w, d] = &*self.centre.borrow();
         json!([format!("{x} - {w}/2"), format!("{y} - {d}/2"), z])
+    }
+
+    /// The bodies a cut into `part` works on: the part's board, or a frame's boards.
+    pub fn targets(&self, part: &str) -> Vec<String> {
+        let pieces = self.pieces.borrow();
+        match pieces.iter().find(|(p, _)| p == part) {
+            Some((_, boards)) => boards.clone(),
+            None => vec![format!("{} {part}", self.name)],
+        }
+    }
+
+    /// Notes that `part` is made of `boards` (`targets`).
+    pub fn pieces(&self, part: &str, boards: Vec<String>) {
+        self.pieces.borrow_mut().push((part.to_string(), boards));
     }
 
     pub fn push(&self, command: (&'static str, Value)) {
