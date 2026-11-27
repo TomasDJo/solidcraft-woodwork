@@ -161,6 +161,7 @@ Cabinets:
 - [x] Drawer slide length: standard lengths in mm or inches, Auto the longest that fits, a field to choose one; the models, screw holes and the cut list's hardware line follow it
 - [x] Slide type (partial, full extension, over-travel) and hinge opening (95, 110, 165 degrees) set the joints' limits; hinges per door by its height (2 to 5)
 - [x] Drawer side and back heights (#221): lower box sides and back in Woodwork settings, parameters capped by the box and the sides
+- [x] Grooved fronts (#182): vertical or horizontal, square, round or V grooves on doors and drawer fronts, the count following a resize
 - [x] Strip runners (#146): Slide type Strip runners, a 12 x 18 mm strip on each side under each drawer, the bottom wider than the box resting on them, no groove; strips in the cut list (screw holes not drilled)
 - [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
 - [x] Doors meeting on a divider: with three doors or more the end doors hinge on the sides, and a door hinged on a divider gets half overlay hinges (the 9.5 mm cranked model, its own line in the hardware list) (#157)

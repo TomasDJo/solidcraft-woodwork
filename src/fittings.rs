@@ -521,8 +521,10 @@ pub fn grooves<'a>(
     let shape = p.get("groove_shape").and_then(Value::as_str);
     let (style, shape) = match (style.unwrap_or("flat"), shape.unwrap_or("square")) {
         ("flat" | "shaker" | "glass", _) => return Ok(None),
-        (s @ ("vertical" | "horizontal"), g @ ("square" | "round")) => (s, g),
-        ("vertical" | "horizontal", _) => return Err("groove_shape must be square or round".into()),
+        (s @ ("vertical" | "horizontal"), g @ ("square" | "round" | "v")) => (s, g),
+        ("vertical" | "horizontal", _) => {
+            return Err("groove_shape must be square, round or v".into())
+        }
         _ => return Err("front_style must be flat, vertical, horizontal, shaker or glass".into()),
     };
     let [spacing, depth] = [size("groove_spacing", 50.0)?, size("groove_depth", 3.0)?];
@@ -762,6 +764,48 @@ pub fn front_grooves(
     let length = format!("{} + 2 mm", size[run]);
     p[run] = format!("{} - 1 mm", lo[run]);
     match g.shape {
+        // A V (#182), 90 degrees, `depth` deep: a triangle sketched square to the groove at its
+        // start, a millimetre before the face, extruded along the front as a cut. A turned box
+        // and a combine would do it too, but those cannot be patterned (SolidCraft 0.50); an
+        // extrude can. Its points are expressions over the depth, with units, so it follows
+        // `_groove_depth` as the other shapes do.
+        "v" => {
+            p[step] = first;
+            p[across] = face;
+            // the sketch's x along the step, its y into the front; its normal along the run
+            let mut x = [0, 0, 0];
+            x[step] = 1;
+            let mut y = [0, 0, 0];
+            y[across] = if back == 1 { 1 } else { -1 };
+            let normal = [
+                x[1] * y[2] - x[2] * y[1],
+                x[2] * y[0] - x[0] * y[2],
+                x[0] * y[1] - x[1] * y[0],
+            ];
+            if normal[run] < 0 {
+                x[step] = -1;
+            }
+            let sketch = format!("{name} V");
+            kit.push((
+                "sketch.create",
+                json!({"plane": {"origin": at(&p[0], &p[1], &p[2]), "x_dir": x, "y_dir": y},
+                    "name": sketch}),
+            ));
+            kit.push((
+                "sketch.line",
+                json!({"points": [
+                    [format!("-({depth} + 1 mm)"), "-1 mm"],
+                    ["0 mm", depth],
+                    [format!("{depth} + 1 mm"), "-1 mm"],
+                ], "closed": true}),
+            ));
+            kit.push(("sketch.finish", json!({})));
+            kit.push((
+                "solid.extrude",
+                json!({"sketch": sketch, "distance": length, "operation": "cut",
+                    "targets": [format!("{} {part}", kit.name)], "name": name}),
+            ));
+        }
         "round" => {
             p[step] = first;
             p[across] = face;

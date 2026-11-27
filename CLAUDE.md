@@ -762,8 +762,12 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   design-wide, the parameters `<Prefix>_groove_spacing` and `_groove_depth` on a cabinet with
   fronts; #182, `fittings::grooves`, `front_grooves`): one cut (a box, or a cylinder centred on
   the face) the front's whole length and one pattern a front, `max(round(len/spacing), 2) - 1`
-  grooves at `len/strips`, so they follow a resize. A V groove is not made: a turned cutter
-  (`solid.move`) and its combine cannot be patterned ("cannot be patterned or mirrored yet").
+  grooves at `len/strips`, so they follow a resize. A V groove (`groove_shape` v) is a triangle
+  sketched square to the groove at its start (`<cut> V`, its plane's origin and its points
+  expressions with units over `_groove_depth`: a bare number in `sketch.line` is mm, text in the
+  design's unit) and a `solid.extrude` cut along the front, which
+  patterns; a turned box and its combine cannot be patterned ("cannot be patterned or mirrored
+  yet"). 5 commands a front instead of 2.
   The depth stays clear of the cups (`t - CUP_DEPTH - 1`, or `t/2` without doors).
 - **Shaker fronts** (`front_style` shaker, #183; `frame_width`, `panel_thickness`: design-wide,
   the parameters `<Prefix>_frame_width` and `_panel_thickness`; `fittings::frame`, `front`): the

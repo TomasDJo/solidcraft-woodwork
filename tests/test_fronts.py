@@ -564,6 +564,51 @@ def test_grooved_fronts(approval):
     assert abs(cut - 15 * square) < 0.002 * 15 * square, cut
 
 
+def test_v_grooved_fronts(approval):
+    # V grooves (#182), 3 mm deep and 6 wide at the face, 90 degrees: 11 up the 716 mm door, as
+    # the square ones, each 9 mm2 in section; 15 once the door is 200 mm wider. Horizontal V
+    # grooves across two drawer fronts, and a diagonal corner's turned door, against flat ones.
+    v = 3 * 3 * 716
+    results = cli([plugin(approval, "cabinet", {"name": "V", "doors": 1, "front_style": "vertical", "groove_shape": "v"}),
+                   plugin(approval, "cabinet", {"name": "N", "doors": 1}),
+                   plugin(approval, "cabinet", {"name": "H", "drawers": 2, "front_style": "horizontal", "groove_shape": "v"}),
+                   plugin(approval, "cabinet", {"name": "M", "drawers": 2}),
+                   plugin(approval, "corner", {"name": "C", "shape": "diagonal", "doors": "hinged left",
+                                               "front_style": "vertical", "groove_shape": "v"}),
+                   plugin(approval, "corner", {"name": "D", "shape": "diagonal", "doors": "hinged left"}),
+                   MEASURE,
+                   {"command": "parameters.change", "params": {"name": "V_width", "expression": "800 mm"}},
+                   {"command": "parameters.change", "params": {"name": "N_width", "expression": "800 mm"}},
+                   MEASURE])
+    m = results[6]
+    cut = volume(m, "N Door") - volume(m, "V Door")
+    assert abs(cut - 11 * v) < 0.002 * 11 * v, cut
+    assert boxes(m)["V Door"] == boxes(m)["N Door"]
+    for n in (1, 2):
+        cut = volume(m, f"M Drawer {n} Front") - volume(m, f"H Drawer {n} Front")
+        assert cut > 0 and abs(cut / (9 * 596) - round(cut / (9 * 596))) < 0.01, (n, cut)
+    grooves = (volume(m, "D Door") - volume(m, "C Door")) / (9 * (boxes(m)["C Door"][5] - boxes(m)["C Door"][2]))
+    assert grooves >= 1 and abs(grooves - round(grooves)) < 0.02, grooves
+    assert boxes(m)["C Door"] == boxes(m)["D Door"]
+    cut = volume(results[9], "N Door") - volume(results[9], "V Door")
+    assert abs(cut - 15 * v) < 0.002 * 15 * v, cut
+    # in an inch design the same 3 mm V (Groove depth 1/8 in), and a deeper Groove depth makes
+    # the V deeper too: 4 mm, 16 mm2 in section
+    inch = cli([{"command": "document.units", "params": {"units": "in"}},
+                plugin(approval, "cabinet", {"name": "V", "units": "in", "doors": 1, "front_style": "vertical",
+                                             "groove_shape": "v", "groove_depth": 0.125}),
+                plugin(approval, "cabinet", {"name": "N", "units": "in", "doors": 1}),
+                MEASURE,
+                {"command": "parameters.change", "params": {"name": "V_groove_depth", "expression": "4 mm"}},
+                MEASURE])
+    height = boxes(inch[3])["V Door"][5] - boxes(inch[3])["V Door"][2]
+    strips = round((boxes(inch[3])["V Door"][3] - boxes(inch[3])["V Door"][0]) / 50.8)
+    cut = volume(inch[3], "N Door") - volume(inch[3], "V Door")
+    assert abs(cut / (3.175 ** 2 * height) - (strips - 1)) < 0.02, (cut, strips)
+    deeper = volume(inch[5], "N Door") - volume(inch[5], "V Door")
+    assert abs(deeper / cut - (4 / 3.175) ** 2) < 0.02, (cut, deeper)
+
+
 def test_bottom_tab(approval):
     # Handle holes Bottom tab (#181): each drawer's bottom (12 mm here) runs forward under its
     # front, 20 mm past the face, as wide as Tab width (150 mm here), rounded at the front; the
