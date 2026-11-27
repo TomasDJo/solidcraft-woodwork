@@ -51,14 +51,9 @@ pub fn build(cabinet: &Cabinet) {
     // On the pin rows' grid, so that each plate's two screw holes go into the system holes.
     let (base, _) = cabinet.shelf_zone();
     let cups = hardware::cups(z0, z1, door_h_mm, &base);
-    let handle_z = fittings::handle_height(
-        handles,
-        handle_at,
-        z0,
-        z1,
-        door_h_mm,
-        fittings::floor_unit(plinth, d),
-    );
+    let floor = fittings::floor_unit(plinth, d);
+    let handle_z = fittings::handle_height(handles, handle_at, z0, z1, door_h_mm, floor);
+    let grip_top = fittings::grip_on_top(handle_at, floor);
     for i in 0..count {
         let part = match count {
             1 => "Door".to_string(),
@@ -97,6 +92,7 @@ pub fn build(cabinet: &Cabinet) {
             _ => format!("{x0} + {}", mm(HANDLE_EDGE)),
         };
         cabinet.handle(&part, &handle_x, &handle_z, 2);
+        cabinet.grip(&part, [&x0, efront, z0], [&door_w, et, door_h], grip_top);
         // The hinge: turning outwards up to `hinge_angle` (110 degrees by default) about the
         // front edge on the door's hinge side. A cup hinge carries the door out and round so that its edge clears the door of
         // the next cabinet; about the back edge it would swing a panel thickness into it. An

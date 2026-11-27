@@ -57,14 +57,14 @@ pub fn build(corner: &Corner, on_return: bool) {
     let cups = hardware::cups(&z0, &z1, h - plinth - 2.0 * o_mm, &base);
     // The second door, the one that folds, carries the handle: upright at its free end, away
     // from the fold, at the height the box cabinet would put it.
-    let handle_z = fittings::handle_height(
-        handles,
-        handle_at,
-        &z0,
-        &z1,
-        h - plinth,
-        fittings::floor_unit(plinth, d),
-    );
+    let floor = fittings::floor_unit(plinth, d);
+    let handle_z = fittings::handle_height(handles, handle_at, &z0, &z1, h - plinth, floor);
+    // A grip edge or groove instead, along the second door's top or bottom.
+    let grip = |part: &str, lo: [&str; 3], size: [&str; 3], along: usize, back: i32| {
+        let top = fittings::grip_on_top(handle_at, floor);
+        let at = |x: &str, y: &str, z: &str| kit.at(x, y, z);
+        fittings::grip(kit, part, handles, at, lo, size, along, back, top);
+    };
     let screws = fittings::screw_heights(handles, &handle_z);
     // Holes from a door's back face: hinge cups at `cup`, and on the second door the handle
     // screws at `pull`. Both are x and y; `into` is the way into the door, and from the cups
@@ -92,12 +92,15 @@ pub fn build(corner: &Corner, on_return: bool) {
     let door_x = if on_return { &short_x } else { &long_x };
     let door = || {
         kit.open("Door");
-        corner.panel(
-            "Door",
-            [door_x, &format!("{face_y} - {et}"), &z0],
-            [&format!("{ea} - {o} - ({door_x})"), et, &door_h],
-            None,
+        let (y, w) = (
+            format!("{face_y} - {et}"),
+            format!("{ea} - {o} - ({door_x})"),
         );
+        corner.panel("Door", [door_x, &y, &z0], [&w, et, &door_h], None);
+        if on_return {
+            let x = corner.from(door_x, &w);
+            grip("Door", [&x, &y, &z0], [&w, et, &door_h], 0, 1);
+        }
         let cup_x = match on_return {
             true => format!("{short_x} + {cup_c}"),
             false => format!("{ea} - {o} - {cup_c}"),
@@ -117,12 +120,12 @@ pub fn build(corner: &Corner, on_return: bool) {
     let return_y = if on_return { &long_y } else { &short_y };
     let door_return = || {
         kit.open("Door return");
-        corner.panel(
-            "Door return",
-            [face_x, &o, &z0],
-            [et, &format!("{return_y} - {o}"), &door_h],
-            None,
-        );
+        let long = format!("{return_y} - {o}");
+        corner.panel("Door return", [face_x, &o, &z0], [et, &long, &door_h], None);
+        if !on_return {
+            let x = corner.from(face_x, et);
+            grip("Door return", [&x, &o, &z0], [et, &long, &door_h], 1, -flip);
+        }
         let cup_y = match on_return {
             true => format!("{o} + {cup_c}"),
             false => format!("{short_y} - {cup_c}"),

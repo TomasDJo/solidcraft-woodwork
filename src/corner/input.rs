@@ -81,9 +81,10 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let doors = on_return.is_some();
     let handles = p.get("handles").and_then(Value::as_str).unwrap_or("none");
     check(
-        matches!(handles, "none" | "knob" | "pull"),
-        "handles must be none, knob or pull",
+        matches!(handles, "none" | "knob" | "pull" | "grip" | "groove"),
+        "handles must be none, knob, pull, grip or groove",
     )?;
+    crate::fittings::profile_fits(handles, t)?;
     let handle_at = crate::fittings::handle_position(p)?;
     let inset = match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
         "overlay" => false,

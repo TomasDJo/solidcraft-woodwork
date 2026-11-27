@@ -106,14 +106,13 @@ pub fn door(corner: &Corner, on_return: bool) {
     let toward = [if at_end { 1 } else { -1 }, 0, 0];
     let crank = if corner.inset { 18.0 } else { 0.0 };
     hardware::cup_holes(kit, "Door", at, [[0, -1, 0], toward], Some(crank), &cups);
-    let handle_z = fittings::handle_height(
-        handles,
-        handle_at,
-        &z0,
-        &z1,
-        h - plinth,
-        fittings::floor_unit(plinth, d),
-    );
+    let floor = fittings::floor_unit(plinth, d);
+    let handle_z = fittings::handle_height(handles, handle_at, &z0, &z1, h - plinth, floor);
+    // A grip edge or groove instead, along its top or bottom: the door is still square here.
+    let top = fittings::grip_on_top(handle_at, floor);
+    let at = |x: &str, y: &str, z: &str| json!([x, y, z]);
+    let lo = [x0.as_str(), front.as_str(), z0.as_str()];
+    fittings::grip(kit, "Door", handles, at, lo, [&len, et, &door_h], 0, 1, top);
     let screws = fittings::screw_heights(handles, &handle_z);
     for (j, z) in screws.iter().enumerate() {
         hole(&pull_x, z, HANDLE_D, et, format!("handle {}", j + 1));

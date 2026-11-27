@@ -665,6 +665,13 @@ impl Cabinet<'_> {
         format!("{et} + ({ecell} + {et}) * {cell}")
     }
 
+    /// A grip edge or finger groove along a front's top or bottom edge (`fittings::grip`): the
+    /// front is the box from `lo` to `lo + size`, its back face towards +y.
+    fn grip(&self, body: &str, lo: [&str; 3], size: [&str; 3], top: bool) {
+        let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
+        fittings::grip(self.kit, body, self.input.handles, at, lo, size, 0, 1, top);
+    }
+
     /// Screw holes for a knob (one) or a pull (two), through a front from its back face.
     /// `along` is the axis the pull lies on: 0 across, 2 upright.
     fn handle(&self, body: &str, x: &str, z: &str, along: usize) {

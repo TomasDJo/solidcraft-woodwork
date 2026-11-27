@@ -377,3 +377,52 @@ def test_drawer_box_finger_joints(approval):
     assert volume(results[1], "Cabinet Drawer 1 Box front") < full - 1000, full
     notes = [p.get("note", "") for p in results[2]["result"]["parts"]]
     assert any("finger jointed" in n for n in notes), results[2]["result"]["parts"]
+
+
+def test_grip_edges(approval):
+    # Handle-less fronts: a grip edge takes a 45-degree bevel, 12 mm along both faces of an 18 mm
+    # door, from the back of its top edge (a floor unit's, auto) or bottom edge (a wall unit's);
+    # a finger groove a 20 mm half round from the front face, 25 mm under a drawer front's top.
+    # Each runs the front's whole width (596), and no handle holes are drilled.
+    results = cli([plugin(approval, "cabinet", {"name": "G", "doors": 1, "handles": "grip"}),
+                   plugin(approval, "cabinet", {"name": "N", "doors": 1}),
+                   plugin(approval, "cabinet", {"name": "W", "doors": 1, "handles": "grip", "depth": 320}),
+                   plugin(approval, "cabinet", {"name": "R", "drawers": 2, "handles": "groove"}),
+                   plugin(approval, "cabinet", {"name": "M", "drawers": 2}),
+                   plugin(approval, "corner", {"name": "C", "doors": "hinged right", "handles": "grip"}),
+                   plugin(approval, "corner", {"name": "D", "doors": "hinged right"}),
+                   MEASURE, faces("G Door"), faces("W Door"), faces("R Drawer 2 Front"), faces("C Door return"),
+                   {"command": "parameters.change", "params": {"name": "G_width", "expression": "800 mm"}},
+                   {"command": "parameters.change", "params": {"name": "N_width", "expression": "800 mm"}},
+                   MEASURE],
+                  "--save", str(ROOT / "dist" / "grip-edges.sc"))
+    m = results[7]
+    bevel, groove = 12 * 12 / 2 * 596, 3.14159265 * 10 ** 2 / 2 * 596
+    assert abs(volume(m, "N Door") - volume(m, "G Door") - bevel) < 0.002 * bevel, (volume(m, "N Door"), volume(m, "G Door"))
+    assert abs(volume(m, "N Door") - volume(m, "W Door") - bevel) < 0.002 * bevel, volume(m, "W Door")
+    for n in (1, 2):
+        cut = volume(m, f"M Drawer {n} Front") - volume(m, f"R Drawer {n} Front")
+        assert abs(cut - groove) < 0.01 * groove, (n, cut)
+    assert boxes(m)["G Door"] == boxes(m)["N Door"] and cylinders(m, "G Door") == cylinders(m, "N Door")
+    assert cylinders(m, "R Drawer 1 Front") == 1 and cylinders(m, "M Drawer 1 Front") == 0
+
+    def slanted(faces):
+        """The bevel's face: its middle, x y z, and its normal."""
+        face = next(f for f in faces["faces"] if abs(abs((f["plane_normal"] or [0, 0, 0])[2]) - 0.7071) < 0.001)
+        return [round(v, 3) + 0 for v in face["centroid"]], [round(v, 4) + 0 for v in face["plane_normal"]]
+
+    # The door's back face is at y = -282, its top edge at 718: the bevel's middle 6 mm in from both.
+    assert slanted(results[8]) == ([0, -288, 712], [0, 0.7071, 0.7071]), slanted(results[8])
+    # The wall unit's door is from 2 up and its back face at y = -162: the bottom edge.
+    assert slanted(results[9]) == ([0, -168, 8], [0, 0.7071, -0.7071]), slanted(results[9])
+    # The groove's round face, 25 mm under the top drawer front's top (718), on its front face.
+    top = boxes(m)["R Drawer 2 Front"]
+    round_face = next(f for f in results[10]["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 10) < 0.01)
+    assert abs(round_face["cylinder"]["origin"][2] - (top[5] - 25)) < 0.01 and abs(round_face["cylinder"]["origin"][1] - top[1]) < 0.01, round_face
+    # The L corner's folding door, on the return: its bevel faces the corner, at its top.
+    assert volume(m, "D Door return") - volume(m, "C Door return") > 0.99 * 72 * (boxes(m)["C Door return"][4] - boxes(m)["C Door return"][1])
+    # The bevel follows a resize: the door 796 wide.
+    m = results[14]
+    assert abs(volume(m, "N Door") - volume(m, "G Door") - 72 * 796) < 0.002 * 72 * 796, volume(m, "G Door")
+    centre, normal = slanted(results[11])
+    assert normal[1] == 0 and normal[2] == 0.7071 and centre[2] == boxes(m)["C Door return"][5] - 6, (centre, normal)

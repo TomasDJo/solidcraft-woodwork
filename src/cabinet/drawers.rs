@@ -134,6 +134,12 @@ pub fn build(cabinet: &Cabinet) {
         if sink && i + 1 == count {
             panel("False front", [&x0, efront, &z], [&front_w, et, front_h]);
             cabinet.handle("False front", &format!("{ew}/2"), &handle_z, 0);
+            cabinet.grip(
+                "False front",
+                [&x0, efront, &z],
+                [&front_w, et, front_h],
+                true,
+            );
             break;
         }
         kit.open(&drawer);
@@ -143,6 +149,8 @@ pub fn build(cabinet: &Cabinet) {
             [&front_w, et, front_h],
         );
         cabinet.handle(&format!("{drawer} Front"), &format!("{ew}/2"), &handle_z, 0);
+        let front = format!("{drawer} Front");
+        cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], true);
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
         let (x, y, z) = (
