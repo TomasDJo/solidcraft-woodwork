@@ -226,6 +226,21 @@ def test_side_wing_on_two_legs(approval):
             leg = found[f"Worktop Wing Leg {n}"]
             assert round(leg[2], 1) == round(found["S Side L"][2], 1) and round(leg[5], 1) == round(top[2], 1), leg
             assert round(leg[3], 1) == round(top[3] + 570, 1), leg
+    # fold-down: no legs, and driven open (90) it hangs down from the end's lower edge
+    fold = {"wing": "right", "wing_length": 400, "wing_support": "fold"}
+    drive = lambda value: {"command": "joint.drive", "params": {"joint": "Worktop Wing hinge", "value": value}}  # noqa: E731
+    results = cli([cabinet, pick("S Top"), plugin(approval, "worktop", fold), MEASURE, drive(90), MEASURE,
+                   drive(45), plugin(approval, "cutlist"), drive(0.1), plugin(approval, "cutlist")])
+    flat_box, down = boxes(results[3]), boxes(results[5])
+    # half way down, or barely off level, it is still bought at its own size, not its box
+    for listed in (results[7], results[9]):
+        wing = next(w for w in listed["result"]["worktops"] if w["part"] == "Worktop Wing")
+        assert [wing["length"], wing["width"], wing["thickness"]] == [600, 400, 38], wing
+    top = flat_box["Worktop"]
+    assert "Worktop Wing Leg 1" not in flat_box
+    assert [round(v, 1) for v in flat_box["Worktop Wing"]] == [round(v, 1) for v in [top[3], top[1], top[2], top[3] + 400, top[4], top[5]]]
+    hung = down["Worktop Wing"]
+    assert [round(v, 1) for v in hung] == [round(v, 1) for v in [top[3], top[1], top[2] - 400, top[3] + 38, top[4], top[2]]], hung
     # a wing too short for its legs is refused
     script = ROOT / "dist" / "refused-wing.json"
     script.write_text(json.dumps(flat([cabinet, pick("S Top"),

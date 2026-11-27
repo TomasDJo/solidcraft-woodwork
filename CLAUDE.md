@@ -583,7 +583,13 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   `wing` (none, left, right) and `wing_length`, `<Name> Wing` a box past piece 1's end (square
   ends only: a mitred end is refused), as deep and thick, on `<Name> Wing Leg 1`/`2` (`LEG` 40 mm
   square, `LEG_IN` 30 in from the free end and the edges) from the lowest point of the picked
-  cabinets' bodies to the top's underside; `fittings::is_leg` takes them (hardware, not boards). That cut is not remembered: Edit cabinet drops it, and a tool moved on a run again
+  cabinets' bodies to the top's underside; `fittings::is_leg` takes them (hardware, not boards).
+  Fold-down wing (#172, `wing_support: fold`): no legs; the wing box is made in a sub-component
+  `<Name> Wing` (`component.create` in the worktop's commands, then back to the worktop's) on
+  `joint.as_built` revolute `<Name> Wing hinge` at the end's lower front corner, its axis the
+  piece's `back` (towards the wall on the right end, away on the left) so 0 to 90 folds it down.
+  Numeric like the worktop; brackets and hinges are neither modelled nor counted. The cut list
+  measures it by mesh, so at any angle (`cutlist::turned` always takes a worktop name ending ` Wing`). That cut is not remembered: Edit cabinet drops it, and a tool moved on a run again
   leaves the old one. `piece_of` counts the three tool parts as the worktop's, so a run again
   replaces them and picking one makes the worktop again.
 - Edge banding and grain in the cut list go by the part's name (`cutlist::role`), with no

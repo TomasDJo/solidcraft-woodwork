@@ -1042,7 +1042,18 @@ on two 40 mm square legs at its free end, from the floor the cabinets stand on (
 its underside. The wing is `<Name> Wing`, bought to length with the worktop; its legs are
 `<Name> Wing Leg 1` and `2` and count as legs in the cut list's hardware. It goes on the first
 piece's end, which must be square (not mitred into a corner). It is made again with the
-worktop. A fold-down wing is not made (#172).
+worktop.
+
+![A fold-down wing, half way down on its hinge at the end of the worktop.](images/fold-wing.png)
+
+*A fold-down wing, half way down on its hinge at the end of the worktop.*
+
+**Wing support** Fold-down makes the wing without legs, hinged on the lower edge of the
+worktop's end, so it folds down out of the way when it is not needed. It is a part of its own
+(`<Name> Wing`) on the joint `<Name> Wing hinge`: 0 is up, level with the top, and 90 hangs it
+straight down. Drive the joint to fold it. Hold it up with a pair of folding shelf brackets
+under it; they and the hinges are not drawn or counted in the cut list's hardware. Any wing
+length will do, but a wing longer than the worktop is high hits the floor when folded.
 
 ## Cut list
 

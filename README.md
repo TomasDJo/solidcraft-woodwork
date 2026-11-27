@@ -58,7 +58,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   that stand side by side, with or without a mobile base.
 - **Worktop**: over the picked cabinets, with butt or mitred corners, dog holes, a sink
   cut-out, an opening for a benchtop tool set flush with the top (its shelf drilled for
-  the tool's bolts), and a side wing on two legs past one end.
+  the tool's bolts), and a side wing past one end, on two legs or folding down.
 - **Drawing**: an A3 shop drawing per cabinet, with front, right and iso views, its sizes and
   its boards.
 - **Cut list**: every board with its size, edge banding and grain, the hardware to buy, a cost

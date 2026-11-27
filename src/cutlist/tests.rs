@@ -46,8 +46,23 @@ fn an_open_door_is_measured_in_its_own_component() {
         body("A Caster 1", [80.0, 80.0, 100.0], 100_000.0),
         // a worktop is bought at its box, mitred or cut out, so not measured either
         body("Worktop 1", [2800.0, 600.0, 38.0], 2800.0 * 600.0 * 38.0 * 0.9),
+        // but a fold-down wing half way down is a board turned on its hinge: measured
+        body("Worktop Wing", [309.7, 600.0, 309.7], 400.0 * 600.0 * 38.0),
     ]});
-    assert_eq!(turned(&measured), ["Ajar", "Open"]);
+    assert_eq!(turned(&measured), ["Ajar", "Open", "Worktop Wing"]);
+    // a few tenths of a degree off level it still fills 97 % of its box: measured all the same
+    let barely = json!({"bodies": [body("Bench Worktop Wing", [400.0, 600.0, 39.05], 400.0 * 600.0 * 38.0)]});
+    assert_eq!(turned(&barely), ["Bench Worktop Wing"]);
+    // and bought at its own size, not its box
+    let wing = json!({"bodies": [{"name": "Worktop Wing", "material": "Oak", "volume_mm3": 400.0 * 600.0 * 38.0,
+                                  "bbox": {"min": [0, 0, 0], "max": [309.7, 600.0, 309.7]}}]});
+    let local = BTreeMap::from([("Worktop Wing".to_string(), [400.0, 600.0, 38.0])]);
+    let list = cutlist(&wing, &local, false, &json!({})).unwrap();
+    assert_eq!(
+        list["worktops"][0]["thickness"], 38.0,
+        "{}",
+        list["worktops"]
+    );
 
     let mesh = json!({"positions": [[0, 0, 0], [397, 18, 716], [397, 0, 0]]});
     let local = BTreeMap::from([("Side L".to_string(), extents(&mesh))]);
