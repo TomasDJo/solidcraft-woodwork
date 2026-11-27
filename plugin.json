@@ -102,10 +102,11 @@
         "slots": [{ "kind": "menu", "name": "Mobile base" }, { "kind": "ribbon", "name": "Mobile base" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/base.svg",
-          "required": ["selection", "caster_height", "frame_material", "timber_thickness", "timber_width", "frame_height", "thickness", "material", "stiffener_spacing", "name"],
+          "required": ["selection", "under", "caster_height", "frame_material", "timber_thickness", "timber_width", "frame_height", "thickness", "material", "stiffener_spacing", "name"],
           "properties": {
             "selection": { "type": "array", "title": "Selected cabinets", "description": "A board of each cabinet to stand on the base; none: the cabinets the base of this name stands under." },
-            "caster_height": { "type": "number", "title": "Caster height (mm)", "description": "From the floor to the frame's underside: the locking casters under it.", "default": 100, "minimum": 50, "maximum": 300 },
+            "under": { "type": "string", "title": "Under the frame", "description": "What the frame stands on.", "default": "casters", "oneOf": [{"const": "casters", "title": "Casters", "description": "Locking casters, so it rolls."}, {"const": "feet", "title": "Feet", "description": "Adjustable feet in the casters' places."}, {"const": "none", "title": "None", "description": "A riser: the frame stands on the floor."}] },
+            "caster_height": { "type": "number", "title": "Caster or foot height (mm)", "description": "From the floor to the frame's underside: the casters or feet under it.", "default": 100, "minimum": 50, "maximum": 300, "x-solidcraft-visible-when": {"field": "under", "in": ["casters", "feet"]} },
             "frame_material": { "type": "string", "title": "Frame of", "description": "Sheet-goods boards on edge, or solid timber in a common section.", "default": "board", "oneOf": [{"const": "board", "title": "Boards"}, {"const": "timber", "title": "Timber", "description": "Bought by length; the cut list gives the running metres per section."}] },
             "timber_thickness": { "type": "number", "title": "Timber thickness (mm)", "description": "Across the frame. Common sections: Norway 48 x 98, 48 x 148; US 2x4 = 38 x 89.", "default": 48, "minimum": 20, "maximum": 150, "x-solidcraft-visible-when": {"field": "frame_material", "eq": "timber"} },
             "timber_width": { "type": "number", "title": "Timber width (mm)", "description": "The frame's height, the timber standing on edge: 98 for a 48 x 98.", "default": 98, "minimum": 30, "maximum": 300, "x-solidcraft-visible-when": {"field": "frame_material", "eq": "timber"} },

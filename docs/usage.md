@@ -868,9 +868,13 @@ frame under all of them and stands them on it:
 - **Casters:** a block (`Name Block 1` and on, 90 x 90 mm) in each corner with a locking caster
   under it, screwed into the block; a longer frame gets more pairs, spaced evenly so the casters
   are at most 1500 mm apart along it (a block that would stand on a cross board moves beside it).
-  **Caster height** (100 mm) is from the floor to the frame's underside.
-- **The cabinets** go up onto the frame, each to its top (by Caster height plus Frame height
-  from the floor). Make them with **Plinth** No: the frame is their plinth. A cabinet placed
+  **Caster or foot height** (100 mm) is from the floor to the frame's underside.
+- **Feet or a riser:** **Under the frame** Casters (the default) rolls; Feet puts an adjustable
+  foot (`Name Leg 1` and on, counted as `Adjustable leg` in the cut list) under each block in
+  the casters' places, as high; None makes a riser: the frame stands on the floor, with no
+  blocks, and lifts the cabinets by its own height.
+- **The cabinets** go up onto the frame, each to its top (by Caster or foot height, none for a
+  riser, plus Frame height from the floor). Make them with **Plinth** No: the frame is their plinth. A cabinet placed
   against another is held to it, so it goes up with it: pick the run's first cabinet too. One
   that would not end on the frame (held to a cabinet that is not picked) is refused, by name.
 - **Made again:** run Mobile base with the same **Name** to make it again, for example after a

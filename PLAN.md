@@ -133,6 +133,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Frame screws on a mobile base (#198): two 4.5 mm holes down through each cabinet's bottom into each frame board it rests on, counted in the cut list
 - [x] Mobile base of timber (#219): any section, 48 x 98 by default, bought in running metres per section in the cut list
 - [x] Mobile base edited like a cabinet (#239): a picked board opens its values, picked cabinets are added; a long job, so many cabinets fit
+- [x] Mobile base on feet, or a riser on the floor (#263): Under the frame Casters, Feet or None, with the frame height as given (a height of one drawer pitch once #259 is in)
 - [ ] Mobile base leftovers (#198): a tool cabinet's height from the worktop height, following a cabinet that changes size
 
 - [x] Bolt holes for the tool's feet in the tool station's shelf (#172): Bolt spacing across and front to back, four (or two) 8 mm holes round the tool's middle
