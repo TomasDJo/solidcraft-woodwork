@@ -156,3 +156,32 @@ def test_screws_fix_the_cabinets_to_the_frame(approval):
     assert ys == [round(front + 20), round(back - 20)], (ys, front, back)
     cuts = [f["name"] for f in after[2]["timeline"] if " frame screw " in f["name"]]
     assert len(cuts) == 4 and all(f"{round(front + 20, 1):g}" in c or f"{round(back - 20, 1):g}" in c for c in cuts), cuts
+
+
+def test_cabinets_ride_on_the_base_through_edit_and_a_new_frame(approval):
+    # #215: a cabinet Along a line, then a base under it: it is held to the base by a link
+    # (`A link`). Edit (a wider cabinet) keeps it on the frame, where before it went back to
+    # the line's height; so does Apply settings after the line got longer. Run again with a
+    # taller frame, the cabinet goes up with it and is held again.
+    line = [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]
+    results = designed(approval, NONE, [
+        {"command": "sketch.create", "params": {"plane": "XY", "name": "Wall line"}},
+        {"command": "sketch.line", "params": {"points": [[200, 500], [1400, 500]]}},
+        {"command": "sketch.dimension", "params": {"entities": ["l1"], "value": "1200 mm"}},
+        {"command": "sketch.finish", "params": {}},
+        plugin(approval, "cabinet", {"name": "A", "depth": 400, "place": "line", "line": line}),
+        pick("A Side L"), plugin(approval, "base", {"name": "Bench"}),
+        {"command": "joint.list", "params": {}},
+        select("A Side L"), plugin(approval, "edit", {"width": 700}), MEASURE,
+        {"command": "parameters.change", "params": {"name": "Wall_line_l1", "expression": "1500 mm"}},
+        plugin(approval, "rebuild", {}), MEASURE,
+        pick(), plugin(approval, "base", {"name": "Bench", "frame_height": 100}), MEASURE,
+        {"command": "joint.list", "params": {}}])
+    assert "A link" in [j["name"] for j in results[7]["joints"]], results[7]
+    edited = boxes(results[10])
+    assert edited["A Side L"][2] == 170 and round(edited["A Side R"][3] - edited["A Side L"][0]) == 700, edited["A Side L"]
+    applied = boxes(results[13])
+    assert applied["A Side L"][2] == 170, applied["A Side L"]
+    taller = boxes(results[16])
+    assert taller["A Side L"][2] == 200 and taller["Bench Frame front"][5] == 200, (taller["A Side L"], taller["Bench Frame front"])
+    assert "A link" in [j["name"] for j in results[17]["joints"]], results[17]

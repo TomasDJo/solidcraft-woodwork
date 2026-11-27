@@ -850,6 +850,12 @@ frame under all of them and stands them on it:
 - **Made again:** run Mobile base with the same **Name** to make it again, for example after a
   cabinet got wider or with another frame height. With nothing picked it takes the cabinets it
   remembers, and they go up or down to the new frame's top.
+- **Held to the base** (#215): each cabinet standing on the frame that no neighbour holds gets a
+  link to the base, `Name link`, like a cabinet placed on top of another. A cabinet placed beside
+  another keeps its link to that one and rides along with it. An Edit or Apply settings puts the
+  cabinet back on the base and links it again. A cabinet placed Along a line stays on the base
+  too: the line still sets its width and height, but the base holds where it stands. The base
+  does not follow the line yet. If you move the line, run Mobile base again.
 - **Connector bolts** join the cabinets: where a side of one touches a side of another, four
   9 mm holes (for M6 connector bolts) go through both, at a quarter and three quarters of where
   they touch, across and up. Run again, a hole already there is not cut twice. An Edit of a
