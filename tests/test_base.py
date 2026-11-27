@@ -104,12 +104,20 @@ def test_connector_bolts_join_the_cabinets_on_a_base(approval):
 
 def test_screws_fix_the_cabinets_to_the_frame(approval):
     # A on a base, Plinth No: its bottom rests on the frame's front and back boards, two 4.5 mm
-    # holes down through it into each, counted as frame screws. Run again, none is cut twice.
+    # holes down through it into each, counted as frame screws. Run again, none is cut twice;
+    # run again with 40 mm frame boards, the old holes go and four new ones are cut on their
+    # middle lines.
     steps = [plugin(approval, "cabinet", {"name": "A", "width": 600, "shelves": 0, "doors": 0}),
              pick("A Side L"), plugin(approval, "base", {"name": "Bench"}),
-             pick("A Side L"), plugin(approval, "base", {"name": "Bench"}), MEASURE, plugin(approval, "cutlist", {})]
+             pick("A Side L"), plugin(approval, "base", {"name": "Bench"}), MEASURE, plugin(approval, "cutlist", {}),
+             pick("A Side L"), plugin(approval, "base", {"name": "Bench", "thickness": 40}), MEASURE,
+             plugin(approval, "cutlist", {})]
     results = designed(approval, NONE, steps)
     assert results[2]["result"]["screws"] == 4, results[2]["result"]
-    assert cylinders(results[5], "A Bottom") >= 4, cylinders(results[5], "A Bottom")
+    holes = cylinders(results[5], "A Bottom")
+    assert holes >= 4, holes
     hardware = {h["item"]: h["qty"] for h in results[6]["result"]["hardware"]}
+    assert hardware.get("Frame screw, 4 x 50 mm") == 4, hardware
+    assert cylinders(results[9], "A Bottom") == holes, cylinders(results[9], "A Bottom")
+    hardware = {h["item"]: h["qty"] for h in results[10]["result"]["hardware"]}
     assert hardware.get("Frame screw, 4 x 50 mm") == 4, hardware

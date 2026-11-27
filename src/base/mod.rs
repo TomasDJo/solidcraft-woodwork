@@ -249,7 +249,7 @@ pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], usize, [
 /// screws.
 pub const SCREW_D: f64 = 4.5;
 
-/// The screw holes (#198) down through each of `cabinets`' `Bottom` into a board of the base
+/// The screw holes (#198) down through each of `cabinets`' `Bottom` (and `Bottom return`) into a board of the base
 /// `name`'s frame on which it rests: each the bottom, the board, the hole's number on that board,
 /// 1 or 2, and its box in the world through the bottom. Two on each board that runs under the
 /// bottom at least 100 mm, at a quarter and three quarters of that, on the board's middle line.
@@ -270,8 +270,11 @@ pub fn screws(
         .filter(|(n, _)| n.starts_with(&frame))
         .collect();
     let mut holes = Vec::new();
-    for cabinet in cabinets {
-        let bottom = format!("{cabinet} Bottom");
+    // a split corner cabinet's bottom is two boards
+    let bottoms = cabinets
+        .iter()
+        .flat_map(|c| [format!("{c} Bottom"), format!("{c} Bottom return")]);
+    for bottom in bottoms {
         let Some(under) = all.iter().find(|b| b["name"] == bottom.as_str()).map(boxed) else {
             continue;
         };

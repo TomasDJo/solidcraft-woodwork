@@ -1326,9 +1326,36 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     wanted.push((feature, side.clone(), *world, base::BOLT_D));
                 }
             }
+            // A screw's name holds where it is, so a frame made again with other sizes finds its
+            // old holes stale: they are deleted, and the new ones cut.
             for (bottom, board, n, world) in &screws {
-                let feature = format!("{bottom} frame screw {n} into {board}");
+                let (x, y) = (
+                    (world[0][0] + world[1][0]) / 2.0,
+                    (world[0][1] + world[1][1]) / 2.0,
+                );
+                let at = |v: f64| (v * 10.0).round() / 10.0;
+                let feature = format!(
+                    "{bottom} frame screw {n} into {board} at {}, {}",
+                    at(x),
+                    at(y)
+                );
                 wanted.push((feature, bottom.clone(), *world, base::SCREW_D));
+            }
+            for cabinet in &cabinets {
+                let mine = format!("{cabinet} Bottom");
+                let stale: Vec<&str> = (had.iter().copied())
+                    .filter(|f| {
+                        f.split_once(" frame screw ")
+                            .is_some_and(|(b, _)| b == mine || b == format!("{mine} return"))
+                    })
+                    .filter(|f| !wanted.iter().any(|w| w.0 == *f))
+                    .collect();
+                if !stale.is_empty() {
+                    cuts.push((
+                        cabinet.clone(),
+                        vec![("timeline.delete", json!({"features": stale}))],
+                    ));
+                }
             }
             for (feature, side, world, d) in &wanted {
                 let cabinet = select::owner(&now, side).unwrap_or_default().to_string();

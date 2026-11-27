@@ -207,6 +207,12 @@ fn screws_go_down_through_the_bottoms_into_the_frame() {
     );
     assert_eq!(holes[0].3, [[156.75, 6.75, 170.0], [161.25, 11.25, 188.0]]);
     assert_eq!(holes[3].1, "Bench Frame back");
+    // a split corner's return bottom is screwed down too
+    let mut split = m.clone();
+    split["bodies"][0]["name"] = json!("A Bottom return");
+    let holes = screws(&split, &["A".to_string()], "Bench");
+    assert_eq!(holes.len(), 4);
+    assert_eq!(holes[0].0, "A Bottom return");
     // a bottom that does not rest on the frame (a plinth under it) gets none
     let mut high = m.clone();
     high["bodies"][0]["bbox"]["min"][2] = json!(270.0);

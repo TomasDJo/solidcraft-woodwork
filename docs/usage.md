@@ -811,8 +811,8 @@ frame under all of them and stands them on it:
   cabinet makes its side whole again: run Mobile base again afterwards.
 - **Frame screws** fix the cabinets to the frame: where a cabinet's bottom rests on a frame board
   for at least 100 mm, two 4.5 mm holes (for 4 x 50 mm screws) go down through the bottom onto the
-  board's middle, at a quarter and three quarters of that length. Like the bolts, a run again
-  does not cut them twice, and an Edit of the cabinet drops them until Mobile base runs again.
+  board's middle, at a quarter and three quarters of that length. A run again does not cut them
+  twice, one with other frame sizes moves them, and an Edit of the cabinet drops them until Mobile base runs again.
   A cabinet with a plinth does not rest its bottom on the frame and gets none.
 - The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`,
   the bolts as `Connector bolt, M6` and the screws as `Frame screw, 4 x 50 mm`.

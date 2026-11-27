@@ -169,7 +169,7 @@ SHOTS = [
       lambda: run("settings", {"see_through": "on"})],
      cam([300, 0, 550], 1400, yaw=-0.9, pitch=0.15)),
     ("base-screws", "Frame screws: two holes down through the cabinet's bottom into each frame board under it, seen through the boards.",
-     [lambda: run("cabinet", {"name": "A", "width": 600, "shelves": 0, "doors": 0, **BASE}), pick("A Side L"),
+     [lambda: run("cabinet", {"name": "A", "width": 600, "shelves": 0, "doors": 0, **BASE, "plinth": 0}), pick("A Side L"),
       lambda: run("base", {"name": "Bench"}), lambda: run("settings", {"see_through": "on"})],
      cam([0, 0, 200], 1500, yaw=-0.5, pitch=0.9)),
     ("tool-bolts", "Bolt holes for the tool's feet: four 8 mm holes through the tool's shelf, seen through the opening.",
