@@ -129,6 +129,21 @@ fn design_fills_new_cabinets_from_the_settings() {
     assert_eq!(p["joints"], "none");
     assert_eq!(p["joints_inner"], "dowels");
     assert_eq!(p["cam_bolt"], 35.0);
+    // the strip runners' sizes (#146): stored, or 12 x 18 mm; box cabinets only
+    assert_eq!(
+        (p["strip_thickness"].as_f64(), p["strip_height"].as_f64()),
+        (Some(12.0), Some(18.0))
+    );
+    let strips = json!({"document": {"settings": {"slide_type": "strips", "strip_thickness": 15, "strip_height": 22}}});
+    let mut p = json!({});
+    design("cabinet", &mut p, &strips);
+    assert_eq!(
+        (p["strip_thickness"].as_f64(), p["strip_height"].as_f64()),
+        (Some(15.0), Some(22.0))
+    );
+    let mut p = json!({});
+    design("corner", &mut p, &strips);
+    assert!(p.get("strip_thickness").is_none(), "{p}");
 }
 
 #[test]

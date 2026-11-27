@@ -231,10 +231,12 @@ needs them. Change one in Parameters and every cabinet's holes follow:
 - **Strip runners** (Slide type Strip runners, #146): the same, for a workshop without a router
   or dado blade. Instead of a groove, a wooden strip (`Name Side L strip 1` and on, 12 mm thick
   and 18 mm high) is screwed to each side under each drawer, from the front of the opening to
-  the back. The drawer's bottom is wider than its box and rests on the strips' tops, and the
-  box stands the strip's thickness plus 1 mm of play clear of each side. Change the sizes in
-  the parameters `Name_strip_thickness` (6 to 30 mm), `Name_strip_height` (10 to 60 mm) and
-  `Name_runner_play`. The strips are boards in the cut list, and no slides are counted. Their
+  the back. The drawer's bottom is wider than its box and rests on the strips' tops, set as much
+  higher as the strip needs to clear what is below it (the box's top stays where it was), and the
+  box stands the strip's thickness plus 1 mm of play clear of each side. **Strip thickness**
+  (6 to 30 mm) and **Strip height** (10 to 60 mm) in Woodwork settings' Drawers set them for new
+  cabinets. After that they are the parameters `Name_strip_thickness` and `Name_strip_height`,
+  next to `Name_runner_play` (less than the strip's thickness). The strips are boards in the cut list, and no slides are counted. Their
   screw holes are not drilled.
 
   ![Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.](images/strip-runners.png)
@@ -726,7 +728,7 @@ chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel d
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
 face**, **Finger width**, **Finger-joint the bottom too**; see [Joinery at build](#joinery-at-build)) and the hardware (**Hardware models**,
 **Hinge opening**: 95, 110 or 165 degrees, **Slide type**: partial, full, over-travel, dado runners, strip runners or undermount partial or full,
-**Fastener models**; see [Hinges and slides](#hinges-and-slides)), **Drawer box joints** (none or finger joints) and **Drawer front** (separate or integrated with the box). The dialog starts at what is stored, or at the
+**Fastener models**; see [Hinges and slides](#hinges-and-slides)), **Drawer box joints** (none or finger joints) and **Drawer front** (separate or integrated with the box), and with strip runners **Strip thickness** and **Strip height**. The dialog starts at what is stored, or at the
 defaults (dowels inside and out, 250 mm apart, 50 from the edges, 8 x 35 mm dowels, models
 shown, 110 degrees, full extension). Every new cabinet takes them and remembers them: changing
 them later leaves the cabinets made before as they are, and Apply settings gives them the

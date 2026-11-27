@@ -351,6 +351,8 @@ def test_strip_runners(approval):
     assert (round(bottom[0], 3), round(bottom[3], 3)) == (-300 + 19, 300 - 19), bottom
     assert round(left[0], 3) == -300 + 18 + 13 and round(left[2], 3) == round(bottom[5], 3), left
     assert round(b["Cabinet Side R strip 2"][3], 3) == 300 - 18, b["Cabinet Side R strip 2"]
+    # the lowest strip stands on the carcass bottom, not in it; the box's top is as on slides
+    assert strip[2] >= b["Cabinet Bottom"][5] - 0.01, (strip, b["Cabinet Bottom"])
     # no groove is cut in the sides
     assert not [f["name"] for f in results[4]["timeline"] if " runner " in f["name"]], "grooves"
     assert not [n for n in boxes(results[2], models=True) if n.startswith("HW slide")], "slide models"
@@ -358,6 +360,13 @@ def test_strip_runners(approval):
     assert not [h for h in cutlist["hardware"] if "slide" in h["item"].lower()], cutlist["hardware"]
     parts = [n for p in cutlist["parts"] for n in p["parts"]]
     assert "Cabinet Side L strip 1" in parts and "Cabinet Side R strip 2" in parts, parts
+    # the strips' size from Woodwork settings: 15 x 22 mm, the box 15 + 1 mm clear of each side
+    other = designed(approval, {"slide_type": "strips", "strip_thickness": 15, "strip_height": 22}, [
+        plugin(approval, "cabinet", {"drawers": 1}), MEASURE])
+    b = boxes(other[1])
+    strip = b["Cabinet Side L strip 1"]
+    assert (round(strip[3] - strip[0], 3), round(strip[5] - strip[2], 3)) == (15, 22), strip
+    assert round(b["Cabinet Drawer 1 Left"][0], 3) == -300 + 18 + 16, b["Cabinet Drawer 1 Left"]
 
 
 def test_a_cabinet_sized_by_its_drawers_inside(approval):

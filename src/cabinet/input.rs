@@ -398,6 +398,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
             || ((6.0..=30.0).contains(&strip[0]) && (10.0..=60.0).contains(&strip[1])),
         "the runner strips must be 6 to 30 mm thick and 10 to 60 mm high",
     )?;
+    // the bottom must bear on the strips: less play than a strip is thick
+    let play = size("runner_play", 1.0)?;
+    check(
+        !strips || drawers == 0.0 || (0.0..strip[0]).contains(&play),
+        "the runner play must be less than the strips are thick",
+    )?;
     // Dado runners (`wood`), and strip runners in the same way but on strips, not in grooves:
     // no slides, no stop.
     let grooved = kind_of == "wood";

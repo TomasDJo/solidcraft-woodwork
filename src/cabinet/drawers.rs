@@ -249,6 +249,16 @@ pub fn build(cabinet: &Cabinet) {
             eback.clone(),
             format!("{z} + {lift}"),
         );
+        // On strips the bottom goes up by as much of the strip as `BOX_CLEAR` leaves under it,
+        // so the strip stays clear of the carcass bottom, rail or drawer below; the box's top
+        // stays where it was.
+        let (z, box_h) = match &strip {
+            Some([_, sh]) => {
+                let rise = format!("max(0 mm, {sh} - {})", mm(BOX_CLEAR));
+                (format!("{z} + {rise}"), format!("({box_h} - {rise})"))
+            }
+            None => (z, box_h),
+        };
         // On runners the bottom is under the box, and the box's boards stand on it.
         let (bz, box_h) = match &wood {
             Some(_) => (format!("{z} + {bb}"), format!("({box_h} - {bb})")),
