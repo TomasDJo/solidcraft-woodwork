@@ -60,13 +60,7 @@ pub fn build(cabinet: &Cabinet) {
     let count = drawers as usize;
     // Shaker fronts only where every front is tall and wide enough for its frame, and not
     // integrated: the width less the panels round inset fronts and the reveals.
-    let low = match cabinet.input.drawer_h > 0.0 {
-        true => front_mm.min(cabinet.input.drawer_h),
-        false => front_mm,
-    };
-    let wide = cabinet.input.w - 2.0 * if inset { t } else { 0.0 } - 2.0 * reveal;
-    let framed = (cabinet.input.frame)
-        .is_some_and(|[fw, _]| !integrated && low.min(wide) >= fittings::framed(fw));
+    let framed = cabinet.input.framed_drawers;
     let gap_mm = er;
     // The fronts' room: the height above the plinth, less the panels round inset fronts.
     let room = format!("{eh} - {epl} - 2*{ein}");
@@ -165,9 +159,16 @@ pub fn build(cabinet: &Cabinet) {
         let front_w = format!("{ew} - 2*{ein} - 2*{gap_mm}");
         let x0 = format!("{ein} + {gap_mm}");
         // Lying across, in the middle of the front unless the top or the bottom is asked for.
-        let handle_z = match cabinet.input.handle_at {
-            "top" => format!("{z} + {front_h} - {}", mm(HANDLE_EDGE)),
-            "bottom" => format!("{z} + {}", mm(HANDLE_EDGE)),
+        // A glass front's handle goes in the middle of a rail, clear of the pane: the bottom one
+        // when asked, else the top one (auto too; the middle is refused, `input`).
+        let rail = (cabinet.eframe.as_ref())
+            .filter(|_| framed && cabinet.input.glass)
+            .map(|[fw, _]| format!("{fw}/2"));
+        let handle_z = match (cabinet.input.handle_at, rail) {
+            ("bottom", Some(half)) => format!("{z} + {half}"),
+            (_, Some(half)) => format!("{z} + {front_h} - {half}"),
+            ("top", None) => format!("{z} + {front_h} - {}", mm(HANDLE_EDGE)),
+            ("bottom", None) => format!("{z} + {}", mm(HANDLE_EDGE)),
             _ => format!("{z} + {front_h}/2"),
         };
         if sink && i + 1 == count {
@@ -221,7 +222,7 @@ pub fn build(cabinet: &Cabinet) {
             let r = mm(fittings::TAB_R);
             let tx = format!("{ew}/2 - {w}/2");
             let ty0 = format!("{efront} - {}", mm(fittings::TAB_OUT));
-            let target = [format!("{} {front}", kit.name)];
+            let target = kit.targets(&front);
             let (ny, nz) = (format!("{efront} - 1 mm"), format!("{z} - 1 mm"));
             let (nd, nh) = (format!("{et} + 2 mm"), format!("{bb} + 1 mm"));
             kit.panel(

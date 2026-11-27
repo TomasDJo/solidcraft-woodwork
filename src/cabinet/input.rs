@@ -50,6 +50,9 @@ pub struct Input<'a> {
     pub frame: Option<[f64; 2]>,
     /// Glass doors (`front_style` glass): the frame round a pane; drawer fronts get a panel.
     pub glass: bool,
+    /// The drawer fronts take the frame (Shaker or glass): every one tall and wide enough for
+    /// it (`fittings::framed`), and not integrated.
+    pub framed_drawers: bool,
     pub hinge_right: bool, // the first door is hinged on its right
     /// Inset fronts sit inside the carcass opening; overlay ones cover its edges.
     pub inset: bool,
@@ -363,6 +366,21 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => None,
     };
     let handle_at = crate::fittings::handle_position(p)?;
+    let low = if drawer_h > 0.0 {
+        front_h.min(drawer_h)
+    } else {
+        front_h
+    };
+    let wide = w - 2.0 * o - 2.0 * g;
+    let framed_drawers = drawers > 0.0
+        && !integrated
+        && frame.is_some_and(|[fw, _]| low.min(wide) >= crate::fittings::framed(fw));
+    let glass = p.get("front_style").and_then(Value::as_str) == Some("glass");
+    // a glass drawer front's handle goes in the middle of its top rail (auto too) or bottom rail
+    check(
+        !(glass && framed_drawers && matches!(handles, "knob" | "pull") && handle_at == "middle"),
+        "a glass drawer front's handle must be at the top or the bottom (Handle position): in the middle it would go through the glass",
+    )?;
     let hinge_right = match p
         .get("door_hinge")
         .and_then(Value::as_str)
@@ -504,7 +522,8 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handle_at,
         grooves,
         frame,
-        glass: p.get("front_style").and_then(Value::as_str) == Some("glass"),
+        glass,
+        framed_drawers,
         hinge_right,
         inset,
         reveal: g,

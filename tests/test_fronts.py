@@ -628,3 +628,28 @@ def test_glass_doors(approval):
     # open at 45 degrees the pane is still bought at its own size, 40 mm taller after the Edit
     bought = results[7]["result"]["hardware"]
     assert {"item": "Glass, 4 mm, 652 x 492 mm", "qty": 1} in bought, bought
+    # Drawer fronts too: two 357 mm fronts, each a 492 x 253 pane, the knob (Handle position
+    # Top) in the middle of the top rail, no hole in the glass; the cut list buys both panes. A
+    # pull at the Bottom: both its holes in the bottom rail. (The middle is refused.)
+    made = plugin(approval, "cabinet", {"name": "D", "drawers": 2, "handles": "knob",
+                                        "handle_position": "top", "front_style": "glass"})
+    low = plugin(approval, "cabinet", {"name": "E", "drawers": 2, "handles": "pull",
+                                       "handle_position": "bottom", "front_style": "glass"})
+    # and a bottom tab on a shaker drawer front: its notch is cut in the bottom rail
+    tab = plugin(approval, "cabinet", {"name": "T", "drawers": 2, "handles": "tab", "front_style": "shaker"})
+    results = cli([made, low, tab, MEASURE, plugin(approval, "cutlist")])
+    results = [results[0], results[3], results[4]]
+    # (476 long, the 6 x 8 groove, then the notch 120 wide, through the 18 mm thickness and the
+    # 6 mm bottom's height, and the scoop's half round of 10 mm radius, 120 long, over it)
+    rail = volume(results[1], "T Drawer 1 Front rail bottom")
+    scoop = 3.14159265 * 10 ** 2 / 2 * 120
+    expected = 476 * 18 * 60 - 476 * 6 * 8 - 120 * 18 * 6 - scoop
+    assert abs(rail - expected) < 0.01 * scoop, (rail, expected)
+    assert cylinders(results[1], "E Drawer 1 Front rail bottom") == 2, cylinders(results[1], "E Drawer 1 Front rail bottom")
+    m = results[1]
+    for n in (1, 2):
+        pane = next(b for b in m["bodies"] if b["name"] == f"D Drawer {n} Front glass")
+        assert pane["material"] == "Glass" and "cylinder" not in pane["face_types"], pane
+        assert cylinders(m, f"D Drawer {n} Front rail top") == 1, cylinders(m, f"D Drawer {n} Front rail top")
+    bought = results[2]["result"]["hardware"]
+    assert {"item": "Glass, 4 mm, 492 x 253 mm", "qty": 4} in bought, bought

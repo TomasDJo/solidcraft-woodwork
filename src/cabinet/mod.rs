@@ -725,12 +725,12 @@ impl Cabinet<'_> {
     }
 
     /// A door or drawer front (`fittings::front`): one board, or a shaker front when the
-    /// cabinet has them and `framed`; glass doors get a pane, drawer fronts a panel. Its back face
+    /// cabinet has them and `framed`; with glass fronts a pane instead of the panel. Its back face
     /// towards +y; `main_low`: `<body>` is the left stile.
     fn front(&self, body: &str, lo: [&str; 3], size: [&str; 3], main_low: bool, framed: bool) {
         let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
         let frame = self.eframe.as_ref().filter(|_| framed);
-        let glass = self.input.glass && body.contains("Door");
+        let glass = self.input.glass;
         fittings::front(self.kit, body, frame, at, lo, size, 0, main_low, glass);
     }
 

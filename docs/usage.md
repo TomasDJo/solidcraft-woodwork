@@ -107,9 +107,12 @@ edge or finger groove needs flat fronts.
 
 ![Shaker fronts: a frame of stiles and rails round a thinner panel, on doors and drawers.](images/shaker-fronts.png)
 
-**Front style: Glass** makes the doors Shaker frames round a 4 mm glass pane in the groove
-(`Name Door glass`, the see-through Glass material), and the drawer fronts Shaker with a wooden
-panel. No hole goes into the glass. The cut list buys the panes by size in the hardware list
+**Front style: Glass** makes the doors and drawer fronts Shaker frames round a 4 mm glass pane
+in the groove (`Name Door glass`, `Name Drawer 1 Front glass`, the see-through Glass material).
+Drawer fronts too low for a frame stay flat, as with Shaker. No hole goes into the glass: a glass
+drawer front's knob or pull goes in the middle of its top rail with Handle position Top or Auto,
+of its bottom rail with Bottom, centred across the front. Middle is refused, as the handle would
+go through the glass. A bottom tab's notch is cut in the bottom rail. The cut list buys the panes by size in the hardware list
 ("Glass, 4 mm, 612 x 492 mm") and lists only the frame's boards; Material leaves the glass as
 it is.
 

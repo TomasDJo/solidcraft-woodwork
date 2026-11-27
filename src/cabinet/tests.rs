@@ -1825,15 +1825,15 @@ fn shaker_fronts() {
 }
 
 #[test]
-fn glass_doors() {
+fn glass_fronts() {
     let named = |commands: &Commands, name: &str| {
         let found = (commands.iter()).find(|c| c.1["name"] == name && c.0 != "component.create");
         found.unwrap_or_else(|| panic!("no {name}")).1.clone()
     };
     // a 4 mm pane in the frame, in the panel's place; holes leave it out; the drawer front
-    // over the door gets a wooden panel
+    // over the door gets one too
     let p = json!({"doors": 1, "drawers": 1, "height": 900, "drawer_height": 250,
-        "handles": "knob", "front_style": "glass"});
+        "handles": "knob", "handle_position": "top", "front_style": "glass"});
     let (commands, _) = build(&p).unwrap();
     let pane = named(&commands, "Cabinet Door glass");
     assert_eq!(pane["width"], "4 mm");
@@ -1846,10 +1846,55 @@ fn glass_doors() {
     let cup = named(&commands, "Cabinet Door hinge cup 1");
     assert!(!cup["targets"].to_string().contains("glass"));
     assert_eq!(cup["targets"].as_array().unwrap().len(), 4);
-    named(&commands, "Cabinet Drawer 1 Front panel");
+    named(&commands, "Cabinet Drawer 1 Front glass");
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Drawer 1 Front panel"));
+    // its knob goes in the middle of the top rail, across the front's middle, not into the
+    // pane; Bottom: the bottom rail
+    let knob = named(&commands, "Cabinet Drawer 1 Front handle 1");
+    let z = knob["base"][2].as_str().unwrap().to_string();
+    assert!(z.ends_with(" - Cabinet_frame_width/2"), "{z}");
+    assert_eq!(knob["base"][0], "Cabinet_width/2 + 0 mm - Cabinet_width/2");
+    assert!(!knob["targets"].to_string().contains("glass"));
+    let p = json!({"drawers": 2, "handles": "pull", "handle_position": "bottom",
+        "front_style": "glass"});
+    let (commands, _) = build(&p).unwrap();
+    let pull = named(&commands, "Cabinet Drawer 1 Front handle 1");
+    assert!(pull["base"][2]
+        .as_str()
+        .unwrap()
+        .ends_with(" + Cabinet_frame_width/2"));
+    // in the middle it would go through the glass: refused; Auto takes the top rail
+    let p = json!({"drawers": 2, "handles": "knob", "handle_position": "middle",
+        "front_style": "glass"});
+    let why = build(&p).unwrap_err();
+    assert!(why.contains("through the glass"), "{why}");
+    let p = json!({"drawers": 2, "handles": "knob", "handle_position": "auto",
+        "front_style": "glass"});
+    let (commands, _) = build(&p).unwrap();
+    let knob = named(&commands, "Cabinet Drawer 2 Front handle 1");
+    assert!(knob["base"][2]
+        .as_str()
+        .unwrap()
+        .ends_with(" - Cabinet_frame_width/2"));
+    // no handle holes, or fronts too low for a frame (flat): the middle is fine
+    assert!(
+        build(&json!({"drawers": 2, "handle_position": "middle", "front_style": "glass"})).is_ok()
+    );
+    let p = json!({"drawers": 4, "handles": "knob", "front_style": "glass"});
+    assert!(build(&p).is_ok());
+    // a front too low for a frame stays flat, with no pane
+    let (commands, _) = build(&json!({"drawers": 4, "front_style": "glass"})).unwrap();
     assert!(!commands
         .iter()
         .any(|c| c.1["name"] == "Cabinet Drawer 1 Front glass"));
+    // a bottom tab's notch goes through the frame's boards, not the pane
+    let p = json!({"drawers": 2, "handles": "tab", "front_style": "glass"});
+    let (commands, _) = build(&p).unwrap();
+    let notch = named(&commands, "Cabinet Drawer 1 Front tab notch");
+    assert_eq!(notch["targets"].as_array().unwrap().len(), 4);
+    assert!(!notch["targets"].to_string().contains("glass"));
     assert!(build(&json!({"doors": 1, "front_style": "glass", "handles": "groove"})).is_err());
 }
 
