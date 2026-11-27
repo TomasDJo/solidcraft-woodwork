@@ -854,8 +854,9 @@ frame under all of them and stands them on it:
   48 x 98 mm by default; common sections are 48 x 98, 48 x 148 and 48 x 198 in Norway, and a US
   2x4 is 38 x 89 (2x6 38 x 140). The material is `Softwood timber`, which the cut list buys in
   running metres per section: each piece under *Timber, bought to length* and the metres of each
-  section (`timber_metres`, and a Timber table in the CSV), laid out on no sheet. The caster
-  blocks are timber too, listed by their own section.
+  section (`timber_metres`, and a Timber table in the CSV), laid out on no sheet, priced as
+  `Timber 48x98` in the [cost estimate](#cost-estimate). The caster blocks are timber too: each is
+  listed as a piece of its own size, noted `caster block`, out of the running metres.
 - **Casters:** a block (`Name Block 1` and on, 90 x 90 mm) in each corner with a locking caster
   under it, screwed into the block; a frame longer than 1500 mm gets a pair in its middle too.
   **Caster height** (100 mm) is from the floor to the frame's underside.
@@ -1038,6 +1039,8 @@ Give your prices in **Woodwork settings** (Cut list and worktop settings), in **
 - **A sheet** is priced per sheet, by its material and thickness in mm, as the sheets to buy
   name it: `White melamine 18` and `White melamine 6` are two prices.
 - **Banding** is one price a metre, for the metres the list adds up (waste included).
+- **Timber** (a mobile base's timber frame) is priced per running metre of its section,
+  thickness by width in mm: `Timber 48x98 = 3.5` (or `Timber 48 x 98`).
 - **Hardware** is priced a piece. The entry whose name an item starts with prices it, the
   longest one if several do: `Hinge` prices every hinge line, and `Drawer slide, full extension`
   goes before `Drawer slide`. Upper or lower case doesn't matter.
@@ -1050,7 +1053,7 @@ for each line that has none yet, such as `Birch plywood 12 = ?`, ready to fill i
 Prices. So the first run, with Prices empty, lists every price the design needs. With Prices
 filled in, the PDF has a **Cost** table after the hardware (a line without a price says so), and
 the CSV a Cost section with the total and the lines still without a price. Worktops, bought to
-length, are not priced.
+length, and a timber base's caster blocks are not priced.
 
 ### Cutting layouts
 

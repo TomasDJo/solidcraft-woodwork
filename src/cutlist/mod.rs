@@ -629,6 +629,7 @@ pub fn cutlist(
             (has("_notched"), NOTCHED),
             (has("_grooved"), GROOVED),
             (has("_fingered"), FINGERED),
+            (crate::base::is_block(name), "caster block"),
         ];
         let notes: Vec<&str> = notes.iter().filter(|n| n.0).map(|n| n.1).collect();
         notes.join("; ")
@@ -772,13 +773,16 @@ pub fn cutlist(
                 false => None,
             };
             if let Some(list) = bought {
-                list.push(
-                    json!({"part": name, "material": material, "thickness": shown(*t),
-                                     "length": shown(cl), "width": shown(cw)}),
-                );
-                if material == crate::material::TIMBER.0 {
+                let mut piece = json!({"part": name, "material": material, "thickness": shown(*t),
+                                       "length": shown(cl), "width": shown(cw)});
+                // a mobile base's caster block is a piece of its own size, not a length of a
+                // section, so it stays out of the running metres
+                if crate::base::is_block(name) {
+                    piece["note"] = json!("caster block");
+                } else if material == crate::material::TIMBER.0 {
                     *metres.entry((*t, *w)).or_insert(0.0) += mm(*l) / 1000.0;
                 }
+                list.push(piece);
                 continue;
             }
             *stock.entry((material.clone(), *t)).or_insert(0.0) += one_m2;
@@ -901,7 +905,7 @@ pub fn cutlist(
     let lengths: Vec<Value> = (metres.iter())
         .map(|((t, w), m)| {
             json!({"material": crate::material::TIMBER.0, "section": format!("{} x {} mm", mm(*t), mm(*w)),
-                   "metres": round(*m)})
+                   "thickness_mm": mm(*t), "width_mm": mm(*w), "metres": round(*m)})
         })
         .collect();
     if !lengths.is_empty() {

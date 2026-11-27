@@ -56,6 +56,30 @@ fn each_sheet_size_banding_and_hardware_line_is_priced() {
 }
 
 #[test]
+fn timber_is_priced_per_running_metre_of_its_section() {
+    let list = json!({"timber_metres": [
+        {"thickness_mm": 48.0, "width_mm": 98.0, "metres": 4.6},
+        {"thickness_mm": 38.0, "width_mm": 89.0, "metres": 2.0},
+    ]});
+    let cost = estimate(&list, "Timber 48x98 = 3.5; Timber 38 x 89 = 2").unwrap();
+    let line = |i: usize| {
+        (
+            cost["lines"][i]["item"].clone(),
+            cost["lines"][i]["unit"].clone(),
+            cost["lines"][i]["total"].clone(),
+        )
+    };
+    assert_eq!(line(0), (json!("Timber 48x98"), json!("m"), json!(16.1)));
+    assert_eq!(line(1), (json!("Timber 38x89"), json!("m"), json!(4.0)));
+    // without a price it is asked for like the rest
+    let none = estimate(&list, "Hinge = 3").unwrap();
+    assert_eq!(
+        none["missing"],
+        json!(["Timber 48x98 = ?", "Timber 38x89 = ?"])
+    );
+}
+
+#[test]
 fn the_csv_section_lists_each_line_the_total_and_what_has_no_price() {
     let cost = estimate(&list(), "White melamine 18 = 42.50; Hinge = 3.20").unwrap();
     let csv = csv(&cost);

@@ -110,12 +110,14 @@ def test_cabinets_back_to_back_of_different_widths_get_boards_that_do_not_cross(
 def test_a_timber_frame_is_bought_by_length(approval):
     # Frame of Timber, 48 x 98 by default: the frame stands 98 tall and 48 across, in softwood
     # timber, and the cabinet goes up by caster plus 98. The cut list buys it in running metres per
-    # section and lays out no sheet for it.
+    # section, prices it per running metre (`Timber 48x98`), lays out no sheet for it, and lists
+    # the caster blocks as pieces of their own size, out of the metres.
     results = designed(approval, NONE, [
         plugin(approval, "cabinet", {"name": "A", "width": 600}),
         pick("A Side L"),
         plugin(approval, "base", {"name": "Cart", "frame_material": "timber"}),
         MEASURE,
+        setting(approval, {"prices": "Timber 48x98 = 3.5"}),
         plugin(approval, "cutlist", {})])
     box, listed = boxes(results[3]), results[4]["result"]
     assert box["Cart Frame front"] == [-300, -280, 100, 300, -232, 198], box["Cart Frame front"]
@@ -123,7 +125,11 @@ def test_a_timber_frame_is_bought_by_length(approval):
     timber = {t["part"]: (t["material"], t["thickness"], t["width"]) for t in listed["timber"]}
     assert timber["Cart Frame front"] == ("Softwood timber", 48, 98), timber
     sections = {m["section"]: m["metres"] for m in listed["timber_metres"]}
-    assert "48 x 98 mm" in sections, sections
+    assert list(sections) == ["48 x 98 mm"], sections
+    blocks = [t for t in listed["timber"] if t.get("note") == "caster block"]
+    assert len(blocks) == 4 and all(b["part"].startswith("Cart Block ") for b in blocks), blocks
+    lines = {l["item"]: l for l in listed["cost"]["lines"]}
+    assert lines["Timber 48x98"]["total"] == round(3.5 * sections["48 x 98 mm"], 2), lines
     assert all(s["material"] != "Softwood timber" for s in listed["sheets"]), listed["sheets"]
 
 
