@@ -325,7 +325,8 @@ def test_drawer_side_and_back_height(approval):
 
 def test_wooden_runners(approval):
     # Slide type Wood: the bottom, 6 mm, is wider than the box and runs in a 6 mm deep groove in
-    # each side with 1 mm of play; the drawer comes out two thirds of its box (532 mm deep).
+    # each side with 1 mm of play; the drawer comes out two thirds of its box (544 mm deep: from a
+    # reveal before the carcass to the back, against which it stops, #257).
     # No slide holes, models or hardware; the cut list notes the grooves. Beside a door with
     # inset fronts too.
     results = designed(approval, {"slide_type": "wood"}, [
@@ -334,12 +335,13 @@ def test_wooden_runners(approval):
         plugin(approval, "cabinet", {"name": "B", "drawers": 1, "doors": 1, "fronts": "inset", "place": "origin"}),
         MEASURE])
     limits = {j["name"]: j["values"][0]["limits"] for j in results[1]["joints"]}
-    assert limits["Cabinet Drawer 1 slide"] == [0, 355], limits
+    assert limits["Cabinet Drawer 1 slide"] == [0, 363], limits
     shut, out = boxes(results[2]), boxes(results[4])
+    assert abs(shut["Cabinet Drawer 1 Box back"][4] - shut["Cabinet Back"][1]) < 0.01, (shut["Cabinet Drawer 1 Box back"], shut["Cabinet Back"])
     bottom = shut["Cabinet Drawer 1 Bottom"]
     assert (round(bottom[0], 3), round(bottom[3], 3)) == (-300 + 13, 300 - 13), bottom
     assert shut["Cabinet Drawer 1 Left"][0] == -300 + 19 and shut["Cabinet Drawer 1 Left"][2] == bottom[5]
-    assert abs(out["Cabinet Drawer 1 Front"][1] - (shut["Cabinet Drawer 1 Front"][1] - 355)) < 0.01
+    assert abs(out["Cabinet Drawer 1 Front"][1] - (shut["Cabinet Drawer 1 Front"][1] - 363)) < 0.01
     # each side loses two grooves of 6 x 8 mm, front to back
     side = volume(results[2], "Cabinet Side L")
     assert side < 720 * 560 * 18 - 2 * 6 * 8 * 500, side
@@ -356,13 +358,14 @@ def test_strip_runners(approval):
     # Slide type Strip runners: a 12 x 18 mm strip on each side under each drawer, the box
     # 12 + 1 mm clear of each side, its 6 mm bottom wider and resting on the strips' tops. No
     # grooves, slide holes, models or slides in the hardware; the strips are boards in the cut
-    # list. The drawer comes out two thirds of its box (355 mm).
+    # list. The drawer comes out two thirds of its box (363 mm), which stops against the back (#257).
     results = designed(approval, {"slide_type": "strips"}, [
         plugin(approval, "cabinet", {"drawers": 2}), {"command": "joint.list", "params": {}}, MEASURE,
         plugin(approval, "cutlist"), {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}])
     limits = {j["name"]: j["values"][0]["limits"] for j in results[1]["joints"]}
-    assert limits["Cabinet Drawer 1 slide"] == [0, 355], limits
+    assert limits["Cabinet Drawer 1 slide"] == [0, 363], limits
     b = boxes(results[2])
+    assert abs(b["Cabinet Drawer 1 Box back"][4] - b["Cabinet Back"][1]) < 0.01, (b["Cabinet Drawer 1 Box back"], b["Cabinet Back"])
     strip, bottom, left = b["Cabinet Side L strip 1"], b["Cabinet Drawer 1 Bottom"], b["Cabinet Drawer 1 Left"]
     assert (round(strip[0], 3), round(strip[3] - strip[0], 3), round(strip[5] - strip[2], 3)) == (-300 + 18, 12, 18), strip
     assert round(strip[5], 3) == round(bottom[2], 3), (strip, bottom)

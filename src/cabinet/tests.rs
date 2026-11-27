@@ -1181,17 +1181,44 @@ fn wooden_runners_run_the_bottom_in_grooves_in_the_sides() {
             "Cabinet_drawer_bottom + 2*Cabinet_runner_play"
         );
     }
-    // no slide holes or models; the drawer comes out two thirds of its box's depth
+    // no slide holes or models; the drawer comes out two thirds of its box's depth, which runs
+    // from a reveal before the carcass to the back (#257)
     assert!(!commands.iter().any(|c| c.1.to_string().contains("HW_")));
     let limit = commands.iter().find(|c| c.0 == "joint.limits").unwrap();
     assert_eq!(
         limit.1["max"],
-        ((560.0 - 12.0 - 6.0 - 10.0) * 2.0 / 3.0_f64).round()
+        ((560.0 - 12.0 - 6.0 + 2.0) * 2.0 / 3.0_f64).round()
     );
     // beside doors and inset too; a groove too deep for the sides is refused
     assert!(build(&json!({"drawers": 1, "doors": 1, "slide_type": "wood"})).is_ok());
     assert!(build(&json!({"drawers": 2, "fronts": "inset", "slide_type": "wood"})).is_ok());
     assert!(build(&json!({"drawers": 1, "slide_type": "wood", "runner_depth": 13})).is_err());
+}
+
+#[test]
+fn runner_drawers_stop_against_the_back_and_slides_keep_their_room() {
+    // #257: with no slide stops the box runs to the back's front face, so a push lands on the
+    // back; on slides it stays BOX_BEHIND short of it
+    let depth = |p: Value| {
+        let (commands, _) = build(&p).unwrap();
+        named(&commands, "Cabinet Drawer 1 Bottom")["width"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    for kind in ["wood", "strips"] {
+        let overlay = depth(json!({"drawers": 2, "slide_type": kind}));
+        assert!(
+            overlay.ends_with("+ 0 mm - (-Cabinet_reveal))") && !overlay.contains("10 mm"),
+            "{kind}: {overlay}"
+        );
+        let inset = depth(json!({"drawers": 2, "fronts": "inset", "slide_type": kind}));
+        assert!(
+            inset.ends_with("+ Cabinet_thickness - (Cabinet_thickness))"),
+            "{kind}: {inset}"
+        );
+    }
+    assert!(depth(json!({"drawers": 2})).contains("- 10 mm"));
 }
 
 #[test]
@@ -1281,6 +1308,19 @@ fn a_cabinet_sized_from_its_drawers_inside() {
         "{}",
         p["width"]
     );
+    // on runners the box reaches the back (#257): no 10 mm behind it, and it starts a 2 mm
+    // reveal before an overlay carcass, so the shelves are that much shallower than the box
+    for kind in ["wood", "strips"] {
+        let mut p = json!({"drawers": 3, "slide_type": kind, "sizing": "drawer",
+                           "drawer_width": 672, "drawer_depth": 672});
+        from_drawers(&mut p).unwrap();
+        let input = input::read(&Kit::new(&p).unwrap(), &p).unwrap();
+        assert!(
+            (input.shelf_d - (672.0 + 2.0 * 12.0 - 2.0)).abs() < 1e-9,
+            "{kind}: {}",
+            input.shelf_d
+        );
+    }
     // undermount: 42 mm and the panels; the shortest slide that holds the box, 3 mm behind it
     let mut p = json!({"drawers": 2, "slide_type": "under_full", "sizing": "drawer",
                        "drawer_width": 500, "drawer_depth": 400});

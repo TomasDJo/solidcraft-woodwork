@@ -131,7 +131,7 @@ length is Auto (the longest that fits its depth).
 
 ### Size by drawer inside
 
-With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box and the back. The cabinet is made with that outside size, which the summary gives, and remembers the drawer inside size: when the slides, the drawer boards or anything else around the boxes changes later (Woodwork settings and Apply settings, or Edit), its outside is worked out again so the boxes keep their inside. Edit shows Size by and the inside sizes for it; a width changed in Parameters is replaced by the one the inside needs at the next Edit or Apply settings. Not with Match selected.
+With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box (none on dado or strip runners, where the box reaches the back) and the back. The cabinet is made with that outside size, which the summary gives, and remembers the drawer inside size: when the slides, the drawer boards or anything else around the boxes changes later (Woodwork settings and Apply settings, or Edit), its outside is worked out again so the boxes keep their inside. Edit shows Size by and the inside sizes for it; a width changed in Parameters is replaced by the one the inside needs at the next Edit or Apply settings. Not with Match selected.
 
 ### Plinth / toe kick
 
@@ -230,7 +230,9 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   side (`Name Side L runner 1` and on, front to back), as high as the bottom plus 1 mm of play
   above and below, 6 mm deep, the bottom 1 mm short of its end. The parameters
   `Name_runner_depth` (3 mm up to the panel thickness less 6) and `Name_runner_play`. With no
-  stop, the drawer pulls out two thirds of its box's depth. The cut list notes the grooved
+  slide to stop it, the box runs all the way to the cabinet's back and stops against it, so
+  pushing the drawer shut presses on the back, not on the front and its joints (an overlay
+  front stays its reveal off the carcass). The drawer pulls out two thirds of its box's depth. The cut list notes the grooved
   sides and counts no slides. A 9 mm bottom (Drawer bottom thickness) runs better than 6.
 - **Strip runners** (Slide type Strip runners, #146): the same, for a workshop without a router
   or dado blade. Instead of a groove, a wooden strip (`Name Side L strip 1` and on, 12 mm thick
