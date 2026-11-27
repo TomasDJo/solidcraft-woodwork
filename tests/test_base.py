@@ -136,7 +136,7 @@ def test_a_timber_frame_is_bought_by_length(approval):
 def test_a_long_base_has_casters_evenly_spaced(approval):
     # #228: three 1100 mm cabinets, a 3300 mm frame: casters in the corners and two pairs more,
     # evenly spaced (at most 1500 apart), each block moved off the cross board it would stand on,
-    # so no two of the frame's boards and blocks share volume.
+    # so no two of the frame's boards and blocks share volume (stiffeners included).
     bare = {"width": 1100, "shelves": 0, "doors": 0}
     results = designed(approval, NONE, [
         plugin(approval, "cabinet", {"name": "A", **bare}), select("A Side R"),
@@ -149,6 +149,10 @@ def test_a_long_base_has_casters_evenly_spaced(approval):
     box = boxes(results[7])
     front = sorted(b[0] for n, b in box.items() if n.startswith("Long Block ") and b[1] < -250)
     assert front == [-532, 559, 1551, 2642], front
+    # #229: a stiffener in each stretch between the ends and the cross boards (each about 1100 mm,
+    # over the 600 mm spacing), half way
+    stiffeners = sorted(b[0] + 9 for n, b in box.items() if n.startswith("Long Frame stiffener"))
+    assert stiffeners == [4.5, 1100, 2195.5], stiffeners
     frame = {n: b for n, b in box.items() if n.startswith(("Long Frame", "Long Block"))}
     names = sorted(frame)
     crossing = [(a, b) for i, a in enumerate(names) for b in names[i + 1:]
@@ -195,6 +199,17 @@ def test_joints_that_leave_no_room_for_casters_are_refused(approval):
               plugin(approval, "base", {"name": "Row", "frame_material": "timber", "timber_thickness": 150})]
     error = refused(steps)
     assert "no room for the caster blocks" in error, error
+
+
+def test_a_stiffener_on_a_corner_block_is_refused(approval):
+    # #229 review: a 600 x 600 cabinet, 150 mm timber, 300 mm Stiffener spacing: the stiffener
+    # would stand on the corner blocks, so the base is refused with a word on the spacing.
+    error = refused([plugin(approval, "settings", NONE),
+                     plugin(approval, "cabinet", {"name": "A", "width": 600, "depth": 600, "shelves": 0, "doors": 0}),
+                     pick("A Side L"),
+                     plugin(approval, "base", {"name": "Cart", "frame_material": "timber", "timber_thickness": 150,
+                                               "stiffener_spacing": 300})])
+    assert "stiffener spacing" in error, error
 
 
 def test_connector_bolts_join_the_cabinets_on_a_base(approval):

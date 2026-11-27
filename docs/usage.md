@@ -848,7 +848,10 @@ frame under all of them and stands them on it:
   and backs), `Name Frame front`, `back`, `left` and `right`, and a `Frame cross` board under each
   place where two cabinets meet, so every cabinet side stands on a board. A cross board along the
   frame (cabinets side by side across it, or back to back with different widths) runs only under
-  the cabinets with that side and stops at the cross boards it meets, in pieces. **Frame height** (70 mm)
+  the cabinets with that side and stops at the cross boards it meets, in pieces. **Stiffeners**
+  (`Name Frame stiffener 1` and on) go across the frame too, evenly spaced, so no two boards across
+  (the ends, the cross boards and the stiffeners) are more than **Stiffener spacing** (600 mm,
+  300 to 2000) apart. **Frame height** (70 mm)
   is how tall they stand, **Board thickness** (18 mm) their thickness, **Material** theirs.
 - **Timber:** **Frame of** Timber builds the same frame of solid softwood instead of boards, standing
   on edge: **Timber thickness** is the frame's thickness across, **Timber width** its height.
