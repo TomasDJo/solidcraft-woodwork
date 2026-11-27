@@ -32,7 +32,7 @@ fn an_edit_keeps_what_is_not_changed() {
         &json!({"width": 600, "shelves": 1, "doors": 2}),
         "A",
     );
-    let changes = json!({"shelves": 3, "doors": null, "handles": "keep", "shelf_pins": "yes",
+    let changes = json!({"shelves": 3, "doors": null, "handles": "keep", "door_handles": "keep", "shelf_pins": "yes",
         "labels": "no", "door_hinge": "right"});
     let (entry, params) = merge(&made[KEY], &changes, &design()).unwrap();
     assert_eq!(entry, "cabinet");
@@ -469,4 +469,22 @@ fn the_grip_gap_comes_from_its_parameter() {
     let (_, params) = merge(&made[KEY], &json!({}), &design).unwrap();
     assert_eq!(params["grip_gap"], 1.0);
     assert_eq!(params["_existing"]["grip_gap"], 25.4);
+}
+
+#[test]
+fn the_door_handles_go_through_edit() {
+    // a chosen value survives `merge` and the dialog shows it; Edit can change it
+    let made = remember("cabinet", &json!({"doors": 1, "door_handles": "pull"}), "A");
+    let (entry, base) = merge(&made[KEY], &json!({}), &design()).unwrap();
+    assert_eq!(base["door_handles"], "pull");
+    assert_eq!(shown(&entry, &base)["door_handles"], "pull");
+    let reply = fields(&entry, &shown(&entry, &base), &Map::new());
+    assert_eq!(reply["door_handles"], json!({"default": "pull"}));
+    let (_, params) = merge(&made[KEY], &json!({"door_handles": "knob"}), &design()).unwrap();
+    assert_eq!(changed(&params, &base), ["door_handles"]);
+    // a cabinet that remembers none shows none (`assumed`)
+    let old = remember("cabinet", &json!({"doors": 1}), "A");
+    let (entry, base) = merge(&old[KEY], &json!({}), &design()).unwrap();
+    let reply = fields(&entry, &shown(&entry, &base), &Map::new());
+    assert_eq!(reply["door_handles"], json!({"default": "none"}));
 }

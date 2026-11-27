@@ -739,7 +739,15 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   that `MIN_GRIPPED` of the lowest front is left) shorter at its grip edge (`fittings::gripped`,
   `Cabinet::gripped`), a drawer's box with it, so a finger fits behind the bevel. `fittings::profile_fits`
   refuses a front too thin for it. Both run a millimetre past the front's ends.
-  `tab` (#181, drawers only; doors and a sink base's false front get nothing): the drawer's
+  Handles are two Woodwork settings, no Cabinet field: `handles` (Drawer handles, Drawers
+  section, with `tab`) and `door_handles` (Door handles, Doors section, no `tab`; `none` by
+  default; `fittings::door_handles`, `Input::door_handles`, a corner's doors' `handles`), both
+  `To::Cabinets`, `PER_CABINET` and Edit-only fields (`edit::EDIT_ONLY`), like `fronts`.
+  `Cabinet::handles` picks a front's by its part (`Door...`); the grip gap goes on the doors or
+  the drawers by their own handles (`gripped_door`, `gripped`). Fronts' Handle position and
+  Grip gap stay shared, without a condition (a condition cannot name another entry's field).
+  `build.plugin` gives a test's `handles` (not `tab`) to the doors too, as one field did before.
+  `tab` (#181, drawers only; a sink base's false front gets nothing): the drawer's
   `Bottom` runs forward under the front as the tab: `cabinet::drawers`' `tab`, after each
   branch's bottom, joins `Bottom tab 1/2` (boxes) and `corner 1/2` (cylinders, `TAB_R`) to it,
   `min(<Prefix>_tab_width, box inside)` wide (`tab_width`, Woodwork settings' Drawers, 120 mm,

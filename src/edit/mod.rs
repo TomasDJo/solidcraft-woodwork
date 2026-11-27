@@ -71,13 +71,14 @@ const BOX_ONLY: [&str; 11] = [
 ];
 const CORNER_ONLY: [&str; 3] = ["corner_doors", "shape", "return"];
 /// The Edit fields both kinds of cabinet take.
-const CABINETS: [&str; 13] = [
+const CABINETS: [&str; 14] = [
     "width",
     "height",
     "depth",
     "shelves",
     "shelf_pins",
     "handles",
+    "door_handles",
     "handle_position",
     "plinth",
     "plinth_type",
@@ -102,7 +103,9 @@ pub const NEW_ONLY: [&str; 9] = [
     "match",
     "name",
 ];
-pub const EDIT_ONLY: [&str; 6] = [
+pub const EDIT_ONLY: [&str; 8] = [
+    "handles",
+    "door_handles",
     "fronts",
     "front_style",
     "handle_position",
@@ -145,6 +148,7 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
         "fronts",
         "front_style",
         "handles",
+        "door_handles",
         "handle_position",
         "plinth_type",
         "wall_mount",
@@ -280,6 +284,7 @@ fn assumed(key: &str) -> Option<Value> {
         "shape" => json!("L-shaped"),
         "door_hinge" | "drawers_at" => json!(if key == "door_hinge" { "left" } else { "top" }),
         "corner_doors" | "handles" | "wall_mount" => json!("none"),
+        "door_handles" => json!("none"),
         "doors" | "drawers" | "dividers" | "drawer_height" => json!(0),
         "shelves" => json!(1),
         "fronts" => json!("overlay"),

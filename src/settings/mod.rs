@@ -6,7 +6,7 @@ use crate::{joint, kit};
 use serde_json::{json, Map, Value};
 
 /// The fields Settings keeps that the Cabinet and Corner dialogs show: the hook's defaults.
-const FIELDS: [&str; 4] = ["material", "thickness", "reveal", "handles"];
+const FIELDS: [&str; 3] = ["material", "thickness", "reveal"];
 
 /// What a setting is: a choice and its default, a length (kept in mm, shown and given in the
 /// dialog's unit) or a number in mm in every unit, with its default and bounds in mm. A
@@ -41,7 +41,9 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("reveal", "", Mm(2.0, 0.5, 6.0), Hook),
         // the Cabinet dialog's defaults, so Settings starts at them (not Keep) when none is stored
         ("material", "", Choice("Birch plywood"), Hook),
-        ("handles", "", Choice("none"), Hook),
+        ("handles", "", Choice("none"), Cabinets),
+        // `handles` is the drawer fronts' (Drawers settings), these the doors' (Doors)
+        ("door_handles", "", Choice("none"), Cabinets),
         ("joints", "", Choice("dowels"), Cabinets),
         ("finger_bottom", "", Choice("no"), Cabinets),
         ("joints_inner", "", Choice("dowels"), Box),
@@ -284,8 +286,9 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
 /// The per-cabinet fields that Settings also gives a default (Plinth's Yes or No through its
 /// height). A cabinet whose value is not the default it was built with chose its own, which
 /// Apply settings keeps; one that has that default follows the settings.
-pub const PER_CABINET: [&str; 8] = [
+pub const PER_CABINET: [&str; 9] = [
     "handles",
+    "door_handles",
     "front_style",
     "fronts",
     "back",
@@ -296,18 +299,12 @@ pub const PER_CABINET: [&str; 8] = [
 ];
 
 /// What the `PER_CABINET` fields of a cabinet made now with `stored` would be, as its params
-/// hold them (labels a flag, the plinth a height, handles the dialog's None when not stored).
+/// hold them (labels a flag, the plinth a height).
 /// A cabinet remembers it as `_defaults` (`lib.rs`), so Apply settings knows later which of its
 /// values were the defaults then.
 pub fn defaults(entry: &str, units: &Value, stored: &Value) -> Value {
     let mut fresh = json!({"units": units});
     design(entry, &mut fresh, stored);
-    let handles = &stored["document"]["settings"]["handles"];
-    fresh["handles"] = if handles.is_string() {
-        handles.clone()
-    } else {
-        json!("none")
-    };
     let mut out = Map::new();
     for key in PER_CABINET {
         if let Some(v) = fresh.get(key) {
@@ -647,7 +644,6 @@ pub const SECTIONS: [(&str, &[&str]); 8] = [
         &[
             "fronts",
             "reveal",
-            "handles",
             "handle_position",
             "grip_gap",
             "front_style",
@@ -658,10 +654,11 @@ pub const SECTIONS: [(&str, &[&str]); 8] = [
             "panel_thickness",
         ],
     ),
-    ("doors", &["hinge_angle", "double_dividers"]),
+    ("doors", &["door_handles", "hinge_angle", "double_dividers"]),
     (
         "drawers",
         &[
+            "handles",
             "drawer_thickness",
             "drawer_bottom",
             "drawer_side_height",

@@ -68,7 +68,7 @@ fn an_l_of_boards_with_the_corner_cut_out() {
 #[test]
 fn the_handle_is_on_the_door_that_folds() {
     let handle_on = |doors: &str, part: &str| {
-        let p = json!({"doors": doors, "handles": "pull"});
+        let p = json!({"doors": doors, "handles": "pull", "door_handles": "pull"});
         let (commands, _) = build(&p).unwrap();
         let wanted = format!("Cabinet {part} handle 1");
         commands.iter().any(|c| c.1["name"] == wanted.as_str())
@@ -79,7 +79,7 @@ fn the_handle_is_on_the_door_that_folds() {
     // and at the height that is chosen, on both shapes
     for (shape, part) in [("L-shaped", "Door return"), ("diagonal", "Door")] {
         let height = |at: &str| {
-            let p = json!({"shape": shape, "doors": "hinged right", "handles": "knob",
+            let p = json!({"shape": shape, "doors": "hinged right", "handles": "knob", "door_handles": "knob",
                 "handle_position": at});
             let (commands, _) = build(&p).unwrap();
             let hole = named(&commands, &format!("Cabinet {part} handle 1"));
@@ -120,7 +120,7 @@ fn a_right_corner_is_the_mirror_image() {
 #[test]
 fn a_diagonal_front_is_one_turned_door() {
     let p = json!({"shape": "diagonal", "width": 1000, "return": 900, "plinth": 100,
-        "doors": "hinged right", "handles": "knob"});
+        "doors": "hinged right", "handles": "knob", "door_handles": "knob"});
     let (commands, summary) = build(&p).unwrap();
     // 2 sides, 2 backs, bottom, top, shelf, plinth, door
     assert_eq!(summary["bodies"].as_array().unwrap().len(), 9);
@@ -245,7 +245,7 @@ fn the_doors_take_the_reveal() {
 #[test]
 fn inset_bifold_doors_fill_the_opening() {
     // hinged right in a left corner: the pair hangs on the back leg's end
-    let p = json!({"doors": "hinged right", "fronts": "inset", "handles": "knob", "shelves": 1,
+    let p = json!({"doors": "hinged right", "fronts": "inset", "handles": "knob", "door_handles": "knob", "shelves": 1,
         "shelf_pins": true});
     let (commands, _) = build(&p).unwrap();
     let door = board(&commands, "Cabinet Door");
@@ -746,7 +746,7 @@ fn a_grip_goes_on_the_door_that_folds() {
         ("left", "hinged right", "Cabinet_depth + Cabinet_reveal - Cabinet_width/2"),
         ("right", "hinged left", "Cabinet_width - (Cabinet_depth + Cabinet_reveal) - (Cabinet_thickness) + Cabinet_thickness - Cabinet_width/2"),
     ] {
-        let p = json!({"doors": doors, "handles": "grip", "corner": corner});
+        let p = json!({"doors": doors, "handles": "grip", "door_handles": "grip", "corner": corner});
         let (commands, _) = build(&p).unwrap();
         assert!(!has(&commands, "Cabinet Door grip cutter"));
         let cutter = named(&commands, "Cabinet Door return grip cutter");
@@ -762,10 +762,10 @@ fn a_grip_goes_on_the_door_that_folds() {
     }
     // hinged left, the back leg's door folds: along x; a groove on the diagonal's one door,
     // at the bottom of a wall unit
-    let p = json!({"doors": "hinged left", "handles": "groove"});
+    let p = json!({"doors": "hinged left", "handles": "groove", "door_handles": "groove"});
     let (commands, _) = build(&p).unwrap();
     assert!(has(&commands, "Cabinet Door groove") && !has(&commands, "Cabinet Door return groove"));
-    let p = json!({"shape": "diagonal", "doors": "hinged left", "handles": "groove",
+    let p = json!({"shape": "diagonal", "doors": "hinged left", "handles": "groove", "door_handles": "groove",
         "plinth": 0, "depth": 320});
     let (commands, _) = build(&p).unwrap();
     let groove = named(&commands, "Cabinet Door groove");
@@ -836,7 +836,7 @@ fn a_grip_gap_on_corner_doors() {
         ("top", " - Cabinet_grip_gap)"),
         ("bottom", " + Cabinet_grip_gap"),
     ] {
-        let p = json!({"shape": "diagonal", "doors": "hinged left", "handles": "grip",
+        let p = json!({"shape": "diagonal", "doors": "hinged left", "handles": "grip", "door_handles": "grip",
             "handle_position": at});
         let (commands, _) = build(&p).unwrap();
         let door = board(&commands, "Cabinet Door");
@@ -858,10 +858,23 @@ fn a_grip_gap_on_corner_doors() {
         assert!(cup.to_string().contains("grip_gap"), "{cup}");
     }
     // the L's folding door: its cups over its shortened height, the first door's as before
-    let p = json!({"doors": "hinged right", "handles": "grip", "handle_position": "bottom"});
+    let p = json!({"doors": "hinged right", "handles": "grip", "door_handles": "grip", "handle_position": "bottom"});
     let (commands, _) = build(&p).unwrap();
     let folding = named(&commands, "Cabinet Door return hinge cup 1")["base"][2].clone();
     assert!(folding.to_string().contains("grip_gap"), "{folding}");
     let first = named(&commands, "Cabinet Door hinge cup 1")["base"][2].clone();
     assert!(!first.to_string().contains("grip_gap"), "{first}");
+}
+
+#[test]
+fn corner_doors_take_the_door_handles() {
+    // a corner cabinet has only doors: the door handles, never the drawer handles
+    let p = json!({"doors": "hinged right", "handles": "tab", "door_handles": "pull"});
+    let (commands, _) = build(&p).unwrap();
+    named(&commands, "Cabinet Door return handle 2");
+    let p = json!({"shape": "diagonal", "doors": "hinged left", "handles": "knob"});
+    let (commands, _) = build(&p).unwrap();
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Door handle 1"));
 }

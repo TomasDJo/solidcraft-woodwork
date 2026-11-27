@@ -82,7 +82,8 @@ MOVED = {
                  "front_style": ("front_style", "flat"), "groove_shape": ("groove_shape", "square"),
                  "groove_spacing": ("groove_spacing", 50), "groove_depth": ("groove_depth", 3),
                  "frame_width": ("frame_width", 60), "panel_thickness": ("panel_thickness", 6),
-                 "grip_gap": ("grip_gap", 20)},
+                 "grip_gap": ("grip_gap", 20), "handles": ("handles", "none"),
+                 "door_handles": ("door_handles", "none")},
     "cutlist": {"banding": ("banding", "1"), "size": ("cut_sizes", "finished"), "sheet": ("sheet", "2440x1220"),
                 "kerf": ("kerf", 4), "trim": ("trim", 10)},
     "worktop": {"material": ("worktop_material", "Oak"), "thickness": ("worktop_thickness", 38)},
@@ -105,6 +106,10 @@ def plugin(approval, entry, params=None):
     if entry == "settings":
         steps = settings_steps(approval, params)
         return steps[0] if len(steps) == 1 else tuple(steps)
+    # Handles were one field for doors and drawers; the tests still give `handles` for both
+    # (a bottom tab is the drawers' only).
+    if entry in ("cabinet", "corner", "edit") and "handles" in params and params["handles"] != "tab":
+        params.setdefault("door_handles", params["handles"])
     # Corner cabinets are Cabinet with a corner shape (its doors are `corner_doors`).
     if entry == "corner":
         entry = "cabinet"

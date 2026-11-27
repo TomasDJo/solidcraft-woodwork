@@ -30,7 +30,7 @@ pub fn build(cabinet: &Cabinet) {
         plinth,
         doors,
         dividers,
-        handles,
+        door_handles: handles,
         handle_at,
         hinge_right,
         inset,
@@ -70,7 +70,7 @@ pub fn build(cabinet: &Cabinet) {
         // a shaker door's own name is its hinge stile's, which takes the cups
         let left = hinged_left(i, count, first, inset);
         // a grip edge's door stops the grip gap short of its grip edge (#230)
-        let (gz, gh) = cabinet.gripped(z0, door_h, grip_top);
+        let (gz, gh) = cabinet.gripped_door(z0, door_h, grip_top);
         cabinet.front(&part, [&x0, efront, &gz], [&door_w, et, &gh], left, true);
         // The hinge cups, from the door's back face, `HW_cup_inset` in from its hinge edge.
         let cup_x = match left {
