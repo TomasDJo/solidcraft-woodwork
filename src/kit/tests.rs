@@ -35,6 +35,26 @@ fn width_from_a_line_is_an_expression_over_its_dimension() {
 }
 
 #[test]
+fn a_rebuilt_size_from_a_line_keeps_its_expression() {
+    // Apply settings in an inch design: the line's width read again, rounded to 1e-6 in, is
+    // 1e-5 mm off the parameter already over the line's dimension: left as it is
+    let line = json!({"width": "Wall_l1 - 2 in"});
+    let p = json!({"name": "B", "units": "in", "width": 45.244094, "_line": line,
+        "_existing": {"width": 1149.2}});
+    let commands = crate::cabinet::build(&p).unwrap().0;
+    assert!(
+        !commands.iter().any(|c| c.1["name"] == "B_width"),
+        "{commands:?}"
+    );
+    // a line read longer (an undimensioned one): the line's expression, not a number
+    let p = json!({"name": "B", "units": "in", "width": 50, "_line": line,
+        "_existing": {"width": 1149.2}});
+    let commands = crate::cabinet::build(&p).unwrap().0;
+    let change = commands.iter().find(|c| c.1["name"] == "B_width").unwrap();
+    assert_eq!(change.1["expression"], "Wall_l1 - 2 in");
+}
+
+#[test]
 fn a_matched_plinth_takes_the_set_back_when_there_is_one() {
     let design = json!({"params": [
         {"name": "A_height", "value": 900.0}, {"name": "A_plinth", "value": 100.0},

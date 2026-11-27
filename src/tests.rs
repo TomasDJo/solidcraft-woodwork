@@ -747,6 +747,26 @@ fn mode_auto_says_a_refused_change_when_editing_and_when_new() {
 }
 
 #[test]
+fn a_cabinet_not_along_a_line_remembers_no_line() {
+    // A script's stale line fields with Place At the origin: not kept, or Apply settings would
+    // move the cabinet onto that line.
+    let mut kept = Value::Null;
+    let mut run = |command: &str, args: Value| {
+        if command == "component.metadata.set" {
+            kept = args["values"].clone();
+        }
+        Ok(json!({}))
+    };
+    let params = json!({"place": "origin", "line": [{"type": "edge", "body": "Wall", "index": 1}],
+        "height_line": [], "start_at": "right", "offset": 5, "faces": "flip", "width_from_line": true});
+    execute("cabinet", &params, &mut run).unwrap();
+    let remembered = &kept[edit::KEY]["params"];
+    for key in LINE_FIELDS {
+        assert!(remembered.get(key).is_none(), "{key}: {remembered}");
+    }
+}
+
+#[test]
 fn along_a_line_names_its_dimension_and_sizes_the_width_by_it() {
     // A sketch line 1200 long in an inch design's dialog: the offset is in inches, the app's
     // `d1` is renamed after the sketch, and the width is an expression over it.
@@ -763,10 +783,10 @@ fn along_a_line_names_its_dimension_and_sizes_the_width_by_it() {
     };
     let mut params = json!({"units": "in", "offset": 2, "start_at": "left", "width_from_line": true,
         "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
-    let design = json!({"params": []});
+    let design = json!({"params": [], "sketches": [{"id": 1}, {"id": 2}]});
     let (_, front, follows) = along_line(&mut params, &design, &mut run).unwrap();
     assert_eq!(front, [0.0, -1.0]);
-    assert!(follows.contains("Width follows Wall_line_l1"), "{follows}");
+    assert!(follows.contains("width follows Wall_line_l1"), "{follows}");
     assert_eq!(called[0].0, "sketch.inspect");
     assert_eq!(
         called[1],
@@ -776,14 +796,22 @@ fn along_a_line_names_its_dimension_and_sizes_the_width_by_it() {
         )
     );
     assert_eq!(params["_line"]["width"], "Wall_line_l1 - 2 in");
-    assert_eq!(params["width"], json!(45.244094)); // (1200 mm - 2 in) in inches, rounded
-                                                   // a dimension already named is used as it is; no pick, or drawer sizing, is refused
+    // (1200 mm - 2 in) in inches, rounded
+    assert_eq!(params["width"], json!(45.244094));
+    // a dimension already named is used as it is; no pick, or drawer sizing, is refused
     let mut named = sketch.clone();
     named["constraints"][0]["param"] = json!("Run");
     let mut run = |_: &str, _: Value| Ok(named.clone());
-    let mut p = json!({"width_from_line": true, "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
-    along_line(&mut p, &design, &mut run).unwrap();
+    let mut p = json!({"width_from_line": true, "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}],
+        "height_line": [{"type": "external_sketch_curve", "sketch": 2, "id": "l1"}]});
+    let (_, _, said) = along_line(&mut p, &design, &mut run).unwrap();
     assert_eq!(p["_line"]["width"], "Run");
+    // Height from line: as tall as that line, following its dimension
+    assert_eq!(
+        (p["height"].clone(), p["_line"]["height"].clone()),
+        (json!(1200.0), json!("Run"))
+    );
+    assert!(said.contains("height follows Run"), "{said}");
     let mut p = json!({"width_from_line": true, "sizing": "drawer",
         "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
     assert!(along_line(&mut p, &design, &mut run)
@@ -797,7 +825,38 @@ fn along_a_line_names_its_dimension_and_sizes_the_width_by_it() {
     let mut p = json!({"width_from_line": true, "offset": 1300, "line": pick});
     let err = along_line(&mut p, &design, &mut run).unwrap_err();
     assert!(err.contains("shorter than the offset"), "{err}");
+    // a sketch no longer in the design: refused before any command, which would end the run
+    let mut p = json!({"line": [{"type": "external_sketch_curve", "sketch": 7, "id": "l1"}]});
+    let err = along_line(&mut p, &design, &mut run).unwrap_err();
+    assert!(err.contains("no longer in the design"), "{err}");
     let mut p = json!({"start_at": "end", "line": pick});
     let err = along_line(&mut p, &design, &mut run).unwrap_err();
     assert!(err.contains("start_at must be"), "{err}");
+}
+
+#[test]
+fn apply_settings_says_why_a_cabinet_stayed_off_its_line() {
+    // A cabinet along a line whose sketch is gone: built again where it stood, with the reason
+    // in the reply's `lines` (end to end: tests/test_place.py, with the wall suppressed).
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => json!({"sketches": [], "params": [
+                {"name": "B_width", "value": 600.0}, {"name": "B_height", "value": 720.0},
+                {"name": "B_depth", "value": 560.0}, {"name": "B_thickness", "value": 18.0}]}),
+            "inspect.measure" => json!({"bodies": [{"name": "B Side L"}]}),
+            "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet",
+                "params": {"name": "B", "line": [{"type": "external_sketch_curve", "sketch": 7, "id": "l1"}]}}}}),
+            "component.list" => json!({"active": 0, "components": [{"name": "B", "occurrences": [
+                {"id": 1, "parent": 0, "transform": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}]}]}),
+            "joint.list" => json!({"joints": []}),
+            _ => json!({}),
+        })
+    };
+    let reply = apply(&json!({}), &json!({}), true, true, &mut run).unwrap();
+    assert_eq!(reply["applied"], json!(["B"]), "{reply}");
+    let why = reply["lines"]["B"].as_str().unwrap_or_default();
+    assert!(
+        why.contains("no longer in the design") && why.contains("left where it stood"),
+        "{reply}"
+    );
 }

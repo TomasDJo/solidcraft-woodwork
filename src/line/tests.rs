@@ -147,3 +147,53 @@ fn width_from_line_and_free_dimension_names() {
     assert_eq!(dimension_name("Wall line", "l1", &design), "Wall_line_l1_2");
     assert!(unnamed("d12") && !unnamed("d") && !unnamed("Wall_line_l1") && !unnamed("dx"));
 }
+
+#[test]
+fn the_translation_keeps_the_start_end_when_the_cabinet_grows() {
+    let line = from_sketch(&sketch([200.0, 500.0], [1400.0, 500.0], false, &[]), "l1").unwrap();
+    let f = facing(&line, false);
+    let size = ["A_width", "A_depth"];
+    // left end: the side at x = 200, the back at y = 500, whatever A_width and A_depth are
+    let (at, turn) = translate(&line, f, "left", 0.0, size);
+    assert_eq!(
+        at,
+        ["200 mm + (A_width)/2", "500 mm - (A_depth)/2", "0 mm"].map(String::from)
+    );
+    assert_eq!(turn, 0);
+    assert_eq!(
+        translate(&line, f, "right", 100.0, size).0[0],
+        "1300 mm - (A_width)/2"
+    );
+    assert_eq!(translate(&line, f, "middle", 10.0, size).0[0], "810 mm");
+    // flipped (facing +Y, turned half): its left end is the line's +X end
+    let back = translate(&line, facing(&line, true), "left", 0.0, size);
+    assert_eq!(
+        back.0[..2],
+        ["1400 mm - (A_width)/2", "500 mm + (A_depth)/2"].map(String::from)
+    );
+    // along Y facing +X: the width runs along +Y
+    let wall = from_sketch(
+        &sketch([0.0, 0.0], [0.0, 2000.0], false, &[[3000.0, 0.0]]),
+        "l1",
+    )
+    .unwrap();
+    let (at, turn) = translate(&wall, facing(&wall, false), "left", 0.0, size);
+    assert_eq!(
+        at[..2],
+        ["0 mm + (A_depth)/2", "0 mm + (A_width)/2"].map(String::from)
+    );
+    assert_eq!(turn, 90);
+}
+
+#[test]
+fn a_height_line_runs_any_way() {
+    let mut up = sketch([0.0, 0.0], [0.0, 0.0], false, &[]);
+    up["points"][2]["world"] = json!([0.0, 0.0, 800.0]);
+    assert_eq!(
+        sketch_length(&up, "l1").unwrap(),
+        (800.0, Some("d1".to_string()))
+    );
+    let (edges, _) = wall();
+    assert_eq!(edge_length(&edges, 9).unwrap(), 2400.0);
+    assert!(edge_length(&edges, 99).is_err());
+}

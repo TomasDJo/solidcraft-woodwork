@@ -215,11 +215,13 @@ fn apply(
             false => todo.push((name, about, entry, base, vec![])),
             true => match settings::apply(&entry, &base, stored) {
                 Some((params, changed)) => todo.push((name, about, entry, params, changed)),
+                // along a line: built again all the same, to read the line again
+                None if along(&base) => todo.push((name, about, entry, base, vec!["line".into()])),
                 None => skipped.push(json!({"cabinet": name, "why": "already has these settings"})),
             },
         }
     }
-    let (mut applied, mut changes) = (Vec::new(), Map::new());
+    let (mut applied, mut changes, mut lines) = (Vec::new(), Map::new(), Map::new());
     let count = todo.len();
     for (i, (name, about, entry, params, changed)) in todo.into_iter().enumerate() {
         let message = format!("{name} ({} of {count})", i + 1);
@@ -231,7 +233,11 @@ fn apply(
             "document.inspect",
             json!({"bodies": false, "timeline": false}),
         )?;
-        rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
+        let built = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
+        // along a line: what it read, or why it was left where it stood
+        if let Some(said) = built["line"].as_str() {
+            lines.insert(name.clone(), json!(said));
+        }
         changes.insert(name.clone(), json!(changed));
         applied.push(name);
     }
@@ -244,7 +250,10 @@ fn apply(
     if !skipped.is_empty() {
         message += &format!("; {} skipped (see skipped)", skipped.len());
     }
-    Ok(json!({"applied": applied, "changed": changes, "skipped": skipped, "message": message}))
+    Ok(
+        json!({"applied": applied, "changed": changes, "lines": lines, "skipped": skipped,
+        "message": message}),
+    )
 }
 
 /// Builds the cabinet `name` again from `params` (`edit::merge`'s), where it stands: the same
@@ -275,6 +284,12 @@ fn rebuild(
             false => params["sizing"] = json!("outside"),
         }
     }
+    // Along a line: read it again (Apply settings follows an edge or an undimensioned line so).
+    // A line that can no longer be read leaves the cabinet where it stands, and says why.
+    let found = match along(&params) {
+        true => Some(along_line(&mut params, design, run)),
+        false => None,
+    };
     let params = &params;
     run("component.activate", json!({"component": parent}))?;
     let gone = run("component.delete", json!({"component": name}))?;
@@ -307,10 +322,21 @@ fn rebuild(
             )?;
         }
     }
-    run(
-        "occurrence.move",
-        json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
-    )?;
+    let mut placed = false;
+    match found {
+        Some(Ok(found)) => {
+            place_along(&made["occurrence"], &mut summary, params, &found, run)?;
+            placed = true;
+        }
+        Some(Err(why)) => summary["line"] = json!(format!("{why}: left where it stood")),
+        None => {}
+    }
+    if !placed {
+        run(
+            "occurrence.move",
+            json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
+        )?;
+    }
     // Held again to the cabinet it stood against, when that is still there; and the
     // cabinets that were held to it, to the new one.
     let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
@@ -325,7 +351,7 @@ fn rebuild(
             held = link(&other, place, &name, stands(&matrix), run)?;
         }
     }
-    if !held {
+    if !held && !placed {
         run(
             "occurrence.ground",
             json!({"occurrence": made["occurrence"], "grounded": grounded}),
@@ -722,16 +748,27 @@ fn unit_mm(params: &Value) -> f64 {
     }
 }
 
-/// Place: Along a line (#147). Reads the picked sketch line, edge or wall face, and with Width
-/// from line sets the width: over the sketch line's driving length dimension when it has one
-/// (named first if the app named it `d<n>`), so the cabinet follows it with no rebuild. Returns
-/// the line, the way the front faces, and what the summary says about following it.
+/// Place: Along a line (#147). Reads the picked sketch line, edge or wall face (`line`), and
+/// with Width from line sets the width, with a Height from line pick (`height_line`) the height:
+/// over a sketch line's driving length dimension when it has one (named first if the app named
+/// it `d<n>`), so the cabinet follows it with no rebuild; else read now, and again by Apply
+/// settings. Returns the line, the way the front faces, and what the summary says about it.
 fn along_line(
     params: &mut Value,
     design: &Value,
     run: Run,
 ) -> Result<(line::Line, [f64; 2], String), String> {
-    let picked = &params["line"][0];
+    let picked = params["line"][0].clone();
+    let tall = params["height_line"][0].clone();
+    // A command that fails ends the whole run, so a pick that is gone (Apply settings reads
+    // a remembered one) is refused here, where the caller can leave the cabinet standing.
+    let bodies = match [&picked, &tall].iter().any(|p| p["body"].is_string()) {
+        true => body_names(run)?,
+        false => Value::Null,
+    };
+    for pick in [&picked, &tall].into_iter().filter(|p| !p.is_null()) {
+        there(pick, design, &bodies)?;
+    }
     let index = picked["index"].as_u64().unwrap_or(u64::MAX);
     let (line, sketch) = match picked["type"].as_str() {
         Some("external_sketch_curve") => {
@@ -763,50 +800,152 @@ fn along_line(
         "start_at must be left, right or middle",
     )?;
     let scale = unit_mm(params);
-    let offset = num(params, "offset", 0.0)?;
-    let once = "Placed once: the line is not followed, so run Cabinet again after changing it";
-    if params["width_from_line"] != true {
-        return Ok((line, front, once.into()));
-    }
-    // Drawer sizing works the width out from the boxes' inside: one or the other.
-    check(
-        params["sizing"] != "drawer",
-        "Width from line and Size by the drawers' inside don't go together: pick one",
-    )?;
-    let width = line::width(&line, &start, offset * scale);
-    check(width > 0.0, "the line is shorter than the offset")?;
-    params["width"] = json!((width / scale * 1e6).round() / 1e6);
-    params["sizing"] = json!("outside");
-    let (Some(dimension), Some((sketch, curve))) = (line.dimension.clone(), sketch) else {
-        let why = "Width from line: the line has no driving length dimension, so the width is read once; run Cabinet again after changing it";
-        return Ok((line, front, why.into()));
-    };
-    let name = match line::unnamed(&dimension) {
-        true => {
-            let sketch_name = sketch["name"].as_str().unwrap_or("Line");
-            let name = line::dimension_name(sketch_name, &curve, design);
-            let rename = json!({"name": dimension, "new_name": name});
-            run("parameters.rename", rename)?;
-            name
-        }
-        false => dimension,
-    };
-    let off = if start == "middle" {
-        2.0 * offset.abs()
-    } else {
-        offset
-    };
     let unit = if scale == 1.0 { "mm" } else { "in" };
-    let over = match off == 0.0 {
-        true => name.clone(),
-        false => format!("{name} - {off} {unit}"),
+    let offset = num(params, "offset", 0.0)?;
+    let mut said = Vec::new();
+    if params["width_from_line"] == true {
+        // Drawer sizing works the width out from the boxes' inside: one or the other.
+        check(
+            params["sizing"] != "drawer",
+            "Width from line and Size by the drawers' inside don't go together: pick one",
+        )?;
+        let width = line::width(&line, &start, offset * scale);
+        check(width > 0.0, "the line is shorter than the offset")?;
+        params["width"] = json!((width / scale * 1e6).round() / 1e6);
+        params["sizing"] = json!("outside");
+        match follow(line.dimension.clone(), sketch, design, run)? {
+            Some(name) => {
+                let off = if start == "middle" {
+                    2.0 * offset.abs()
+                } else {
+                    offset
+                };
+                params["_line"]["width"] = json!(match off == 0.0 {
+                    true => name.clone(),
+                    false => format!("{name} - {off} {unit}"),
+                });
+                said.push(format!("width follows {name}"));
+            }
+            None => said.push("width read from the line".to_string()),
+        }
+    }
+    if !tall.is_null() {
+        let (length, dimension, sketch) = match tall["type"].as_str() {
+            Some("external_sketch_curve") => {
+                let sketch = run("sketch.inspect", json!({"sketch": tall["sketch"]}))?;
+                let curve = tall["id"].as_str().unwrap_or_default().to_string();
+                let (length, dimension) = line::sketch_length(&sketch, &curve)?;
+                (length, dimension, Some((sketch, curve)))
+            }
+            Some("edge") => {
+                let edges = run("model.edges", json!({"body": tall["body"]}))?;
+                let index = tall["index"].as_u64().unwrap_or(u64::MAX);
+                (line::edge_length(&edges, index)?, None, None)
+            }
+            _ => return Err("Height from line: pick a sketch line or an edge".into()),
+        };
+        params["height"] = json!((length / scale * 1e6).round() / 1e6);
+        match follow(dimension, sketch, design, run)? {
+            Some(name) => {
+                params["_line"]["height"] = json!(name);
+                said.push(format!("height follows {name}"));
+            }
+            None => said.push("height read from the line".to_string()),
+        }
+    }
+    let mut message = String::from("Placed along the line");
+    if !said.is_empty() {
+        message += &format!(", {}", said.join(", "));
+    }
+    message += ". Apply settings reads the line again after it changes";
+    Ok((line, front, message))
+}
+
+/// Whether a picked line's sketch (`document.inspect`'s `sketches`) or body (`body_names`) is
+/// still in the design.
+fn there(pick: &Value, design: &Value, bodies: &Value) -> Result<(), String> {
+    let found = match (pick["sketch"].as_u64(), pick["body"].as_str()) {
+        (Some(id), _) => (design["sketches"].as_array().into_iter().flatten())
+            .any(|s| s["id"].as_u64() == Some(id)),
+        (None, Some(body)) => {
+            (bodies["bodies"].as_array().into_iter().flatten()).any(|b| b["name"] == body)
+        }
+        (None, None) => true, // what it is, `along_line` says
     };
-    params["_line"] = json!({ "width": over });
-    Ok((
-        line,
-        front,
-        format!("Width follows {name}; the place does not follow a moved line"),
-    ))
+    check(found, "the picked line is no longer in the design")
+}
+
+/// A sketch line's driving dimension as the parameter to follow: named after the sketch and
+/// the line first when the app named it (`d1`). None without one.
+fn follow(
+    dimension: Option<String>,
+    sketch: Option<(Value, String)>,
+    design: &Value,
+    run: Run,
+) -> Result<Option<String>, String> {
+    let (Some(dimension), Some((sketch, curve))) = (dimension, sketch) else {
+        return Ok(None);
+    };
+    if !line::unnamed(&dimension) {
+        return Ok(Some(dimension));
+    }
+    let sketch_name = sketch["name"].as_str().unwrap_or("Line");
+    let name = line::dimension_name(sketch_name, &curve, design);
+    let rename = json!({"name": dimension, "new_name": name});
+    run("parameters.rename", rename)?;
+    Ok(Some(name))
+}
+
+/// Place Along a line's fields, which only a cabinet placed so keeps.
+const LINE_FIELDS: [&str; 6] = [
+    "line",
+    "height_line",
+    "start_at",
+    "offset",
+    "faces",
+    "width_from_line",
+];
+
+/// Whether a cabinet's params place it along a line it remembers.
+fn along(params: &Value) -> bool {
+    params["line"].as_array().is_some_and(|l| !l.is_empty())
+}
+
+/// Grounds a cabinet made on the origin and moves it along its line: turned to face the
+/// front, its translation expressions over its own width and depth (`Kit`'s `centre`), so it
+/// grows away from its Start at end. A grounded occurrence keeps following them only when it
+/// was grounded before the move (grounded after, it stays where it was).
+fn place_along(
+    occurrence: &Value,
+    summary: &mut Value,
+    params: &Value,
+    found: &(line::Line, [f64; 2], String),
+    run: Run,
+) -> Result<(), String> {
+    let (line, front, message) = found;
+    let start = params["start_at"].as_str().unwrap_or("left");
+    let offset = num(params, "offset", 0.0)? * unit_mm(params);
+    let centre = &summary["centre"];
+    let size = [0, 1].map(|i| centre[i].as_str().unwrap_or("0 mm").to_string());
+    let (at, degrees) = line::translate(line, *front, start, offset, [&size[0], &size[1]]);
+    run(
+        "occurrence.ground",
+        json!({"occurrence": occurrence, "grounded": true}),
+    )?;
+    if degrees != 0 {
+        run(
+            "occurrence.move",
+            json!({"occurrence": occurrence, "axis": [0, 0, 1],
+                "angle": format!("{degrees} deg"), "move_grounded": true}),
+        )?;
+    }
+    run(
+        "occurrence.move",
+        json!({"occurrence": occurrence, "space": "world", "translate": at, "move_grounded": true}),
+    )?;
+    summary["placed"] = json!("along the line");
+    summary["line"] = json!(message);
+    Ok(())
 }
 
 fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
@@ -875,6 +1014,14 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             params["name"] = json!(kit::free_name(name, &design));
             // Against the selected cabinet: Auto settled above.
             let beside_one = !matches!(place, "origin" | "line");
+            // Not along a line: no line fields, or Apply settings would place it along one.
+            if place != "line" {
+                if let Some(all) = params.as_object_mut() {
+                    for key in LINE_FIELDS {
+                        all.remove(key);
+                    }
+                }
+            }
             // Along a line: read it now, as Width from line sizes the cabinet.
             let along = match place {
                 "line" => Some(along_line(&mut params, &design, run)?),
@@ -897,22 +1044,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             }
             let (mut summary, made) = make(entry, &params, &design, run)?;
             let mut held = false;
-            if let Some((line, front, follows)) = along {
-                // Its back on the line, facing away from the wall.
-                let size = |key: &str| summary["size"][key].as_f64().unwrap_or(0.0);
-                let start = params["start_at"].as_str().unwrap_or("left");
-                let offset = num(&params, "offset", 0.0)? * unit_mm(&params);
-                let (at, degrees) =
-                    line::place(&line, front, start, offset, size("width"), size("depth"));
-                let mut to =
-                    json!({"occurrence": made["occurrence"], "space": "world", "translate": at});
-                if degrees != 0 {
-                    to["axis"] = json!([0, 0, 1]);
-                    to["angle"] = json!(format!("{degrees} deg"));
-                }
-                run("occurrence.move", to)?;
-                summary["placed"] = json!("along the line");
-                summary["line"] = json!(follows);
+            if let Some(found) = &along {
+                place_along(&made["occurrence"], &mut summary, &params, found, run)?;
+                held = true; // grounded before the move, so it follows its sizes
             }
             if let Some(other) = beside {
                 // Against that cabinet's side, or on top of it, turned the way it is turned.
@@ -992,6 +1126,14 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             if changed.is_empty() {
                 let message = format!("{name}: nothing changed");
                 return Ok(json!({"name": name, "edited": false, "message": message}));
+            }
+            // A width or height typed in Edit is the cabinet's own from now on, not the line's.
+            let mut params = params;
+            if changed.iter().any(|c| c == "width") {
+                params["width_from_line"] = json!(false);
+            }
+            if changed.iter().any(|c| c == "height") {
+                params["height_line"] = json!([]);
             }
             let mut summary = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
             summary["edited"] = json!(true);

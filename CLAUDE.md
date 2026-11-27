@@ -721,9 +721,24 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   front turned a quarter) side at `offset`, turned by the front (0, 90, 180, -90). Width from line
   sets `width` (and `sizing: outside`) and, over a driving dimension, `_line: {width: "<dim> -
   <offset>"}`, which `Kit::parameter_as` uses as the expression; an app-named `d<n>` is renamed
-  `<Sketch>_<curve>` first (`parameters.rename`). The place itself is not followed, and an edge,
-  face or undimensioned line is read once (the summary's `line` says which). `edit::remember`
-  leaves the line fields out. Grounded as at the origin. Field order: Line right under Place.
+  `<Sketch>_<curve>` first (`parameters.rename`, `follow`). Step 2: `height_line` (a second pick,
+  `sketch_curve` or `edge`, any direction: `line::sketch_length`, `edge_length`) sets `height` and
+  `_line.height` the same way. `place_along` grounds the cabinet first, then turns it and moves it
+  by `line::translate`: expressions over `Kit`'s `centre` (the summary's, `<P>_width` and
+  `<P>_depth`, a corner's `<P>_return`), so the Start at side and the back stay on the line when
+  the cabinet changes size (a grounded occurrence follows its translation's expressions only when
+  grounded before the move: grounded after, it stays put). `edit::remember` keeps the line fields
+  (not `_line`), and `rebuild` (Edit and Apply settings) reads the line again when they are there
+  (`along`): the width and height (a value of a numeric parameter changed, a dimension's
+  expression left), then `place_along` instead of the old matrix; a line that cannot be read
+  leaves it where it stood, said in the summary's `line` (Apply settings' reply gathers them as
+  `lines`). A command that fails ends the whole run, so `there` checks first that each pick's
+  sketch (`document.inspect`'s `sketches`) or body (`body_names`) is still in the design. A
+  cabinet placed otherwise drops the line fields (`LINE_FIELDS`), so it never moves onto one. Apply settings builds every cabinet
+  along a line again (`changed: ["line"]`), as only the build reads it. A width or height typed in
+  Edit turns that size's line off (`width_from_line: false`, `height_line: []`). Edges and faces
+  are found again by index (ponytail: a cut into the wall can renumber them). Field order: Line
+  right under Place, Height from line after Width from line.
 - Place's Auto, the dialog's default, goes by the name of the selected board
   (`select::side`): `Side L`, `Side R` (or a panel on it) or `Top`, and the origin for anything else. From 0.46 a
   script must pass `place` (the entry has conditions, see Tools for agents).
