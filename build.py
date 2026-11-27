@@ -66,6 +66,7 @@ MOVED = {
                  "plinth_setback": ("plinth_setback", 50), "labels": ("labels", "no"),
                  "cleat_height": ("cleat_height", 90), "cleat_thickness": ("cleat_thickness", 18),
                  "drawer_thickness": ("drawer_thickness", 12), "drawer_bottom": ("drawer_bottom", 6),
+                 "drawer_side_height": ("drawer_side_height", 0), "drawer_back_height": ("drawer_back_height", 0),
                  "front_style": ("front_style", "flat"), "groove_shape": ("groove_shape", "square"),
                  "groove_spacing": ("groove_spacing", 50), "groove_depth": ("groove_depth", 3),
                  "frame_width": ("frame_width", 60), "panel_thickness": ("panel_thickness", 6)},

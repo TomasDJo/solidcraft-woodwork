@@ -9,6 +9,8 @@ use serde_json::Value;
 // ponytail: the shortest slide for the default `HW_` sizes; a slide's holes changed in
 // Parameters are not checked.
 const MIN_SLIDE: f64 = 250.0;
+/// The lowest drawer box side or back, in mm: a slide's members are 45 mm high (#221).
+const MIN_BOX_SIDE: f64 = 50.0;
 
 /// The checked input. Lengths are in mm.
 #[derive(Clone, Copy)]
@@ -66,6 +68,8 @@ pub struct Input<'a> {
     pub mixed: bool,
     /// The drawer boxes' boards (sides, front and back) and their bottoms.
     pub box_t: [f64; 2],
+    /// The box's side and back heights in mm, 0 for the full height and the sides' (#221).
+    pub box_h: [f64; 2],
     /// Wooden runners (`slide_type` wood): the bottom runs in a groove in each side, this deep,
     /// with this much play round it. `None` on metal slides.
     pub runner: Option<[f64; 2]>,
@@ -140,6 +144,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => num(p, "dividers", 0.0)?,
     };
     let box_t = [size("drawer_thickness", 12.0)?, size("drawer_bottom", 6.0)?];
+    // The box's sides and back, lower than the box when asked (#221): 0 is the full height,
+    // and the back's 0 the sides'.
+    let box_h = [
+        size("drawer_side_height", 0.0)?,
+        size("drawer_back_height", 0.0)?,
+    ];
     let box_fingers = match p.get("drawer_joints").and_then(Value::as_str) {
         None | Some("none") => false,
         Some("finger") => true,
@@ -306,6 +316,19 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawer_h == 0.0 || drawer_h >= lowest,
         "the drawer front height is too low for a drawer box",
     )?;
+    // The sides and back: 0, or at least a slide's members (45 mm) and the bottom with an
+    // undermount slide's recess. Taller is not refused: each drawer's boards are capped by its
+    // box and its sides (`drawers`), as a taller value in Parameters is, so Edit of such a
+    // cabinet still builds.
+    for (value, what) in box_h.iter().zip(["side", "back"]) {
+        check(
+            drawers == 0.0 || *value == 0.0 || *value >= MIN_BOX_SIDE,
+            &format!(
+                "the drawer {what} height must be 0 or at least {}",
+                kit.length(MIN_BOX_SIDE)
+            ),
+        )?;
+    }
     check(
         drawers == 0.0 || inner_w - 2.0 * SLIDE >= 100.0,
         "too narrow for drawers",
@@ -480,6 +503,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawer_h,
         mixed,
         box_t,
+        box_h,
         runner: wood.then_some(runner),
         strip: strips.then_some(strip),
         under,

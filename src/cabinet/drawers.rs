@@ -46,6 +46,7 @@ pub fn build(cabinet: &Cabinet) {
         drawer_z,
         kind,
         box_t,
+        box_h: heights,
         runner,
         strip,
         under,
@@ -113,6 +114,17 @@ pub fn build(cabinet: &Cabinet) {
         ],
         false => return,
     };
+    // Lower sides and back (#221): parameters only when asked, each capped by what it stands
+    // beside, so a taller value in Parameters gives the full height instead of a box that
+    // pokes out.
+    let [side_p, back_p] = [
+        ("drawer_side_height", heights[0], "drawer box side height"),
+        ("drawer_back_height", heights[1], "drawer box back height"),
+    ]
+    .map(|(key, mm_value, comment)| {
+        let used = mm_value > 0.0 && !(fingers && key == "drawer_back_height");
+        used.then(|| kit.parameter(key, mm_value, comment))
+    });
     // Undermount slides (Blum's rule): the box 42 mm narrower inside than the opening, and as
     // long as the slide.
     let (box_w, gap_x) = match (&wood, under) {
@@ -264,6 +276,16 @@ pub fn build(cabinet: &Cabinet) {
             Some(_) => (format!("{z} + {bb}"), format!("({box_h} - {bb})")),
             None => (z.clone(), box_h),
         };
+        // the sides, the back as high as them unless asked; the front stays full height
+        let side_h = match &side_p {
+            Some(p) => format!("min({box_h}, {p})"),
+            None => box_h.clone(),
+        };
+        // finger-jointed, the back's corners pair with the sides', so it is as high as they are
+        let back_h = match &back_p {
+            Some(p) if !fingers => format!("min({side_h}, {p})"),
+            _ => side_h.clone(),
+        };
         let right = format!("{x} + {box_w} - {bt}");
         let inner_x = format!("{x} + {bt}");
         let inner_w = format!("{box_w} - 2*{bt}");
@@ -282,12 +304,12 @@ pub fn build(cabinet: &Cabinet) {
         panel(
             &format!("{drawer} Left"),
             [&x, &side_y, &bz],
-            [&bt, &side_d, &box_h],
+            [&bt, &side_d, &side_h],
         );
         panel(
             &format!("{drawer} Right"),
             [&right, &side_y, &bz],
-            [&bt, &side_d, &box_h],
+            [&bt, &side_d, &side_h],
         );
         // With finger joints (#131) the box's front and back run through the sides to the
         // outside, as wide as the box.
@@ -305,14 +327,16 @@ pub fn build(cabinet: &Cabinet) {
         panel(
             &format!("{drawer} Box back"),
             [&end_x, &back_y, &bz],
-            [&end_w, &bt, &box_h],
+            [&end_w, &bt, &back_h],
         );
         if fingers {
             // The four upright corners: an odd count of fingers as wide as the boards are
             // thick, the sides keeping the outer ones; one box cut per board at each corner and
             // two patterns up the box, shared by the four (as `joint::finger` does the shell).
-            let half = format!("floor(({box_h}) / (2*{bt}))");
-            let w = format!("(({box_h}) / (2*{half} + 1))");
+            // over the sides' height, which the back's is too here, the front above them left
+            // whole
+            let half = format!("floor(({side_h}) / (2*{bt}))");
+            let w = format!("(({side_h}) / (2*{half} + 1))");
             let (mut sides, mut ends) = (Vec::new(), Vec::new());
             let front_t = if integrated { et.clone() } else { bt.clone() };
             for (side, sx) in [("Left", x.clone()), ("Right", right.clone())] {
@@ -462,7 +486,7 @@ pub fn build(cabinet: &Cabinet) {
         // before `HW_setback` from the slide's back end; and into the carcass side beside it,
         // as far behind the front of the opening. The box's are named with the slide's
         // length, which the cut list's hardware reads.
-        let slide_z = format!("{z} + {box_h}/2");
+        let slide_z = format!("{z} + {side_h}/2");
         let right_x = format!("{right} + {bt}");
         let halves = [
             ("Left", &x, 1, "Side L", et.clone(), -1),

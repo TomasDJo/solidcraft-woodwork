@@ -305,6 +305,24 @@ def test_drawer_box_and_bottom_thickness(approval):
     assert size("Bottom", 0) == 600 - 2 * 18 - 2 * 12.7 - 2 * 15, box["Cabinet Drawer 1 Bottom"]
 
 
+def test_drawer_side_and_back_height(approval):
+    # Woodwork settings' drawer side and back heights (#221): sides 100 mm, the back 80, both on
+    # the box's bottom edge; the box front stays full height. Raised past the box in Parameters,
+    # the sides stop at the box's height, and an unrelated Edit of that cabinet still builds.
+    results = cli([plugin(approval, "cabinet", {"drawers": 2, "drawer_side_height": 100, "drawer_back_height": 80}), MEASURE,
+                   {"command": "parameters.change", "params": {"name": "Cabinet_drawer_side_height", "expression": "900 mm"}}, MEASURE,
+                   select("Cabinet Side L"), plugin(approval, "edit", {"drawers": 2, "handles": "knob"}), MEASURE])
+    box = boxes(results[1])
+    high = lambda name, b=box: round(b[f"Cabinet Drawer 1 {name}"][5] - b[f"Cabinet Drawer 1 {name}"][2], 3)
+    assert (high("Left"), high("Right"), high("Box back")) == (100, 100, 80), box
+    assert box["Cabinet Drawer 1 Left"][2] == box["Cabinet Drawer 1 Box front"][2]
+    assert high("Box front") > 100, box["Cabinet Drawer 1 Box front"]
+    raised = boxes(results[3])
+    assert high("Left", raised) == high("Box front", raised), raised["Cabinet Drawer 1 Left"]
+    edited = boxes(results[6])
+    assert high("Left", edited) == high("Box front", edited), edited["Cabinet Drawer 1 Left"]
+
+
 def test_wooden_runners(approval):
     # Slide type Wood: the bottom, 6 mm, is wider than the box and runs in a 6 mm deep groove in
     # each side with 1 mm of play; the drawer comes out two thirds of its box (532 mm deep).
