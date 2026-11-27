@@ -210,8 +210,8 @@ fn apply(
     let mut rebased: Vec<String> = Vec::new();
     for name in names {
         let about = run("component.metadata", json!({"component": name}))?;
-        if let Some(base) = live_base(&about, &tree).filter(|b| !rebased.iter().any(|r| r == b)) {
-            rebased.push(base.to_string());
+        if let Some(base) = reached_base(&about, &tree, run).filter(|b| !rebased.contains(b)) {
+            rebased.push(base);
         }
         let ours = &about["metadata"][edit::KEY];
         let Some(entry) = ours["entry"]
@@ -528,6 +528,28 @@ fn live_base<'a>(about: &'a Value, tree: &Value) -> Option<&'a str> {
     let base = was["to"].as_str().filter(|_| was["place"] == "base")?;
     let mut all = tree["components"].as_array().into_iter().flatten();
     all.any(|c| c["name"] == base).then_some(base)
+}
+
+/// The live mobile base a cabinet stands on, held to it directly or through the cabinets it is
+/// placed against (a `right` link to a neighbour that is on the base): its own note first
+/// (`about`), then each neighbour's, stopping on a loop. For making the base again (#198), not
+/// for holding a cabinet, which `live_base` does.
+fn reached_base(about: &Value, tree: &Value, run: Run) -> Option<String> {
+    let mut about = about.clone();
+    let mut seen: Vec<String> = Vec::new();
+    loop {
+        if let Some(base) = live_base(&about, tree) {
+            return Some(base.to_string());
+        }
+        let to = about["metadata"][edit::KEY]["link"]["to"]
+            .as_str()?
+            .to_string();
+        if seen.contains(&to) {
+            return None;
+        }
+        seen.push(to.clone());
+        about = run("component.metadata", json!({"component": to})).ok()?;
+    }
 }
 
 /// Who places a cabinet on the live base `base` in `rebuild`: the base (held to it again), or,
@@ -1254,7 +1276,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 params["height_line"] = json!([]);
             }
             let tree = run("component.list", json!({}))?;
-            let base = live_base(&about, &tree).map(String::from);
+            let base = reached_base(&about, &tree, run);
             let mut summary = rebuild(
                 &name, &about, &entry, &params, &design, &measure, false, run,
             )?;

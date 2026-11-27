@@ -979,6 +979,31 @@ fn only_a_base_still_there_places_a_cabinet_again() {
 }
 
 #[test]
+fn a_cabinet_beside_one_on_a_base_reaches_that_base() {
+    let noted = |to: &str, place: &str| json!({"metadata": {edit::KEY: {"link": {"to": to, "place": place}}}});
+    let tree = on_a_base();
+    // B is beside A, A on Bench; C and D are placed against each other (a loop)
+    let mut run = |_: &str, args: Value| {
+        Ok(match args["component"].as_str() {
+            Some("A") => noted("Bench", "base"),
+            Some("C") => noted("D", "right"),
+            Some("D") => noted("C", "right"),
+            _ => json!({}),
+        })
+    };
+    assert_eq!(
+        reached_base(&noted("A", "right"), &tree, &mut run),
+        Some("Bench".into())
+    );
+    assert_eq!(
+        reached_base(&noted("Bench", "base"), &tree, &mut run),
+        Some("Bench".into())
+    );
+    assert_eq!(reached_base(&noted("C", "right"), &tree, &mut run), None);
+    assert_eq!(reached_base(&json!({}), &tree, &mut run), None);
+}
+
+#[test]
 fn a_base_made_again_grounds_the_cabinets_it_held_first() {
     let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
