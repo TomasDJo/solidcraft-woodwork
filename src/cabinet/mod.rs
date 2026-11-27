@@ -157,8 +157,14 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         "none" => mm(0.0),
         _ => parameter("back_thickness", input.bt, "back panel thickness"),
     };
+    // A plinth taken away sets its parameter to 0: Edit and Apply settings read the sizes from
+    // the parameters (`edit::merge`), so a stale height would bring the plinth back.
     let epl = match input.plinth > 0.0 {
         true => parameter("plinth", input.plinth, "plinth height"),
+        false if kit.has("plinth") => {
+            parameter("plinth", 0.0, "plinth height");
+            mm(0.0)
+        }
         false => mm(0.0),
     };
     let emount = fittings::mount_sizes(&kit, input.wall_mount, input.mount_t, input.mount_h, &et);

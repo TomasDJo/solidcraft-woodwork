@@ -789,7 +789,8 @@ the design as it was. A job has no Preview.
   - **Per cabinet with a default in Settings:** plinth Yes or No, plinth type, handles, handle
     position, fronts, back and labels. A cabinet that still has the default it was made with
     follows the new setting (all cabinets made on board plinths get legs); one with a value of
-    its own keeps it (a wall cabinet made without a plinth keeps none). A value set by hand that
+    its own keeps it (a wall cabinet made without a plinth keeps none). A choice made in Edit
+    is the cabinet's own too: a cabinet edited to no plinth keeps none. A value set by hand that
     is the same as the default then counts as the default, and follows. A cabinet made before
     Woodwork 0.5.0 is taken as made with the built-in defaults.
   - **Per cabinet only, kept:** sizes, shape and kind, doors, drawers and where they are,
