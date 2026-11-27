@@ -267,3 +267,14 @@ def test_a_section_dialog_keeps_the_other_sections(approval):
     stored = results[1]["result"]["settings"]
     assert stored == {"joints": "confirmat", "plinth": 150, "camera": "leave"}, stored
     assert results[2]["result"]["settings"]["joints"] == "cam", results[2]
+
+
+def test_drawer_settings_in_inches(approval):
+    # Drawer settings with General in inches (#238): the hook starts Tab width at 120 mm in
+    # inches (4.72), which the dialog's bounds must take, and it is kept as 120 mm.
+    results = cli([plugin(approval, "settings", {"units": "in"}),
+                   entry_step(approval, "settings-drawers", {"drawer_bottom": 0.25}),
+                   plugin(approval, "settings", {"units": "mm", "drawer_bottom": 6})])
+    stored = results[1].get("result", results[1])["settings"]
+    assert round(stored["drawer_bottom"], 2) == 6.35, stored
+    assert round(stored.get("tab_width", 120), 3) == 120, stored

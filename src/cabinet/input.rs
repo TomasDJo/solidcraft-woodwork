@@ -75,6 +75,8 @@ pub struct Input<'a> {
     pub box_t: [f64; 2],
     /// The box's side and back heights in mm, 0 for the full height and the sides' (#221).
     pub box_h: [f64; 2],
+    /// The drawer bottom's tab with Handle holes Bottom tab (#181), in mm.
+    pub tab_w: f64,
     /// Wooden runners (`slide_type` wood): the bottom runs in a groove in each side, this deep,
     /// with this much play round it. `None` on metal slides.
     pub runner: Option<[f64; 2]>,
@@ -155,6 +157,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         size("drawer_side_height", 0.0)?,
         size("drawer_back_height", 0.0)?,
     ];
+    let tab_w = size("tab_width", 120.0)?;
+    check(
+        p.get("handles").and_then(Value::as_str) != Some("tab") || (40.0..=600.0).contains(&tab_w),
+        "the tab width must be 40 to 600 mm",
+    )?;
     let box_fingers = match p.get("drawer_joints").and_then(Value::as_str) {
         None | Some("none") => false,
         Some("finger") => true,
@@ -515,6 +522,12 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !(integrated && drawers > 0.0 && handles == "pull") || box_w >= 150.0,
         "integrated drawer fronts are too narrow for pulls",
     )?;
+    // a bottom tab's two rounded corners must fit the box inside
+    let inside = box_w - 2.0 * box_t[0];
+    check(
+        !(drawers > 0.0 && handles == "tab") || inside > 2.0 * crate::fittings::TAB_R,
+        &format!("the drawer box is {inside:.0} mm inside, too narrow for a bottom tab"),
+    )?;
     Ok(Input {
         kind,
         w,
@@ -554,6 +567,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         mixed,
         box_t,
         box_h,
+        tab_w,
         runner: wood.then_some(runner),
         strip: strips.then_some(strip),
         under,
