@@ -173,7 +173,7 @@ def test_cabinets_ride_on_the_base_through_edit_and_a_new_frame(approval):
         pick("A Side L"), plugin(approval, "base", {"name": "Bench"}),
         {"command": "joint.list", "params": {}},
         select("A Side L"), plugin(approval, "edit", {"width": 700}), MEASURE,
-        {"command": "parameters.change", "params": {"name": "Wall_line_l1", "expression": "1500 mm"}},
+        {"command": "parameters.change", "params": {"name": "d1", "expression": "1500 mm"}},
         plugin(approval, "rebuild", {}), MEASURE,
         pick(), plugin(approval, "base", {"name": "Bench", "frame_height": 100}), MEASURE,
         {"command": "joint.list", "params": {}}])
