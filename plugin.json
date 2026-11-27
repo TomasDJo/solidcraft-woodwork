@@ -101,7 +101,7 @@
         "slots": [{ "kind": "menu", "name": "Mobile base" }, { "kind": "ribbon", "name": "Mobile base" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/base.svg",
-          "required": ["selection", "caster_height", "frame_material", "timber_thickness", "timber_width", "frame_height", "thickness", "material", "name"],
+          "required": ["selection", "caster_height", "frame_material", "timber_thickness", "timber_width", "frame_height", "thickness", "material", "stiffener_spacing", "name"],
           "properties": {
             "selection": { "type": "array", "title": "Selected cabinets", "description": "A board of each cabinet to stand on the base; none: the cabinets the base of this name stands under." },
             "caster_height": { "type": "number", "title": "Caster height (mm)", "description": "From the floor to the frame's underside: the locking casters under it.", "default": 100, "minimum": 50, "maximum": 300 },
@@ -111,6 +111,7 @@
             "frame_height": { "type": "number", "title": "Frame height (mm)", "description": "How tall the frame's boards stand on edge.", "default": 70, "minimum": 30, "maximum": 300, "x-solidcraft-visible-when": {"field": "frame_material", "eq": "board"} },
             "thickness": { "type": "number", "title": "Board thickness (mm)", "description": "The frame's boards; 18 mm is usual.", "default": 18, "minimum": 3, "maximum": 50, "x-solidcraft-visible-when": {"field": "frame_material", "eq": "board"} },
             "material": { "type": "string", "title": "Material", "description": "The frame's boards.", "default": "Birch plywood", "oneOf": [{"const": "Birch plywood"}, {"const": "MDF"}, {"const": "White melamine"}, {"const": "Oak"}], "x-solidcraft-visible-when": {"field": "frame_material", "eq": "board"} },
+            "stiffener_spacing": { "type": "number", "title": "Stiffener spacing (mm)", "description": "The most between two boards across the frame; stiffeners are added evenly to keep within it. 600 is usual.", "default": 600, "minimum": 300, "maximum": 2000 },
             "name": { "type": "string", "title": "Name", "description": "Run again with this name to make it again, after a cabinet changed.", "default": "Base", "minLength": 1, "maxLength": 40 }
           }
         }

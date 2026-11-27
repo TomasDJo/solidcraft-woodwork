@@ -174,6 +174,44 @@ fn casters_go_in_the_corners_and_evenly_between() {
 }
 
 #[test]
+fn stiffeners_keep_the_boards_across_within_the_spacing() {
+    // #229: ends at 0 and 2400, a cross board at 1000: 1000 and 1400 apart, so one stiffener in
+    // the first stretch and two in the second
+    assert_eq!(
+        stiffeners(0.0, 2400.0, &[1000.0], 600.0),
+        [500.0, 1000.0 + 1400.0 / 3.0, 1000.0 + 2800.0 / 3.0]
+    );
+    assert_eq!(stiffeners(0.0, 600.0, &[], 600.0), [] as [f64; 0]);
+    // in a frame: a 2400 mm cabinet gets its stiffeners, nothing overlaps, and the spacing is checked
+    let plans = [[0.0, 0.0, 2400.0, 560.0]];
+    let all = boxes(&build(&json!({"name": "S"}), &plans).unwrap().0);
+    assert_eq!(
+        all.iter()
+            .filter(|b| b.0.starts_with("S Frame stiffener"))
+            .count(),
+        3
+    );
+    assert_eq!(overlapping(&all), vec![] as Vec<(String, String)>);
+    let wide = build(&json!({"name": "S", "stiffener_spacing": 1000}), &plans).unwrap();
+    assert_eq!(
+        boxes(&wide.0)
+            .iter()
+            .filter(|b| b.0.contains("stiffener"))
+            .count(),
+        2
+    );
+    assert!(build(&json!({"stiffener_spacing": 100}), &plans).is_err());
+    // 150 mm timber at 300 mm spacing on a 600 frame: the stiffener would stand on the corner
+    // blocks, so it is refused with a word on the spacing
+    let small = [[0.0, 0.0, 600.0, 600.0]];
+    let thick =
+        json!({"frame_material": "timber", "timber_thickness": 150, "stiffener_spacing": 300});
+    assert!(build(&thick, &small)
+        .unwrap_err()
+        .contains("stiffener spacing"));
+}
+
+#[test]
 fn what_a_base_refuses() {
     let tiny = [[0.0, 0.0, 200.0, 200.0]];
     assert!(build(&json!({}), &tiny).unwrap_err().contains("too small"));
@@ -225,6 +263,7 @@ fn the_dialogs_bounds_are_the_builders() {
         ("caster_height", 50.0, 300.0),
         ("frame_height", 30.0, 300.0),
         ("thickness", 3.0, 50.0),
+        ("stiffener_spacing", 300.0, 2000.0),
     ] {
         let field = &schema["properties"][key];
         assert_eq!(

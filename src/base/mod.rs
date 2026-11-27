@@ -183,11 +183,29 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
             short - 2.0 * t,
         );
     }
+    // Stiffeners across the frame (#229), so no two boards across are more than Stiffener spacing
+    // apart; the boards along it and the caster blocks keep clear of them too.
+    let spacing = p["stiffener_spacing"].as_f64().unwrap_or(600.0);
+    check(
+        (300.0..=2000.0).contains(&spacing),
+        "stiffener spacing must be 300 to 2000 mm",
+    )?;
+    let extra = stiffeners(lo + t / 2.0, hi - t / 2.0, &joints, spacing);
+    check(
+        (extra.iter()).all(|s| s - t / 2.0 >= lo + t + BLOCK && s + t / 2.0 <= hi - t - BLOCK),
+        "stiffener spacing: a stiffener would stand on a corner's caster block; give a larger spacing",
+    )?;
+    for (k, s) in extra.iter().enumerate() {
+        let part = format!("Frame stiffener {}", k + 1);
+        board(&part, s - t / 2.0, slo + t, t, short - 2.0 * t);
+    }
+    let mut across = [&joints[..], &extra[..]].concat();
+    across.sort_by(f64::total_cmp);
     for j in inside(1 - long, slo, shi) {
         let edged = plans
             .iter()
             .filter(|p| (p[1 - long] - j).abs() < 1.0 || (p[3 - long] - j).abs() < 1.0);
-        let stops: Vec<f64> = joints.iter().map(|c| c - t / 2.0).collect();
+        let stops: Vec<f64> = across.iter().map(|c| c - t / 2.0).collect();
         for (a, b) in pieces(
             edged.map(|p| (p[long], p[long + 2])),
             lo + t,
@@ -202,7 +220,7 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
     // Blocks in the corners, and on a long frame pairs spaced evenly between them (#228), each
     // with a caster under its middle.
     let mut n = 0;
-    for a in casters(lo + t, hi - t - BLOCK, &joints, t)? {
+    for a in casters(lo + t, hi - t - BLOCK, &across, t)? {
         for b in [slo + t, shi - t - BLOCK] {
             n += 1;
             let part = format!("Block {n}");
@@ -216,6 +234,19 @@ pub fn build(p: &Value, plans: &[[f64; 4]]) -> Result<(Commands, Value), String>
     summary["lift"] = json!(caster + h);
     summary["casters"] = json!(n);
     Ok((commands, summary))
+}
+
+/// The middles of the stiffeners between the frame's end boards' middles `first` and `last`:
+/// each stretch between two boards across (the ends and the cross boards at `joints`) longer
+/// than `spacing` gets as many as keep every gap within it, evenly spaced.
+pub fn stiffeners(first: f64, last: f64, joints: &[f64], spacing: f64) -> Vec<f64> {
+    let ends = [&[first][..], joints, &[last][..]].concat();
+    (ends.windows(2))
+        .flat_map(|w| {
+            let gaps = ((w[1] - w[0]) / spacing).ceil().max(1.0) as usize;
+            (1..gaps).map(move |k| w[0] + (w[1] - w[0]) * k as f64 / gaps as f64)
+        })
+        .collect()
 }
 
 /// Where the caster blocks start along the frame: the two corners `first` and `last`, and
