@@ -322,8 +322,8 @@ fn rebuild(
     // Apply settings (`follow_line`): a cabinet on a base along a line goes back onto its line,
     // on the floor, and Apply settings makes its base again under it (`rebase`), so the base
     // follows the line and the cabinet rides on it.
-    let rebase = base.filter(|_| follow_line && found.as_ref().is_some_and(|f| f.is_ok()));
-    let base = base.filter(|_| rebase.is_none());
+    let read = found.as_ref().is_some_and(|f| f.is_ok());
+    let (base, rebase) = on_base_or_line(base, follow_line, read);
     let found = found.filter(|_| base.is_none());
     let params = &params;
     run("component.activate", json!({"component": parent}))?;
@@ -521,6 +521,20 @@ fn live_base<'a>(about: &'a Value, tree: &Value) -> Option<&'a str> {
     let base = was["to"].as_str().filter(|_| was["place"] == "base")?;
     let mut all = tree["components"].as_array().into_iter().flatten();
     all.any(|c| c["name"] == base).then_some(base)
+}
+
+/// Who places a cabinet on the live base `base` in `rebuild`: the base (held to it again), or,
+/// in Apply settings (`follow_line`) with its line read, the line, and then the base is made
+/// again under it (the second). Neither without a base.
+fn on_base_or_line(
+    base: Option<&str>,
+    follow_line: bool,
+    read: bool,
+) -> (Option<&str>, Option<&str>) {
+    match follow_line && read {
+        true => (None, base),
+        false => (base, None),
+    }
 }
 
 /// Before the base `base` is made again: the cabinets it holds lose their links with it, so

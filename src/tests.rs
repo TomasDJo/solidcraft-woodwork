@@ -1089,3 +1089,38 @@ fn mobile_base_run_again_grounds_what_it_held_before_deleting_itself() {
     assert!(grounded.is_some() && deleted.is_some(), "{called:?}");
     assert!(grounded < deleted, "grounded after the base was deleted");
 }
+
+#[test]
+fn apply_settings_puts_a_cabinet_on_a_base_back_on_its_line_and_the_base_under_it() {
+    // Edit: the base holds it; Apply settings with the line read: the line, then a new base
+    assert_eq!(
+        on_base_or_line(Some("Bench"), false, true),
+        (Some("Bench"), None)
+    );
+    assert_eq!(
+        on_base_or_line(Some("Bench"), true, true),
+        (None, Some("Bench"))
+    );
+    // a line that cannot be read: the base holds it, also in Apply settings
+    assert_eq!(
+        on_base_or_line(Some("Bench"), true, false),
+        (Some("Bench"), None)
+    );
+    assert_eq!(on_base_or_line(None, true, true), (None, None));
+}
+
+#[test]
+fn apply_settings_puts_a_cabinet_on_a_base_back_on_its_line_then_makes_the_base_again() {
+    let mut called = Vec::new();
+    let _ = execute(
+        "rebuild",
+        &json!({"selection": []}),
+        &mut on_bench(true, &mut called),
+    );
+    let onto_line =
+        (called.iter()).position(|(c, a)| c == "occurrence.move" && a.get("translate").is_some());
+    let base_again =
+        (called.iter()).position(|(c, a)| c == "component.delete" && a["component"] == "Bench");
+    assert!(onto_line.is_some() && base_again.is_some(), "{called:?}");
+    assert!(onto_line < base_again);
+}
