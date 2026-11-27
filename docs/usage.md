@@ -621,7 +621,7 @@ It also holds what is the same for the whole design and is no field of the Cabin
 dialog: the back and its thickness, fronts (overlay or inset), handle position, the
 plinth's height, type and set-back (a cabinet only says Yes or No), labels, a French cleat's
 height and thickness; for the cut list the edge banding, the sizes it gives, the sheet size,
-saw kerf and edge trim; for a new worktop its material and thickness (the overhangs stay in
+saw kerf and edge trim, and the **Prices** for its [cost estimate](#cost-estimate); for a new worktop its material and thickness (the overhangs stay in
 the Worktop dialog: they differ from run to run); and the joinery (**Joinery**, **Joinery inside**, and the sizes of the method
 chosen, shown only for it: **Joint spacing**, **Joint edge distance**, **Dowel diameter**,
 **Dowel length**, **Dado depth**, **Biscuit size**, **Cam size**, **Cam bolt length**, **Pocket
@@ -746,9 +746,10 @@ frame under all of them and stands them on it:
 - The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`.
 
 Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
-again. Quarter turns only, and in a component that stands on the origin. Not in it yet (#101):
-bolting the cabinets to each other and to the frame, and a worktop height that sets a tool
-cabinet's height.
+again. Quarter turns only, and in a component that stands on the origin. Not in it yet
+([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)): bolting the cabinets to
+each other and to the frame, a worktop height that sets a tool cabinet's height, and following
+a cabinet that changes size.
 
 ## Worktop
 
