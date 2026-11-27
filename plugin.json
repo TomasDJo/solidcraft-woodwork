@@ -117,7 +117,7 @@
         "slots": [{ "kind": "menu", "name": "Worktop" }, { "kind": "ribbon", "name": "Worktop" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/worktop.svg",
-          "required": ["selection", "units", "joint", "front_overhang", "left_overhang", "right_overhang", "dog_holes", "zone_x", "zone_y", "zone_length", "zone_width", "cutout", "cutout_length", "cutout_width", "cutout_x", "cutout_y", "rebate_width", "rebate_depth", "tool", "tool_width", "tool_depth", "tool_height", "tool_x", "tool_y", "tool_clearance", "name"],
+          "required": ["selection", "units", "joint", "front_overhang", "left_overhang", "right_overhang", "dog_holes", "zone_x", "zone_y", "zone_length", "zone_width", "cutout", "cutout_length", "cutout_width", "cutout_x", "cutout_y", "rebate_width", "rebate_depth", "tool", "tool_width", "tool_depth", "tool_height", "tool_x", "tool_y", "tool_clearance", "bolt_x", "bolt_y", "name"],
           "properties": {
             "selection": { "type": "array", "title": "Selected cabinets", "description": "A board of each cabinet under it, or a worktop to redo." },
             "units": { "type": "string", "title": "Units", "description": "Inches fills the fields you have not changed with inch sizes.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
@@ -144,6 +144,8 @@
             "tool_x": { "type": "number", "title": "Tool from left", "description": "From the left end to the tool's middle.", "default": 600, "minimum": 0, "maximum": 10000, "x-solidcraft-visible-when": {"field": "tool", "eq": "benchtop"}, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 24}] },
             "tool_y": { "type": "number", "title": "Tool from front", "description": "From the front edge to the tool's middle.", "default": 300, "minimum": 0, "maximum": 10000, "x-solidcraft-visible-when": {"field": "tool", "eq": "benchtop"}, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 12}] },
             "tool_clearance": { "type": "number", "title": "Tool clearance", "description": "The gap round the tool.", "default": 3, "minimum": 0, "maximum": 50, "x-solidcraft-visible-when": {"field": "tool", "eq": "benchtop"}, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 0.125}] },
+            "bolt_x": {"type": "number", "title": "Bolt spacing across", "description": "Between the tool's feet, side to side: 8 mm bolt holes in its shelf. 0 for none.", "default": 0, "minimum": 0, "maximum": 2000, "x-solidcraft-visible-when": {"field": "tool", "eq": "benchtop"}},
+            "bolt_y": {"type": "number", "title": "Bolt spacing front to back", "description": "Between the tool's feet, front to back. 0 for none.", "default": 0, "minimum": 0, "maximum": 2000, "x-solidcraft-visible-when": {"field": "tool", "eq": "benchtop"}},
             "name": { "type": "string", "title": "Name", "description": "Running again with it replaces that worktop.", "default": "Worktop", "minLength": 1, "maxLength": 40 }
           }
         }

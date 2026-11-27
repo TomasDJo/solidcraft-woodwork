@@ -798,6 +798,16 @@ tall that the battens would be below the cabinet's bottom, is refused. The shelf
 boards in the cut list (laid out on the sheets, not bought to length), and are made again with
 the worktop.
 
+![Bolt holes for the tool's feet: four 8 mm holes through the tool's shelf, seen through the opening.](images/tool-bolts.png)
+
+*Bolt holes for the tool's feet: four 8 mm holes through the tool's shelf, seen through the opening.*
+
+**Bolt spacing across** and **Bolt spacing front to back** drill the shelf for the bolts that
+hold the tool down: four 8 mm holes (for M6 bolts, with some play) at the corners of that
+rectangle, centred on the tool's middle (**Tool from left** and **Tool from front**). Measure
+between the tool's feet, centre to centre. With one spacing 0 you get a pair; with both 0 (the
+default) no holes. A hole off the shelf is refused.
+
 ![A tool station: the opening in the worktop and the tool's shelf on its battens in the cabinet below](tool-station.png)
 
 The cabinet's top, or a sink base's rails, gets the same opening, so the tool drops through.
@@ -807,8 +817,8 @@ refused by name: make the cabinet without it (with 20 mm doors and a 40 mm front
 the opening's front edge at least 40 mm from the worktop's front). So is an opening that
 reaches over the cabinet's back. The opening in the cabinet's top is a cut the cabinet does not
 remember: an Edit makes its top whole again (run Worktop again afterwards), and a tool
-moved on a run again leaves the old opening in the top. The tool's bolt holes in the shelf and
-an outfeed table or side wing are not made.
+moved on a run again leaves the old opening in the top. An outfeed table or side wing is not
+made (#172).
 
 ## Cut list
 

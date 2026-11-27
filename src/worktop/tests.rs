@@ -503,10 +503,50 @@ fn a_benchtop_tool_on_a_shelf_in_the_cabinet_below() {
         .as_array()
         .unwrap()
         .contains(&json!("Worktop Tool shelf")));
+    // no bolt spacing: no bolt holes
+    assert_eq!(summary["tool"]["bolt_holes"], 0);
     // none asked for: no tool
     let (commands, summary) = build(&json!({}), &names(&["A"]), &m).unwrap();
     assert!(!commands.iter().any(|c| c.1["name"] == "Worktop Tool shelf"));
     assert!(summary.get("tool").is_none());
+}
+
+#[test]
+fn bolt_holes_for_the_tools_feet_go_through_its_shelf() {
+    // the tool's middle at (600, -280): four 8 mm holes 400 apart across, 300 front to back
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let p = tool(json!({"bolt_x": 400, "bolt_y": 300}));
+    let (commands, summary) = build(&p, &names(&["A"]), &m).unwrap();
+    let holes: Vec<&Value> = (commands.iter())
+        .filter(|c| {
+            c.1["name"]
+                .as_str()
+                .is_some_and(|n| n.starts_with("Worktop Tool bolt hole"))
+        })
+        .map(|c| &c.1)
+        .collect();
+    let bases: Vec<&Value> = holes.iter().map(|h| &h["base"]).collect();
+    assert_eq!(
+        bases,
+        [
+            &json!(["400 mm", "-430 mm", "440 mm"]),
+            &json!(["400 mm", "-130 mm", "440 mm"]),
+            &json!(["800 mm", "-430 mm", "440 mm"]),
+            &json!(["800 mm", "-130 mm", "440 mm"])
+        ]
+    );
+    assert!(holes
+        .iter()
+        .all(|h| h["targets"] == json!(["Worktop Tool shelf"])
+            && h["diameter"] == "8 mm"
+            && h["height"] == "18 mm"
+            && h["operation"] == "cut"));
+    assert_eq!(summary["tool"]["bolt_holes"], 4);
+    // one spacing 0: a pair; holes off the shelf (it is 964 wide) are refused
+    let pair = build(&tool(json!({"bolt_x": 400})), &names(&["A"]), &m).unwrap();
+    assert_eq!(pair.1["tool"]["bolt_holes"], 2);
+    let off = build(&tool(json!({"bolt_x": 1200})), &names(&["A"]), &m).unwrap_err();
+    assert!(off.contains("off its shelf"), "{off}");
 }
 
 #[test]
