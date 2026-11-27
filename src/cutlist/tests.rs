@@ -159,7 +159,7 @@ fn hardware_is_counted_from_names() {
     bodies.push(json!({"name": "A Bottom", "face_types": {"cylinder": 6}}));
     bodies.push(json!({"name": "A Top", "face_types": {"cylinder": 6}}));
     bodies.push(json!({"name": "A 2 Top", "face_types": {"cylinder": 3}}));
-    let list = hardware(&json!({"bodies": bodies}), &design);
+    let list = hardware(&json!({"bodies": bodies}), &BTreeMap::new(), &design);
     let expected = json!([
         {"item": "Hinge, cup", "qty": 2}, {"item": "Hinge, cup, half overlay", "qty": 2}, {"item": "Drawer slide, partial extension, 18 in, pair", "qty": 1},
         {"item": "Drawer slide, full extension, 450 mm, pair", "qty": 1}, {"item": "Drawer slide, pair", "qty": 1},
@@ -186,7 +186,7 @@ fn steel_wall_rails_are_bought_to_length() {
         .iter()
         .map(|n| json!({"name": n}))
         .collect();
-    let list = hardware(&json!({"bodies": bodies}), &design);
+    let list = hardware(&json!({"bodies": bodies}), &BTreeMap::new(), &design);
     let expected = json!([
         {"item": "Steel wall rail, 600 mm", "qty": 2},
         {"item": "Steel wall rail, 800 mm", "qty": 2},
@@ -633,7 +633,7 @@ fn a_sink_base_and_a_rail_under_drawers() {
     let expected = json!([
         {"item": "Confirmat screw, 7 x 50 mm", "qty": 10}, {"item": "Dowel, 8 x 35 mm", "qty": 12},
     ]);
-    assert_eq!(hardware(&bodies, &design), expected);
+    assert_eq!(hardware(&bodies, &BTreeMap::new(), &design), expected);
 }
 
 #[test]
@@ -718,7 +718,7 @@ fn panels_beside_a_cabinet() {
 fn a_split_corner_shelfs_dowels_are_their_own_line() {
     let design = json!({"timeline": [{"name": "C Shelf 1 return dowel 1"}]});
     assert_eq!(
-        hardware(&json!({"bodies": []}), &design),
+        hardware(&json!({"bodies": []}), &BTreeMap::new(), &design),
         json!([{"item": "Dowel, 8 x 60 mm", "qty": 1}])
     );
 }
@@ -789,4 +789,29 @@ fn shaker_boards_grain() {
     let panel = role("Drawer 1 Front panel", 0);
     assert!(matches!(panel, (Edges::None, Some(2))));
     assert!(matches!(role("Door rail top", 0).0, Edges::All));
+}
+
+#[test]
+fn glass_panes_are_bought_by_size() {
+    // two panes alike and one smaller, standing or lying; no board line for them
+    let pane =
+        |name: &str, max: [f64; 3]| json!({"name": name, "bbox": {"min": [0, 0, 0], "max": max}});
+    let bodies = json!({"bodies": [
+        pane("A Door L glass", [492.0, 4.0, 612.0]),
+        pane("A Door R glass", [492.0, 4.0, 612.0]),
+        pane("B Door return glass", [4.0, 300.4, 500.0]),
+    ]});
+    assert_eq!(
+        hardware(&bodies, &BTreeMap::new(), &json!({})),
+        json!([
+            {"item": "Glass, 4 mm, 500 x 300 mm", "qty": 1},
+            {"item": "Glass, 4 mm, 612 x 492 mm", "qty": 2},
+        ])
+    ); // a pane standing open: its own size, not its world box
+    let open = json!({"bodies": [pane("A Door glass", [478.0, 350.7, 612.0])]});
+    let local = BTreeMap::from([("A Door glass".to_string(), [492.0, 4.0, 612.0])]);
+    assert_eq!(
+        hardware(&open, &local, &json!({})),
+        json!([{"item": "Glass, 4 mm, 612 x 492 mm", "qty": 1}])
+    );
 }

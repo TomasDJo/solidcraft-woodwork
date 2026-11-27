@@ -16,6 +16,11 @@ const BOARDS: [(&str, f64, (&str, &str)); 4] = [
     ("Oak", 0.75, ("appearance", "Wood - Oak")),
 ];
 
+/// A glass door's pane (`fittings::is_glass`): always see-through, and no board, so See-through
+/// boards leaves it alone.
+const GLASS: (&str, f64, (&str, &str)) = ("Glass", 2.5, ("color", "#cfe3ea"));
+const GLASS_OPACITY: f64 = 0.3;
+
 /// The materials of `BOARDS` with a grain: their parts must not be turned on the sheet.
 pub const GRAINED: [&str; 2] = ["Birch plywood", "Oak"];
 
@@ -32,7 +37,8 @@ pub fn opacity(stored: &Value) -> f64 {
 }
 
 pub fn assign(run: Run, material: &str, bodies: &[String]) -> Result<(), String> {
-    let (name, density, look) = (BOARDS.iter().find(|board| board.0 == material))
+    let (name, density, look) = (BOARDS.iter().chain([&GLASS]))
+        .find(|board| board.0 == material)
         .ok_or(format!("unknown material `{material}`"))?;
     let list = run("material.list", json!({}))?;
     let list = list.get("materials").unwrap_or(&list);
@@ -43,7 +49,10 @@ pub fn assign(run: Run, material: &str, bodies: &[String]) -> Result<(), String>
         let mut args = json!({"name": name, "density_g_cm3": density});
         args[look.0] = json!(look.1);
         // made see-through when the boards already made are
-        let opacity = opacity(&run("storage.get", json!({}))?);
+        let opacity = match *name == GLASS.0 {
+            true => GLASS_OPACITY,
+            false => opacity(&run("storage.get", json!({}))?),
+        };
         if opacity < 1.0 {
             args["opacity"] = json!(opacity);
             args["pbr"] = Value::Null; // a library look's shading is opaque only

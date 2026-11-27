@@ -26,6 +26,7 @@ pub struct Input<'a> {
     pub handle_at: &'a str,
     pub grooves: Option<crate::fittings::Grooves<'a>>,
     pub frame: Option<[f64; 2]>,
+    pub glass: bool,
     pub right: bool,
     pub diagonal: bool,
     /// The L's bottom, top and shelves each made as two boards dowelled together.
@@ -184,6 +185,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handle_at,
         grooves,
         frame,
+        glass: p.get("front_style").and_then(Value::as_str) == Some("glass"),
         right,
         diagonal,
         split,

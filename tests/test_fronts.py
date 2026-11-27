@@ -546,3 +546,28 @@ def test_shaker_fronts(approval):
     part = lambda name: next(p for p in results[5]["result"]["parts"] if name in p["parts"])
     assert part("S Door panel")["thickness"] == 6, part("S Door panel")
     assert part("S Door rail top")["length"] == 676 and "S Door rail bottom" in part("S Door rail top")["parts"], part("S Door rail top")
+
+
+
+def test_glass_doors(approval):
+    # Glass: the shaker door's frame round a 4 mm pane in the groove (492 x 612, centred in the
+    # 18 mm thickness: y -293 to -289), the Glass material, no hole in it. The cut list buys the
+    # pane, it is no board; an Edit keeps it glass.
+    made = plugin(approval, "cabinet", {"name": "G", "doors": 1, "handles": "knob", "front_style": "glass"})
+    results = cli([made, MEASURE, plugin(approval, "cutlist"), select("G Door"),
+                   plugin(approval, "edit", {"height": 760}), MEASURE,
+                   drive("G Door hinge", 45), plugin(approval, "cutlist")],
+                  "--save", str(ROOT / "dist" / "glass-doors.sc"))
+    box, m = boxes(results[1]), results[1]
+    assert box["G Door glass"] == [-246, -293, 54, 246, -289, 666], box["G Door glass"]
+    pane = next(b for b in m["bodies"] if b["name"] == "G Door glass")
+    assert pane["material"] == "Glass" and "cylinder" not in pane["face_types"], pane
+    assert volume(m, "G Door rail top") == 476 * 18 * 60 - 476 * 4 * 8, volume(m, "G Door rail top")
+    cut = results[2]["result"]
+    assert {"item": "Glass, 4 mm, 612 x 492 mm", "qty": 1} in cut["hardware"], cut["hardware"]
+    assert not any("glass" in name for p in cut["parts"] for name in p["parts"]), cut["parts"]
+    pane = next(b for b in results[5]["bodies"] if b["name"] == "G Door glass")
+    assert pane["material"] == "Glass" and boxes(results[5])["G Door glass"][5] == 706, pane
+    # open at 45 degrees the pane is still bought at its own size, 40 mm taller after the Edit
+    bought = results[7]["result"]["hardware"]
+    assert {"item": "Glass, 4 mm, 652 x 492 mm", "qty": 1} in bought, bought

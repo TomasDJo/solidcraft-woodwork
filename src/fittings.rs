@@ -512,10 +512,10 @@ pub fn grooves<'a>(
     let style = p.get("front_style").and_then(Value::as_str);
     let shape = p.get("groove_shape").and_then(Value::as_str);
     let (style, shape) = match (style.unwrap_or("flat"), shape.unwrap_or("square")) {
-        ("flat" | "shaker", _) => return Ok(None),
+        ("flat" | "shaker" | "glass", _) => return Ok(None),
         (s @ ("vertical" | "horizontal"), g @ ("square" | "round")) => (s, g),
         ("vertical" | "horizontal", _) => return Err("groove_shape must be square or round".into()),
-        _ => return Err("front_style must be flat, vertical, horizontal or shaker".into()),
+        _ => return Err("front_style must be flat, vertical, horizontal, shaker or glass".into()),
     };
     let [spacing, depth] = [size("groove_spacing", 50.0)?, size("groove_depth", 3.0)?];
     let most = if doors { t - CUP_DEPTH - 1.0 } else { t / 2.0 };
@@ -543,7 +543,10 @@ pub fn frame(
     t: f64,
     smallest_door: Option<f64>,
 ) -> Result<Option<[f64; 2]>, String> {
-    if p.get("front_style").and_then(Value::as_str) != Some("shaker") {
+    if !matches!(
+        p.get("front_style").and_then(Value::as_str),
+        Some("shaker" | "glass")
+    ) {
         return Ok(None);
     }
     let [fw, pt] = [size("frame_width", 60.0)?, size("panel_thickness", 6.0)?];
@@ -561,7 +564,7 @@ pub fn frame(
     }
     let handles = p.get("handles").and_then(Value::as_str);
     if matches!(handles, Some("grip" | "groove")) {
-        return Err("a grip edge or finger groove needs flat fronts, not shaker".into());
+        return Err("a grip edge or finger groove needs flat fronts, not shaker or glass".into());
     }
     Ok(Some([fw, pt]))
 }
@@ -588,6 +591,14 @@ pub fn handle_edge(frame: Option<&[String; 2]>) -> String {
     }
 }
 
+/// A glass door's pane (`front_style` glass): this thick, in the frame's groove as a panel is.
+pub const GLASS_T: f64 = 4.0;
+
+/// Whether a body is a glass door's pane (`front` with `glass`): bought, not a board.
+pub fn is_glass(body: &str) -> bool {
+    body.ends_with(" glass")
+}
+
 /// How deep the panel sits in the frame's groove, each side.
 pub const PANEL_GROOVE: f64 = 8.0;
 
@@ -608,6 +619,7 @@ pub fn front(
     size: [&str; 3],
     along: usize,
     main_low: bool,
+    glass: bool,
 ) {
     let Some([fw, pt]) = frame else {
         return kit.panel_at(part, at(lo[0], lo[1], lo[2]), size, None);
@@ -668,6 +680,11 @@ pub fn front(
         all.push(format!("{} {name}", kit.name));
     }
     let g = mm(PANEL_GROOVE);
+    // a glass door's pane in the panel's place, `GLASS_T` thick; holes leave it out
+    let (pane, pt) = match glass {
+        true => ("glass", mm(GLASS_T)),
+        false => ("panel", pt.clone()),
+    };
     let (corner, s) = place(
         [
             format!("{a0} + {fw} - {g}"),
@@ -676,14 +693,16 @@ pub fn front(
         ],
         [
             format!("{la} - 2*{fw} + 2*{g}"),
-            pt.clone(),
+            pt,
             format!("{lz} - 2*{fw} + 2*{g}"),
         ],
     );
     let size = [s[0].as_str(), &s[1], &s[2]];
     kit.panel_at(&format!("{part} groove"), corner.clone(), size, Some(&all));
-    kit.panel_at(&format!("{part} panel"), corner, size, None);
-    all.push(format!("{} {part} panel", kit.name));
+    kit.panel_at(&format!("{part} {pane}"), corner, size, None);
+    if !glass {
+        all.push(format!("{} {part} panel", kit.name));
+    }
     kit.pieces(part, all);
 }
 

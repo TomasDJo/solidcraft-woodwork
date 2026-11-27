@@ -119,6 +119,7 @@ pub fn build(corner: &Corner, on_return: bool) {
             size,
             0,
             main_low,
+            corner.glass,
         );
         profile("Door", [&x, &y, &z0], [&w, et, &door_h], 0, 1, on_return);
         let cup_x = match on_return {
@@ -145,7 +146,17 @@ pub fn build(corner: &Corner, on_return: bool) {
         let (lo, size) = ([x.as_str(), &o, &z0], [et.as_str(), &long, &door_h]);
         let at = |x: &str, y: &str, z: &str| kit.at(x, y, z);
         let frame = corner.eframe.as_ref();
-        fittings::front(kit, "Door return", frame, at, lo, size, 1, on_return);
+        fittings::front(
+            kit,
+            "Door return",
+            frame,
+            at,
+            lo,
+            size,
+            1,
+            on_return,
+            corner.glass,
+        );
         profile("Door return", lo, size, 1, -flip, !on_return);
         let cup_y = match on_return {
             true => format!("{o} + {cup_c}"),

@@ -46,6 +46,8 @@ pub struct Input<'a> {
     pub grooves: Option<crate::fittings::Grooves<'a>>,
     /// Shaker fronts (`front_style` shaker, #183): the frame's width and the panel's thickness.
     pub frame: Option<[f64; 2]>,
+    /// Glass doors (`front_style` glass): the frame round a pane; drawer fronts get a panel.
+    pub glass: bool,
     pub hinge_right: bool, // the first door is hinged on its right
     /// Inset fronts sit inside the carcass opening; overlay ones cover its edges.
     pub inset: bool,
@@ -446,6 +448,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         handle_at,
         grooves,
         frame,
+        glass: p.get("front_style").and_then(Value::as_str) == Some("glass"),
         hinge_right,
         inset,
         reveal: g,
