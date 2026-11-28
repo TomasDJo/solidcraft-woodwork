@@ -52,11 +52,35 @@
       "role": "image"
     },
     {
-      "path": "docs/workshop/see-through.png",
+      "path": "docs/workshop/mobile-base.png",
       "role": "image"
     },
     {
-      "path": "docs/workshop/drawer.png",
+      "path": "docs/workshop/fronts.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/handleless.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/runners.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/integrated.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/pilasters.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/cut-list.png",
+      "role": "image"
+    },
+    {
+      "path": "docs/workshop/see-through.png",
       "role": "image"
     },
     {
