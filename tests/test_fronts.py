@@ -412,6 +412,17 @@ def test_a_cabinet_sized_by_its_drawers_inside(approval):
     assert round(side[4] - side[1], 3) == 712, side
 
 
+def test_a_cabinet_sized_by_its_drawers_inside_on_strip_runners(approval):
+    # #267: on strip runners the box is 672 mm inside between its sides whatever the strips'
+    # thickness (the bottom is wider, resting on the strips, so the sides are measured).
+    for strip in (12, 20):
+        results = designed(approval, {"slide_type": "strips", "strip_thickness": strip}, [
+            plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 672, "drawer_depth": 600}), MEASURE])
+        b = boxes(results[1])
+        inside = round(b["Cabinet Drawer 1 Right"][0] - b["Cabinet Drawer 1 Left"][3], 3)
+        assert inside == 672, (strip, inside)
+
+
 def test_a_cabinet_sized_by_its_drawers_inside_keeps_it(approval):
     # Sized by its drawers' inside, then side-mount slides changed to undermount in Woodwork
     # settings and Rebuild cabinets with them: the boxes keep their inside width, and the
