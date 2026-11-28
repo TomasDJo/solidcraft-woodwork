@@ -211,7 +211,7 @@
         },
       {
         "name": "settings-general",
-        "effect": "edit",
+        "effect": "edit", "job": true,
         "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "General settings" }],
         "input_schema": {
@@ -229,7 +229,7 @@
       },
       {
         "name": "settings-fronts",
-        "effect": "edit",
+        "effect": "edit", "job": true,
         "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "Fronts settings" }],
         "input_schema": {
@@ -251,7 +251,7 @@
       },
       {
         "name": "settings-doors",
-        "effect": "edit",
+        "effect": "edit", "job": true,
         "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "Doors settings" }],
         "input_schema": {
@@ -266,7 +266,7 @@
       },
       {
         "name": "settings-drawers",
-        "effect": "edit",
+        "effect": "edit", "job": true,
         "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "Drawer settings" }],
         "input_schema": {
@@ -289,7 +289,7 @@
       },
       {
         "name": "settings-plinth",
-        "effect": "edit",
+        "effect": "edit", "job": true,
         "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "Plinth and wall mount settings" }],
         "input_schema": {
@@ -306,7 +306,7 @@
       },
       {
         "name": "settings-joinery",
-        "effect": "edit",
+        "effect": "edit", "job": true,
         "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "Joinery settings" }],
         "input_schema": {
@@ -331,7 +331,7 @@
       },
       {
         "name": "settings-cutlist",
-        "effect": "edit",
+        "effect": "edit", "job": true,
         "dialog_hook": true,
         "slots": [{ "kind": "menu", "name": "Cut list and worktop settings" }],
         "input_schema": {
