@@ -77,7 +77,7 @@ SHOTS = [
      row("cabinet", [{"doors": 2, **BASE}, {"doors": 2, "fronts": "inset", **BASE}]), TWO),
     ("grip-edges", "Grip edges on the doors (left) and finger grooves on the drawers (right): no handles.",
      [*row("cabinet", [{"doors": 2, "plinth": 100, "handles": "grip"},
-                       {"drawers": 3, "plinth": 100, "handles": "groove"}]), drive("A Door R hinge", 100)],
+                       {"drawers": 3, "plinth": 100, "handles": "groove"}])],
      cam([375, -100, 420], 2000, yaw=-0.5, pitch=0.4)),
     ("grooved-fronts", "Grooved fronts: vertical square grooves on the doors (left), round horizontal ones on the drawers (right).",
      row("cabinet", [{"doors": 2, **BASE, "front_style": "vertical"},
@@ -210,8 +210,8 @@ SHOTS = [
       pick("A Side L", "B Side L", "C Side L"), lambda: run("base", {"name": "Bench"})],
      cam([800, 0, 100], 3400, yaw=-0.5, pitch=-0.55)),
     ("base-bolts", "Connector bolts: four 9 mm holes through the touching sides of two cabinets on a base, seen through the boards.",
-     [lambda: run("cabinet", {"name": "A", "width": 600, "shelves": 0, **BASE}), pick("A Side R"),
-      lambda: run("cabinet", {"name": "B", "place": "auto", "width": 600, "shelves": 0, **BASE}),
+     [lambda: run("cabinet", {"name": "A", "width": 600, "shelves": 0, **BASE, "plinth": 0}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "width": 600, "shelves": 0, **BASE, "plinth": 0}),
       pick("A Side L", "B Side L"), lambda: run("base", {"name": "Bench"}),
       lambda: run("settings", {"see_through": "on"})],
      cam([300, 0, 550], 1400, yaw=-0.9, pitch=0.15)),
@@ -281,7 +281,8 @@ def draw_pdf(name, steps):
 def draw(name, steps, options):
     if options == "pdf":
         return draw_pdf(name, steps)
-    script = flat([step() if callable(step) else step for step in steps])
+    # A pick left selected would be drawn highlighted.
+    script = flat([step() if callable(step) else step for step in steps]) + [{"command": "select.clear", "params": {}}]
     with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
         path, png = Path(folder) / "script.json", Path(folder) / "shot.png"
         path.write_text(json.dumps(script), encoding="utf-8")
