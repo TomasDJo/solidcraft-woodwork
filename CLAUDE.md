@@ -404,8 +404,12 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   existed (the old and the new version of the same cabinet, same camera). Bug fixes and small
   changes are a line each, without pictures. Render the pictures with `solidcraft-cli snapshot`
   from small designs built through the CLI (as the tests do; for a before picture, build with the
-  previous release's package), all the same size and camera style, and upload them as release
-  assets so the notes can show them.
+  previous release's package), all the same size and camera style. Don't upload them as release
+  assets (the plugin zip is the only one): commit the pictures not already in `docs/images`
+  (before pictures, screenshots) in the release PR under `docs/releases/X.Y.Z/` as 128-colour
+  PNGs, and link every picture pinned to the tag:
+  `https://raw.githubusercontent.com/TomasDJo/solidcraft-woodwork/vX.Y.Z/docs/releases/X.Y.Z/<name>.png`
+  (or `.../vX.Y.Z/docs/images/<name>.png`).
 - **Branches and pull requests, never straight to main.** One branch per function, one commit
   per function, with `docs/usage.md` updated (and `README.md`'s short list when a function is
   added) and `PLAN.md` ticked in the same commit. Do not push
