@@ -801,6 +801,21 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   ending ` glass`): `lib.rs` gives those bodies `material::GLASS` (always `GLASS_OPACITY`, not
   in `BOARDS`, so See-through boards leaves it) and the Material entry skips them; the cut
   list leaves them out of the boards and buys them as `Glass, 4 mm, L x W mm` by size.
+- **Pilaster strips** (`shelf_support` pins / strips, #264; a Cabinet and Edit field shown with
+  Shelf pin holes, `edit::CABINETS`, `Input::pilasters` in both builders): `Cabinet::strips` instead of
+  the pin rows, made with the carcass: each face carrying shelves (both of a single divider,
+  `left`/`right`) gets `<board> pilaster dado <front|back>` (`STRIP` 16 x 5, on the pin rows'
+  lines, over the shelf zone) and the body `<board> pilaster <row> (<len> mm)` in it, the length
+  `Input::clear_h` rounded at build (a resize leaves the name, as a slide's label); `clips` puts
+  `<shelf> clip` (`CLIP` 10 out, 6 high) at its front left and a 2 x 2 pattern of it.
+  `hardware::is_model` takes ` pilaster ` and ` clip` names, so measures hide them; the cut list
+  counts `Shelf clip` (four a shelf of a cabinet with `Side L pilaster dado front`) and `Shelf
+  pilaster strip, <len>` from the strips' names. Shelves keep the pin grid's heights. Corner
+  cabinets: `Corner::strips` over `shelf_faces` (the pin rows' four faces, shared with `pins`:
+  first row's place, way in, way to the second row, run), a dado and strip at each row, and
+  per shelf (not a split shelf's `return` piece) a `<shelf> <board> clip` at each face and a
+  pattern of it along the face; the cut list counts eight clips a shelf there (`Back return
+  pilaster dado front`).
 - Parts are modelled as an exact fit, with no clearance for the back panel or shelves.
 - A board's label (`Kit::label`, the `labels` field) is its name only, not its size: text built
   from parameters takes whole parameters (`number(Width)`), not expressions. A board is told

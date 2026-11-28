@@ -878,3 +878,44 @@ fn corner_doors_take_the_door_handles() {
         .iter()
         .any(|c| c.1["name"] == "Cabinet Door handle 1"));
 }
+
+#[test]
+fn corner_shelves_can_rest_on_pilaster_strips() {
+    // #264: both ends and both backs take a dado and a strip at each pin row's line, no pin
+    // rows; under each shelf a clip at each face and a pattern of it to the second strip; a
+    // split shelf's return piece takes none of its own
+    for shape in ["L-shaped", "diagonal"] {
+        let p = json!({"shape": shape, "shelves": 2, "shelf_pins": true, "shelf_support": "strips", "boards": "split"});
+        let (commands, _) = build(&p).unwrap();
+        let names: Vec<&str> = commands
+            .iter()
+            .filter_map(|c| c.1["name"].as_str())
+            .collect();
+        assert!(names.iter().all(|n| !n.ends_with(" pins")), "{shape}");
+        let dados = names
+            .iter()
+            .filter(|n| n.contains(" pilaster dado "))
+            .count();
+        assert_eq!(dados, 8, "{shape}");
+        assert!(
+            names.contains(&"Cabinet Back return pilaster dado front"),
+            "{shape}"
+        );
+        let clips = names.iter().filter(|n| n.ends_with(" clip")).count();
+        assert_eq!(clips, 8, "{shape}"); // 2 shelves x 4 faces
+        let strip = commands
+            .iter()
+            .find(|c| {
+                c.1["name"]
+                    .as_str()
+                    .is_some_and(|n| n.starts_with("Cabinet Back pilaster front ("))
+            })
+            .unwrap();
+        // in the back, which lies along x: 16 along it, 5 into it
+        assert_eq!(
+            (&strip.1["length"], &strip.1["width"]),
+            (&json!("16 mm"), &json!("5 mm")),
+            "{shape}"
+        );
+    }
+}

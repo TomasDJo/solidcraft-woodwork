@@ -996,3 +996,38 @@ fn clashes_take_integrated_fronts_and_quote_names() {
         ["A Door (open) meets B \"Tall\" Drawer 1 Front (open)"]
     );
 }
+
+#[test]
+fn pilaster_strips_and_clips_are_counted() {
+    // #264: the strips by their length, from the models' names; four clips a shelf
+    let named =
+        |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
+    let design = json!({"timeline": named(&[
+        "A Side L pilaster dado front", "A Side L pilaster front (652 mm)", "A Side L pilaster back (652 mm)",
+        "A Side R pilaster front (652 mm)", "A Side R pilaster back (652 mm)", "Oak dado cabinet Side L pilaster front (400 mm)",
+    ])}); // a cabinet name with ` dado ` in it still counts its strips
+    let measure = json!({"bodies": named(&["A Side L", "A Shelf 1", "A Shelf 2"])});
+    let list = hardware(&measure, &BTreeMap::new(), &design);
+    let qty = |item: &str| {
+        list.as_array()
+            .unwrap()
+            .iter()
+            .find(|h| h["item"] == item)
+            .map(|h| h["qty"].clone())
+    };
+    assert_eq!(qty("Shelf clip"), Some(json!(8)));
+    assert_eq!(qty("Shelf pilaster strip, 652 mm"), Some(json!(4)));
+    assert_eq!(qty("Shelf pilaster strip, 400 mm"), Some(json!(1)));
+    assert_eq!(qty("Shelf pin, 5 mm"), None);
+    // a corner cabinet, with strips in its backs too: eight a shelf
+    let corner = json!({"timeline": named(&["C Side L pilaster dado front", "C Back return pilaster dado front"])});
+    let measure = json!({"bodies": named(&["C Side L", "C Shelf 1", "C Shelf 1 return"])});
+    let list = hardware(&measure, &BTreeMap::new(), &corner);
+    let clips = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| h["item"] == "Shelf clip")
+        .map(|h| h["qty"].clone());
+    assert_eq!(clips, Some(json!(8)));
+}

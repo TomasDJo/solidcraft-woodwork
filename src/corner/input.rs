@@ -20,6 +20,8 @@ pub struct Input<'a> {
     pub dr: f64,
     pub shelves: u32,
     pub pins: bool,
+    /// With `pins`, pilaster strips in dados and clips instead of the rows of holes (#264).
+    pub pilasters: bool,
     /// Which end the doors hang on, if there are doors.
     pub on_return: Option<bool>,
     pub handles: &'a str,
@@ -60,6 +62,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         .get("shelf_pins")
         .and_then(Value::as_bool)
         .unwrap_or(false);
+    // Movable shelves on pins, or on clips in pilaster strips (#264).
+    let pilasters = match p
+        .get("shelf_support")
+        .and_then(Value::as_str)
+        .unwrap_or("pins")
+    {
+        "pins" => false,
+        "strips" => true,
+        _ => return Err("shelf_support must be pins or strips".into()),
+    } && pins;
     let diagonal = match p.get("shape").and_then(Value::as_str).unwrap_or("L-shaped") {
         "L-shaped" => false,
         "diagonal" => true,
@@ -187,6 +199,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         dr,
         shelves: shelves as u32,
         pins,
+        pilasters,
         on_return,
         handles,
         handle_at,

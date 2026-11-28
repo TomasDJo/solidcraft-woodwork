@@ -34,6 +34,8 @@ pub struct Input<'a> {
     pub doors: f64,
     pub drawers: f64,
     pub pins: bool,
+    /// With `pins`, pilaster strips in dados and clips instead of the rows of holes (#264).
+    pub pilasters: bool,
     /// The shelves fixed and joined (no shelf pins: the inside's joinery).
     pub fixed: bool,
     pub back: &'a str,
@@ -133,6 +135,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     // Without pins the shelves are fixed, joined by the inside's joinery (none on a cabinet
     // that remembers no method: as before).
     let fixed = !pins;
+    // Movable shelves rest on pins in rows of holes, or on clips in pilaster strips (#264).
+    let pilasters = match p
+        .get("shelf_support")
+        .and_then(Value::as_str)
+        .unwrap_or("pins")
+    {
+        "pins" => false,
+        "strips" => true,
+        _ => return Err("shelf_support must be pins or strips".into()),
+    } && pins;
     let drawers = num(p, "drawers", 0.0)?;
     check(
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
@@ -561,6 +573,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         doors,
         drawers,
         pins,
+        pilasters,
         fixed,
         back,
         wall_mount,

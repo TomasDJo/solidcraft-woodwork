@@ -310,6 +310,19 @@ impl Kit {
         self.commands.borrow_mut().push(command);
     }
 
+    /// A hardware model's box, as `panel` makes a board's but not one of the cabinet's bodies,
+    /// so it takes no board material and stays the app's grey (#264).
+    pub fn model(&self, part: &str, corner: [&str; 3], size: [&str; 3]) {
+        let body = format!("{} {part}", self.name);
+        self.push((
+            "solid.box",
+            json!({
+                "length": size[0], "width": size[1], "height": size[2],
+                "corner": self.at(corner[0], corner[1], corner[2]), "name": body, "body_name": body,
+            }),
+        ));
+    }
+
     /// A panel, or with `cut` its volume taken out of those bodies.
     pub fn panel(&self, part: &str, corner: [&str; 3], size: [&str; 3], cut: Option<&[String]>) {
         self.panel_at(part, self.at(corner[0], corner[1], corner[2]), size, cut)

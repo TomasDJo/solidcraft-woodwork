@@ -472,6 +472,21 @@ fn the_grip_gap_comes_from_its_parameter() {
 }
 
 #[test]
+fn edit_starts_at_the_cabinets_shelf_support() {
+    // a cabinet on pilaster strips shows strips, not the `pins` fallback (#264)
+    for entry in ["cabinet", "corner"] {
+        let made = remember(
+            entry,
+            &json!({"shelf_pins": true, "shelf_support": "strips"}),
+            "A",
+        );
+        let (entry, base) = merge(&made[KEY], &json!({}), &design()).unwrap();
+        let reply = fields(&entry, &shown(&entry, &base), &Map::new());
+        assert_eq!(reply["shelf_support"], json!({"default": "strips"}));
+    }
+}
+
+#[test]
 fn the_door_handles_go_through_edit() {
     // a chosen value survives `merge` and the dialog shows it; Edit can change it
     let made = remember("cabinet", &json!({"doors": 1, "door_handles": "pull"}), "A");

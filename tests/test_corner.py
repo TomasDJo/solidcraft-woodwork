@@ -300,3 +300,29 @@ def test_hinge_holes_on_the_shared_hardware(approval):
     cups = [f for f in results[7]["faces"] if (f.get("cylinder") or {}).get("radius")]
     assert {round(f["cylinder"]["radius"], 1) for f in cups} >= {20.0}, cups
     assert not [f["name"] for f in results[8]["timeline"] if f["warning"]]
+
+
+def test_corner_shelves_on_pilaster_strips(approval):
+    # #264: a corner cabinet's ends and backs each lose exactly two 16 x 5 mm dados over the
+    # shelves' height against the same cabinet without strips (so they cut into the boards, at
+    # either corner), a strip model sits in each, inside its board's box, and the cut list buys
+    # 8 clips a shelf. Left and right corners.
+    for corner in ("left", "right"):
+        common = {"shape": "L-shaped", "corner": corner, "shelves": 2, "place": "origin"}
+        results = designed(approval, NONE, [plugin(approval, "corner", {**common, "shelf_pins": True, "shelf_support": "strips"}),
+                                            MEASURE, plugin(approval, "cutlist"),
+                                            plugin(approval, "corner", {**common, "name": "Plain"}), MEASURE])
+        measure, plain = results[1], results[4]
+        every = boxes(measure, models=True)
+        strips = {n: b for n, b in every.items() if " pilaster " in n}
+        assert len(strips) == 8, sorted(strips)
+        length = round(next(iter(strips.values()))[5] - next(iter(strips.values()))[2])
+        for board in ("Side L", "Side R", "Back", "Back return"):
+            lost = volume(plain, f"Plain {board}") - volume(measure, f"Cabinet {board}")
+            assert lost == 2 * 16 * 5 * length, (corner, board, lost)
+            box = every[f"Cabinet {board}"]
+            for name, s in strips.items():
+                if name.startswith(f"Cabinet {board} pilaster "):
+                    assert all(box[i] - 0.01 <= s[i] and s[i + 3] <= box[i + 3] + 0.01 for i in range(3)), (corner, name, s, box)
+        hardware = {h["item"]: h["qty"] for h in results[2]["result"]["hardware"]}
+        assert hardware["Shelf clip"] == 16 and hardware[f"Shelf pilaster strip, {length} mm"] == 8, (corner, hardware)
