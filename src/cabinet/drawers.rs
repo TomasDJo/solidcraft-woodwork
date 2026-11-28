@@ -38,6 +38,7 @@ pub fn build(cabinet: &Cabinet) {
         eback,
         edraw,
         edh,
+        erail,
         ..
     } = cabinet;
     let Input {
@@ -89,7 +90,7 @@ pub fn build(cabinet: &Cabinet) {
     };
     // Wooden runners: the box stands `play` clear of each side, on a bottom wider than it that
     // runs in a groove `depth` deep in each side, `play` short of its end and round it.
-    // On strip runners (#146) there is no groove: the bottom runs on a strip on each side.
+    // On strip runners (#146, #285) there is no groove: the box rides on a strip on each side.
     let strip = strip.map(|[st, sh]| {
         [
             kit.parameter("strip_thickness", st, "drawer runner strip thickness"),
@@ -130,13 +131,7 @@ pub fn build(cabinet: &Cabinet) {
     // Undermount slides (Blum's rule): the box 42 mm narrower inside than the opening, and as
     // long as the slide.
     let (box_w, gap_x) = match (&wood, under) {
-        (Some([_, play]), _) => match &strip {
-            Some([st, _]) => (
-                format!("({eiw} - 2*({st} + {play}))"),
-                format!("({st} + {play})"),
-            ),
-            None => (format!("({eiw} - 2*{play})"), play.clone()),
-        },
+        (Some([_, play]), _) => (format!("({eiw} - 2*{play})"), play.clone()),
         (_, true) => (
             format!("({eiw} - 42 mm + 2*{bt})"),
             format!("(21 mm - {bt})"),
@@ -162,10 +157,23 @@ pub fn build(cabinet: &Cabinet) {
         false => format!("({et} + {})", mm(BOX_CLEAR)),
     };
     let back_y = format!("{eback} + {box_d} - {bt}");
+    // Strip runners (#285): the lowest strips on the carcass bottom (or the rail under the
+    // drawers), the top box's sides up to under the top (or the rail over them).
+    let bottom_top = format!("{epl} + {et}");
+    let (floor, ceiling) = match erail {
+        Some(rail) if cabinet.input.drawers_top => {
+            (format!("{rail} + {et}"), format!("{eh} - {et}"))
+        }
+        Some(rail) => (bottom_top, rail.clone()),
+        None => (bottom_top, format!("{eh} - {et}")),
+    };
     for i in 0..count {
         let drawer = format!("Drawer {}", i + 1);
         // the front's lower edge
         let z = format!("{edraw} + ({front_h} + {gap_mm}) * {i}");
+        // where the next front's lower edge is, under which this box's sides stop on strips
+        let next = format!("{edraw} + ({front_h} + {gap_mm}) * {}", i + 1);
+        let raw_low = z.clone();
         let front_h = if i + 1 == count { &top_h } else { &front_h };
         // A groove or grip edge on the top edge, or the bottom one when asked (#230); a grip
         // edge's front stops the grip gap short of it, and its box with it.
@@ -241,6 +249,7 @@ pub fn build(cabinet: &Cabinet) {
         cabinet.handle(&front, &format!("{ew}/2"), &handle_z, 0);
         cabinet.grooves(&front, [&x0, efront, &z], [&front_w, et, front_h]);
         cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], top);
+        let front_top = format!("{z} + {front_h}");
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
         let (x, y, z) = (
@@ -251,15 +260,23 @@ pub fn build(cabinet: &Cabinet) {
                 false => format!("{low} + {lift}"),
             },
         );
-        // On strips the bottom goes up by as much of the strip as `BOX_CLEAR` leaves under it,
-        // so the strip stays clear of the carcass bottom, rail or drawer below; the box's top
-        // stays where it was.
-        let (z, box_h) = match &strip {
-            Some([_, sh]) => {
-                let rise = format!("max(0 mm, {sh} - {})", mm(BOX_CLEAR));
-                (format!("{z} + {rise}"), format!("({box_h} - {rise})"))
+        // On strips (#285) a drawer's strips stand at its front's lower edge (the lowest on the
+        // floor), its bottom on them, and its sides up to `play` under the next drawer's strips,
+        // which keep it from tipping when pulled out (under the top or rail for the top one):
+        // never past the next front's lower edge, which the box would hit coming out. An
+        // integrated front's sides stop at its top.
+        let (z, box_h) = match (&strip, &wood) {
+            (Some([_, sh]), Some([_, play])) => {
+                let low = if i == 0 { &floor } else { &raw_low };
+                let above = if i + 1 < count { &next } else { &ceiling };
+                let mut top = format!("{above} - {play}");
+                if integrated {
+                    top = format!("min({top}, {front_top})");
+                }
+                let z = format!("{low} + {sh}");
+                (z.clone(), format!("({top} - ({z}))"))
             }
-            None => (z, box_h),
+            _ => (z, box_h),
         };
         // On runners, and with a bottom tab, the bottom is under the box, and the box's boards
         // stand on it.

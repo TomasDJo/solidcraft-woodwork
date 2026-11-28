@@ -139,7 +139,7 @@ length is Auto (the longest that fits its depth).
 
 ### Size by drawer inside
 
-With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play, or a strip runner's strip and play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box (none on dado or strip runners, where the box reaches the back; a sink base's boxes are half the shelf depth) and the back. The cabinet is made with that outside size, which the summary gives, and remembers the drawer inside size: when the slides, the drawer boards or anything else around the boxes changes later (Woodwork settings and Apply settings, or Edit), its outside is worked out again so the boxes keep their inside. Edit shows Size by and the inside sizes for it; a width changed in Parameters is replaced by the one the inside needs at the next Edit or Apply settings. Not with Match selected.
+With drawers: Outside (the default) takes Width and Depth as they are. Drawer inside works them out from the size wanted inside each drawer box (such as 672 x 672 mm for a 16 x 16 Gridfinity grid of 42 mm bins): the box's sides, the slides' 12.7 mm a side (or a dado runner's play, or a strip runner's play; undermount: Blum's 42 mm, and the shortest slide that holds the box, with 3 mm behind it), the carcass sides, the room behind the box (none on dado or strip runners, where the box reaches the back; a sink base's boxes are half the shelf depth) and the back. The cabinet is made with that outside size, which the summary gives, and remembers the drawer inside size: when the slides, the drawer boards or anything else around the boxes changes later (Woodwork settings and Apply settings, or Edit), its outside is worked out again so the boxes keep their inside. Edit shows Size by and the inside sizes for it; a width changed in Parameters is replaced by the one the inside needs at the next Edit or Apply settings. Not with Match selected.
 
 ### Plinth / toe kick
 
@@ -246,17 +246,20 @@ needs them. Change one in Parameters and every cabinet's holes follow:
 - **Strip runners** (Slide type Strip runners, #146): the same, for a workshop without a router
   or dado blade. Instead of a groove, a wooden strip (`Name Side L strip 1` and on, 12 mm thick
   and 18 mm high) is screwed to each side under each drawer, from the front of the opening to
-  the back. The drawer's bottom is wider than its box and rests on the strips' tops, set as much
-  higher as the strip needs to clear what is below it (the box's top stays where it was), and the
-  box stands the strip's thickness plus 1 mm of play clear of each side. **Strip thickness**
+  the back, as a traditional runner drawer is made (#285). The box is as wide as the opening less
+  1 mm of play each side, and its sides and bottom ride on the strips' tops. The lowest strips
+  stand on the carcass bottom (or the rail under the drawers), the others at their drawer front's
+  lower edge; each box's sides go up to 1 mm under the strips of the drawer above, which keep a
+  drawer pulled out from tipping, and the top box's to 1 mm under the top (or the rail over the
+  drawers). The fronts keep their height. **Strip thickness**
   (6 to 30 mm) and **Strip height** (10 to 60 mm) in Woodwork settings' Drawers set them for new
   cabinets. After that they are the parameters `Name_strip_thickness` and `Name_strip_height`,
   next to `Name_runner_play` (less than the strip's thickness). The strips are boards in the cut list, and no slides are counted. Their
   screw holes are not drilled.
 
-  ![Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.](images/strip-runners.png)
+  ![Strip runners: each drawer rides on a wooden strip on each side, its sides up to just under the strips above.](images/strip-runners.png)
 
-  *Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.*
+  *Strip runners: each drawer rides on a wooden strip on each side, its sides up to just under the strips above.*
 - **False back** (dado and strip runners, #258): a runner drawer has no stop, and pulled too far
   it tips out. So each runner drawer's box gets a second back inside it,
   `Name Drawer 1 False back`: a board between the box's sides, as high as them and as thick as

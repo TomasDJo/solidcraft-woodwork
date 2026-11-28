@@ -1263,12 +1263,12 @@ fn strip_runners_carry_the_bottom_on_a_strip_on_each_side() {
     );
     // no groove, so no groove depth
     assert!(!has(&commands, "Cabinet_runner_depth"));
-    // the box a strip and the play clear of each side; the bottom wider, over the strips
+    // #285: the box only the play clear of each side, riding on the strips, its bottom as wide
     let left = named(&commands, "Cabinet Drawer 1 Left");
-    assert!(left["corner"][0]
-        .as_str()
-        .unwrap()
-        .contains("Cabinet_strip_thickness + Cabinet_runner_play"));
+    assert_eq!(
+        left["corner"][0],
+        "Cabinet_thickness + Cabinet_runner_play - Cabinet_width/2"
+    );
     let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
     let out = "Cabinet_thickness + Cabinet_runner_play";
     assert_eq!(bottom["length"], format!("Cabinet_width - 2*({out})"));
@@ -1292,18 +1292,27 @@ fn strip_runners_carry_the_bottom_on_a_strip_on_each_side() {
         .any(|c| c.1["name"].as_str().is_some_and(|n| n.contains(" runner "))));
     // no slide holes or models
     assert!(!commands.iter().any(|c| c.1.to_string().contains("HW_")));
-    // the bottom goes up by the strip's height less BOX_CLEAR, so the strip clears what is below
-    let rise = "max(0 mm, Cabinet_strip_height - 8 mm)";
-    assert!(
-        bottom["corner"][2].as_str().unwrap().contains(rise),
-        "{}",
-        bottom["corner"]
+    // the lowest strips on the carcass bottom, the bottom on them; the next drawer's strips at
+    // its front's lower edge, and the sides up to the play under them (the top one's under the
+    // top)
+    let strip =
+        |n: u32| named(&commands, &format!("Cabinet Side L strip {n}"))["corner"][2].clone();
+    let sh = " + Cabinet_strip_height - Cabinet_strip_height";
+    assert_eq!(strip(1), format!("0 mm + Cabinet_thickness{sh}"));
+    let next = "0 mm + 0 mm + Cabinet_reveal + (((Cabinet_height - 0 mm - 2*0 mm - 3*Cabinet_reveal) / 2) + Cabinet_reveal) * 1";
+    assert_eq!(strip(2), format!("{next}{sh}"));
+    assert_eq!(
+        bottom["corner"][2],
+        "0 mm + Cabinet_thickness + Cabinet_strip_height"
     );
-    assert!(
-        left["height"].as_str().unwrap().contains(rise),
-        "{}",
-        left["height"]
+    let low = "(0 mm + Cabinet_thickness + Cabinet_strip_height)";
+    let side = |n: u32| named(&commands, &format!("Cabinet Drawer {n} Left"))["height"].clone();
+    let height = format!("(({next} - Cabinet_runner_play - {low}) - Cabinet_drawer_bottom)");
+    assert_eq!(side(1), height);
+    let top = format!(
+        "((Cabinet_height - Cabinet_thickness - Cabinet_runner_play - ({next} + Cabinet_strip_height)) - Cabinet_drawer_bottom)"
     );
+    assert_eq!(side(2), top);
     // strips too thin are refused, and play that leaves the bottom nothing to bear on
     assert!(build(&json!({"drawers": 1, "slide_type": "strips", "strip_thickness": 3})).is_err());
     let bare = json!({"drawers": 1, "slide_type": "strips", "runner_play": 12});
@@ -1312,16 +1321,15 @@ fn strip_runners_carry_the_bottom_on_a_strip_on_each_side() {
 
 #[test]
 fn strip_runners_sized_from_the_drawers_inside_leave_room_for_the_strips() {
-    // #267: the box stands a strip (12 mm) and the play (1 mm) off each side, so 672 mm inside
-    // takes 12 mm box sides, 13 mm and an 18 mm panel each side: 758 mm, not 734
+    // #267, #285: the box rides on the strips, the play (1 mm) off each side, so 672 mm inside
+    // takes 12 mm box sides, 1 mm and an 18 mm panel each side, whatever the strips' thickness
     let mut p = json!({"drawers": 2, "slide_type": "strips", "sizing": "drawer",
                        "drawer_width": 672, "drawer_depth": 500});
     from_drawers(&mut p).unwrap();
-    assert_eq!(p["width"], json!(672.0 + 2.0 * (12.0 + 12.0 + 1.0 + 18.0)));
-    // a thicker strip from Woodwork settings widens it as much
+    assert_eq!(p["width"], json!(672.0 + 2.0 * (12.0 + 1.0 + 18.0)));
     p["strip_thickness"] = json!(20);
     from_drawers(&mut p).unwrap();
-    assert_eq!(p["width"], json!(672.0 + 2.0 * (12.0 + 20.0 + 1.0 + 18.0)));
+    assert_eq!(p["width"], json!(672.0 + 2.0 * (12.0 + 1.0 + 18.0)));
 }
 
 #[test]
@@ -1602,13 +1610,17 @@ fn an_integrated_drawer_front_is_the_box_front() {
         build(&json!({"width": w, "drawers": 2, "handles": "pull", "drawer_front": front})).is_ok()
     };
     assert!(!pull(180.0, "integrated") && pull(240.0, "integrated") && pull(180.0, "separate"));
-    // the box as the slide type makes it: 30 mm strips leave a 212 mm cabinet's box 114 wide
-    let strips = json!({"width": 212, "drawers": 2, "handles": "pull", "drawer_front": "integrated",
-                        "slide_type": "strips", "strip_thickness": 30});
+    // the box as the slide type makes it: slides leave a 186 mm cabinet's box 124 wide, strips
+    // (#285, riding on them) 148
+    let slides =
+        json!({"width": 186, "drawers": 2, "handles": "pull", "drawer_front": "integrated"});
+    assert!(build(&slides).is_err());
+    let mut strips = slides.clone();
+    strips["slide_type"] = json!("strips");
+    strips["strip_thickness"] = json!(30);
     assert!(build(&strips).is_err());
-    let mut runners = strips.clone();
-    runners["slide_type"] = json!("wood");
-    assert!(build(&runners).is_ok());
+    strips["width"] = json!(190);
+    assert!(build(&strips).is_ok());
 }
 
 #[test]
