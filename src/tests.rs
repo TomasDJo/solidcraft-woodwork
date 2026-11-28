@@ -1241,3 +1241,37 @@ fn connector_bolt_cuts_keep_their_names_skip_what_is_there_and_bore_across_the_s
         (Some("6 mm"), Some("20 mm"))
     );
 }
+
+#[test]
+fn the_hardware_definitions_are_hidden_where_they_are_made() {
+    // `HOME`'s placement: a new one by `component.create`'s reply, an existing one from the tree
+    let hidden = |components: Value| {
+        let mut called: Vec<(String, Value)> = Vec::new();
+        let mut run = |command: &str, args: Value| {
+            called.push((command.to_string(), args.clone()));
+            Ok(match command {
+                "component.list" => json!({"active": 0, "components": components.clone()}),
+                "component.create" if args["name"] == hardware::HOME => json!({"occurrence": 9}),
+                _ => json!({}),
+            })
+        };
+        let copy = ("occurrence.copy", json!({"component": hardware::HINGE}));
+        let _ = component(
+            (vec![copy], json!({"name": "Cabinet"})),
+            &json!({}),
+            "",
+            &mut run,
+        );
+        (called.into_iter())
+            .filter(|c| c.0 == "browser.visibility")
+            .map(|c| c.1)
+            .collect::<Vec<_>>()
+    };
+    let hide = |id: i64| vec![json!({"visible": false, "paths": [[id]]})];
+    assert_eq!(hidden(json!([{"name": "Untitled"}])), hide(9));
+    let home = json!({"name": hardware::HOME, "occurrences": [{"id": 4}]});
+    assert_eq!(hidden(json!([{"name": "Untitled"}, home])), hide(4));
+    // all there already: nothing made, nothing hidden again
+    let hinge = json!({"name": hardware::HINGE});
+    assert!(hidden(json!([{"name": "Untitled"}, home, hinge])).is_empty());
+}

@@ -178,17 +178,7 @@ pub const SLIDE_UNDER: &str = "HW slide under";
 /// bottom stands above the sides' lower edge for it.
 pub const UNDER_SIZE: [f64; 2] = [12.0, 14.0];
 pub const UNDER_RECESS: f64 = 13.0;
-// ponytail: `browser.visibility` set in a plugin run is not kept (0.46.1; the same command
-// through the CLI is), so the definitions stand just under the floor (their tops 1 mm below
-// it), turned half round so that they reach forward from 15 mm in front of the back of a
-// 560 mm deep cabinet on the origin: under the first cabinet's back, away from the fronts
-// that are looked at through see-through boards. No view from above sees them (from below
-// they show), and Fit frames about 3 % wider than without them. A slide longer than 530 mm
-// reaches out in front. A hidden flag upstream would do better.
-/// Where `HOME` stands: a row-major 3 x 4 placement, half a turn about Z.
-const HIDDEN: [f64; 12] = [
-    -1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 265.0, 0.0, 0.0, 1.0, -25.0,
-];
+/// Where `HOME` stands, hidden (`lib.rs` `component`). An older design's stood under the floor.
 const ORIGIN: [f64; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
 // The models' sizes in mm, from a common hinge (35 mm cup, 0 mm cruciform plate on the 37/32
@@ -402,8 +392,8 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
         commands.push(create(HOME));
     } else {
         // In a plugin run a body made in a moved component lands shifted by where it stands
-        // (as a hole does, see `inside` in lib.rs): so `HOME` goes back to the origin while
-        // a definition is added, and under the floor again after.
+        // (as a hole does, see `inside` in lib.rs), and an older design's `HOME` stood under
+        // the floor: so it goes back to the origin, and stays there.
         commands.push(at(ORIGIN));
         commands.push(activate(HOME));
     }
@@ -413,8 +403,15 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
         commands.push(activate(HOME));
     }
     commands.push(activate("root"));
-    commands.push(at(HIDDEN));
     commands
+}
+
+/// `HOME`'s placement's occurrence id in `tree` (`component.list`'s reply), if it is there.
+pub fn home(tree: &Value) -> Value {
+    let all = tree["components"].as_array().into_iter().flatten();
+    (all.filter(|c| c["name"] == HOME))
+        .find_map(|c| c["occurrences"].get(0).map(|o| o["id"].clone()))
+        .unwrap_or_default()
 }
 
 /// A model's body, about its own origin, its -Y into the board it sits on and its -X towards
@@ -573,7 +570,7 @@ pub fn cost(commands: &Commands) -> usize {
     let shared = if used(commands) { PARAMETERS.len() } else { 0 };
     let definitions = match copies {
         0 => 0,
-        _ => definitions(&json!({}), &wanted(commands)).len() + 2, // and back to the user's component; one more when `HOME` is there already
+        _ => definitions(&json!({}), &wanted(commands)).len() + 2, // hidden and back to the user's component; one more when `HOME` is there already
     };
     commands.len() + copies + 2 * cuts + usize::from(cuts > 0) + shared + definitions
 }
