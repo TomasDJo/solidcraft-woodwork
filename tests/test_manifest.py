@@ -118,6 +118,10 @@ def test_choices_have_titles(approval):
     titles = ["General", "Fronts", "Doors", "Drawer", "Plinth and wall mount", "Joinery", "Cut list and worktop", "Display"]
     slots = {e["name"]: e.get("slots") for e in manifest["runtime"]["entries"] if e["name"].startswith("settings")}
     assert slots == {s: [{"kind": "menu", "name": f"{t} settings"}] for s, t in zip(sections, titles)}, slots
+    # Settings only store values, so their dialogs have no Preview box: a job has none. Display
+    # keeps it, as its preview shows See-through boards.
+    jobs = {e["name"] for e in manifest["runtime"]["entries"] if e["name"].startswith("settings-") and e.get("job")}
+    assert jobs == set(sections) - {"settings-display"}, jobs
     # Each function names its icon, and the package has it (the settings' dialogs share one).
     for entry in manifest["runtime"]["entries"]:
         icon = entry["input_schema"]["x-solidcraft-icon"]

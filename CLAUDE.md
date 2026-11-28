@@ -84,7 +84,9 @@ table says which).
   (what doors and drawer fronts share), `-doors` (hinge opening, double dividers),
   `-drawers`, `-plinth`, `-joinery`, `-cutlist`, `-display` (menu "<Group> settings", the
   settings icon), each with only its fields. Same `execute` branch and storage: a run sends only
-  its fields, so `patch` leaves the rest as stored. The hook (`settings::fields`) answers only
+  its fields, so `patch` leaves the rest as stored. All but `-display` are `"job": true` only
+  so their dialogs have no Preview box (a settings run only stores, nothing to preview; a job
+  is otherwise the same run, a few commands); Display keeps it for See-through boards. The hook (`settings::fields`) answers only
   the entry's fields (`settings::SECTIONS`), as a reply naming a field the schema lacks is
   ignored whole; a refusal (`settings::trouble`) is hinted only when its field is in the entry.
   A schema condition cannot name another entry's field: Finger-joint the bottom too (Joinery) is
@@ -226,8 +228,8 @@ table says which).
   appearance's preset PBR is opaque only ("opaque PBR requires numeric opacity 1"): `pbr: null`
   while see-through, left out (preset back) when solid. `material::assign` reads the setting
   (`storage.get`, one command, only when it creates a material) and creates it see-through.
-  Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Settings is
-  an edit entry, so its preview shows the change.
+  Oak is built into the app (`material.edit` refuses built-ins), so it stays solid. Display
+  settings is an edit entry (not a job), so its preview shows the change.
   **Edit (one cabinet, its own fields).** Edit is Cabinet with `mode` `edit` ("Edit picked";
   `new` by default, never switched by what is picked, as a picked side means Match selected):
   `execute` and `dialog` turn it into the internal `edit` (no entry of its own any more;

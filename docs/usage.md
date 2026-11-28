@@ -774,6 +774,8 @@ choice in the same run (`joint_spacing` with `joints`, `back_thickness` with `ba
 `plinth_setback` with `plinth_type`).
 
 - Changing the settings does not change the cabinets already made: Settings only stores them.
+  So the settings dialogs have no Preview, except Display settings, whose preview shows
+  See-through boards.
   **Apply settings** builds cabinets again with them (it was Settings' Apply to picked cabinets
   before).
 - The settings are kept in the design (SolidCraft 0.46, `storage@0.1`), not for you as a user:
