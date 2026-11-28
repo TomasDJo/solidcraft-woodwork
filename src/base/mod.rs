@@ -325,12 +325,26 @@ fn pieces(
 /// A connector bolt's hole through two touching sides, in mm: one size for M6 bolts.
 pub const BOLT_D: f64 = 9.0;
 
+/// The counterbore (#260) on each side's outer face round a bolt's hole, in mm: room for an M6
+/// bolt's head or nut and a washer, so they do not stand proud of the side.
+pub const COUNTERBORE_D: f64 = 20.0;
+pub const COUNTERBORE_DEPTH: f64 = 6.0;
+/// The wood left under a counterbore for the washer to bear on, in mm.
+pub const SHOULDER: f64 = 6.0;
+
+/// A connector bolt: its two sides in name order, its number in that pair (1 to 4), the hole's box
+/// in the world through both, and each side's counterbore box (in the pair's order).
+pub type Bolt = ([String; 2], usize, [[f64; 3]; 2], [[[f64; 3]; 2]; 2]);
+
 /// The connector bolt holes (#198) where a side of one of `cabinets` touches a side of another:
 /// each the two sides in name order (the first gets the bolt the cut list counts), the hole's
-/// number in that pair, 1 to 4, and its box in the world through both. None of it depends on
+/// number in that pair, 1 to 4, its box in the world through both, and a counterbore on each
+/// side's outer face (#260). None of it depends on
 /// the order the cabinets are picked in, so a run again finds the same holes by name. Two rows of two, at a quarter and three quarters of where they touch,
 /// across and up. `measure` is `inspect.measure`'s reply, the cabinets where they stand.
-pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], usize, [[f64; 3]; 2])> {
+/// A side thinner than the counterbore and `SHOULDER` behind it is refused: the washer needs
+/// wood under it round the hole.
+pub fn bolts(measure: &Value, cabinets: &[String]) -> Result<Vec<Bolt>, String> {
     let all = measure["bodies"].as_array().cloned().unwrap_or_default();
     let sides: Vec<(usize, String, [[f64; 3]; 2])> = (cabinets.iter().enumerate())
         .flat_map(|(i, c)| ["Side L", "Side R"].map(|s| (i, format!("{c} {s}"))))
@@ -350,12 +364,21 @@ pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], usize, [
                 let touch = (a[1][k] - b[0][k]).abs() < 0.5 || (b[1][k] - a[0][k]).abs() < 0.5;
                 let span = |axis: usize| (a[0][axis].max(b[0][axis]), a[1][axis].min(b[1][axis]));
                 let ((o0, o1), (z0, z1)) = (span(1 - k), span(2));
-                if !touch || o1 - o0 < 4.0 * BOLT_D || z1 - z0 < 4.0 * BOLT_D {
+                if !touch || o1 - o0 < 4.0 * COUNTERBORE_D || z1 - z0 < 4.0 * COUNTERBORE_D {
                     continue;
                 }
-                let pair = match sa < sb {
-                    true => [sa.clone(), sb.clone()],
-                    false => [sb.clone(), sa.clone()],
+                let thin = [(sa, a), (sb, b)]
+                    .into_iter()
+                    .find(|(_, s)| s[1][k] - s[0][k] < COUNTERBORE_DEPTH + SHOULDER - 0.01);
+                if let Some((side, _)) = thin {
+                    return Err(format!(
+                        "`{side}` is too thin for a counterbored connector bolt: sides need {} mm or more",
+                        COUNTERBORE_DEPTH + SHOULDER
+                    ));
+                }
+                let (pair, boxes) = match sa < sb {
+                    true => ([sa.clone(), sb.clone()], [a, b]),
+                    false => ([sb.clone(), sa.clone()], [b, a]),
                 };
                 for f in [0.25, 0.75] {
                     for g in [0.25, 0.75] {
@@ -367,13 +390,29 @@ pub fn bolts(measure: &Value, cabinets: &[String]) -> Vec<([String; 2], usize, [
                             hole[0][axis] = at - BOLT_D / 2.0;
                             hole[1][axis] = at + BOLT_D / 2.0;
                         }
-                        holes.push((pair.clone(), holes.len() % 4 + 1, hole));
+                        // from the side's face away from the other, COUNTERBORE_DEPTH in
+                        let counterbore = boxes.map(|s| {
+                            let mut c = hole;
+                            let low = s[0][k] <= hole[0][k] + 0.5;
+                            c[0][k] = if low {
+                                hole[0][k]
+                            } else {
+                                hole[1][k] - COUNTERBORE_DEPTH
+                            };
+                            c[1][k] = c[0][k] + COUNTERBORE_DEPTH;
+                            for (axis, at) in [(1 - k, o), (2, z)] {
+                                c[0][axis] = at - COUNTERBORE_D / 2.0;
+                                c[1][axis] = at + COUNTERBORE_D / 2.0;
+                            }
+                            c
+                        });
+                        holes.push((pair.clone(), holes.len() % 4 + 1, hole, counterbore));
                     }
                 }
             }
         }
     }
-    holes
+    Ok(holes)
 }
 
 /// A screw's clearance hole down through a cabinet's bottom into the frame, in mm: 4 x 50 mm

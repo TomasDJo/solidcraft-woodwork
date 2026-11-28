@@ -361,7 +361,7 @@ fn connector_bolts_go_through_the_touching_sides() {
     let m = json!({"bodies": [side("A Side L", 0.0), side("A Side R", 582.0), side("B Side L", 600.0),
         side("B Side R", 1182.0), side("C Side L", 2000.0), side("C Side R", 2582.0)]});
     let names = ["A", "B", "C"].map(String::from);
-    let holes = bolts(&m, &names);
+    let holes = bolts(&m, &names).unwrap();
     assert_eq!(holes.len(), 4);
     assert!(holes
         .iter()
@@ -370,14 +370,28 @@ fn connector_bolts_go_through_the_touching_sides() {
     // through both sides, at a quarter of the depth and of the height
     assert_eq!(holes[0].2, [[582.0, 135.5, 345.5], [618.0, 144.5, 354.5]]);
     assert_eq!(holes[3].2[0], [582.0, 415.5, 705.5]);
+    // a counterbore (#260) 20 across and 6 deep on each side's outer face: A Side R's at x 582,
+    // B Side L's at 618
+    let [a, b] = holes[0].3;
+    assert_eq!(a, [[582.0, 130.0, 340.0], [588.0, 150.0, 360.0]]);
+    assert_eq!((b[0][0], b[1][0]), (612.0, 618.0));
+    // sides too narrow for a counterbore a quarter in get no bolts
+    let low = |name: &str, x0: f64| json!({"name": name, "bbox": {"min": [x0, 0, 0], "max": [x0 + 18.0, 560, 79]}});
+    let m2 = json!({"bodies": [low("A Side R", 582.0), low("B Side L", 600.0)]});
+    assert!(bolts(&m2, &names[..2]).unwrap().is_empty());
+    // sides too thin to leave wood under a counterbore are refused, not cut through
+    let thin = |name: &str, x0: f64| json!({"name": name, "bbox": {"min": [x0, 0, 170], "max": [x0 + 6.0, 560, 890]}});
+    let m3 = json!({"bodies": [thin("A Side R", 594.0), thin("B Side L", 600.0)]});
+    let err = bolts(&m3, &names[..2]).unwrap_err();
+    assert!(err.contains("too thin") && err.contains("12 mm"), "{err}");
     // picked in another order, or only some of them: the same pairs, numbers and holes
-    let again = bolts(&m, &["C", "B", "A"].map(String::from));
+    let again = bolts(&m, &["C", "B", "A"].map(String::from)).unwrap();
     assert_eq!(again, holes);
-    assert_eq!(bolts(&m, &["B", "A"].map(String::from)), holes);
+    assert_eq!(bolts(&m, &["B", "A"].map(String::from)).unwrap(), holes);
     // a run along Y is found the same way
     let turned = |name: &str, y0: f64| json!({"name": name, "bbox": {"min": [0, y0, 0], "max": [560, y0 + 18.0, 720]}});
     let m = json!({"bodies": [turned("A Side R", 582.0), turned("B Side L", 600.0)]});
-    assert_eq!(bolts(&m, &names[..2]).len(), 4);
+    assert_eq!(bolts(&m, &names[..2]).unwrap().len(), 4);
 }
 
 #[test]

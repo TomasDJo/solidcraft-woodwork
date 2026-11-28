@@ -19,6 +19,7 @@ guide (SolidCraft 0.50).
 - [Apply settings](#apply-settings)
 - [Panel](#panel)
 - [Mobile base](#mobile-base)
+- [Connector bolts](#connector-bolts)
 - [Worktop](#worktop)
 - [Cut list](#cut-list)
 - [Drawing](#drawing)
@@ -912,15 +913,17 @@ frame under all of them and stands them on it:
   fits them again.
 - **Connector bolts** join the cabinets: where a side of one touches a side of another, four
   9 mm holes (for M6 connector bolts) go through both, at a quarter and three quarters of where
-  they touch, across and up. Run again, a hole already there is not cut twice. An Edit of a
-  cabinet makes its side whole again: run Mobile base again afterwards.
+  they touch, across and up, each with a 20 mm counterbore 6 mm deep on the outer face of both
+  sides for the bolt's head or nut and a washer. Run again, a hole already there is not cut twice. An Edit of a
+  cabinet makes its side whole again: run Mobile base again afterwards. Without a base, use
+  [Connector bolts](#connector-bolts).
 - **Frame screws** fix the cabinets to the frame: where a cabinet's bottom rests on a frame board
   for at least 100 mm, two 4.5 mm holes (for 4 x 50 mm screws) go down through the bottom onto the
   board's middle, at a quarter and three quarters of that length. A run again does not cut them
   twice, one with other frame sizes moves them, and an Edit of the cabinet drops them until Mobile base runs again.
   A cabinet with a plinth does not rest its bottom on the frame and gets none.
 - The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`,
-  the bolts as `Connector bolt, M6` and the screws as `Frame screw, 4 x 50 mm`.
+  the bolts as `Connector bolt, M6` with two `Washer, M6` each, and the screws as `Frame screw, 4 x 50 mm`.
 
 ![Frame screws: two holes down through the cabinet's bottom into each frame board under it, seen through the boards.](images/base-screws.png)
 
@@ -940,8 +943,23 @@ frame under all of them and stands them on it:
 
 Its sizes are in mm. It is numeric, like the worktop: it does not follow a cabinet that changes size until it is made
 again (Mobile base by its Name, or Apply settings). Quarter turns only, and in a component that
-stands on the origin. Not in it yet ([#198](https://github.com/TomasDJo/solidcraft-woodwork/issues/198)):
-a worktop height that sets a tool cabinet's height.
+stands on the origin.
+
+## Connector bolts
+
+Bolts cabinets that stand side by side together, without a mobile base. Pick a board of each
+cabinet (two or more) and press Run: where a side of one touches a side of another, four 9 mm
+holes go through both, at a quarter and three quarters of where they touch, across and up, each
+with a 20 mm counterbore 6 mm deep on the outer face of both sides, so an M6 bolt's head and its
+nut, each on a washer, sit below the surface. These are the same holes as a
+[Mobile base](#mobile-base) drills, so a base made later cuts none of them twice, and a run
+again cuts nothing new. Cabinets that touch nowhere are refused, and so are sides thinner than
+12 mm, which would leave no wood under the washer. The cut list counts
+`Connector bolt, M6` and two `Washer, M6` a bolt.
+
+The holes are not part of the cabinet's own recipe: an Edit of a cabinet makes its side whole
+again, so run Connector bolts again afterwards. A side needs to be at least 80 mm deep and tall
+where it touches the other.
 
 ## Worktop
 

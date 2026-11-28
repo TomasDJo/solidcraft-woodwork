@@ -623,6 +623,79 @@ fn noted(other: &select::Cabinet, place: &str, name: &str, run: Run) -> Result<b
     Ok(true)
 }
 
+/// A cut at world coordinates (#198): its feature's name, the board it goes into, its box in the
+/// world, and its diameter.
+type WorldCut = (String, String, [[f64; 3]; 2], f64);
+
+/// Every feature's name in the design's timeline.
+fn timeline_names(run: Run) -> Result<Vec<String>, String> {
+    let timeline = run(
+        "document.inspect",
+        json!({"bodies": false, "timeline": "summary"}),
+    )?;
+    Ok((timeline["timeline"].as_array().into_iter().flatten())
+        .filter_map(|f| f["name"].as_str().map(String::from))
+        .collect())
+}
+
+/// Each connector bolt's hole through both sides, named on each, and each side's counterbore
+/// (#198, #260). The names do not depend on the pick order, so a run again finds them.
+fn bolt_cuts(holes: &[base::Bolt]) -> Vec<WorldCut> {
+    let mut wanted = Vec::new();
+    for (sides, n, world, counterbores) in holes {
+        for (k, (side, what)) in sides.iter().zip(["bolt", "hole"]).enumerate() {
+            let other = &sides[1 - k];
+            let bolt = format!("{side} connector {what} {n} to {other}");
+            wanted.push((bolt, side.clone(), *world, base::BOLT_D));
+            let bore = format!("{side} connector counterbore {n} to {other}");
+            wanted.push((bore, side.clone(), counterbores[k], base::COUNTERBORE_D));
+        }
+    }
+    wanted
+}
+
+/// Cuts each of `wanted` as a cylinder along its box's odd size (the one that is not its
+/// diameter), in its cabinet's own component (`inside`), after the commands `cuts` already holds
+/// for that cabinet; one whose name is in `had` (a run again) is left as it is.
+// ponytail: a cut the cabinet does not remember: Edit cabinet makes its board whole again (run
+// it again), and a cabinet moved away keeps its old holes.
+fn cut_world(
+    now: &Value,
+    wanted: &[WorldCut],
+    had: &[String],
+    mut cuts: Vec<(String, Commands)>,
+    run: Run,
+) -> Result<(), String> {
+    let tree = run("component.list", json!({}))?;
+    for (feature, board, world, d) in wanted {
+        let cabinet = select::owner(now, board).unwrap_or_default().to_string();
+        if had.contains(feature) || cabinet.is_empty() {
+            continue;
+        }
+        let (corner, size) = worktop::local(*world, &edit::placement(&tree, &cabinet)?.1);
+        let off = |i: usize| (size[i] - d).abs();
+        let along = (0..3)
+            .max_by(|&a, &b| off(a).total_cmp(&off(b)))
+            .unwrap_or(0);
+        let base = [0, 1, 2].map(|i| corner[i] + if i == along { 0.0 } else { size[i] / 2.0 });
+        let mut axis = [0, 0, 0];
+        axis[along] = 1;
+        let args = json!({
+            "base": base.map(kit::mm), "axis": axis, "diameter": kit::mm(*d),
+            "height": kit::mm(size[along]), "operation": "cut", "targets": [board],
+            "name": feature,
+        });
+        match cuts.iter_mut().find(|c| c.0 == cabinet) {
+            Some(c) => c.1.push(("solid.cylinder", args)),
+            None => cuts.push((cabinet, vec![("solid.cylinder", args)])),
+        }
+    }
+    for (cabinet, commands) in cuts {
+        inside(&cabinet, commands, run)?;
+    }
+    Ok(())
+}
+
 /// Runs `commands` with the cabinet `name`'s component active. In a plugin run the app shifts
 /// a hole's or a box's position by where the component stands, so a cabinet that has been
 /// moved or turned is worked on at the origin, square, and put back.
@@ -1363,6 +1436,41 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let bodies = panel(&name, &params, &measure, run)?;
             Ok(json!({"cabinet": name, "side": side, "bodies": bodies}))
         }
+        "bolts" => {
+            // Connector bolts (#260) through the touching sides of the picked cabinets, as
+            // Mobile base drills them, without a base.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let names = body_names(run)?;
+            let mut cabinets: Vec<String> = Vec::new();
+            for body in select::picked(params, &design) {
+                let cabinet = select::owner(&names, &body)
+                    .ok_or(format!("`{body}` is not part of a cabinet"))?;
+                if !cabinets.iter().any(|c| c == cabinet) {
+                    cabinets.push(cabinet.to_string());
+                }
+            }
+            check(
+                cabinets.len() > 1,
+                "pick a board of each cabinet to bolt together: two or more, side by side",
+            )?;
+            let now = measured(names, &cabinets, run)?;
+            let holes = base::bolts(&now, &cabinets)?;
+            check(
+                !holes.is_empty(),
+                "no two of the picked cabinets stand side to side, touching",
+            )?;
+            cut_world(
+                &now,
+                &bolt_cuts(&holes),
+                &timeline_names(run)?,
+                Vec::new(),
+                run,
+            )?;
+            Ok(json!({"bolts": holes.len(), "cabinets": cabinets}))
+        }
         "base" => {
             // A mobile base (#101) under the picked cabinets: a frame on casters in a component
             // of its own, at world coordinates like a worktop, and the cabinets stood on it.
@@ -1459,20 +1567,9 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     &format!("`{cabinet}` did not go up onto the base: it is held to a cabinet that is not on it, or stands loose; pick that cabinet too, or ground `{cabinet}`"),
                 )?;
             }
-            // Connector bolts through the sides that touch (#198), each cut in its cabinet's own
-            // component; a hole already there (a run again) is left as it is.
-            // ponytail: a cut the cabinet does not remember: Edit cabinet makes its side whole
-            // again (run Mobile base again), and a cabinet moved away keeps its old holes.
-            let timeline = run(
-                "document.inspect",
-                json!({"bodies": false, "timeline": "summary"}),
-            )?;
-            let had: Vec<&str> = (timeline["timeline"].as_array().into_iter().flatten())
-                .filter_map(|f| f["name"].as_str())
-                .collect();
-            let tree = run("component.list", json!({}))?;
-            let mut cuts: Vec<(String, Commands)> = Vec::new();
-            let holes = base::bolts(&now, &cabinets);
+            // Connector bolts through the sides that touch (#198), and screws into the frame.
+            let had = timeline_names(run)?;
+            let holes = base::bolts(&now, &cabinets)?;
             // the frame's boards beside the cabinets, for the screws into it
             let mut both = now.clone();
             let frame = run("inspect.measure", json!({"bodies": summary["bodies"]}))?;
@@ -1482,15 +1579,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 all.extend(boards.iter().cloned());
             }
             let screws = base::screws(&both, &cabinets, &name);
-            // each cut: its feature's name, the board it goes into, its box in the world, its size
-            let mut wanted: Vec<(String, String, [[f64; 3]; 2], f64)> = Vec::new();
-            for (sides, n, world) in &holes {
-                for (k, (side, what)) in sides.iter().zip(["bolt", "hole"]).enumerate() {
-                    let other = &sides[1 - k];
-                    let feature = format!("{side} connector {what} {n} to {other}");
-                    wanted.push((feature, side.clone(), *world, base::BOLT_D));
-                }
-            }
+            let mut wanted = bolt_cuts(&holes);
             // A screw's name holds where it is, so a frame made again with other sizes finds its
             // old holes stale: they are deleted, and the new ones cut.
             for screw in &screws {
@@ -1503,8 +1592,10 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 ));
             }
             let names: Vec<String> = wanted.iter().map(|w| w.0.clone()).collect();
+            let had_names: Vec<&str> = had.iter().map(String::as_str).collect();
+            let mut cuts: Vec<(String, Commands)> = Vec::new();
             for cabinet in &cabinets {
-                let stale = base::stale_screws(&had, &names, cabinet);
+                let stale = base::stale_screws(&had_names, &names, cabinet);
                 if !stale.is_empty() {
                     cuts.push((
                         cabinet.clone(),
@@ -1512,32 +1603,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                     ));
                 }
             }
-            for (feature, side, world, d) in &wanted {
-                let cabinet = select::owner(&now, side).unwrap_or_default().to_string();
-                if had.contains(&feature.as_str()) || cabinet.is_empty() {
-                    continue;
-                }
-                let (corner, size) = worktop::local(*world, &edit::placement(&tree, &cabinet)?.1);
-                let along = (0..3)
-                    .max_by(|&a, &b| size[a].total_cmp(&size[b]))
-                    .unwrap_or(0);
-                let base =
-                    [0, 1, 2].map(|i| corner[i] + if i == along { 0.0 } else { size[i] / 2.0 });
-                let mut axis = [0, 0, 0];
-                axis[along] = 1;
-                let args = json!({
-                    "base": base.map(kit::mm), "axis": axis, "diameter": kit::mm(*d),
-                    "height": kit::mm(size[along]), "operation": "cut", "targets": [side],
-                    "name": feature,
-                });
-                match cuts.iter_mut().find(|c| c.0 == cabinet) {
-                    Some(c) => c.1.push(("solid.cylinder", args)),
-                    None => cuts.push((cabinet, vec![("solid.cylinder", args)])),
-                }
-            }
-            for (cabinet, commands) in cuts {
-                inside(&cabinet, commands, run)?;
-            }
+            cut_world(&now, &wanted, &had, cuts, run)?;
             summary["bolts"] = json!(holes.len());
             summary["screws"] = json!(screws.len());
             // Each cabinet on the frame that no neighbour holds is held to the base (#215), so it

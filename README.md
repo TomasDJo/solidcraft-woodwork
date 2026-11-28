@@ -54,6 +54,8 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   cabinets, with stiffeners across it, bolted to each other and, when made without a plinth,
   screwed down to the frame, for a workbench that rolls. The base holds its cabinets and
   follows a line they stand along. Pick a board of it to change it or add cabinets.
+- **Connector bolts**: counterbored M6 bolt holes through the touching sides of cabinets
+  that stand side by side, with or without a mobile base.
 - **Worktop**: over the picked cabinets, with butt or mitred corners, dog holes, a sink
   cut-out, an opening for a benchtop tool set flush with the top (its shelf drilled for
   the tool's bolts), and a side wing on two legs past one end.
