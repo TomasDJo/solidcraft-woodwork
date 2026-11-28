@@ -254,6 +254,16 @@ needs them. Change one in Parameters and every cabinet's holes follow:
   ![Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.](images/strip-runners.png)
 
   *Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.*
+- **False back** (dado and strip runners, #258): a runner drawer has no stop, and pulled too far
+  it tips out. So each runner drawer's box gets a second back inside it,
+  `Name Drawer 1 False back`: a board between the box's sides, as high as them and as thick as
+  the box's boards, its front face at four fifths of the box's depth. It marks how far the
+  drawer may come out and keeps what is in it in the front four fifths. It follows a resize and
+  is a board in the cut list. Drawers on slides have none.
+
+  ![A runner drawer pulled out: its false back at four fifths of the box's depth.](images/false-back.png)
+
+  *A runner drawer pulled out: its false back at four fifths of the box's depth.*
 - **Slide length** (Auto, set by the cabinet's depth): the standard side-mount
   ball-bearing lengths, 250, 270 and 300 to 650 mm in steps of 50, or 10 to 28 in in steps of
   2. **Auto**

@@ -1222,6 +1222,33 @@ fn runner_drawers_stop_against_the_back_and_slides_keep_their_room() {
 }
 
 #[test]
+fn runner_drawers_have_a_false_back_at_four_fifths_of_the_box() {
+    // #258: on dado and strip runners, between the sides, as high as them, its front face at
+    // 0.8 of the box's depth; drawers on slides have none
+    for slide in ["wood", "strips"] {
+        let (commands, _) = build(&json!({"drawers": 2, "slide_type": slide})).unwrap();
+        for i in [1, 2] {
+            let stop = named(&commands, &format!("Cabinet Drawer {i} False back"));
+            let left = named(&commands, &format!("Cabinet Drawer {i} Left"));
+            assert_eq!(stop["width"], "Cabinet_drawer_thickness", "{slide}");
+            assert_eq!(stop["height"], left["height"], "{slide}");
+            assert_eq!(stop["corner"][2], left["corner"][2], "{slide}");
+            let y = stop["corner"][1].as_str().unwrap();
+            assert!(y.contains("+ 0.8*"), "{slide}: {y}");
+        }
+    }
+    let (commands, _) = build(&json!({"drawers": 2})).unwrap();
+    assert!(!has(&commands, "Cabinet Drawer 1 False back"));
+    // a shallow sink base's half-depth box (141 mm): 18 mm boards would put the false back
+    // into the box's back, 12 mm ones leave it clear
+    for slide in ["wood", "strips"] {
+        let p = |bt: f64| json!({"kind": "sink", "depth": 300, "drawers": 2, "slide_type": slide, "drawer_thickness": bt});
+        assert!(build(&p(18.0)).is_err(), "{slide}");
+        assert!(build(&p(12.0)).is_ok(), "{slide}");
+    }
+}
+
+#[test]
 fn strip_runners_carry_the_bottom_on_a_strip_on_each_side() {
     let p = json!({"drawers": 2, "slide_type": "strips"});
     let (commands, _) = build(&p).unwrap();

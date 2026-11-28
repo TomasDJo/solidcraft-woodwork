@@ -342,6 +342,12 @@ def test_wooden_runners(approval):
     assert (round(bottom[0], 3), round(bottom[3], 3)) == (-300 + 13, 300 - 13), bottom
     assert shut["Cabinet Drawer 1 Left"][0] == -300 + 19 and shut["Cabinet Drawer 1 Left"][2] == bottom[5]
     assert abs(out["Cabinet Drawer 1 Front"][1] - (shut["Cabinet Drawer 1 Front"][1] - 363)) < 0.01
+    # the false back (#258): between the box's sides, as high as them, its front face at
+    # four fifths of the 544 mm box from the box's front; a board of the cut list
+    stop, left, box = shut["Cabinet Drawer 1 False back"], shut["Cabinet Drawer 1 Left"], shut["Cabinet Drawer 1 Box front"]
+    assert abs(stop[1] - (box[1] + 0.8 * 544)) < 0.01, (stop, box)
+    assert round(stop[0], 3) == round(left[3], 3) and (stop[2], stop[5]) == (left[2], left[5]), (stop, left)
+    assert "Cabinet Drawer 1 False back" in [n for p in results[5]["result"]["parts"] for n in p["parts"]]
     # each side loses two grooves of 6 x 8 mm, front to back
     side = volume(results[2], "Cabinet Side L")
     assert side < 720 * 560 * 18 - 2 * 6 * 8 * 500, side
