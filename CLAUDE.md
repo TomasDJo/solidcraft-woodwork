@@ -772,7 +772,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   `tab` (#181, drawers only; doors and a sink base's false front get nothing; #247): the
   cabinet's fronts are inset (`input`: `fronts` overlay is taken as inset, and Panel's overlay
   check skips a tab cabinet), the drawer's `Bottom` its lowest part at the front's lower edge,
-  under the box (from the front's face to the box's back, as wide as the box) with the front
+  under the box (from the front's face to the box's back, as wide as the front, #284: out under the slides, unless the lowest box side is under the slide members' 45 mm, `wide` in `drawers`, then as wide as the box; on runners as before) with the front
   (`bb` shorter) and the box's boards standing on it (`bz = z + bb`, as on runners); the box clears
   only above (`lift`). `tab` joins `Bottom tab 1/2` (boxes) and `corner 1/2` (cylinders,
   `TAB_R`) to it, `min(<Prefix>_tab_width, box_w)` wide (`tab_width`, Woodwork settings' Drawers,

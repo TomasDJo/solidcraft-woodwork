@@ -45,6 +45,7 @@ pub fn build(cabinet: &Cabinet) {
         t,
         drawers,
         front_h: front_mm,
+        drawer_h,
         inset,
         reveal,
         mixed,
@@ -162,6 +163,19 @@ pub fn build(cabinet: &Cabinet) {
         false => format!("({et} + {})", mm(BOX_CLEAR)),
     };
     let back_y = format!("{eback} + {box_d} - {bt}");
+    // A bottom tab's bottom reaches out under the slides to the front's edges (#284) while the
+    // lowest box side keeps their members (45 mm, at its mid-height) above it: a low front
+    // with a thick bottom keeps it as wide as the box.
+    let lowest = match drawer_h > 0.0 {
+        true => front_mm.min(drawer_h),
+        false => front_mm,
+    };
+    let lift_mm = if inset && !mixed {
+        BOX_CLEAR
+    } else {
+        t + BOX_CLEAR
+    };
+    let wide = lowest - lift_mm - box_t[1] >= hardware::MEMBERS[0].2;
     for i in 0..count {
         let drawer = format!("Drawer {}", i + 1);
         // the front's lower edge
@@ -574,13 +588,18 @@ pub fn build(cabinet: &Cabinet) {
             continue;
         }
         match tabbed {
-            // under the box and the front, which stand on it
+            // under the box and the front, which stand on it, as wide as the front (#284): out
+            // into the slide gap under the slides (`wide`), else as wide as the box
             true => {
                 let bd = format!("{box_d} + {et}");
+                let (bx, bw) = match wide {
+                    true => (&x0, &front_w),
+                    false => (&x, &box_w),
+                };
                 panel(
                     &format!("{drawer} Bottom"),
-                    [&x, efront, &z],
-                    [&box_w, &bd, &bb],
+                    [bx, efront, &z],
+                    [bw, &bd, &bb],
                 );
                 tab(&z, efront);
             }

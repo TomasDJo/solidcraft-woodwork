@@ -1898,11 +1898,14 @@ fn a_bottom_tab_sticks_out_under_the_front() {
             was["height"].as_str().unwrap()
         )
     );
-    // the bottom from the front's face to the box's back, as wide as the box, the box's
-    // boards standing on it
+    // the bottom from the front's face to the box's back, as wide as the front (#284), the
+    // box's boards standing on it
     assert_eq!(bottom["corner"][1], front["corner"][1]);
+    assert_eq!(
+        (&bottom["corner"][0], &bottom["length"]),
+        (&front["corner"][0], &front["length"])
+    );
     let left = named(&commands, "Cabinet Drawer 1 Left");
-    assert_eq!(bottom["corner"][0], left["corner"][0]);
     assert_eq!(
         left["corner"][2],
         format!(
@@ -1955,6 +1958,27 @@ fn a_bottom_tab_sticks_out_under_the_front() {
             "{p}"
         );
     }
+    // integrated, the bottom is the box front's width, which is the box's (#284)
+    let (commands, _) =
+        build(&json!({"drawers": 2, "handles": "tab", "drawer_front": "integrated"})).unwrap();
+    let (bottom, front) = (
+        named(&commands, "Cabinet Drawer 1 Bottom"),
+        named(&commands, "Cabinet Drawer 1 Box front"),
+    );
+    assert_eq!(
+        (&bottom["corner"][0], &bottom["length"]),
+        (&front["corner"][0], &front["length"])
+    );
+    // a low front with a thick bottom leaves a box side under the slides' 45 mm members: the
+    // bottom stays as wide as the box, clear of them
+    let p =
+        json!({"height": 315, "plinth": 0, "drawers": 4, "handles": "tab", "drawer_bottom": 19});
+    let (commands, _) = build(&p).unwrap();
+    let (bottom, left) = (
+        named(&commands, "Cabinet Drawer 1 Bottom"),
+        named(&commands, "Cabinet Drawer 1 Left"),
+    );
+    assert_eq!(bottom["corner"][0], left["corner"][0]);
     // not with undermount runners or strips under the bottom, nor drawers over doors on a rail
     for p in [
         json!({"drawers": 2, "handles": "tab", "slide_type": "under_full", "drawer_thickness": 15}),

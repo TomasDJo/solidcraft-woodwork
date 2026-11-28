@@ -634,7 +634,7 @@ def test_bottom_tab(approval):
     # Drawer handles Bottom tab (#181, #247): inset fronts (Fronts is Overlay here), each drawer's
     # bottom (12 mm) its lowest part, where a plain inset front's lower edge is, the front and
     # the box standing on it: front and bottom as high as the plain front. The bottom runs from
-    # the box's back to 12 mm past the front's face (#256), Tab width (150 mm) wide there and
+    # the box's back to 12 mm past the front's face (#256), as wide as the front (#284), Tab width (150 mm) wide there and
     # rounded, with a cove underneath: a 6 mm radius 3 mm deep, its axis along the tab 6 mm in
     # front of the face. The front is whole (no notch), and the cut list's bottom is the long one.
     steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "tab"}), MEASURE, plugin(approval, "cutlist"),
@@ -651,6 +651,11 @@ def test_bottom_tab(approval):
         assert bottom[2] == plain[2] and face[5] == plain[5] and face[2] == bottom[5], (bottom, face, plain)
         assert left[2] == bottom[5] and bottom[4] == back[4], (bottom, left, back)
         assert round(face[1] - bottom[1], 3) == 12 and round(bottom[5] - bottom[2], 3) == 12, (bottom, face)
+        # as wide as the front (#284), out under the slides: no slide model overlaps it
+        assert (bottom[0], bottom[3]) == (face[0], face[3]), (bottom, face)
+        slides = {n: b for n, b in boxes(results[1], models=True).items() if n.startswith("HW slide") and "(" in n}
+        assert slides and not [n for n, s in slides.items()
+                               if all(s[i] < bottom[i + 3] - 0.01 and bottom[i] < s[i + 3] - 0.01 for i in range(3))], slides
         cove = [f["cylinder"] for f in results[3]["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 6) < 0.01]
         assert cove and all(abs(abs(c["axis"][0]) - 1) < 1e-6 for c in cove), cove
         assert all(abs(c["origin"][2] - (bottom[2] - 3)) < 0.01 and abs(c["origin"][1] - (face[1] - 6)) < 0.01 for c in cove), cove
@@ -658,9 +663,9 @@ def test_bottom_tab(approval):
         assert abs(volume(results[1], name) - whole) < 1, name  # no notch, no scoop
         assert cylinders(results[1], "Cabinet Drawer 1 Bottom") >= 2, front
         parts = results[2]["result"]["parts"]
-        lengths = [round(max(p["length"], p["width"]), 1) for p in parts
-                   if "Drawer 1 Bottom" in " ".join(p["parts"])]
-        assert round(bottom[4] - bottom[1], 1) in lengths, (bottom, lengths)
+        sizes = [sorted([round(p["length"], 1), round(p["width"], 1)]) for p in parts
+                 if "Drawer 1 Bottom" in " ".join(p["parts"])]
+        assert sorted([round(bottom[3] - bottom[0], 1), round(bottom[4] - bottom[1], 1)]) in sizes, (bottom, sizes)
 
 def test_shaker_fronts(approval):
     # A shaker door, 596 x 716, hinged left: 60 mm stiles full height (the left one keeps the
