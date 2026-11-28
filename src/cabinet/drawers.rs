@@ -13,7 +13,7 @@ pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
 pub const BOX_CLEAR: f64 = 8.0;
 pub const BOX_BEHIND: f64 = 10.0; // room behind a box on slides, which stop it themselves
 const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front's edge
-const FALSE_BACK: f64 = 0.8; // a runner drawer's false back: its front face at this of the box depth
+pub const FALSE_BACK: f64 = 0.8; // a runner drawer's false back: its front face at this of the box depth
 
 /// A stack of drawers: a front, overlay or inset, and behind it a box that runs on slides. They
 /// are alike, or the top one is `drawer_height` and the rest share what is left, or beside

@@ -1239,6 +1239,13 @@ fn runner_drawers_have_a_false_back_at_four_fifths_of_the_box() {
     }
     let (commands, _) = build(&json!({"drawers": 2})).unwrap();
     assert!(!has(&commands, "Cabinet Drawer 1 False back"));
+    // a shallow sink base's half-depth box (141 mm): 18 mm boards would put the false back
+    // into the box's back, 12 mm ones leave it clear
+    for slide in ["wood", "strips"] {
+        let p = |bt: f64| json!({"kind": "sink", "depth": 300, "drawers": 2, "slide_type": slide, "drawer_thickness": bt});
+        assert!(build(&p(18.0)).is_err(), "{slide}");
+        assert!(build(&p(12.0)).is_ok(), "{slide}");
+    }
 }
 
 #[test]

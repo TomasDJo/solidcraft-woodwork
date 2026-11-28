@@ -1,6 +1,6 @@
 //! Reads and checks the dialog's fields. The numbers here only check the input.
 
-use super::drawers::{BOX_BEHIND, BOX_CLEAR, SLIDE};
+use super::drawers::{BOX_BEHIND, BOX_CLEAR, FALSE_BACK, SLIDE};
 use super::{GROOVE_INSET, RAIL_D};
 use crate::fittings::{DOOR_GAP, PITCH};
 use crate::kit::{check, num, Kit};
@@ -514,6 +514,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         !under || drawers == 0.0 || box_t[0] <= 16.0,
         "undermount slides need drawer box sides of 16 mm or less",
+    )?;
+    // the false back (#258) must stand clear in front of the box's back
+    check(
+        !wood || drawers == 0.0 || FALSE_BACK * box_d + box_t[0] <= box_d - box_t[0],
+        "too shallow for runner drawers: the false back would run into the box's back",
     )?;
     check(
         wood || under || drawers == 0.0 || box_d >= MIN_SLIDE,
