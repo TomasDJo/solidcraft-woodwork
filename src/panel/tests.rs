@@ -69,8 +69,9 @@ fn end_panel_on_either_side_reaches_the_fronts() {
     let sink = made(json!({"kind": "sink", "drawers": 3}));
     let sink = boxes(json!({"kind": "end", "side": "right"}), sink, false).unwrap();
     assert_eq!(sink[0].1[1], "A_depth - (-A_reveal - A_thickness)");
-    // inset fronts, or none: flush with the carcass
-    for params in [json!({"doors": 1, "fronts": "inset"}), json!({})] {
+    // inset fronts, a bottom tab's (inset whatever Fronts says, #247), or none: flush
+    let tab = json!({"drawers": 2, "handles": "tab"});
+    for params in [json!({"doors": 1, "fronts": "inset"}), tab, json!({})] {
         let flush = boxes(json!({"kind": "end", "side": "right"}), made(params), false);
         let flush = flush.unwrap();
         assert_eq!(flush[0].1[1], "A_depth - 0 mm");
@@ -119,6 +120,12 @@ fn filler_and_its_return() {
         both[0].1[3],
         json!(["A_width/2 + 0 mm", "0 mm - A_depth/2", "A_plinth"])
     );
+    // a bottom tab's fronts are inset (#247): the filler in the carcass's plane, floor to top
+    let tab = made(json!({"drawers": 2, "handles": "tab"}));
+    let p = json!({"kind": "filler", "side": "right", "width": 60});
+    let both = boxes(p, tab, false).unwrap();
+    assert_eq!(both[0].1[2], "A_height - 0 mm");
+    assert_eq!(both[0].1[3][1], "0 mm - A_depth/2");
     // narrower than thick
     let p = json!({"kind": "filler", "side": "right", "width": 15});
     let err = boxes(p, made(json!({})), false).unwrap_err();

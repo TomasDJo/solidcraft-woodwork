@@ -302,7 +302,8 @@ def test_drawer_box_and_bottom_thickness(approval):
     size = lambda name, axis: round(box[f"Cabinet Drawer 1 {name}"][axis + 3] - box[f"Cabinet Drawer 1 {name}"][axis], 3)
     assert (size("Left", 0), size("Right", 0), size("Box back", 1), size("Bottom", 2)) == (15, 15, 15, 9), box
     assert box["Cabinet Drawer 1 Left"][0] == -300 + 18 + 12.7, box["Cabinet Drawer 1 Left"]
-    assert size("Bottom", 0) == 600 - 2 * 18 - 2 * 12.7 - 2 * 15, box["Cabinet Drawer 1 Bottom"]
+    # (and 6 mm into a groove in each side, #247)
+    assert size("Bottom", 0) == 600 - 2 * 18 - 2 * 12.7 - 2 * 15 + 2 * 6, box["Cabinet Drawer 1 Bottom"]
 
 
 def test_drawer_side_and_back_height(approval):
@@ -405,8 +406,8 @@ def test_a_cabinet_sized_by_its_drawers_inside(approval):
     assert (size["width"], size["depth"]) == (757.4, 724), size
     for measure in (results[1], results[4]):
         box = boxes(measure)
-        inside = box["Cabinet Drawer 1 Bottom"]
-        assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (672, 672), inside
+        inside = box["Cabinet Drawer 1 Bottom"]  # 6 mm into its groove all round (#247)
+        assert (round(inside[3] - inside[0], 3), round(inside[4] - inside[1], 3)) == (684, 684), inside
     # Apply settings to an integrated front (#163): a board shallower outside, the same inside
     results = cli([plugin(approval, "cabinet", {"drawers": 2, "sizing": "drawer", "drawer_width": 672, "drawer_depth": 672}),
                    plugin(approval, "settings", {"drawer_front": "integrated"}),
@@ -414,7 +415,7 @@ def test_a_cabinet_sized_by_its_drawers_inside(approval):
                    plugin(approval, "settings", {"drawer_front": "separate"})])
     box = boxes(results[3])
     inside, side = box["Cabinet Drawer 1 Bottom"], box["Cabinet Side L"]
-    assert round(inside[4] - inside[1], 3) == 672, inside
+    assert round(inside[4] - inside[1], 3) == 684, inside
     assert round(side[4] - side[1], 3) == 712, side
 
 
@@ -540,7 +541,7 @@ def test_integrated_drawer_fronts(approval):
         left, right = box[f"Cabinet Drawer {n} Left"], box[f"Cabinet Drawer {n} Right"]
         assert (own[0], own[3]) == (left[0], right[3]), (own, left, right)
     # the bottom starts at the front's back face (y1 of the front, y0 of the bottom)
-    assert box["Cabinet Drawer 1 Bottom"][1] == box["Cabinet Drawer 1 Box front"][4], box
+    assert box["Cabinet Drawer 1 Bottom"][1] == box["Cabinet Drawer 1 Box front"][4] - 6, box  # its groove (#247)
     holes = cylinders(results[1], "Cabinet Drawer 1 Box front")
     assert holes == cylinders(separate[1], "Cabinet Drawer 1 Front") > 0, holes
     count = lambda r: sum(p["qty"] for p in r[2]["result"]["parts"])
@@ -630,41 +631,36 @@ def test_v_grooved_fronts(approval):
 
 
 def test_bottom_tab(approval):
-    # Drawer handles Bottom tab (#181): each drawer's bottom (12 mm here) runs forward under its
-    # front, 12 mm past the face (#256), as wide as Tab width (150 mm here), rounded at the
-    # front, with a cove underneath: a 6 mm radius 3 mm deep, its axis along the tab 6 mm in
-    # front of the face. The front is cut away up to the bottom's top there, with no scoop. No
-    # tab board, and the cut list's bottom is 12 mm longer than without (plus the box front it
-    # passes).
+    # Drawer handles Bottom tab (#181, #247): inset fronts (Fronts is Overlay here), each drawer's
+    # bottom (12 mm) its lowest part, where a plain inset front's lower edge is, the front and
+    # the box standing on it: front and bottom as high as the plain front. The bottom runs from
+    # the box's back to 12 mm past the front's face (#256), Tab width (150 mm) wide there and
+    # rounded, with a cove underneath: a 6 mm radius 3 mm deep, its axis along the tab 6 mm in
+    # front of the face. The front is whole (no notch), and the cut list's bottom is the long one.
     steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "tab"}), MEASURE, plugin(approval, "cutlist"),
              faces("Cabinet Drawer 1 Bottom")]
-    plain = designed(approval, {"drawer_bottom": 12}, [plugin(approval, "cabinet", {"drawers": 2}), MEASURE])
+    plain = boxes(designed(approval, {"drawer_bottom": 12, "fronts": "inset"},
+                           [plugin(approval, "cabinet", {"drawers": 2}), MEASURE])[1])["Cabinet Drawer 1 Front"]
     for front in ("separate", "integrated"):
         results = designed(approval, {"drawer_front": front, "drawer_bottom": 12, "tab_width": 150}, steps)
         box = boxes(results[1])
         assert "Cabinet Drawer 1 Tab" not in box, sorted(box)
         name = "Cabinet Drawer 1 " + ("Front" if front == "separate" else "Box front")
-        bottom, face, was = box["Cabinet Drawer 1 Bottom"], box[name], boxes(plain[1])["Cabinet Drawer 1 Bottom"]
-        assert round(face[1] - bottom[1], 3) == 12, (bottom, face)
+        bottom, face = box["Cabinet Drawer 1 Bottom"], box[name]
+        left, back = box["Cabinet Drawer 1 Left"], box["Cabinet Drawer 1 Box back"]
+        assert bottom[2] == plain[2] and face[5] == plain[5] and face[2] == bottom[5], (bottom, face, plain)
+        assert left[2] == bottom[5] and bottom[4] == back[4], (bottom, left, back)
+        assert round(face[1] - bottom[1], 3) == 12 and round(bottom[5] - bottom[2], 3) == 12, (bottom, face)
         cove = [f["cylinder"] for f in results[3]["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 6) < 0.01]
         assert cove and all(abs(abs(c["axis"][0]) - 1) < 1e-6 for c in cove), cove
         assert all(abs(c["origin"][2] - (bottom[2] - 3)) < 0.01 and abs(c["origin"][1] - (face[1] - 6)) < 0.01 for c in cove), cove
-        assert round(bottom[5] - bottom[2], 3) == 12 and bottom[4] == was[4], (bottom, was)
-        assert cylinders(results[1], name) == 0, name  # no scoop (#244)
+        whole = (face[3] - face[0]) * (face[4] - face[1]) * (face[5] - face[2])
+        assert abs(volume(results[1], name) - whole) < 1, name  # no notch, no scoop
         assert cylinders(results[1], "Cabinet Drawer 1 Bottom") >= 2, front
         parts = results[2]["result"]["parts"]
-        lengths = sorted(max(p["length"], p["width"]) for p in parts if "Bottom" in " ".join(p["parts"]) and "Drawer" in " ".join(p["parts"]))
-        deep = round(was[4] - bottom[1], 1)
-        assert deep in [round(v, 1) for v in lengths], (deep, lengths)
-    # a narrow inset cabinet with integrated, finger-jointed fronts: the box sides run through
-    # the front, so the tab stays within the box inside
-    narrow = [plugin(approval, "cabinet", {"width": 162, "drawers": 1, "handles": "tab"}), MEASURE]
-    results = designed(approval, {"fronts": "inset", "drawer_front": "integrated", "drawer_joints": "finger",
-                                  "drawer_bottom": 12}, narrow)
-    box = boxes(results[1])
-    bottom, left, right = (box[f"Cabinet Drawer 1 {p}"] for p in ("Bottom", "Left", "Right"))
-    assert left[3] <= bottom[0] + 0.001 and bottom[3] <= right[0] + 0.001, (bottom, left, right)
-
+        lengths = [round(max(p["length"], p["width"]), 1) for p in parts
+                   if "Drawer 1 Bottom" in " ".join(p["parts"])]
+        assert round(bottom[4] - bottom[1], 1) in lengths, (bottom, lengths)
 
 def test_shaker_fronts(approval):
     # A shaker door, 596 x 716, hinged left: 60 mm stiles full height (the left one keeps the
@@ -725,15 +721,13 @@ def test_glass_doors(approval):
                                         "handle_position": "top", "front_style": "glass"})
     low = plugin(approval, "cabinet", {"name": "E", "drawers": 2, "handles": "pull",
                                        "handle_position": "bottom", "front_style": "glass"})
-    # and a bottom tab on a shaker drawer front: its notch is cut in the bottom rail
+    # and a bottom tab on a shaker drawer front: inset (#247), standing on the bottom, no notch
     tab = plugin(approval, "cabinet", {"name": "T", "drawers": 2, "handles": "tab", "front_style": "shaker"})
     results = cli([made, low, tab, MEASURE, plugin(approval, "cutlist")])
     results = [results[0], results[3], results[4]]
-    # (476 long, the 6 x 8 groove, then the notch 120 wide, through the 18 mm thickness, from the
-    # lower edge up to the bottom's top: an 18 mm panel and 8 mm up, then the 6 mm bottom; no
-    # scoop over it, #244)
+    # (an inset front 560 wide, so 440 between the stiles, less the 6 x 8 panel groove)
     rail = volume(results[1], "T Drawer 1 Front rail bottom")
-    expected = 476 * 18 * 60 - 476 * 6 * 8 - 120 * 18 * (18 + 8 + 6)
+    expected = 440 * 18 * 60 - 440 * 6 * 8
     assert abs(rail - expected) < 1, (rail, expected)
     assert cylinders(results[1], "E Drawer 1 Front rail bottom") == 2, cylinders(results[1], "E Drawer 1 Front rail bottom")
     m = results[1]
@@ -743,6 +737,14 @@ def test_glass_doors(approval):
         assert cylinders(m, f"D Drawer {n} Front rail top") == 1, cylinders(m, f"D Drawer {n} Front rail top")
     bought = results[2]["result"]["hardware"]
     assert {"item": "Glass, 4 mm, 492 x 253 mm", "qty": 4} in bought, bought
+
+
+def groove(box, joints):
+    """The bottom's groove in a drawer's back (#247): 6 x 6 mm across it, as long as the bottom
+    less the two sides' grooves when the back stands between the sides, the whole bottom when it
+    runs through them (finger joints)."""
+    bottom = box["Cabinet Drawer 1 Bottom"]
+    return 6 * 6 * (bottom[3] - bottom[0] - (12 if joints == "none" else 0))
 
 
 def test_drawer_back_height(approval):
@@ -757,7 +759,7 @@ def test_drawer_back_height(approval):
         back, side = box["Cabinet Drawer 1 Box back"], box["Cabinet Drawer 1 Left"]
         assert round(back[5] - back[2], 3) == 80 and back[2] == side[2], (back, side)
         assert side[5] - side[2] > 200, side
-        full = (back[3] - back[0]) * (back[4] - back[1]) * 80
+        full = (back[3] - back[0]) * (back[4] - back[1]) * 80 - groove(box, joints)
         cut = volume(results[1], "Cabinet Drawer 1 Box back")
         assert (cut < full - 1000) == (joints == "finger"), (joints, cut, full)
 
@@ -775,7 +777,7 @@ def test_drawer_back_taller_than_sides(approval):
         back, side = box["Cabinet Drawer 1 Box back"], box["Cabinet Drawer 1 Left"]
         assert round(back[5] - back[2], 3) == 200 and round(side[5] - side[2], 3) == 100, (back, side)
         full = (back[3] - back[0]) * (back[4] - back[1]) * 200
-        cut = full - volume(results[1], "Cabinet Drawer 1 Box back")
+        cut = full - volume(results[1], "Cabinet Drawer 1 Box back") - groove(box, joints)
         expected = 0 if joints == "none" else 2 * 5 * 12 * 12 * 100 / 9
         assert abs(cut - expected) < 200, (joints, cut, expected)
 
@@ -784,7 +786,7 @@ def test_door_and_drawer_handles(approval):
     # Drawer handles and Door handles are two Woodwork settings (Drawers, Doors), no Cabinet
     # field. A bottom tab on the drawer and a pull on the door (two holes beside the two hinge
     # cups); Edit changes the door's to a knob, and the drawer front still has no hole.
-    made = plugin(approval, "cabinet", {"doors": 1, "drawers": 1, "height": 900, "drawer_height": 250,
+    made = plugin(approval, "cabinet", {"doors": 1, "drawers": 1, "height": 900, "drawer_height": 250, "drawers_at": "bottom",
                                         "handles": "tab", "door_handles": "pull"})
     results = cli([made, MEASURE, select("Cabinet Door"),
                    plugin(approval, "edit", {"doors": 1, "drawers": 1, "handles": "tab", "door_handles": "knob"}), MEASURE])
@@ -792,3 +794,23 @@ def test_door_and_drawer_handles(approval):
     assert cylinders(results[1], "Cabinet Drawer 1 Front") == 0
     assert cylinders(results[4], "Cabinet Door") == 3, cylinders(results[4], "Cabinet Door")
     assert cylinders(results[4], "Cabinet Drawer 1 Front") == 0
+
+
+def test_drawer_bottom_in_a_groove(approval):
+    # The bottom sits in a groove (#247): 10 mm up from the box boards' lower edge, 6 mm into
+    # the sides, the box front and the back, so 12 mm wider and deeper than the space between
+    # them; the box front (butted between the sides) loses a 6 x 6 groove across its width.
+    results = cli([plugin(approval, "cabinet", {"drawers": 2}), MEASURE, plugin(approval, "cutlist")],
+                  "--save", str(ROOT / "dist" / "bottom-groove.sc"))
+    box = boxes(results[1])
+    bottom, left, right = (box[f"Cabinet Drawer 1 {p}"] for p in ("Bottom", "Left", "Right"))
+    front, back = box["Cabinet Drawer 1 Box front"], box["Cabinet Drawer 1 Box back"]
+    assert round(bottom[2] - left[2], 3) == 10, (bottom, left)
+    assert round(bottom[0] - (left[3] - 6), 3) == 0 and round(bottom[3] - (right[0] + 6), 3) == 0, (bottom, left, right)
+    assert round(bottom[1] - (front[4] - 6), 3) == 0 and round(bottom[4] - (back[1] + 6), 3) == 0, (bottom, front, back)
+    whole = (front[3] - front[0]) * (front[4] - front[1]) * (front[5] - front[2])
+    groove = 6 * 6 * (front[3] - front[0])
+    assert abs(volume(results[1], "Cabinet Drawer 1 Box front") - (whole - groove)) < 1, front
+    parts = results[2]["result"]["parts"]
+    sizes = [sorted([round(p["length"], 1), round(p["width"], 1)]) for p in parts if "Drawer 1 Bottom" in " ".join(p["parts"])]
+    assert sorted([round(bottom[3] - bottom[0], 1), round(bottom[4] - bottom[1], 1)]) in sizes, sizes

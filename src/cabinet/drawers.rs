@@ -12,6 +12,10 @@ pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
                              // lowest box then clears the cabinet's bottom, and the highest its top, by this and the gap.
 pub const BOX_CLEAR: f64 = 8.0;
 pub const BOX_BEHIND: f64 = 10.0; // room behind a box on slides, which stop it themselves
+                                  // The bottom in a groove (#247) round all four of the box's boards: this deep into each, its
+                                  // underside this far up from their lower edge.
+pub const BOTTOM_GROOVE: f64 = 6.0;
+pub const BOTTOM_UP: f64 = 10.0;
 const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front's edge
 pub const FALSE_BACK: f64 = 0.8; // a runner drawer's false back: its front face at this of the box depth
 
@@ -168,7 +172,20 @@ pub fn build(cabinet: &Cabinet) {
         let top = cabinet.input.handle_at != "bottom";
         let (z, front_h) = cabinet.gripped(&z, front_h, top);
         let front_h = &front_h;
-        let box_h = format!("({front_h} - 2*{lift})");
+        // Bottom tab (#247, inset fronts): the bottom is the drawer's lowest part, at the front's
+        // lower edge, and the front and the box stand on it; the box clears only above. A sink
+        // base's false front has no bottom to stand on: it keeps its place.
+        let tabbed = tab_p.is_some() && !(sink && i + 1 == count);
+        let box_h = match tabbed {
+            true => format!("({front_h} - {lift})"),
+            false => format!("({front_h} - 2*{lift})"),
+        };
+        let low = z.clone();
+        let (z, front_h) = match tabbed {
+            true => (format!("{z} + {bb}"), format!("({front_h} - {bb})")),
+            false => (z, front_h.clone()),
+        };
+        let front_h = &front_h;
         let front_w = format!("{ew} - 2*{ein} - 2*{gap_mm}");
         let x0 = format!("{ein} + {gap_mm}");
         // Lying across, in the middle of the front unless the top or the bottom is asked for.
@@ -224,13 +241,15 @@ pub fn build(cabinet: &Cabinet) {
         cabinet.handle(&front, &format!("{ew}/2"), &handle_z, 0);
         cabinet.grooves(&front, [&x0, efront, &z], [&front_w, et, front_h]);
         cabinet.grip(&front, [&x0, efront, &z], [&front_w, et, front_h], top);
-        let front_z = z.clone();
         // The box touches the back of the front. Its sides run the full depth; front, back
         // and bottom sit between them.
         let (x, y, z) = (
             format!("{et} + {gap_x}"),
             eback.clone(),
-            format!("{z} + {lift}"),
+            match tabbed {
+                true => low,
+                false => format!("{low} + {lift}"),
+            },
         );
         // On strips the bottom goes up by as much of the strip as `BOX_CLEAR` leaves under it,
         // so the strip stays clear of the carcass bottom, rail or drawer below; the box's top
@@ -242,10 +261,11 @@ pub fn build(cabinet: &Cabinet) {
             }
             None => (z, box_h),
         };
-        // On runners the bottom is under the box, and the box's boards stand on it.
-        let (bz, box_h) = match &wood {
-            Some(_) => (format!("{z} + {bb}"), format!("({box_h} - {bb})")),
-            None => (z.clone(), box_h),
+        // On runners, and with a bottom tab, the bottom is under the box, and the box's boards
+        // stand on it.
+        let (bz, box_h) = match wood.is_some() || tabbed {
+            true => (format!("{z} + {bb}"), format!("({box_h} - {bb})")),
+            false => (z.clone(), box_h),
         };
         // the sides, the back as high as them unless asked; the front stays full height
         let side_h = match &side_p {
@@ -267,37 +287,15 @@ pub fn build(cabinet: &Cabinet) {
             true => (y.clone(), format!("{box_d} - {bt}")),
             false => (format!("{y} + {bt}"), format!("{box_d} - 2*{bt}")),
         };
-        // Bottom tab (#181): the bottom, its underside at `tz` and its front edge at `ty`, runs
-        // forward under the front to `TAB_OUT` past its face, `tab_width` wide (never wider than
-        // the box inside), its two front corners rounded. The front is cut away from its lower
-        // edge up to the bottom's top where the tab passes (no scoop, #244); a box front the
-        // bottom stands behind is slotted for it.
-        let tab = |tz: &str, ty: &str, through_box: bool| {
+        // Bottom tab (#181, #247): the bottom, under the box and the front with its underside at
+        // `tz`, runs on from the front's face (`ty`) to `TAB_OUT` past it, `tab_width` wide
+        // (never wider than the box), its two front corners rounded.
+        let tab = |tz: &str, ty: &str| {
             let Some(tab_p) = &tab_p else { return };
-            let w = format!("min({tab_p}, {box_w} - 2*{bt})");
+            let w = format!("min({tab_p}, {box_w})");
             let r = mm(fittings::TAB_R);
             let tx = format!("{ew}/2 - {w}/2");
             let ty0 = format!("{efront} - {}", mm(fittings::TAB_OUT));
-            let notch = format!("({tz}) + {bb} - ({front_z}) + 1 mm");
-            kit.panel(
-                &format!("{front} tab notch"),
-                [
-                    &tx,
-                    &format!("{efront} - 1 mm"),
-                    &format!("{front_z} - 1 mm"),
-                ],
-                [&w, &format!("{et} + 2 mm"), &notch],
-                Some(&kit.targets(&front)),
-            );
-            if through_box {
-                let target = [format!("{} {drawer} Box front", kit.name)];
-                kit.panel(
-                    &format!("{drawer} Box front tab slot"),
-                    [&tx, &format!("{y} - 1 mm"), tz],
-                    [&w, &format!("{bt} + 2 mm"), &bb],
-                    Some(&target),
-                );
-            }
             let bottom = [format!("{} {drawer} Bottom", kit.name)];
             let name = format!("{} {drawer} Bottom tab", kit.name);
             let boxes = [
@@ -351,6 +349,21 @@ pub fn build(cabinet: &Cabinet) {
                     "operation": "cut", "targets": bottom, "name": format!("{name} cove"),
                 }),
             ));
+        };
+        // The bottom in a groove (#247): `BOTTOM_GROOVE` larger on each edge, its underside at
+        // `gz`, and that box cut from the four boards round it (stopped grooves in a
+        // finger-jointed box's front and back, which run on through the sides).
+        let grooved = |gz: &str| {
+            let g = mm(BOTTOM_GROOVE);
+            let (gx, gy) = (format!("{inner_x} - {g}"), format!("{inner_y} - {g}"));
+            let (gw, gd) = (format!("{inner_w} + 2*{g}"), format!("{inner_d} + 2*{g}"));
+            let boards = ["Left", "Right", "Box front", "Box back"];
+            let targets: Vec<String> = (boards.iter())
+                .map(|b| format!("{} {drawer} {b}", kit.name))
+                .collect();
+            let groove = format!("{drawer} Bottom groove");
+            kit.panel(&groove, [&gx, &gy, gz], [&gw, &gd, &bb], Some(&targets));
+            panel(&format!("{drawer} Bottom"), [&gx, &gy, gz], [&gw, &gd, &bb]);
         };
         // Finger-jointed into an integrated front, the sides run forward through it.
         // ponytail: an inset front on runners with less play than reveal leaves the fingers
@@ -466,12 +479,7 @@ pub fn build(cabinet: &Cabinet) {
             // back (the left one named as a slide's first hole, which the cut list counts),
             // and a runner model under each side.
             let lift_b = format!("{z} + {}", mm(hardware::UNDER_RECESS));
-            panel(
-                &format!("{drawer} Bottom"),
-                [&inner_x, &inner_y, &lift_b],
-                [&inner_w, &inner_d, &bb],
-            );
-            tab(&lift_b, &inner_y, !integrated);
+            grooved(&lift_b);
             let back = format!("{drawer} Box back");
             let target = [format!("{} {back}", kit.name)];
             let (y0, hook_z) = (format!("{back_y} - 1 mm"), format!("{lift_b} + 7 mm"));
@@ -523,12 +531,17 @@ pub fn build(cabinet: &Cabinet) {
                 None => format!("{et} - {depth} + {play}"),
             };
             let length = format!("{ew} - 2*({out})");
+            // with a tab it runs on under the front, which stands on it
+            let (by, bd) = match tabbed {
+                true => (efront.to_string(), format!("{box_d} + {et}")),
+                false => (y.clone(), box_d.clone()),
+            };
             panel(
                 &format!("{drawer} Bottom"),
-                [&out, &y, &z],
-                [&length, &box_d, &bb],
+                [&out, &by, &z],
+                [&length, &bd, &bb],
             );
-            tab(&z, &y, false);
+            tab(&z, efront);
             kit.close(&drawer, None, "slider", "slide", at, [0, -1, 0], travel);
             // Its strip on each side, under the bottom from the front of the opening to the
             // back, in the cabinet's component: `<Side> strip <n>`, a board of the cut list.
@@ -560,18 +573,25 @@ pub fn build(cabinet: &Cabinet) {
             }
             continue;
         }
-        panel(
-            &format!("{drawer} Bottom"),
-            [&inner_x, &inner_y, &z],
-            [&inner_w, &inner_d, &bb],
-        );
-        tab(&z, &inner_y, !integrated);
+        match tabbed {
+            // under the box and the front, which stand on it
+            true => {
+                let bd = format!("{box_d} + {et}");
+                panel(
+                    &format!("{drawer} Bottom"),
+                    [&x, efront, &z],
+                    [&box_w, &bd, &bb],
+                );
+                tab(&z, efront);
+            }
+            false => grooved(&format!("{z} + {}", mm(BOTTOM_UP))),
+        }
         // The slides' screw holes, in the middle of the box side's height: into each box side
         // from outside, `HW_setback` behind the box's front and the last whole `HW_pitch`
         // before `HW_setback` from the slide's back end; and into the carcass side beside it,
         // as far behind the front of the opening. The box's are named with the slide's
         // length, which the cut list's hardware reads.
-        let slide_z = format!("{z} + {side_h}/2");
+        let slide_z = format!("{bz} + {side_h}/2");
         let right_x = format!("{right} + {bt}");
         let halves = [
             ("Left", &x, 1, "Side L", et.clone(), -1),

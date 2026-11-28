@@ -1119,10 +1119,11 @@ fn drawer_boxes_take_their_board_and_bottom_thickness() {
     assert_eq!(named(&commands, "Cabinet Drawer 1 Box back")["width"], t);
     let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
     assert_eq!(bottom["height"], b);
+    // in its groove (#247): 6 mm into each side
     assert!(bottom["length"]
         .as_str()
         .unwrap()
-        .ends_with(&format!(" - 2*{t}")));
+        .ends_with(&format!(" - 2*{t} + 2*6 mm")));
     // 12 and 6 mm by default; no parameters without boxes
     let (commands, _) = build(&json!({"drawers": 1})).unwrap();
     assert_eq!(
@@ -1569,12 +1570,19 @@ fn an_integrated_drawer_front_is_the_box_front() {
         // the sides stay at box size, behind the front
         let side = |c: &[(&str, Value)]| named(c, "Cabinet Drawer 1 Left").clone();
         assert_eq!(side(&commands), side(&separate));
-        // the bottom starts at the front's back face, as the sides do: no slot under the front
+        // the bottom starts at the front's back face, as the sides do, and runs 6 mm into its
+        // groove in the front (#247): no slot under the front
         let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
-        assert_eq!(
-            bottom["corner"][1],
-            side(&commands)["corner"][1],
-            "{fronts}"
+        let (at, side_at) = (
+            bottom["corner"][1].as_str().unwrap().to_string(),
+            side(&commands)["corner"][1]
+                .as_str()
+                .unwrap()
+                .replace("-Cabinet_reveal", ""),
+        );
+        assert!(
+            at.contains("- 6 mm") && at.replace(" - 6 mm", "").ends_with(&side_at),
+            "{fronts} {at}"
         );
     }
     // finger-jointed: the sides run forward through the front, the front cut where they go
@@ -1841,38 +1849,83 @@ fn double_dividers_give_each_door_its_own_board() {
 
 #[test]
 fn a_bottom_tab_sticks_out_under_the_front() {
-    // #181: the drawer's bottom runs forward under the front as the tab, `tab_width` wide (a
-    // parameter, capped by the box inside) with rounded corners; the front is cut away from
-    // its lower edge up to the bottom's top, no scoop (#244); no handle holes, no tab board
+    // #181, #247: the drawer's bottom is its lowest part, at the front's lower edge, the front
+    // and the box standing on it; it runs on past the front as the tab, `tab_width` wide (a
+    // parameter, capped by the box) with rounded corners; no notch, no groove, no handle holes
     let has = |c: &[(&str, Value)], n: &str| c.iter().any(|c| c.1["name"] == n);
+    let any = |c: &[(&str, Value)], word: &str| {
+        c.iter()
+            .any(|c| c.1["name"].as_str().unwrap_or("").contains(word))
+    };
     let p = json!({"drawers": 2, "handles": "tab", "tab_width": 150});
     let (commands, _) = build(&p).unwrap();
-    assert!(!commands
-        .iter()
-        .any(|c| c.1["name"].as_str().unwrap_or("").contains("handle")));
-    assert!(!has(&commands, "Cabinet Drawer 1 Tab"));
+    assert!(!any(&commands, "handle") && !any(&commands, "notch"));
+    // a sink base's false front has no bottom: it keeps its place and height
+    let sink = |handles: &str| {
+        let p = json!({"kind": "sink", "drawers": 2, "handles": handles, "fronts": "inset"});
+        named(&build(&p).unwrap().0, "Cabinet False front").clone()
+    };
+    let (tab, plain) = (sink("tab"), sink("none"));
+    assert_eq!(
+        (&tab["corner"], &tab["height"]),
+        (&plain["corner"], &plain["height"])
+    );
+    assert!(!any(&commands, "Bottom groove") && !has(&commands, "Cabinet Drawer 1 Tab"));
     assert_eq!(
         named(&commands, "Cabinet_tab_width")["expression"],
         "150 mm"
     );
+    // the same drawer stack inset without a tab: the front keeps its lower edge and loses the
+    // bottom's thickness on top of it, so front and bottom are as high as the plain front
+    let (plain, _) = build(&json!({"drawers": 2, "fronts": "inset"})).unwrap();
+    let (front, was) = (
+        named(&commands, "Cabinet Drawer 1 Front"),
+        named(&plain, "Cabinet Drawer 1 Front"),
+    );
     let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    assert_eq!(bottom["corner"][2], was["corner"][2]);
+    assert_eq!(
+        front["corner"][2],
+        format!(
+            "{} + Cabinet_drawer_bottom",
+            was["corner"][2].as_str().unwrap()
+        )
+    );
+    assert_eq!(
+        front["height"],
+        format!(
+            "({} - Cabinet_drawer_bottom)",
+            was["height"].as_str().unwrap()
+        )
+    );
+    // the bottom from the front's face to the box's back, as wide as the box, the box's
+    // boards standing on it
+    assert_eq!(bottom["corner"][1], front["corner"][1]);
+    let left = named(&commands, "Cabinet Drawer 1 Left");
+    assert_eq!(bottom["corner"][0], left["corner"][0]);
+    assert_eq!(
+        left["corner"][2],
+        format!(
+            "{} + Cabinet_drawer_bottom",
+            bottom["corner"][2].as_str().unwrap()
+        )
+    );
     for part in ["1", "2", "corner 1", "corner 2"] {
         let piece = named(&commands, &format!("Cabinet Drawer 1 Bottom tab {part}"));
         assert_eq!(piece["operation"], "join");
         assert_eq!(piece["targets"], json!(["Cabinet Drawer 1 Bottom"]));
+        assert_eq!(piece["height"], bottom["height"]);
     }
     let piece = named(&commands, "Cabinet Drawer 1 Bottom tab 1");
-    assert_eq!(piece["corner"][2], bottom["corner"][2]);
-    assert_eq!(piece["height"], bottom["height"]);
     assert!(piece["length"]
         .as_str()
         .unwrap()
         .starts_with("min(Cabinet_tab_width, "));
-    // 12 mm past the front's face (#256)
+    // 12 mm past the front's face, with a cove cut along it from below (#256): a 12 mm
+    // cylinder across the part past the front, its axis under the underside, at most 3 mm
+    // (half the bottom) deep
     let tip = named(&commands, "Cabinet Drawer 1 Bottom tab 2")["corner"][1].clone();
     assert!(tip.as_str().unwrap().contains(" - 12 mm"), "{tip}");
-    // and a cove cut along it from below: a 12 mm cylinder across the part past the front, its
-    // axis under the underside, at most 3 mm (half the bottom) deep
     let cove = named(&commands, "Cabinet Drawer 1 Bottom tab cove");
     assert_eq!(
         (cove["operation"].clone(), cove["axis"].clone()),
@@ -1886,66 +1939,42 @@ fn a_bottom_tab_sticks_out_under_the_front() {
         "{z}"
     );
     assert!(cove["base"][1].as_str().unwrap().contains(" - 6 mm"));
-    let notch = named(&commands, "Cabinet Drawer 1 Front tab notch");
-    assert_eq!(notch["targets"], json!(["Cabinet Drawer 1 Front"]));
-    let front = named(&commands, "Cabinet Drawer 1 Front");
-    // from under the front's lower edge up past the bottom's top
-    assert!(notch["corner"][2].as_str().unwrap().ends_with(" - 1 mm"));
-    assert!(notch["height"]
-        .as_str()
-        .unwrap()
-        .contains("Cabinet_drawer_bottom"));
-    assert!(notch["corner"][2]
-        .as_str()
-        .unwrap()
-        .starts_with(front["corner"][2].as_str().unwrap()));
-    // the box front stands before the bottom: slotted for it
-    let slot = named(&commands, "Cabinet Drawer 1 Box front tab slot");
-    assert_eq!(slot["targets"], json!(["Cabinet Drawer 1 Box front"]));
-    assert!(!commands
-        .iter()
-        .any(|c| c.1["name"].as_str().unwrap_or("").contains("scoop")));
-    // the front keeps its height: the drawers' gaps do not change
-    let (plain, _) = build(&json!({"drawers": 2, "handles": "none"})).unwrap();
-    assert!(!has(&plain, "Cabinet_tab_width"));
-    assert_eq!(
-        named(&plain, "Cabinet Drawer 1 Front")["height"],
-        front["height"]
+    // inset whatever Fronts says (overlay here, the default), also integrated and on runners
+    for extra in [
+        json!({"drawer_front": "integrated"}),
+        json!({"slide_type": "wood"}),
+    ] {
+        let mut p = json!({"drawers": 2, "handles": "tab"});
+        p.as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        let (commands, _) = build(&p).unwrap_or_else(|e| panic!("{p}: {e}"));
+        assert!(has(&commands, "Cabinet Drawer 1 Bottom tab 1"), "{p}");
+        assert!(
+            !any(&commands, "notch") && !any(&commands, "Bottom groove"),
+            "{p}"
+        );
+    }
+    // not with undermount runners or strips under the bottom, nor drawers over doors on a rail
+    for p in [
+        json!({"drawers": 2, "handles": "tab", "slide_type": "under_full", "drawer_thickness": 15}),
+        json!({"drawers": 2, "handles": "tab", "slide_type": "strips"}),
+        json!({"drawers": 1, "doors": 1, "handles": "tab", "drawers_at": "top"}),
+    ] {
+        assert!(build(&p).is_err(), "{p}");
+    }
+    assert!(
+        build(&json!({"drawers": 1, "doors": 1, "handles": "tab", "drawers_at": "bottom"})).is_ok()
     );
-    // integrated (#163): no box front before the bottom, the front is the box's
-    let p = json!({"drawers": 2, "handles": "tab", "drawer_front": "integrated"});
-    let (commands, _) = build(&p).unwrap();
-    assert!(has(&commands, "Cabinet Drawer 1 Box front tab notch"));
-    assert!(!has(&commands, "Cabinet Drawer 1 Box front tab slot"));
-    // on runners the box stands on the bottom: no slot either
-    let p = json!({"drawers": 2, "handles": "tab", "slide_type": "wood"});
-    let (commands, _) = build(&p).unwrap();
-    assert!(has(&commands, "Cabinet Drawer 1 Bottom tab 1"));
-    assert!(!has(&commands, "Cabinet Drawer 1 Box front tab slot"));
-    // doors take no tab; with no scoop a thin front takes one too; the width has its bounds
+    // doors take no tab; a thin front takes one; the width has its bounds
     let (commands, _) = build(&json!({"doors": 2, "handles": "tab"})).unwrap();
-    assert!(!commands
-        .iter()
-        .any(|c| c.1["name"].as_str().unwrap_or("").contains(" tab")));
+    assert!(!any(&commands, " tab"));
     let thin = |t: f64| {
         let p = json!({"drawers": 2, "handles": "tab", "thickness": t, "back_thickness": 3});
         build(&p).is_ok()
     };
     assert!(thin(8.0) && thin(10.0) && thin(12.0));
     assert!(build(&json!({"drawers": 2, "handles": "tab", "tab_width": 30})).is_err());
-    // a box too narrow inside for the tab's two 10 mm corners: a 162 mm cabinet's opening is
-    // 126, 30 mm strips with 11 mm play leave a 44 mm box, 20 inside (refused); 10 mm play, 22
-    let narrow = |play: f64| {
-        let p = json!({"width": 162, "drawers": 1, "handles": "tab", "slide_type": "strips",
-                       "strip_thickness": 30, "runner_play": play});
-        build(&p)
-    };
-    let refused = narrow(11.0).unwrap_err();
-    assert!(
-        refused.contains("is 20 mm inside, too narrow for a bottom tab"),
-        "{refused}"
-    );
-    assert!(narrow(10.0).is_ok());
     // two narrow doors beside the drawers' tabs: no door handles (the default) need no room;
     // a knob on each does
     assert!(build(&json!({"width": 300, "doors": 2, "handles": "tab"})).is_ok());
@@ -2103,12 +2132,12 @@ fn glass_fronts() {
     assert!(!commands
         .iter()
         .any(|c| c.1["name"] == "Cabinet Drawer 1 Front glass"));
-    // a bottom tab's notch goes through the frame's boards, not the pane
+    // a bottom tab's glass drawer front stands on the bottom (#247): no notch in it
     let p = json!({"drawers": 2, "handles": "tab", "front_style": "glass"});
     let (commands, _) = build(&p).unwrap();
-    let notch = named(&commands, "Cabinet Drawer 1 Front tab notch");
-    assert_eq!(notch["targets"].as_array().unwrap().len(), 4);
-    assert!(!notch["targets"].to_string().contains("glass"));
+    assert!(!commands
+        .iter()
+        .any(|c| c.1["name"].as_str().unwrap_or("").contains("notch")));
     assert!(build(
         &json!({"doors": 1, "front_style": "glass", "handles": "groove", "door_handles": "groove"})
     )
@@ -2321,12 +2350,12 @@ fn doors_and_drawers_pick_their_own_handles() {
     };
     let has = |commands: &Commands, name: &str| commands.iter().any(|c| c.1["name"] == name);
     let p = |handles: &str, door_handles: &str| {
-        json!({"doors": 1, "drawers": 1, "height": 900, "drawer_height": 250,
+        json!({"doors": 1, "drawers": 1, "height": 900, "drawer_height": 250, "drawers_at": "bottom",
             "handles": handles, "door_handles": door_handles})
     };
     // a bottom tab on the drawer and a knob on the door
     let (commands, _) = build(&p("tab", "knob")).unwrap();
-    assert!(has(&commands, "Cabinet Drawer 1 Front tab notch"));
+    assert!(has(&commands, "Cabinet Drawer 1 Bottom tab 1"));
     assert!(has(&commands, "Cabinet Door handle 1") && !has(&commands, "Cabinet Door handle 2"));
     assert!(!has(&commands, "Cabinet Drawer 1 Front handle 1"));
     // a pull on the drawer, none on the door
@@ -2420,4 +2449,64 @@ fn shelves_can_rest_on_pilaster_strips() {
     let (fixed, _) = build(&json!({"shelves": 2, "shelf_support": "strips"})).unwrap();
     assert!(fixed.iter().all(|c| !c.1.to_string().contains("pilaster")));
     assert!(build(&json!({"shelf_pins": true, "shelf_support": "rails"})).is_err());
+}
+
+#[test]
+fn the_drawer_bottom_sits_in_a_groove() {
+    // #247: 6 mm into the four boards round it, 10 mm up from their lower edge, cut by one box
+    // the bottom's size; the bottom that much larger; on undermount slides at their 13 mm
+    let (commands, _) = build(&json!({"drawers": 2})).unwrap();
+    let (groove, bottom) = (
+        named(&commands, "Cabinet Drawer 1 Bottom groove"),
+        named(&commands, "Cabinet Drawer 1 Bottom"),
+    );
+    let boards =
+        ["Left", "Right", "Box front", "Box back"].map(|b| format!("Cabinet Drawer 1 {b}"));
+    assert_eq!(groove["targets"], json!(boards));
+    for key in ["corner", "length", "width", "height"] {
+        assert_eq!(groove[key], bottom[key], "{key}");
+    }
+    let side = named(&commands, "Cabinet Drawer 1 Left");
+    let up = format!("{} + 10 mm", side["corner"][2].as_str().unwrap());
+    assert_eq!(bottom["corner"][2], up);
+    assert!(bottom["width"].as_str().unwrap().ends_with(" + 2*6 mm"));
+    // integrated and finger-jointed too: the same four boards
+    for extra in [
+        json!({"drawer_front": "integrated"}),
+        json!({"drawer_joints": "finger"}),
+    ] {
+        let mut p = json!({"drawers": 2});
+        p.as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        let (commands, _) = build(&p).unwrap();
+        assert_eq!(
+            named(&commands, "Cabinet Drawer 1 Bottom groove")["targets"],
+            json!(boards)
+        );
+    }
+    let p = json!({"drawers": 2, "slide_type": "under_full", "drawer_thickness": 15});
+    let (commands, _) = build(&p).unwrap();
+    let bottom = named(&commands, "Cabinet Drawer 1 Bottom");
+    assert!(bottom["corner"][2].as_str().unwrap().ends_with(" + 13 mm"));
+    assert!(commands
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Drawer 1 Bottom groove"));
+    // an integrated front keeps 3 mm outside the groove; a separate front has no groove
+    let thin =
+        json!({"drawers": 2, "drawer_front": "integrated", "thickness": 6, "back_thickness": 3});
+    assert!(build(&thin)
+        .unwrap_err()
+        .contains("at least 9 mm thick for the bottom's groove"));
+    assert!(build(&json!({"drawers": 2, "thickness": 6, "back_thickness": 3})).is_ok());
+    // on runners and strips the bottom carries the box: no groove
+    for slide in ["wood", "strips"] {
+        let (commands, _) = build(&json!({"drawers": 2, "slide_type": slide})).unwrap();
+        assert!(
+            !commands
+                .iter()
+                .any(|c| c.1["name"] == "Cabinet Drawer 1 Bottom groove"),
+            "{slide}"
+        );
+    }
 }

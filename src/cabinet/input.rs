@@ -207,8 +207,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (shelves, pins)
     };
     let back = p.get("back").and_then(Value::as_str).unwrap_or("groove");
+    // A bottom tab (#247) is the drawer's lowest part, the front standing on it: only inset
+    // fronts leave room for it at their lower edge, so it makes the cabinet's fronts inset.
+    let tabbed = p.get("handles").and_then(Value::as_str) == Some("tab");
     let inset = match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
-        "overlay" => false,
+        "overlay" => tabbed,
         "inset" => true,
         _ => return Err("fronts must be overlay or inset".into()),
     };
@@ -556,11 +559,21 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !(integrated && drawers > 0.0 && handles == "pull") || box_w >= 150.0,
         "integrated drawer fronts are too narrow for pulls",
     )?;
-    // a bottom tab's two rounded corners must fit the box inside
-    let inside = box_w - 2.0 * box_t[0];
+    // the tab's bottom lies under the box at the front's lower edge: undermount runners and
+    // strips go under the bottom, and drawers over doors have the rail under them
     check(
-        !(drawers > 0.0 && handles == "tab") || inside > 2.0 * crate::fittings::TAB_R,
-        &format!("the drawer box is {inside:.0} mm inside, too narrow for a bottom tab"),
+        !(drawers > 0.0 && tabbed) || !(under || strips),
+        "a bottom tab needs side-mount slides or dado runners",
+    )?;
+    check(
+        !(drawers > 0.0 && tabbed && mixed && drawers_top),
+        "a bottom tab needs the drawers under the doors, not over them",
+    )?;
+    // the bottom's groove (#247) goes into an integrated front too: leave 3 mm outside it
+    check(
+        !(integrated && drawers > 0.0 && !tabbed && !strips && !grooved)
+            || t >= super::drawers::BOTTOM_GROOVE + 3.0,
+        "integrated drawer fronts must be at least 9 mm thick for the bottom's groove",
     )?;
     Ok(Input {
         kind,
