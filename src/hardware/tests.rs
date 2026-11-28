@@ -312,13 +312,12 @@ fn the_definitions_are_made_once_at_the_root() {
     );
     let bodies: Vec<&Value> = commands.iter().map(|c| &c.1["body_name"]).collect();
     assert!(all.iter().all(|m| bodies.contains(&&json!(m))));
-    // out of sight, under the floor, placed absolutely
-    let moved = commands.last().unwrap();
-    assert_eq!(moved.0, "occurrence.move");
-    let to = &moved.1["to_matrix"];
-    assert_eq!(to, &json!(HIDDEN));
-    // under the floor, turned half round about Z, near the back of a cabinet on the origin
-    const { assert!(HIDDEN[11] < -24.0 && HIDDEN[0] == -1.0 && HIDDEN[5] == -1.0 && HIDDEN[7] > 200.0) };
+    // on the origin, where it was made (hidden by `lib.rs`), back at the root
+    assert!(commands.iter().all(|c| c.0 != "occurrence.move"));
+    assert_eq!(commands.last().unwrap().1["component"], "root");
+    let tree = json!({"components": [{"name": HOME, "occurrences": [{"id": 7}]}]});
+    assert_eq!(home(&tree), json!(7));
+    assert!(home(&json!({"components": []})).is_null());
     // all there: nothing; one missing (a new length): only that one, in the hardware component
     let have = |names: &[&str]| {
         let components: Vec<Value> = names.iter().map(|n| json!({"name": n})).collect();
@@ -334,7 +333,7 @@ fn the_definitions_are_made_once_at_the_root() {
     assert!(definitions(&tree, &all).is_empty());
     let commands = definitions(&tree, &["HW slide drawer 300 mm".into()]);
     // a definition added later is made with `HOME` on the origin (a body made in a moved
-    // component lands shifted in a plugin run), and `HOME` goes under the floor again after
+    // component lands shifted in a plugin run; an older design's stood under the floor)
     let origin = json!(ORIGIN);
     assert_eq!(commands[1].0, "occurrence.move");
     assert_eq!(commands[1].1["to_matrix"], origin);
@@ -343,8 +342,7 @@ fn the_definitions_are_made_once_at_the_root() {
         ("component.activate", json!({"component": HOME}))
     );
     assert_eq!(commands[3].1["name"], "HW slide drawer 300 mm");
-    let last = commands.last().unwrap();
-    assert_eq!(last.1["to_matrix"], json!(HIDDEN));
+    assert_eq!(commands.iter().filter(|c| c.0 == "occurrence.move").count(), 1);
 }
 
 #[test]

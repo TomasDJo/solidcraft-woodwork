@@ -1,6 +1,6 @@
 # solidcraft-woodwork
 
-A plugin for SolidCraft (0.50+) that turns it into a woodworking tool: parametric cabinets,
+A plugin for SolidCraft (0.51.2+) that turns it into a woodworking tool: parametric cabinets,
 materials, joinery and cut lists.
 
 **Woodwork targets the latest SolidCraft release.** Raise the minimum version freely when a new
@@ -428,9 +428,9 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   what it hangs on, and `joint.create` mates the two axes. Both follow a resize, which a
   joint at a point (`joint.as_built`) did not: the door then swung about where the hinge
   used to be. The two planes are given outright in the command (`{plane: {origin, normal}}`
-  with expressions), not made as features: a plugin cannot hide what it makes
-  (`browser.visibility` in a plugin run is not kept), and plane features showed across every
-  door. Such a plane is read in world coordinates when made and in the component's own
+  with expressions), not made as features: plane features showed across every door, and
+  inline planes need no hiding (a run's `browser.visibility` is kept since 0.51.2, but that
+  would be a command a plane more). Such a plane is read in world coordinates when made and in the component's own
   afterwards, so a turned part (the diagonal door) gets its line before it is turned
   (`Kit::hinge_line`) and its turn as the joint's `angle`. The order of the two planes is
   the way the axis points, so the way the door opens. The axes sit in the cabinet's history
@@ -954,20 +954,17 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   (`hardware::definitions` of `hardware::wanted`, the components a build copies: one slide
   definition a length, since a move cannot scale; made by `component` before the cabinet when
   one is missing, then back to the user's component): a definition inside a cabinet is deleted with it, with every
-  copy elsewhere, and Edit deletes the cabinet. `browser.visibility` set in a plugin run is not kept
-  (checked on 0.46.1 with `paths` on the component's placement: the same command through the
-  CLI hides it, also after save and reopen), so `Woodwork hardware` is placed at `HIDDEN`
-  (absolute `to_matrix`, half a turn about Z), its tops 1 mm under the floor, reaching
-  forward from 15 mm in front of a 560 mm cabinet's back on the origin, under the first
-  cabinet's back, away from the fronts: the iso and front views' Fit frame about 3 %
-  wider than with it hidden (measured with `view.apply`); from below it shows. In a plugin run
-  a body made in a moved component lands shifted by where the component stands, so a
-  definition added later (a crank, another slide length) is made with `Woodwork hardware`
-  back on the origin, and it goes to `HIDDEN` again after (before, such a definition's body stood
-  at the origin, offset from its component by `HIDDEN`, so every copy of it floated that far
-  (125 mm back, 30 up) from its cup or slide; in an older design it stays so until its
-  component is deleted and the cabinets using it are edited; `tests/test_hardware.py` checks
-  every hinge copy against its cup and every plate against its holes, Edit included). Every `inspect.measure` reply in a run goes
+  copy elsewhere, and Edit deletes the cabinet. `Woodwork hardware` stands on the origin and
+  `component` hides its placement (`browser.visibility` with `paths: [[its occurrence]]`,
+  `hardware::home`) each time it adds a definition: a run's hide is kept since 0.51.2
+  (tangency-labs/solidcraft#22153), the copies elsewhere still show, and Fit leaves it out.
+  Before, it stood just under the floor beneath the first cabinet (`HIDDEN`), where it showed
+  from below. In a plugin run a body made in a moved component lands shifted by where the
+  component stands, so an older design's `Woodwork hardware` goes back to the origin before a
+  definition is added (in a design older still, a definition made later stood offset from its
+  component, so every copy of it floated from its cup or slide until its component is deleted
+  and the cabinets using it are edited; `tests/test_hardware.py` checks every hinge copy
+  against its cup and every plate against its holes, Edit included). Every `inspect.measure` reply in a run goes
   through `hardware::hide` (`execute`), so the cut list, drawing, worktop, select, Edit's
   materials and panels never see a model; the hardware list still counts features (`hinge
   cup`, drawer fronts), so nothing is counted twice. A drawing's views are of the cabinet's

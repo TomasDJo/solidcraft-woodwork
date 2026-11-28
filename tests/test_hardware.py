@@ -128,6 +128,14 @@ def models(measure, model="HW "):
     return {name: box for name, box in boxes(measure, models=True).items() if name.startswith(model)}
 
 
+INSPECT = {"command": "document.inspect", "params": {}}
+
+
+def hidden(inspect):
+    """The names of the bodies `document.inspect` says are hidden."""
+    return {b["name"] for b in inspect["bodies"] if not b["visible"]}
+
+
 def middle(box):
     return [round((box[i] + box[i + 3]) / 2, 1) for i in range(3)]
 
@@ -136,12 +144,12 @@ def test_models_show_and_move_with_the_doors_and_drawers(approval):
     # One door and one drawer: a hinge model (cup and arm) in each cup, in the door's component,
     # and its mounting plate on the side, in the cabinet's; a slide's drawer
     # member on each box side in the drawer's component, its cabinet member on each carcass side.
-    # The definitions are made once, under the floor, in a component at the root.
+    # The definitions are made once, hidden, in a component at the root.
     results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1}), MEASURE, faces("Cabinet Door"),
                    drive("Cabinet Door hinge", 90), drive("Cabinet Drawer 1 slide", 200), MEASURE,
                    change("Cabinet_width", "700 mm"), drive("Cabinet Door hinge", 0), drive("Cabinet Drawer 1 slide", 0), MEASURE,
                    plugin(approval, "cabinet", {"name": "B", "doors": 1}),
-                   {"command": "component.list", "params": {"compact": True}}],
+                   {"command": "component.list", "params": {"compact": True}}, INSPECT],
                   "--save", str(ROOT / "dist" / "models.sc"))
     shut, opened, wider = models(results[1]), models(results[5]), models(results[9])
     hinges = sorted(n for n in shut if n.startswith("HW hinge (Cabinet:1/Cabinet Door:1/"))
@@ -164,12 +172,12 @@ def test_models_show_and_move_with_the_doors_and_drawers(approval):
     for name, cup in zip(hinges, sorted(cups, key=lambda c: c[2])):
         x, _, z = middle(shut[name])
         assert abs(x - cup[0]) < 0.2 and abs(z - cup[2]) < 0.2, (name, shut[name], cup)
-    for name in [*hinges, *plates, *carcass, *drawer]:  # under the floor: the definitions only
+    for name in [*hinges, *plates, *carcass, *drawer]:  # the copies stand on the floor
         assert shut[name][2] > 0, (name, shut[name])
     definitions = {"HW hinge", "HW hinge plate", "HW slide cabinet 500 mm", "HW slide middle 500 mm",
                    "HW slide drawer 500 mm"}
     assert {n for n in shut if "(" not in n} == definitions
-    assert all(shut[n][5] < 0 for n in definitions)
+    assert hidden(results[-1]) == definitions  # and only they are hidden
     # open: the hinges swing with the door, the drawer members slide 200 out, the cabinet members stay
     assert all(opened[n] != shut[n] for n in hinges)
     # (the middle members, on a full extension slide, are in the drawer's component too)
@@ -243,20 +251,18 @@ def test_slide_type_and_hinge_angle_set_the_joints_limits(approval):
     assert hardware["Drawer slide, partial extension, 500 mm, pair"] == 1, hardware
 
 
-def test_definitions_made_later_stay_under_the_floor(approval):
-    # The first cabinet makes Woodwork hardware and moves it under the floor; a later one adds
-    # definitions to it (a cranked hinge for an inset door, another slide length). They went
-    # in at the origin, shifted by where the component stood: now every one is under the floor
-    # and under the first cabinet, its copies still in their cups.
+def test_definitions_made_later_stay_hidden(approval):
+    # The first cabinet makes Woodwork hardware and hides it; a later one adds definitions to it
+    # (a cranked hinge for an inset door, another slide length): hidden too, after saving, and
+    # their copies in their cups.
     results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1}),
                    plugin(approval, "cabinet", {"name": "B", "doors": 1, "fronts": "inset", "drawers": 1,
                                                 "depth": 450, "place": "origin"}),  # 400 mm slides
-                   MEASURE, faces("B Door")])
+                   MEASURE, faces("B Door")], "--save", str(ROOT / "dist" / "later.sc"))
     shut = models(results[2])
     definitions = {n: b for n, b in shut.items() if "(" not in n}
     assert {"HW hinge crank 18", "HW slide drawer 400 mm", "HW hinge"} <= set(definitions), sorted(definitions)
-    for name, box in definitions.items():
-        assert box[5] < 0 and box[2] > -60 and -280 <= box[1], (name, box)
+    assert hidden(cli([INSPECT], "--in", str(ROOT / "dist" / "later.sc"))[0]) == set(definitions)
     cups = holes(results[3], 17.5)
     hinges = sorted(n for n in shut if n.startswith("HW hinge crank 18 (B:1/B Door:1/"))
     assert len(hinges) == 2 and all(abs(middle(shut[n])[2] - z) < 0.2 for n, (_, _, z) in zip(hinges, sorted(cups, key=lambda c: c[2]))), (hinges, cups)

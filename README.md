@@ -1,7 +1,7 @@
 # solidcraft-woodwork
 
 A woodworking plugin for SolidCraft: parametric cabinets, joinery, materials, shop drawings
-and a cut list. The next version needs SolidCraft 0.50 or later (0.5.0 needs 0.49); for older SolidCraft, see
+and a cut list. The next version needs SolidCraft 0.51.2 or later (0.5.0 needs 0.49); for older SolidCraft, see
 [SolidCraft versions](#solidcraft-versions). The roadmap is in [PLAN.md](PLAN.md).
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
@@ -86,7 +86,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.50+ | next | Tested on 0.50.0. Cabinets placed along a wall or sketch line; Mobile base of boards or timber, with stiffeners, connector bolts and frame screws, that you can edit and add cabinets to; handle-less fronts (grip edge, finger groove, bottom tab), Shaker, glass and grooved fronts, and integrated drawer fronts; drawers on wooden strip runners, and lower drawer sides and backs; half overlay hinges or double dividers where doors meet on a divider; a cost estimate in the cut list; Match selected as one shared group per run; the worktop's side wing and tool bolt holes; Woodwork settings as a dialog per group under one ribbon dropdown; and links from the dialogs' fields to the usage guide. |
+| 0.51.2+ | next | Tested on 0.51.2. Cabinets placed along a wall or sketch line; Mobile base of boards or timber, with stiffeners, connector bolts and frame screws, that you can edit and add cabinets to; handle-less fronts (grip edge, finger groove, bottom tab), Shaker, glass and grooved fronts, and integrated drawer fronts; drawers on wooden strip runners, and lower drawer sides and backs; half overlay hinges or double dividers where doors meet on a divider; a cost estimate in the cut list; Match selected as one shared group per run; the worktop's side wing and tool bolt holes; Woodwork settings as a dialog per group under one ribbon dropdown; and links from the dialogs' fields to the usage guide; the hardware models' definitions hidden. |
 | 0.49 | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
 | 0.47 | 0.4.0 | Tested on 0.47.0; works on 0.46 too. Joinery and hardware are design-wide Woodwork settings, one dialog for box and corner cabinets, and hinges, slides and fasteners as models. |
 | 0.46 | 0.3.0 | Tested on 0.46.1. Dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults. |

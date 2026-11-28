@@ -86,9 +86,20 @@ fn component(
     if commands.iter().any(|c| c.0 == "occurrence.copy") {
         let definitions = hardware::definitions(&tree, &hardware::wanted(&commands));
         if !definitions.is_empty() {
+            // Hidden each time: a `browser.visibility` in a plugin run is kept since 0.51.2
+            // (tangency-labs/solidcraft#22153), and so `HOME` can stand on the origin.
+            let mut home = hardware::home(&tree);
             for (command, args) in definitions {
-                run(command, args)?;
+                let new = command == "component.create" && args["name"] == hardware::HOME;
+                let reply = run(command, args)?;
+                if new {
+                    home = reply["occurrence"].clone();
+                }
             }
+            run(
+                "browser.visibility",
+                json!({"visible": false, "paths": [[home]]}),
+            )?;
             let mut back = json!({"component": tree["active"]});
             if let Some(copy) = path.as_array().and_then(|path| path.last()) {
                 back["occurrence"] = copy.clone();
