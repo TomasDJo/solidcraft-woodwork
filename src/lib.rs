@@ -1533,6 +1533,37 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let measure = measured(names, &cabinets, run)?;
             // a cabinet deleted since the base remembered it is left out
             cabinets.retain(|c| select::named(&measure, c).is_ok());
+            // On the frame, not on a plinth (#281): a cabinet made with one (board, notch, legs
+            // or casters) is built again with Plinth No first, as Edit would, so its bottom
+            // rests on the frame and gets the screws. Remembered, so Apply settings keeps it so.
+            let mut dropped = false;
+            for cabinet in &cabinets {
+                let about = run("component.metadata", json!({"component": cabinet}))?;
+                let ours = &about["metadata"][edit::KEY];
+                let Some(entry) = ours["entry"]
+                    .as_str()
+                    .filter(|e| matches!(*e, "cabinet" | "corner"))
+                else {
+                    continue;
+                };
+                let design = run(
+                    "document.inspect",
+                    json!({"bodies": false, "timeline": false}),
+                )?;
+                let (_, mut plain) = edit::merge(ours, &json!({}), &design)?;
+                if plain["plinth"].as_f64().unwrap_or(0.0) <= 0.0 {
+                    continue;
+                }
+                plain["plinth"] = json!(0);
+                rebuild(
+                    cabinet, &about, entry, &plain, &design, &measure, false, run,
+                )?;
+                dropped = true;
+            }
+            let measure = match dropped {
+                true => measured(body_names(run)?, &cabinets, run)?,
+                false => measure,
+            };
             let (plans, floors) = base::plans(&measure, &cabinets)?;
             params["name"] = json!(name);
             if base::timber(&params)?.is_some() {
