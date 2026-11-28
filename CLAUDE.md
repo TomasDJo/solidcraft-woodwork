@@ -812,7 +812,7 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   the pin rows, made with the carcass: each face carrying shelves (both of a single divider,
   `left`/`right`) gets `<board> pilaster dado <front|back>` (`STRIP` 16 x 5, over the shelf
   zone; the back on the back pin row's line, the front `STRIP_SETBACK` 68 mm in, 3 mm behind a
-  hinge plate's back edge (`PLATE_SIZE` 40 deep about `HW_setback`), on every face, doors or not) and the body `<board> pilaster <row> (<len> mm)` in it, the length
+  hinge plate's back edge (`PLATE_SIZE` 40 deep about `HW_setback`), on every face, doors or not; `input::read` refuses a shelf under 121 mm, where the two would overlap) and the body `<board> pilaster <row> (<len> mm)` in it, the length
   `Input::clear_h` rounded at build (a resize leaves the name, as a slide's label); `clips` puts
   `<shelf> clip` (`CLIP` 10 out, 6 high) at its front left and a 2 x 2 pattern of it.
   `hardware::is_model` takes ` pilaster ` and ` clip` names, so measures hide them; the cut list

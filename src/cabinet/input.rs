@@ -477,6 +477,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !sink || shelf_d + o >= 2.0 * RAIL_D,
         "too shallow for a sink base: its two 100 mm rails would overlap",
     )?;
+    // The front strip stands `STRIP_SETBACK` in and the back one `PIN_SETBACK` from the back:
+    // a strip's width apart at the least.
+    use crate::fittings::{PIN_SETBACK, STRIP, STRIP_SETBACK};
+    let strips_d = PIN_SETBACK + STRIP_SETBACK + STRIP[0];
+    check(
+        !pilasters || shelf_d >= strips_d,
+        &format!(
+            "too shallow for pilaster strips: the shelves need {strips_d} mm of depth or more"
+        ),
+    )?;
     // The slides' length, and so their screw holes, from the box's depth (`crate::hardware`).
     let kind_of = p
         .get("slide_type")

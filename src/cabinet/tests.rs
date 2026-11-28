@@ -2558,3 +2558,17 @@ fn the_front_strip_clears_the_hinge_plates() {
         assert!(boards >= 1, "{p}");
     }
 }
+
+#[test]
+fn pilaster_strips_need_a_deep_enough_shelf() {
+    // the front strip 68 mm in, the back one 37 mm from the back, 16 wide: 121 mm at the least;
+    // inset fronts on a groove back as thick as the panels leave a 168 mm cabinet 120
+    let p = json!({"depth": 168, "fronts": "inset", "back": "groove", "back_thickness": 18, "shelves": 1, "shelf_pins": true});
+    assert!(build(&p).is_ok());
+    let mut strips = p.clone();
+    strips["shelf_support"] = json!("strips");
+    let err = build(&strips).err().unwrap();
+    assert!(err.contains("121 mm"), "{err}");
+    strips["depth"] = json!(169);
+    assert!(build(&strips).is_ok());
+}
