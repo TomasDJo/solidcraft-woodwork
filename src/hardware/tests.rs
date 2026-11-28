@@ -342,7 +342,10 @@ fn the_definitions_are_made_once_at_the_root() {
         ("component.activate", json!({"component": HOME}))
     );
     assert_eq!(commands[3].1["name"], "HW slide drawer 300 mm");
-    assert_eq!(commands.iter().filter(|c| c.0 == "occurrence.move").count(), 1);
+    assert_eq!(
+        commands.iter().filter(|c| c.0 == "occurrence.move").count(),
+        1
+    );
 }
 
 #[test]
