@@ -187,3 +187,20 @@ def test_a_cost_estimate_from_the_prices_in_the_settings(approval):
     priced = sum(l.get("total", 0) for l in cost["lines"])
     assert abs(cost["total"] - priced) < 0.01 and cost["total"] > 0, cost
     assert "\nCost,Qty,Unit,Price,Total\n" in list_["csv"], list_["csv"][-400:]
+
+
+def test_a_door_beside_a_drawer_clashes(approval):
+    # #140: A's door hinged on its right, with B's drawers placed right of it: opened past 90
+    # degrees the door swings in front of B's drawer fronts. Hinged left, away from B: nothing.
+    def listed(hinge, settings=NONE):
+        results = designed(approval, settings, [plugin(approval, "cabinet", {"name": "A", "doors": 1, "door_hinge": hinge}),
+                                            select("A Top"), plugin(approval, "cabinet", {"name": "B", "drawers": 2, "place": "right"}),
+                                            plugin(approval, "cutlist")])
+        return results[-1]["result"]
+    right = listed("right")
+    assert right["clashes"] == ["A Door (open) meets B Drawer 1 Front (open)", "A Door (open) meets B Drawer 2 Front (open)"], right["clashes"]
+    assert "Clash,\"A Door (open) meets B Drawer 1 Front (open)\"" in right["csv"]
+    assert listed("left")["clashes"] == []
+    # integrated drawer fronts: the box's own front is the front
+    integrated = listed("right", {**NONE, "drawer_front": "integrated"})["clashes"]
+    assert integrated == ["A Door (open) meets B Drawer 1 Box front (open)", "A Door (open) meets B Drawer 2 Box front (open)"], integrated

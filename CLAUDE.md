@@ -524,6 +524,16 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   grows away from it.
 - A corner cabinet for a left corner placed right of a cabinet (or the mirror image) has
   its return's end there, not a back corner: it gets the older link.
+- Door clashes (`cutlist::clashes`, #140, the reply's `clashes` and `Clash` CSV lines): a box
+  cabinet's edge door (the one nearest a side with `<Side> hinge plate` features) and any other
+  cabinet's ` Door`, ` Front` or integrated ` Box front` (its drawer has no `Front`) body within
+  60 mm beyond that edge (an integrated front starts a side and a slide's gap in), in the same front plane
+  (30 mm) and overlapping in height, both shut (thin across the front, 40 mm): opened past 90
+  degrees the door swings in front of it. From names and world boxes only; corner cabinets
+  (a `Back return`) and fronts open in the design are skipped. The door's hinge line, its
+  front edge on the hinge side, is already the effective pivot of a concealed hinge (the open
+  door stands within the cabinet's width, thrown forward by its thickness), so no linkage is
+  modelled.
 - The hardware list is counted from feature and body names (`hinge cup`, `handle`, `pins`, `Left slide 1 (<length>)`,
   `joint`, `Drawer n Front`, `Leg n`, `Caster n`), so renaming those breaks it. Joinery at build
   counts from parameters (below). For a design drilled by the removed Joinery function (0.2.0

@@ -167,7 +167,7 @@ Cabinets:
 - [x] Doors meeting on a divider: with three doors or more the end doors hinge on the sides, and a door hinged on a divider gets half overlay hinges (the 9.5 mm cranked model, its own line in the hardware list) (#157)
 - [x] Double dividers where overlay doors meet, so every door gets full overlay hinges (#176)
 - [x] Hinge models that look like concealed hinges: the cup with its rim, a boss, the arm and a cruciform plate (part of #140)
-- [ ] Door swing from the hinge's four-bar linkage, and clearance checks (#140)
+- [x] Door swing (#140): the hinge line at the door's front edge is already the effective pivot of a concealed hinge's swing; the cut list warns of a door that meets another cabinet's front when both are open
 - [ ] Hinges in the model with hinge types (#60); hinge models that cut their cups by default once SolidCraft 0.47 is out (upstream tangency-labs/solidcraft#20787)
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - [x] Joinery and hardware are design wide: the two methods, their sizes, hardware models, hinge opening and slide type are Woodwork settings, no longer Cabinet and Corner fields (a new cabinet takes them and remembers them; Edit changes the methods, models, opening and type of one cabinet; slide length is Auto at build, chosen in Edit); the manifest 6.5 KB smaller

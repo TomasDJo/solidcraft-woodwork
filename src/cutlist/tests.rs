@@ -891,3 +891,108 @@ fn drawers_on_strips_or_runners_count_no_slides() {
         0
     );
 }
+
+#[test]
+fn a_door_hinged_beside_another_cabinets_front_clashes() {
+    // #140: A (600 wide, x -300 to 300) has one door hinged on Side R, beside B (300 to 900)
+    // with a drawer front; C stands 400 mm on, beyond reach
+    let body = |name: &str, min: [f64; 3], max: [f64; 3]| json!({"name": name, "bbox": {"min": min, "max": max}});
+    let carcass = |c: &str, x0: f64| {
+        vec![
+            body(
+                &format!("{c} Side L"),
+                [x0, -280.0, 0.0],
+                [x0 + 18.0, 280.0, 720.0],
+            ),
+            body(
+                &format!("{c} Side R"),
+                [x0 + 582.0, -280.0, 0.0],
+                [x0 + 600.0, 280.0, 720.0],
+            ),
+        ]
+    };
+    let mut bodies = carcass("A", -300.0);
+    bodies.extend(carcass("B", 300.0));
+    bodies.extend(carcass("C", 1300.0));
+    bodies.push(body(
+        "A Door",
+        [-298.0, -298.0, 2.0],
+        [298.0, -280.0, 718.0],
+    ));
+    bodies.push(body(
+        "B Drawer 1 Front",
+        [302.0, -298.0, 400.0],
+        [898.0, -280.0, 718.0],
+    ));
+    bodies.push(body(
+        "C Door",
+        [1302.0, -298.0, 2.0],
+        [1898.0, -280.0, 718.0],
+    ));
+    let measure = json!({ "bodies": bodies });
+    let design = |plate: &str| json!({"timeline": [{"name": plate}]});
+    assert_eq!(
+        clashes(&measure, &design("A Side R hinge plate 1.1")),
+        ["A Door (open) meets B Drawer 1 Front (open)"]
+    );
+    // hinged on its other side, away from B: nothing
+    assert!(clashes(&measure, &design("A Side L hinge plate 1.1")).is_empty());
+    // a front left open in the design (not thin across the front) is skipped
+    let mut opened = measure.clone();
+    opened["bodies"][7] = body(
+        "B Drawer 1 Front",
+        [302.0, -700.0, 400.0],
+        [320.0, -280.0, 718.0],
+    );
+    assert!(clashes(&opened, &design("A Side R hinge plate 1.1")).is_empty());
+}
+
+#[test]
+fn clashes_take_integrated_fronts_and_quote_names() {
+    // an integrated drawer front is the box's `Box front`; a separate front's box front behind
+    // it is no front of its own
+    let body = |name: &str, min: [f64; 3], max: [f64; 3]| json!({"name": name, "bbox": {"min": min, "max": max}});
+    let mut bodies = vec![
+        body("A Side L", [-300.0, -280.0, 0.0], [-282.0, 280.0, 720.0]),
+        body("A Side R", [282.0, -280.0, 0.0], [300.0, 280.0, 720.0]),
+        body("A Door", [-298.0, -298.0, 2.0], [298.0, -280.0, 718.0]),
+        body(
+            "B \"Tall\" Side L",
+            [300.0, -280.0, 0.0],
+            [318.0, 280.0, 720.0],
+        ),
+        body(
+            "B \"Tall\" Side R",
+            [882.0, -280.0, 0.0],
+            [900.0, 280.0, 720.0],
+        ),
+        // where an integrated front stands: a side and a slide's gap in (18 + 12.7), so 32.7 mm
+        // past the door's hinge edge
+        body(
+            "B \"Tall\" Drawer 1 Box front",
+            [330.7, -298.0, 400.0],
+            [869.3, -280.0, 718.0],
+        ),
+    ];
+    let design = json!({"timeline": [{"name": "A Side R hinge plate 1.1"}]});
+    let found = clashes(&json!({ "bodies": bodies.clone() }), &design);
+    assert_eq!(
+        found,
+        ["A Door (open) meets B \"Tall\" Drawer 1 Box front (open)"]
+    );
+    assert_eq!(
+        clash_csv(&found),
+        "Clash,\"A Door (open) meets B \"\"Tall\"\" Drawer 1 Box front (open)\"\n"
+    );
+    // with a separate front, only the front counts; a cabinet 400 mm on is out of reach (above)
+    bodies.push(body(
+        "B \"Tall\" Drawer 1 Front",
+        [302.0, -316.0, 400.0],
+        [898.0, -298.0, 718.0],
+    ));
+    let found = clashes(&json!({ "bodies": bodies }), &design);
+    assert_eq!(
+        found,
+        ["A Door (open) meets B \"Tall\" Drawer 1 Front (open)"]
+    );
+}

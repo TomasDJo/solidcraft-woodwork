@@ -1756,6 +1756,12 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
             list["hardware"] = cutlist::hardware(&measure, &local, &design);
+            // Doors that meet another cabinet's front when both are open (#140), also in the CSV.
+            let clashes = cutlist::clashes(&measure, &design);
+            if let Some(text) = list["csv"].as_str() {
+                list["csv"] = json!(format!("{text}{}", cutlist::clash_csv(&clashes)));
+            }
+            list["clashes"] = json!(clashes);
             // Prices from Woodwork settings: the estimate, and what has no price yet (#56).
             let prices = params["prices"].as_str().unwrap_or_default();
             list["cost"] = cost::estimate(&list, prices)?;

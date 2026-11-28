@@ -67,3 +67,5 @@ Qty,Finished length (mm),Finished width (mm),Thickness (mm),Material,Grain,Bandi
 Edge banding 1 mm,Thickness (mm),Metres with 10 % waste
 "Oak",18,50.766
 "White melamine",18,60.588
+Clash,"Wall 1 Door R (open) meets Wall 2 Door (open)"
+Clash,"Wall 2 Door (open) meets Wall 1 Door R (open)"
