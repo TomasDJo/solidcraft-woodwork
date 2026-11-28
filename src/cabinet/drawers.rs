@@ -11,7 +11,7 @@ pub const SLIDE: f64 = 12.7; // ball-bearing drawer slide, each side
                              // The box stays a panel thickness and this much inside its front's lower and upper edge: the
                              // lowest box then clears the cabinet's bottom, and the highest its top, by this and the gap.
 pub const BOX_CLEAR: f64 = 8.0;
-pub const BOX_BEHIND: f64 = 10.0; // room behind the box
+pub const BOX_BEHIND: f64 = 10.0; // room behind a box on slides, which stop it themselves
 const HANDLE_EDGE: f64 = 40.0; // a handle at the top or bottom: from the front's edge
 
 /// A stack of drawers: a front, overlay or inset, and behind it a box that runs on slides. They
@@ -141,10 +141,14 @@ pub fn build(cabinet: &Cabinet) {
     // ponytail: a sink base's boxes stop at half depth, before the trap; a U-cut round it
     // for deeper boxes is left to the user.
     let label = cabinet.input.slide.1;
-    let box_d = match (sink, under) {
-        (_, true) => label.to_string(),
-        (true, _) => format!("({eshelf_d}/2)"),
-        (false, _) => format!("({eshelf_d} - {})", mm(BOX_BEHIND)),
+    // On runners (dado or strip, no stop) the box runs to the back and stops against it (#257),
+    // so a push lands on the back and not on the front: from where it starts (`eback`, a reveal
+    // before the carcass under an overlay front) to the back's front face.
+    let box_d = match (sink, under, &wood) {
+        (_, true, _) => label.to_string(),
+        (true, _, _) => format!("({eshelf_d}/2)"),
+        (false, _, Some(_)) => format!("({eshelf_d} + {ein} - ({eback}))"),
+        (false, _, None) => format!("({eshelf_d} - {})", mm(BOX_BEHIND)),
     };
     // An overlay front laps the carcass by a panel; an inset one is already inside it, but
     // beside doors it clears the rail as an overlay one does.

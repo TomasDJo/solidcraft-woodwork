@@ -463,15 +463,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         "too shallow for a sink base: its two 100 mm rails would overlap",
     )?;
     // The slides' length, and so their screw holes, from the box's depth (`crate::hardware`).
-    let box_d = if sink {
-        shelf_d / 2.0
-    } else {
-        shelf_d - BOX_BEHIND
-    };
     let kind_of = p
         .get("slide_type")
         .and_then(Value::as_str)
         .unwrap_or("full");
+    // On runners the box runs to the back (#257), from a reveal before the carcass when overlay.
+    let box_d = match (sink, matches!(kind_of, "wood" | "strips")) {
+        (true, _) => shelf_d / 2.0,
+        (false, true) => shelf_d + if inset { 0.0 } else { g },
+        (false, false) => shelf_d - BOX_BEHIND,
+    };
     let strips = kind_of == "strips";
     let strip = [size("strip_thickness", 12.0)?, size("strip_height", 18.0)?];
     check(

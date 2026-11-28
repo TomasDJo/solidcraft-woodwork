@@ -96,8 +96,10 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     };
     // An integrated front (#163) stands before the box: one box board in the depth, not two.
     let mut box_d = inside[1] + if input.integrated { bt } else { 2.0 * bt };
-    let mut shelf_d = match input.kind {
-        "sink" => 2.0 * box_d,
+    let mut shelf_d = match (input.kind, input.runner) {
+        ("sink", _) => 2.0 * box_d,
+        // on runners the box reaches the back (#257), from a reveal before an overlay carcass
+        (_, Some(_)) => box_d - if input.inset { 0.0 } else { input.reveal },
         _ => box_d + drawers::BOX_BEHIND,
     };
     if input.under {
