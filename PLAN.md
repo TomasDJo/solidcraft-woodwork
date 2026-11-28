@@ -139,6 +139,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 
 - [x] Bolt holes for the tool's feet in the tool station's shelf (#172): Bolt spacing across and front to back, four (or two) 8 mm holes round the tool's middle
 - [x] Side wing on the worktop (#172): Side wing (left or right end) and Wing length, the first piece carried on past a square end on two 40 mm legs to the floor
+- [x] Fold-down wing (#172): Wing support Fold-down, the side wing on a hinge at the worktop end's lower edge, folding down 90 degrees
 
 ## Open
 

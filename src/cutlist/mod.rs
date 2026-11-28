@@ -35,11 +35,16 @@ pub fn turned(measure: &Value) -> Vec<String> {
         (body["volume_mm3"].as_f64()).is_some_and(|volume| volume < 0.97 * sides.product::<f64>())
     };
     // A leg or a caster is not a board, so never measured. A worktop is bought at its box, also
-    // when it is mitred or has a cut-out, and it stands square in a component on the origin.
+    // when it is mitred or has a cut-out, and it stands square in a component on the origin;
+    // but a fold-down wing turns on its hinge, so it is always measured in its own component:
+    // a few degrees off level still fills 97 % of its box.
     bodies
-        .filter(loose)
-        .filter_map(|body| body["name"].as_str().map(String::from))
-        .filter(|name| !crate::fittings::is_foot(name) && !worktop(name))
+        .filter_map(|body| Some((body, body["name"].as_str()?)))
+        .filter(|(body, name)| {
+            (worktop(name) && name.ends_with(" Wing"))
+                || (loose(body) && !crate::fittings::is_foot(name) && !worktop(name))
+        })
+        .map(|(_, name)| name.to_string())
         .collect()
 }
 

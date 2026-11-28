@@ -570,6 +570,53 @@ fn a_side_wing_carries_the_top_on_past_an_end_on_two_legs() {
 }
 
 #[test]
+fn a_fold_down_wing_hangs_on_a_hinge_at_the_ends_lower_edge() {
+    // A from x 0 to 1000, front at y 0 facing -Y: the wing in a component of its own, no legs
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let p = json!({"wing": "right", "wing_length": 400, "wing_support": "fold"});
+    let (commands, summary) = build(&p, &names(&["A"]), &m).unwrap();
+    let at = |command: &str, name: &str| {
+        (commands.iter())
+            .position(|c| c.0 == command && c.1["name"] == name)
+            .unwrap()
+    };
+    let wing = at("solid.box", "Worktop Wing");
+    assert!(at("component.create", "Worktop Wing") < wing);
+    assert_eq!(commands[wing].1["length"], "400 mm");
+    assert!(!commands.iter().any(|c| c.1["name"] == "Worktop Wing Leg 1"));
+    // the hinge along the depth at the end's lower edge, made back in the worktop's component
+    let hinge = &commands[at("joint.as_built", "Worktop Wing hinge")];
+    assert!(commands[..at("joint.as_built", "Worktop Wing hinge")]
+        .iter()
+        .rev()
+        .find(|c| c.0 == "component.activate")
+        .is_some_and(|c| c.1["component"] == "Worktop"));
+    assert_eq!(hinge.1["a"], "Worktop:1");
+    assert_eq!(hinge.1["b"], "Worktop Wing:1");
+    let point = &hinge.1["at"]["point"];
+    let y = named(&commands, "Worktop")["corner"][1].as_f64().unwrap();
+    assert_eq!(point, &json!([1000.0, y, 720.0]));
+    assert_eq!(hinge.1["at"]["z"], json!([0, 1, 0]));
+    assert!(commands.iter().any(|c| c.0 == "joint.limits"
+        && c.1["joint"] == "Worktop Wing hinge"
+        && c.1["max"] == 90));
+    let bodies = summary["bodies"].as_array().unwrap();
+    assert!(bodies.contains(&json!("Worktop Wing")));
+    // on the left end the axis points the other way, so it too folds down; any length will do
+    let p = json!({"wing": "left", "wing_length": 50, "wing_support": "fold"});
+    let (commands, _) = build(&p, &names(&["A"]), &m).unwrap();
+    let hinge = (commands.iter()).find(|c| c.0 == "joint.as_built").unwrap();
+    assert_eq!(hinge.1["at"]["z"], json!([0, -1, 0]));
+    assert_eq!(hinge.1["at"]["point"][0], 0.0);
+    assert!(build(
+        &json!({"wing": "right", "wing_support": "rope"}),
+        &names(&["A"]),
+        &m
+    )
+    .is_err());
+}
+
+#[test]
 fn bolt_holes_for_the_tools_feet_go_through_its_shelf() {
     // the tool's middle at (600, -280): four 8 mm holes 400 apart across, 300 front to back
     let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);

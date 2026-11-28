@@ -136,7 +136,7 @@
         "slots": [{ "kind": "menu", "name": "Worktop" }, { "kind": "ribbon", "name": "Worktop" }],
         "input_schema": {
           "type": "object", "x-solidcraft-icon": "icons/worktop.svg",
-          "required": ["selection", "units", "joint", "front_overhang", "left_overhang", "right_overhang", "dog_holes", "zone_x", "zone_y", "zone_length", "zone_width", "cutout", "cutout_length", "cutout_width", "cutout_x", "cutout_y", "rebate_width", "rebate_depth", "tool", "tool_width", "tool_depth", "tool_height", "tool_x", "tool_y", "tool_clearance", "bolt_x", "bolt_y", "wing", "wing_length", "name"],
+          "required": ["selection", "units", "joint", "front_overhang", "left_overhang", "right_overhang", "dog_holes", "zone_x", "zone_y", "zone_length", "zone_width", "cutout", "cutout_length", "cutout_width", "cutout_x", "cutout_y", "rebate_width", "rebate_depth", "tool", "tool_width", "tool_depth", "tool_height", "tool_x", "tool_y", "tool_clearance", "bolt_x", "bolt_y", "wing", "wing_length", "wing_support", "name"],
           "properties": {
             "selection": { "type": "array", "title": "Selected cabinets", "description": "A board of each cabinet under it, or a worktop to redo." },
             "units": { "type": "string", "title": "Units", "description": "Inches fills the fields you have not changed with inch sizes.", "default": "mm", "oneOf": [{"const": "mm", "title": "Millimetres"}, {"const": "in", "title": "Inches"}] },
@@ -167,6 +167,7 @@
             "bolt_y": {"type": "number", "title": "Bolt spacing front to back", "description": "Between the tool's feet, front to back. 0 for none.", "default": 0, "minimum": 0, "maximum": 2000, "x-solidcraft-visible-when": {"field": "tool", "eq": "benchtop"}},
             "wing": {"type": "string", "title": "Side wing", "description": "The worktop carried on past an end of the run, on two legs, for long stock beside a tool.", "default": "none", "oneOf": [{"const": "none", "title": "None"}, {"const": "left", "title": "Left end"}, {"const": "right", "title": "Right end"}]},
             "wing_length": {"type": "number", "title": "Wing length", "description": "How far the wing reaches past the end.", "default": 600, "minimum": 4, "maximum": 3000, "x-solidcraft-visible-when": {"field": "wing", "in": ["left", "right"]}, "x-solidcraft-defaults": [{"when": {"field": "units", "eq": "in"}, "value": 24}]},
+            "wing_support": {"type": "string", "title": "Wing support", "description": "What holds the wing up: two legs to the floor, or hinges so it folds down out of the way.", "default": "legs", "oneOf": [{"const": "legs", "title": "Two legs"}, {"const": "fold", "title": "Fold-down", "description": "Hinged on the end of the worktop; it folds down when not in use. Hold it up with folding brackets (not drawn)."}], "x-solidcraft-visible-when": {"field": "wing", "in": ["left", "right"]}},
             "name": { "type": "string", "title": "Name", "description": "Running again with it replaces that worktop.", "default": "Worktop", "minLength": 1, "maxLength": 40 }
           }
         }
