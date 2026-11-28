@@ -1,7 +1,7 @@
 {
   "id": "woodwork",
   "name": "Woodwork",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Cabinets and furniture in sheet goods: carcass generator and cut list.",
   "capabilities": ["commands@0.2", "dialog@0.1", "storage@0.1"],
   "runtime": {
