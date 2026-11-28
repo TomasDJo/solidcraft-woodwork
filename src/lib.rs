@@ -221,7 +221,9 @@ fn apply(
     let mut rebased: Vec<String> = Vec::new();
     for name in names {
         let about = run("component.metadata", json!({"component": name}))?;
-        if let Some(base) = reached_base(&about, &tree, run).filter(|b| !rebased.contains(b)) {
+        // on a base (#281): Apply settings gives it no plinth
+        let on_base = reached_base(&about, &tree, run);
+        if let Some(base) = on_base.clone().filter(|b| !rebased.contains(b)) {
             rebased.push(base);
         }
         let ours = &about["metadata"][edit::KEY];
@@ -236,7 +238,7 @@ fn apply(
         let (_, base) = edit::merge(ours, &json!({}), &design)?;
         match settings {
             false => todo.push((name, about, entry, base, vec![])),
-            true => match settings::apply(&entry, &base, stored) {
+            true => match settings::apply(&entry, &base, stored, on_base.is_some()) {
                 Some((params, changed)) => todo.push((name, about, entry, params, changed)),
                 // along a line: built again all the same, to read the line again
                 None if along(&base) => todo.push((name, about, entry, base, vec!["line".into()])),

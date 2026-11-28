@@ -332,7 +332,13 @@ fn same(a: &Value, b: &Value) -> bool {
 /// set-back. A value the same as the old default counts as following it, even when it was set by
 /// hand. Only what the cabinet's `entry` takes (a corner has no drawers, no inside joinery, no
 /// back choice). With the params (their `_defaults` now the settings'), the fields that change.
-pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<String>)> {
+/// A cabinet `on_base` (a mobile base, #281) without a plinth never gets one.
+pub fn apply(
+    entry: &str,
+    params: &Value,
+    stored: &Value,
+    on_base: bool,
+) -> Option<(Value, Vec<String>)> {
     let settings = &stored["document"]["settings"];
     let before = match params.get("_defaults") {
         Some(d) if d.is_object() => d.clone(),
@@ -356,7 +362,7 @@ pub fn apply(entry: &str, params: &Value, stored: &Value) -> Option<(Value, Vec<
     let has_plinth = on(&params["plinth"]);
     for key in PER_CABINET {
         let follows = match key {
-            "plinth" => has_plinth == on(&before["plinth"]),
+            "plinth" => has_plinth == on(&before["plinth"]) && (has_plinth || !on_base),
             _ => params
                 .get(key)
                 .is_none_or(|v| before.get(key).is_some_and(|b| same(v, b))),

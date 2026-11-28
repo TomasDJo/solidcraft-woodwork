@@ -269,7 +269,7 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
         "plinth": 120, "plinth_type": "legs"}}});
     let mut built = json!({"units": "mm", "thickness": 18.0, "plinth": 0.0});
     design("cabinet", &mut built, &json!({}));
-    let (p, changed) = apply("cabinet", &built, &stored).unwrap();
+    let (p, changed) = apply("cabinet", &built, &stored, false).unwrap();
     // (a cabinet without a plinth keeps its plinth type)
     assert_eq!(changed, ["joints", "thickness"]);
     assert_eq!(
@@ -278,11 +278,11 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
     );
     // no plinth: it keeps none
     assert_eq!(p["plinth"], 0.0);
-    assert_eq!(apply("cabinet", &p, &stored), None);
+    assert_eq!(apply("cabinet", &p, &stored, false), None);
     // with one: the settings' height and type (it had the default type)
     let mut on = built.clone();
     on["plinth"] = json!(100.0);
-    let (p, _) = apply("cabinet", &on, &stored).unwrap();
+    let (p, _) = apply("cabinet", &on, &stored, false).unwrap();
     assert_eq!(
         (&p["plinth"], &p["plinth_type"]),
         (&json!(120.0), &json!("legs"))
@@ -290,7 +290,7 @@ fn apply_brings_a_cabinet_to_the_settings_and_skips_one_that_has_them() {
     // a corner takes no drawers' or inside settings
     let mut corner = json!({"units": "mm", "plinth": 0.0});
     design("corner", &mut corner, &json!({}));
-    let (p, _) = apply("corner", &corner, &stored).unwrap();
+    let (p, _) = apply("corner", &corner, &stored, false).unwrap();
     assert!(
         p.get("slide_type").is_none() && p.get("joints_inner").is_none(),
         "{p}"
@@ -306,7 +306,7 @@ fn apply_follows_changed_defaults_and_keeps_what_was_chosen() {
     let stored = json!({"document": {"settings": {"handles": "knob", "fronts": "inset",
         "back": "none", "handle_position": "top", "labels": "yes", "plinth_type": "legs",
         "joints": "confirmat"}}});
-    let (p, mut changed) = apply("cabinet", &built, &stored).unwrap();
+    let (p, mut changed) = apply("cabinet", &built, &stored, false).unwrap();
     changed.sort();
     // what still had the old default follows the settings
     assert_eq!(
@@ -325,7 +325,7 @@ fn apply_follows_changed_defaults_and_keeps_what_was_chosen() {
     // one with the default plinth takes the new plinth type
     let mut base = built.clone();
     base["plinth"] = json!(100.0);
-    let (p, _) = apply("cabinet", &base, &stored).unwrap();
+    let (p, _) = apply("cabinet", &base, &stored, false).unwrap();
     assert_eq!(
         (&p["plinth"], &p["plinth_type"]),
         (&json!(100.0), &json!("legs"))
@@ -334,7 +334,7 @@ fn apply_follows_changed_defaults_and_keeps_what_was_chosen() {
     let mut old = base.clone();
     old.as_object_mut().unwrap().remove("_defaults");
     assert_eq!(
-        apply("cabinet", &old, &stored).unwrap().0["plinth_type"],
+        apply("cabinet", &old, &stored, false).unwrap().0["plinth_type"],
         "legs"
     );
 }
@@ -345,15 +345,15 @@ fn apply_takes_the_hardware_models_both_ways() {
     design("cabinet", &mut built, &json!({}));
     assert_eq!(built["hardware_models"], "on");
     let off = json!({"document": {"settings": {"hardware_models": "off"}}});
-    let (p, changed) = apply("cabinet", &built, &off).unwrap();
+    let (p, changed) = apply("cabinet", &built, &off, false).unwrap();
     assert_eq!(p["hardware_models"], "off");
     assert_eq!(changed, ["hardware_models"]);
-    let (back, _) = apply("cabinet", &p, &json!({})).unwrap();
+    let (back, _) = apply("cabinet", &p, &json!({}), false).unwrap();
     assert_eq!(back["hardware_models"], "on");
     // a cabinet made before the key existed (absent) gets it
     let mut old = built.clone();
     old.as_object_mut().unwrap().remove("hardware_models");
-    assert!(apply("cabinet", &old, &off).is_some());
+    assert!(apply("cabinet", &old, &off, false).is_some());
 }
 
 #[test]
@@ -495,4 +495,18 @@ fn a_refusal_names_the_field_it_is_about() {
     let (f, _) = trouble(&json!({"thickness": 60}), &json!({})).unwrap();
     assert_eq!(f, "thickness");
     assert!(trouble(&json!({"thickness": 19}), &json!({})).is_none());
+}
+
+#[test]
+fn apply_gives_no_plinth_to_a_cabinet_on_a_base() {
+    // made when the settings' plinth height was 0, so no plinth was the default then
+    let made = json!({"document": {"settings": {"plinth": 0}}});
+    let mut built = json!({"units": "mm", "plinth": 0.0});
+    design("cabinet", &mut built, &made);
+    built["_defaults"] = defaults("cabinet", &json!("mm"), &made);
+    let raised = json!({"document": {"settings": {"plinth": 120}}});
+    let (p, _) = apply("cabinet", &built, &raised, false).unwrap();
+    assert_eq!(p["plinth"], 120.0, "off a base it follows the settings");
+    let p = apply("cabinet", &built, &raised, true).map_or(built.clone(), |(p, _)| p);
+    assert_eq!(p["plinth"], 0.0, "on a base it keeps none");
 }
