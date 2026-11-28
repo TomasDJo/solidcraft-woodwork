@@ -376,3 +376,26 @@ def test_undermount_slides(approval):
     assert abs(out["Cabinet Drawer 1 Front"][1] - (box["Cabinet Drawer 1 Front"][1] - 500)) < 0.01
     hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
     assert hardware.get("Drawer slide, undermount full extension, 500 mm, pair") == 2, hardware
+
+
+def test_pilaster_strips_clear_the_hinge_plates(approval):
+    # Pilaster strips with doors: the front strip stands 68 mm behind the opening's front, so
+    # its strip (and dado) is clear of each hinge plate (37 +- 20 mm) on every board a door
+    # hangs on: sides, a double divider's boards, inset, both ends of a corner, inset there.
+    # (A diagonal door's hinges have no plate models.)
+    strips = {"shelves": 2, "shelf_pins": True, "shelf_support": "strips", "place": "origin"}
+    cabinets = {"B": {"doors": 2}, "I": {"doors": 1, "fronts": "inset"},
+                "W": {"width": 900, "dividers": 2, "doors": 3},
+                "WI": {"width": 900, "dividers": 2, "doors": 3, "fronts": "inset"},
+                "L": {"shape": "L-shaped", "corner_doors": "hinged left"},
+                "R": {"shape": "L-shaped", "corner_doors": "hinged right", "fronts": "inset"}}
+    script = [plugin(approval, "cabinet", {"name": n, **p, **strips}) for n, p in cabinets.items()]
+    measure = designed(approval, {**NONE, "double_dividers": "yes"}, [*script, MEASURE])[-1]
+    every = boxes(measure, models=True)
+    apart = lambda a, b: any(a[i + 3] <= b[i] + 0.01 or b[i + 3] <= a[i] + 0.01 for i in range(3))
+    for name in cabinets:
+        plates = [b for n, b in every.items() if n.startswith(f"HW hinge plate ({name}:1/")]
+        posts = [b for n, b in every.items() if n.startswith(f"{name} ") and " pilaster " in n]
+        assert plates and len(posts) >= 4, (name, sorted(every))
+        clash = [(p, s) for p in plates for s in posts if not apart(p, s)]
+        assert not clash, (name, clash)

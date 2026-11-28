@@ -15,7 +15,7 @@ mod diagonal;
 mod doors;
 mod input;
 
-use crate::fittings::{self, PinRows, CLIP, LEG_INSET, PIN_SETBACK, PITCH, STRIP};
+use crate::fittings::{self, PinRows, CLIP, LEG_INSET, PIN_SETBACK, PITCH, STRIP, STRIP_SETBACK};
 use crate::joint::{Joinery, Joint, BOTTOM, CARCASS};
 use crate::kit::{mm, Kit};
 use crate::Commands;
@@ -958,7 +958,8 @@ impl Corner<'_> {
     }
 
     /// Pilaster strips (#264), as the box cabinet's: on each face that carries shelves a dado
-    /// `STRIP` wide and deep on each pin row's line over the shelves' height, a strip model in
+    /// `STRIP` wide and deep on each pin row's line (the one by the opening `STRIP_SETBACK` in)
+    /// over the shelves' height, a strip model in
     /// it, and under each shelf (`shelves`, their lower faces) a clip at the first strip and a
     /// pattern of it to the second. `length` is the strips' in mm, for their names.
     fn strips(&self, zone: &str, length: f64, shelves: &[(String, String)]) {
@@ -968,7 +969,15 @@ impl Corner<'_> {
         for (part, [x, y], into, across, run) in self.shelf_faces() {
             let first = [self.point(&x), y];
             let a = usize::from(into[0] == 0); // the axis into the board; `1 - a` is along the face
-            let spacing = format!("{run} - {}", mm(2.0 * PIN_SETBACK));
+                                               // The row by the opening stands `STRIP_SETBACK` in, clear of the hinge plates: a
+                                               // face along y starts at the front (first row), one along x at the wall (second).
+            let back = mm(STRIP_SETBACK - PIN_SETBACK);
+            let shift = if across[1] != 0 {
+                back.clone()
+            } else {
+                mm(0.0)
+            };
+            let spacing = format!("{run} - {} - {back}", mm(2.0 * PIN_SETBACK));
             let target = [format!("{} {part}", kit.name)];
             // one axis's low end and size: into the board, out of it (a clip), or across a row
             let span = |at: &str, axis: usize, row: usize, way: i32, size: &str| match axis == a {
@@ -976,7 +985,7 @@ impl Corner<'_> {
                 true => (format!("{at} - {size}"), size.to_string()),
                 false => {
                     let sign = if across[axis] < 0 { "-" } else { "+" };
-                    let centre = format!("{at} {sign} {row}*({spacing})");
+                    let centre = format!("{at} {sign} ({shift} + {row}*({spacing}))");
                     (format!("{centre} - {w}/2"), w.clone())
                 }
             };
