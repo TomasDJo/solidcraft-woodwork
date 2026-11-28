@@ -919,3 +919,36 @@ fn corner_shelves_can_rest_on_pilaster_strips() {
         );
     }
 }
+
+#[test]
+fn the_corner_strip_by_the_opening_clears_the_hinge_plates() {
+    // The row by the opening stands 68 mm in, 31 past the pin row's 37: on a face along y (the
+    // ends' and backs' first row, at the front) the first row moves 31 mm back, on one along x
+    // (the second row, by the opening) the spacing is 31 mm shorter. Either corner.
+    for corner in ["left", "right"] {
+        let p = json!({"shape": "L-shaped", "corner": corner, "corner_doors": "hinged left",
+            "shelves": 1, "shelf_pins": true, "shelf_support": "strips"});
+        let (commands, _) = build(&p).unwrap();
+        let mut faces = 0;
+        for c in &commands {
+            let Some(name) = c.1["name"].as_str() else {
+                continue;
+            };
+            let Some(row) = name.split(" pilaster dado ").nth(1) else {
+                continue;
+            };
+            // the axis along the face is the one 16 mm across
+            let along = usize::from(c.1["width"] == "16 mm");
+            let at = c.1["corner"][along].as_str().unwrap();
+            let first = if along == 1 { "(31 mm + " } else { "(0 mm + " };
+            let row = if row == "front" { 0 } else { 1 };
+            assert!(
+                at.contains(&format!("{first}{row}*(")),
+                "{corner} {name}: {at}"
+            );
+            assert!(at.contains("- 74 mm - 31 mm))"), "{corner} {name}: {at}");
+            faces += 1;
+        }
+        assert_eq!(faces, 8, "{corner}");
+    }
+}

@@ -2510,3 +2510,65 @@ fn the_drawer_bottom_sits_in_a_groove() {
         );
     }
 }
+
+#[test]
+fn the_front_strip_clears_the_hinge_plates() {
+    // A plate is `PLATE_SIZE` 40 deep, centred on its screw holes `HW_setback` (37) behind the
+    // opening's front; the front strip's dado starts 3 mm behind it, on every board a door
+    // hangs on: sides, a double divider's boards, overlay and inset.
+    let plate_back = PIN_SETBACK + crate::hardware::PLATE_SIZE[1] / 2.0;
+    assert_eq!(STRIP_SETBACK - STRIP[0] / 2.0, plate_back + 3.0);
+    let strips = json!({"shelves": 2, "shelf_pins": true, "shelf_support": "strips"});
+    let cases = [
+        json!({"doors": 2}),
+        json!({"doors": 1, "fronts": "inset"}),
+        json!({"width": 900, "dividers": 2, "doors": 3}),
+        json!({"width": 900, "dividers": 2, "doors": 3, "double_dividers": true}),
+        json!({"width": 900, "dividers": 2, "doors": 3, "double_dividers": true, "fronts": "inset"}),
+    ];
+    for mut p in cases {
+        p.as_object_mut()
+            .unwrap()
+            .extend(strips.as_object().unwrap().clone());
+        let (commands, _) = build(&p).unwrap();
+        let mut boards = 0;
+        for c in &commands {
+            let Some(board) = c.1["name"]
+                .as_str()
+                .and_then(|n| n.strip_suffix(" hinge plate 1.1"))
+            else {
+                continue;
+            };
+            boards += 1;
+            // the plate's line, `HW_setback` behind the front: the strip's middle 68 mm behind it
+            let y = c.1["base"][1].as_str().unwrap();
+            let want = y.replace("HW_setback", "68 mm - 16 mm/2");
+            let dados: Vec<&Value> = (commands.iter())
+                .filter(|d| {
+                    (d.1["name"].as_str())
+                        .is_some_and(|n| n.starts_with(&format!("{board} pilaster dado front")))
+                })
+                .map(|d| &d.1)
+                .collect();
+            assert!(!dados.is_empty(), "{board} {p}");
+            for dado in dados {
+                assert_eq!(dado["corner"][1], want, "{board} {p}");
+            }
+        }
+        assert!(boards >= 1, "{p}");
+    }
+}
+
+#[test]
+fn pilaster_strips_need_a_deep_enough_shelf() {
+    // the front strip 68 mm in, the back one 37 mm from the back, 16 wide: 121 mm at the least;
+    // inset fronts on a groove back as thick as the panels leave a 168 mm cabinet 120
+    let p = json!({"depth": 168, "fronts": "inset", "back": "groove", "back_thickness": 18, "shelves": 1, "shelf_pins": true});
+    assert!(build(&p).is_ok());
+    let mut strips = p.clone();
+    strips["shelf_support"] = json!("strips");
+    let err = build(&strips).err().unwrap();
+    assert!(err.contains("121 mm"), "{err}");
+    strips["depth"] = json!(169);
+    assert!(build(&strips).is_ok());
+}

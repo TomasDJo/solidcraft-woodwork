@@ -10,7 +10,9 @@ mod doors;
 mod drawers;
 mod input;
 
-use crate::fittings::{self, PinRows, CLIP, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH, STRIP};
+use crate::fittings::{
+    self, PinRows, CLIP, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH, STRIP, STRIP_SETBACK,
+};
 use crate::joint::{Joinery, Joint, BOTTOM, CARCASS, INNER};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
@@ -663,7 +665,8 @@ impl Cabinet<'_> {
     }
 
     /// Pilaster strips (#264) instead of pin rows: in each face that carries shelves, a dado
-    /// `STRIP` wide and deep on the pin rows' front and back lines over the shelves' height,
+    /// `STRIP` wide and deep on the pin rows' back line and `STRIP_SETBACK` behind the front (clear
+    /// of the hinge plates), over the shelves' height,
     /// and a strip in it, flush with the face: `<board> pilaster dado <row>` and the model
     /// `<board> pilaster <row> (<length> mm)` (a name with ` pilaster ` is a hardware model,
     /// which the cut list counts by that length). A divider carrying shelves on both faces has a
@@ -696,7 +699,7 @@ impl Cabinet<'_> {
         let [w, deep] = [mm(STRIP[0]), mm(STRIP[1])];
         let length = (input.clear_h).round();
         let rows = [
-            ("front", format!("{ein} + {}", mm(PIN_SETBACK))),
+            ("front", format!("{ein} + {}", mm(STRIP_SETBACK))),
             ("back", format!("{ein} + {eshelf_d} - {}", mm(PIN_SETBACK))),
         ];
         for (board, fx, into, which) in faces {
@@ -734,14 +737,14 @@ impl Cabinet<'_> {
         } = self;
         let [w, out, high] = [mm(STRIP[0]), mm(CLIP[0]), mm(CLIP[1])];
         let clip = format!("{shelf} clip");
-        let y = format!("{ein} + {} - {w}/2", mm(PIN_SETBACK));
+        let y = format!("{ein} + {} - {w}/2", mm(STRIP_SETBACK));
         kit.model(&clip, [x, &y, &format!("{z} - {high}")], [&out, &w, &high]);
         kit.push((
             "solid.pattern.rectangular",
             json!({
                 "bodies": [format!("{} {clip}", kit.name)], "name": format!("{} {clip}s", kit.name),
                 "dir1": [1, 0, 0], "count1": 2, "spacing1": format!("{ecell} - {out}"),
-                "dir2": [0, 1, 0], "count2": 2, "spacing2": format!("{eshelf_d} - {}", mm(2.0 * PIN_SETBACK)),
+                "dir2": [0, 1, 0], "count2": 2, "spacing2": format!("{eshelf_d} - {}", mm(PIN_SETBACK + STRIP_SETBACK)),
             }),
         ));
     }

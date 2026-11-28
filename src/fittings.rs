@@ -10,6 +10,11 @@ pub const PIN_SETBACK: f64 = 37.0; // pin rows, from the front and from the back
 pub const PIN_D: f64 = 5.0;
 /// A shelf pilaster strip's width and thickness, and so its dado's (#264).
 pub const STRIP: [f64; 2] = [16.0, 5.0];
+/// The front strip's middle, from the front of the shelf: behind a hinge plate on the pin
+/// rows' line (`PLATE_SIZE` 40 deep, centred on it) with 3 mm to spare, so a door's plates
+/// and their screw holes stay clear of it. On every face, doors or not: one shelf for all.
+pub const STRIP_SETBACK: f64 =
+    PIN_SETBACK + crate::hardware::PLATE_SIZE[1] / 2.0 + 3.0 + STRIP[0] / 2.0;
 /// A pilaster clip: how far it stands out of the strip's face, and its height (#264).
 pub const CLIP: [f64; 2] = [10.0, 6.0];
 pub const DOOR_GAP: f64 = 2.0; // the default reveal: around and between the fronts
