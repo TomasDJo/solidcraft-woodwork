@@ -89,7 +89,11 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     let input = input::read(&kit, &trial)?;
     check(input.drawers > 0.0, "drawer inside size needs drawers")?;
     let [bt, _] = input.box_t;
-    let clear = input.runner.map_or(drawers::SLIDE, |[_, play]| play);
+    // On strip runners the box also stands a strip's thickness off each side (#267).
+    let strip = input.strip.map_or(0.0, |[st, _]| st);
+    let clear = input
+        .runner
+        .map_or(drawers::SLIDE, |[_, play]| play + strip);
     let w = match input.under {
         true => inside[0] + 42.0 + 2.0 * input.t, // Blum's rule
         false => inside[0] + 2.0 * (bt + clear + input.t),

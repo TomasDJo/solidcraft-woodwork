@@ -1283,6 +1283,20 @@ fn strip_runners_carry_the_bottom_on_a_strip_on_each_side() {
 }
 
 #[test]
+fn strip_runners_sized_from_the_drawers_inside_leave_room_for_the_strips() {
+    // #267: the box stands a strip (12 mm) and the play (1 mm) off each side, so 672 mm inside
+    // takes 12 mm box sides, 13 mm and an 18 mm panel each side: 758 mm, not 734
+    let mut p = json!({"drawers": 2, "slide_type": "strips", "sizing": "drawer",
+                       "drawer_width": 672, "drawer_depth": 500});
+    from_drawers(&mut p).unwrap();
+    assert_eq!(p["width"], json!(672.0 + 2.0 * (12.0 + 12.0 + 1.0 + 18.0)));
+    // a thicker strip from Woodwork settings widens it as much
+    p["strip_thickness"] = json!(20);
+    from_drawers(&mut p).unwrap();
+    assert_eq!(p["width"], json!(672.0 + 2.0 * (12.0 + 20.0 + 1.0 + 18.0)));
+}
+
+#[test]
 fn a_cabinet_sized_from_its_drawers_inside() {
     // 16 x 16 Gridfinity bins: 672 mm inside; 12 mm box sides, 12.7 mm slides, 18 mm panels,
     // 10 mm behind the box and a 6 mm back 12 mm in from the rear
