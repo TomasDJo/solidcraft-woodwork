@@ -751,7 +751,10 @@ place, ground), so a builder only returns its commands and `Kit`'s summary.
   `Bottom` runs forward under the front as the tab: `cabinet::drawers`' `tab`, after each
   branch's bottom, joins `Bottom tab 1/2` (boxes) and `corner 1/2` (cylinders, `TAB_R`) to it,
   `min(<Prefix>_tab_width, box inside)` wide (`tab_width`, Woodwork settings' Drawers, 120 mm,
-  a parameter while drawers have the tab, `edit::SIZES`) and `TAB_OUT` past the front's face;
+  a parameter while drawers have the tab, `edit::SIZES`) and `TAB_OUT` (12 mm) past the front's face,
+  with a `Bottom tab cove` cut along it from below (#256: `COVE_R` 6 mm, its axis
+  `COVE_R - min(COVE_DEPTH, bottom/2)` under the underside, so it cuts `min(COVE_DEPTH,
+  bottom/2)` deep, half `TAB_OUT` in front of the face);
   a `<front> tab notch` from the front's lower edge up to the bottom's top (`Kit::targets`),
   a `Box front tab slot` when the bottom stands behind a box front (not on runners, not
   integrated); no scoop (#244). The front keeps its height (the gaps

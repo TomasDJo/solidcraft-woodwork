@@ -610,11 +610,14 @@ def test_v_grooved_fronts(approval):
 
 
 def test_bottom_tab(approval):
-    # Handle holes Bottom tab (#181): each drawer's bottom (12 mm here) runs forward under its
-    # front, 20 mm past the face, as wide as Tab width (150 mm here), rounded at the front; the
-    # front is cut away up to the bottom's top there, with no scoop. No tab board, and
-    # the cut list's bottom is 20 mm longer than without (plus the box front it passes).
-    steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "tab"}), MEASURE, plugin(approval, "cutlist")]
+    # Drawer handles Bottom tab (#181): each drawer's bottom (12 mm here) runs forward under its
+    # front, 12 mm past the face (#256), as wide as Tab width (150 mm here), rounded at the
+    # front, with a cove underneath: a 6 mm radius 3 mm deep, its axis along the tab 6 mm in
+    # front of the face. The front is cut away up to the bottom's top there, with no scoop. No
+    # tab board, and the cut list's bottom is 12 mm longer than without (plus the box front it
+    # passes).
+    steps = [plugin(approval, "cabinet", {"drawers": 2, "handles": "tab"}), MEASURE, plugin(approval, "cutlist"),
+             faces("Cabinet Drawer 1 Bottom")]
     plain = designed(approval, {"drawer_bottom": 12}, [plugin(approval, "cabinet", {"drawers": 2}), MEASURE])
     for front in ("separate", "integrated"):
         results = designed(approval, {"drawer_front": front, "drawer_bottom": 12, "tab_width": 150}, steps)
@@ -622,7 +625,10 @@ def test_bottom_tab(approval):
         assert "Cabinet Drawer 1 Tab" not in box, sorted(box)
         name = "Cabinet Drawer 1 " + ("Front" if front == "separate" else "Box front")
         bottom, face, was = box["Cabinet Drawer 1 Bottom"], box[name], boxes(plain[1])["Cabinet Drawer 1 Bottom"]
-        assert round(face[1] - bottom[1], 3) == 20, (bottom, face)
+        assert round(face[1] - bottom[1], 3) == 12, (bottom, face)
+        cove = [f["cylinder"] for f in results[3]["faces"] if abs((f.get("cylinder") or {}).get("radius", 0) - 6) < 0.01]
+        assert cove and all(abs(abs(c["axis"][0]) - 1) < 1e-6 for c in cove), cove
+        assert all(abs(c["origin"][2] - (bottom[2] - 3)) < 0.01 and abs(c["origin"][1] - (face[1] - 6)) < 0.01 for c in cove), cove
         assert round(bottom[5] - bottom[2], 3) == 12 and bottom[4] == was[4], (bottom, was)
         assert cylinders(results[1], name) == 0, name  # no scoop (#244)
         assert cylinders(results[1], "Cabinet Drawer 1 Bottom") >= 2, front

@@ -20,8 +20,10 @@ pub const HANDLE_END: f64 = 100.0; // and from its top or bottom to the nearest 
 pub const GROOVE_D: f64 = 20.0; // a finger groove: a half round, 20 mm high and 10 deep
 pub const GROOVE_EDGE: f64 = 25.0; // its middle, from the front's edge
 pub const GRIP_LAND: f64 = 6.0; // a grip edge's 45-degree bevel leaves this much of the edge
-pub const TAB_OUT: f64 = 20.0; // a drawer bottom's tab (#181): how far past the front it sticks out,
+pub const TAB_OUT: f64 = 12.0; // a drawer bottom's tab (#181): how far past the front it sticks out,
 pub const TAB_R: f64 = 10.0; // and the radius of its two front corners
+pub const COVE_R: f64 = 6.0; // a cove under the tab's part past the front (#256): its radius,
+pub const COVE_DEPTH: f64 = 3.0; // and how deep it goes, at most half the bottom's thickness
 
 /// The top row of pins, counted in pitches above the bottom panel. Pin holes sit on a 32 mm
 /// grid there, two pitches clear of both ends of the clear height.
