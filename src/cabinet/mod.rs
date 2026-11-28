@@ -711,7 +711,7 @@ impl Cabinet<'_> {
                     Some(&target),
                 );
                 let strip = format!("{board} pilaster {row}{which} ({length} mm)");
-                model(kit, &strip, corner, size);
+                kit.model(&strip, corner, size);
             }
         }
         // ponytail: made with the carcass, not with the holes after the joinery
@@ -731,12 +731,7 @@ impl Cabinet<'_> {
         let [w, out, high] = [mm(STRIP[0]), mm(CLIP[0]), mm(CLIP[1])];
         let clip = format!("{shelf} clip");
         let y = format!("{ein} + {} - {w}/2", mm(PIN_SETBACK));
-        model(
-            kit,
-            &clip,
-            [x, &y, &format!("{z} - {high}")],
-            [&out, &w, &high],
-        );
+        kit.model(&clip, [x, &y, &format!("{z} - {high}")], [&out, &w, &high]);
         kit.push((
             "solid.pattern.rectangular",
             json!({
@@ -894,19 +889,6 @@ impl Cabinet<'_> {
             );
         }
     }
-}
-
-/// A hardware model's box, as `Kit::panel` makes a board's but not one of the cabinet's
-/// bodies, so it takes no board material and stays the app's grey (#264).
-fn model(kit: &Kit, part: &str, corner: [&str; 3], size: [&str; 3]) {
-    let body = format!("{} {part}", kit.name);
-    kit.push((
-        "solid.box",
-        json!({
-            "length": size[0], "width": size[1], "height": size[2],
-            "corner": kit.at(corner[0], corner[1], corner[2]), "name": body, "body_name": body,
-        }),
-    ));
 }
 
 #[cfg(test)]

@@ -258,8 +258,12 @@ pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Va
         (
             // four under each shelf on pilaster strips (#264)
             "Shelf clip",
+            // (eight under a corner cabinet's, which has strips in its backs too)
             cabinets(" Side L pilaster dado front")
-                .map(|c| shelves(c) * 4)
+                .map(|c| {
+                    let corner = features.contains(&format!("{c} Back return pilaster dado front"));
+                    shelves(c) * if corner { 8 } else { 4 }
+                })
                 .sum(),
         ),
         (
@@ -311,13 +315,11 @@ pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Va
         .collect();
     // pilaster strips by their length, in their models' names: `<board> pilaster front (652 mm)`
     let mut strips: BTreeMap<&str, u64> = BTreeMap::new();
-    for f in features
+    for length in features
         .iter()
-        .filter(|f| f.contains(" pilaster ") && !f.contains(" dado "))
+        .filter_map(|f| crate::hardware::strip_length(f))
     {
-        if let Some((_, length)) = f.rsplit_once(" (") {
-            *strips.entry(length.trim_end_matches(')')).or_default() += 1;
-        }
+        *strips.entry(length).or_default() += 1;
     }
     for (length, qty) in strips {
         list.push(json!({"item": format!("Shelf pilaster strip, {length}"), "qty": qty}));

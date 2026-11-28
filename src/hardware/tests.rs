@@ -354,6 +354,17 @@ fn the_models_are_hidden_from_every_reader() {
         "HW slide drawer 450 mm (Base:1/Base Drawer 1:1/HW slide drawer 450 mm:2)"
     ));
     assert!(!is_model("Base Door L") && !is_model("HW_cup_d"));
+    // a pilaster strip by its name's end, not a cabinet named with the word (#264)
+    assert!(is_model("Oak Side L pilaster front (652 mm)"));
+    assert_eq!(
+        strip_length("Oak pilaster cabinet Side L pilaster back (652 mm)"),
+        Some("652 mm")
+    );
+    assert!(!is_model("Oak pilaster cabinet Side L"));
+    assert_eq!(
+        strip_length("Oak pilaster cabinet Side L pilaster dado front"),
+        None
+    );
     let mut measure = json!({"bodies": [{"name": "Base Side L"}, {"name": "HW hinge (Base:1/HW hinge:2)"}, {"name": "HW hinge"}]});
     hide(&mut measure);
     assert_eq!(measure, json!({"bodies": [{"name": "Base Side L"}]}));

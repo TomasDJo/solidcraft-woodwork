@@ -345,7 +345,15 @@ pub fn is_model(body: &str) -> bool {
     let body_of = copy.map_or(body, |(name, _)| name);
     [HINGE, SLIDE].iter().any(|m| body.starts_with(m))
         || [" fastener", " clip"].iter().any(|e| body_of.ends_with(e))
-        || body.contains(" pilaster ")
+        || strip_length(body).is_some()
+}
+
+/// A pilaster strip model's length, from its name `<board> pilaster <row> (<length> mm)` (#264).
+/// Only the name's end counts, so the boards of a cabinet called `Oak pilaster cabinet` are none.
+pub fn strip_length(body: &str) -> Option<&str> {
+    let (head, length) = body.strip_suffix(')')?.rsplit_once(" (")?;
+    let mm = length.strip_suffix(" mm")?.parse::<f64>().is_ok();
+    (mm && head.contains(" pilaster ")).then_some(length)
 }
 
 /// Takes the models out of `inspect.measure`'s reply: they are not boards, nor part of any

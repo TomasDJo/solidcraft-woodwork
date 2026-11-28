@@ -56,9 +56,8 @@ const SIZES: [&str; 34] = [
 /// them for the other kind and a run leaves them out. Shrink them as the two kinds catch up.
 /// Edit has only what is per cabinet; what is design-wide (joinery, hardware, thickness,
 /// reveal, the plinth's height and set-back) is Woodwork settings' and Apply settings'.
-const BOX_ONLY: [&str; 12] = [
+const BOX_ONLY: [&str; 11] = [
     "kind",
-    "shelf_support",
     "sizing",
     "drawer_width",
     "drawer_depth",
@@ -72,12 +71,13 @@ const BOX_ONLY: [&str; 12] = [
 ];
 const CORNER_ONLY: [&str; 3] = ["corner_doors", "shape", "return"];
 /// The Edit fields both kinds of cabinet take.
-const CABINETS: [&str; 14] = [
+const CABINETS: [&str; 15] = [
     "width",
     "height",
     "depth",
     "shelves",
     "shelf_pins",
+    "shelf_support",
     "handles",
     "door_handles",
     "handle_position",
@@ -157,6 +157,7 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
         "kind",
         "shape",
         "sizing",
+        "shelf_support",
     ];
     let numbers = [
         "shelves",
