@@ -160,22 +160,40 @@ def test_apply_settings_to_picked(approval):
 
 
 def test_apply_settings_keeps_what_is_per_cabinet(approval):
-    # W, a wall cabinet on a French cleat without a plinth, and B, a base cabinet with one and
-    # pull handles. Settings with confirmat, a 120 plinth and knobs, then Apply settings to all
+    # W, a wall cabinet on a French cleat without a plinth, and B, a base cabinet with one whose
+    # door handles were set to pulls by Edit (handles come from Woodwork settings; Edit chooses
+    # one cabinet's). Settings with confirmat, a 120 plinth and knobs, then Apply settings to all
     # (none picked): both get confirmat, B the 120 plinth; W keeps no plinth and its cleat, B
-    # its pull handles (handles are per cabinet).
+    # its pulls (a cabinet's own choice is kept).
     light = {"shelves": 0, "depth": 300}
     results = cli([plugin(approval, "cabinet", {"name": "W", "plinth": "no", "wall_mount": "cleat", "place": "origin", **light}),
-                   plugin(approval, "cabinet", {"name": "B", "plinth": "yes", "doors": 1, "handles": "pull", "place": "origin", **light}),
-                   setting(approval, {"joints": "confirmat", "plinth": 120, "handles": "knob"}),
+                   plugin(approval, "cabinet", {"name": "B", "plinth": "yes", "doors": 1, "place": "origin", **light}),
+                   select("B Door"), plugin(approval, "edit", {"doors": 1, "door_handles": "pull"}),
+                   setting(approval, {"joints": "confirmat", "plinth": 120, "door_handles": "knob"}),
                    plugin(approval, "rebuild", {}), MEASURE])
-    reply = results[3]["result"]
+    reply = results[5]["result"]
     assert sorted(reply["applied"]) == ["B", "W"], reply
     assert "joints" in reply["changed"]["W"] and "joints" in reply["changed"]["B"], reply["changed"]
-    assert "plinth" not in reply["changed"]["W"] and "handles" not in reply["changed"]["B"], reply["changed"]
-    box = boxes(results[4])
+    assert "plinth" not in reply["changed"]["W"] and "door_handles" not in reply["changed"]["B"], reply["changed"]
+    assert cylinders(results[6], "B Door") == 4, cylinders(results[6], "B Door")  # 2 cups, a pull
+    box = boxes(results[6])
     assert box["W Bottom"][2] == 0 and "W Cleat" in box and "W Wall cleat" in box, box["W Bottom"]
     assert box["B Bottom"][2] == 120, box["B Bottom"]
+
+
+def test_apply_settings_keeps_an_edit_to_no_plinth(approval):
+    # A made with a plinth, then edited to none. Settings with confirmat and a 120 plinth, then
+    # Apply settings to all: A gets confirmat and still has no plinth. Its plinth parameter used
+    # to stay at 100 after the Edit, and Apply settings read the sizes from the parameters.
+    light = {"shelves": 0, "depth": 300}
+    results = cli([plugin(approval, "cabinet", {"name": "A", "plinth": "yes", "place": "origin", **light}),
+                   select("A Side L"), plugin(approval, "edit", {"plinth": "no"}),
+                   setting(approval, {"joints": "confirmat", "plinth": 120}),
+                   plugin(approval, "rebuild", {}), MEASURE])
+    reply = results[4]["result"]
+    assert reply["applied"] == ["A"] and "plinth" not in reply["changed"]["A"], reply
+    box = boxes(results[5])
+    assert box["A Bottom"][2] == 0 and "A Plinth" not in box, box["A Bottom"]
 
 
 def test_apply_settings_follows_a_changed_default(approval):
@@ -242,13 +260,24 @@ def test_rebuild_job_takes_more_than_one_run(approval):
     assert again["applied"] == ["C0"] and "as they were made" in again["message"], again
 
 
-def test_sections_hide_fields_but_keep_their_values(approval):
-    # Section shows one group; the hook hides the rest without leaving them out. A run in the
-    # Display section changes the camera and keeps the stored joinery and plinth; a script that
-    # names a field of another section still sets it.
+def test_a_section_dialog_keeps_the_other_sections(approval):
+    # A dialog per section (`settings-<section>`, the Woodwork settings dropdown): a run of the
+    # Display dialog changes the camera and keeps the stored joinery and plinth; the scripts'
+    # `settings` entry still takes any field.
     results = cli([setting(approval, {"joints": "confirmat", "plinth": 150}),
-                   setting(approval, {"section": "display", "camera": "leave"}),
-                   setting(approval, {"section": "general", "joints": "cam"})])
+                   plugin(approval, "settings-display", {"camera": "leave"}),
+                   setting(approval, {"joints": "cam"})])
     stored = results[1]["result"]["settings"]
     assert stored == {"joints": "confirmat", "plinth": 150, "camera": "leave"}, stored
     assert results[2]["result"]["settings"]["joints"] == "cam", results[2]
+
+
+def test_drawer_settings_in_inches(approval):
+    # Drawer settings with General in inches (#238): the hook starts Tab width at 120 mm in
+    # inches (4.72), which the dialog's bounds must take, and it is kept as 120 mm.
+    results = cli([plugin(approval, "settings", {"units": "in"}),
+                   entry_step(approval, "settings-drawers", {"drawer_bottom": 0.25}),
+                   plugin(approval, "settings", {"units": "mm", "drawer_bottom": 6})])
+    stored = results[1].get("result", results[1])["settings"]
+    assert round(stored["drawer_bottom"], 2) == 6.35, stored
+    assert round(stored.get("tab_width", 120), 3) == 120, stored

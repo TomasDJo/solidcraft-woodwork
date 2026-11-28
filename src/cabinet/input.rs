@@ -1,6 +1,6 @@
 //! Reads and checks the dialog's fields. The numbers here only check the input.
 
-use super::drawers::{BOX_BEHIND, BOX_CLEAR, SLIDE};
+use super::drawers::{BOX_BEHIND, BOX_CLEAR, FALSE_BACK, SLIDE};
 use super::{GROOVE_INSET, RAIL_D};
 use crate::fittings::{DOOR_GAP, PITCH};
 use crate::kit::{check, num, Kit};
@@ -9,6 +9,8 @@ use serde_json::Value;
 // ponytail: the shortest slide for the default `HW_` sizes; a slide's holes changed in
 // Parameters are not checked.
 const MIN_SLIDE: f64 = 250.0;
+/// The lowest drawer box side or back, in mm: a slide's members are 45 mm high (#221).
+const MIN_BOX_SIDE: f64 = 50.0;
 
 /// The checked input. Lengths are in mm.
 #[derive(Clone, Copy)]
@@ -27,9 +29,13 @@ pub struct Input<'a> {
     pub plinth_setback: f64,
     pub shelves: f64,
     pub dividers: f64,
+    /// Each divider two boards side by side, where overlay doors meet on it (#176).
+    pub double: bool,
     pub doors: f64,
     pub drawers: f64,
     pub pins: bool,
+    /// With `pins`, pilaster strips in dados and clips instead of the rows of holes (#264).
+    pub pilasters: bool,
     /// The shelves fixed and joined (no shelf pins: the inside's joinery).
     pub fixed: bool,
     pub back: &'a str,
@@ -39,7 +45,20 @@ pub struct Input<'a> {
     pub mount_t: f64,
     pub mount_h: f64,
     pub handles: &'a str,
+    /// The doors' handles (`door_handles`); `handles` is the drawer fronts'.
+    pub door_handles: &'a str,
     pub handle_at: &'a str,
+    /// Grooves cut into the fronts' faces (`front_style`, #182): `None` for flat fronts.
+    pub grooves: Option<crate::fittings::Grooves<'a>>,
+    /// Shaker fronts (`front_style` shaker, #183): the frame's width and the panel's thickness.
+    pub frame: Option<[f64; 2]>,
+    /// Glass doors (`front_style` glass): the frame round a pane; drawer fronts get a panel.
+    pub glass: bool,
+    /// The drawer fronts take the frame (Shaker or glass): every one tall and wide enough for
+    /// it (`fittings::framed`), and not integrated.
+    pub framed_drawers: bool,
+    /// A grip edge's gap (`grip_gap`, #230), in mm; `None` without grip edges.
+    pub grip_gap: Option<f64>,
     pub hinge_right: bool, // the first door is hinged on its right
     /// Inset fronts sit inside the carcass opening; overlay ones cover its edges.
     pub inset: bool,
@@ -58,13 +77,23 @@ pub struct Input<'a> {
     pub mixed: bool,
     /// The drawer boxes' boards (sides, front and back) and their bottoms.
     pub box_t: [f64; 2],
+    /// The box's side and back heights in mm, 0 for the full height and the sides' (#221).
+    pub box_h: [f64; 2],
+    /// The drawer bottom's tab with Drawer handles Bottom tab (#181), in mm.
+    pub tab_w: f64,
     /// Wooden runners (`slide_type` wood): the bottom runs in a groove in each side, this deep,
     /// with this much play round it. `None` on metal slides.
     pub runner: Option<[f64; 2]>,
+    /// Strip runners (`slide_type` strips, #146): a strip this thick and this high on each side
+    /// under the bottom, which is wider than the box and slides on them. With `runner` for the
+    /// play. `None` otherwise.
+    pub strip: Option<[f64; 2]>,
     /// Undermount slides (`slide_type` under_partial or under_full).
     pub under: bool,
     /// Finger joints at the drawer boxes' corners (`drawer_joints`, #131).
     pub box_fingers: bool,
+    /// The box's own front board is the drawer front (`drawer_front` integrated, #163).
+    pub integrated: bool,
     pub drawers_top: bool,
     /// The doors' height, and the lowest drawer front's lower edge.
     pub door_h: f64,
@@ -106,6 +135,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     // Without pins the shelves are fixed, joined by the inside's joinery (none on a cabinet
     // that remembers no method: as before).
     let fixed = !pins;
+    // Movable shelves rest on pins in rows of holes, or on clips in pilaster strips (#264).
+    let pilasters = match p
+        .get("shelf_support")
+        .and_then(Value::as_str)
+        .unwrap_or("pins")
+    {
+        "pins" => false,
+        "strips" => true,
+        _ => return Err("shelf_support must be pins or strips".into()),
+    } && pins;
     let drawers = num(p, "drawers", 0.0)?;
     check(
         (0.0..=8.0).contains(&drawers) && drawers.fract() == 0.0,
@@ -126,10 +165,26 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => num(p, "dividers", 0.0)?,
     };
     let box_t = [size("drawer_thickness", 12.0)?, size("drawer_bottom", 6.0)?];
+    // The box's sides and back, lower than the box when asked (#221): 0 is the full height,
+    // and the back's 0 the sides'.
+    let box_h = [
+        size("drawer_side_height", 0.0)?,
+        size("drawer_back_height", 0.0)?,
+    ];
+    let tab_w = size("tab_width", 120.0)?;
+    check(
+        p.get("handles").and_then(Value::as_str) != Some("tab") || (40.0..=600.0).contains(&tab_w),
+        "the tab width must be 40 to 600 mm",
+    )?;
     let box_fingers = match p.get("drawer_joints").and_then(Value::as_str) {
         None | Some("none") => false,
         Some("finger") => true,
         _ => return Err("drawer_joints must be none or finger".into()),
+    };
+    let integrated = match p.get("drawer_front").and_then(Value::as_str) {
+        None | Some("separate") => false,
+        Some("integrated") => true,
+        _ => return Err("drawer_front must be separate or integrated".into()),
     };
     // the slides' screws go 8 mm into the box's sides (`HW_box_screw_depth`)
     check(
@@ -152,8 +207,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (shelves, pins)
     };
     let back = p.get("back").and_then(Value::as_str).unwrap_or("groove");
+    // A bottom tab (#247) is the drawer's lowest part, the front standing on it: only inset
+    // fronts leave room for it at their lower edge, so it makes the cabinet's fronts inset.
+    let tabbed = p.get("handles").and_then(Value::as_str) == Some("tab");
     let inset = match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
-        "overlay" => false,
+        "overlay" => tabbed,
         "inset" => true,
         _ => return Err("fronts must be overlay or inset".into()),
     };
@@ -230,8 +288,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         (0.0..=10.0).contains(&dividers) && dividers.fract() == 0.0,
         "dividers must be 0 to 10",
     )?;
+    // Overlay doors that meet on every divider (one door a compartment) can stand on double
+    // dividers, two boards side by side, so each door covers a whole board and takes full
+    // overlay hinges (#176). Anywhere else the setting is not used.
+    let double = matches!(p.get("double_dividers"), Some(v) if v == "yes" || v == true)
+        && !inset
+        && dividers > 0.0
+        && doors == dividers + 1.0;
     // Dividers split the inside into equal compartments.
-    let cell_w = (inner_w - dividers * t) / (dividers + 1.0);
+    let boards = if double { 2.0 * dividers } else { dividers };
+    let cell_w = (inner_w - boards * t) / (dividers + 1.0);
     check(
         cell_w >= 50.0,
         "width is too small for the panels and dividers",
@@ -256,14 +322,14 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     // Room for a box behind each front (an inset one beside doors stays clear of the rail
     // as an overlay one does), and the width of the box between the slides.
-    let lowest = match inset && !mixed {
+    let box_front = match inset && !mixed {
         true => 2.0 * BOX_CLEAR + 50.0,
         false => 2.0 * (t + BOX_CLEAR) + 50.0,
     };
     // A drawer front height is 0 (Auto) or at least 100 mm, more where thick boards leave
     // no room for a box, rounded up to a whole mm or 1/8 in. The dialog's minimum stays 0.
     let step = if kit.unit == "in" { 25.4 / 8.0 } else { 1.0 };
-    let floor = (lowest.max(MIN_DRAWER_FRONT) / step - 1e-6).ceil() * step;
+    let floor = (box_front.max(MIN_DRAWER_FRONT) / step - 1e-6).ceil() * step;
     check(
         dh == 0.0 || drawer_h == 0.0 || drawer_h >= floor - 1e-6,
         &format!(
@@ -272,13 +338,26 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         ),
     )?;
     check(
-        drawers == 0.0 || front_h >= lowest,
+        drawers == 0.0 || front_h >= box_front,
         "too low for that many drawers",
     )?;
     check(
-        drawer_h == 0.0 || drawer_h >= lowest,
+        drawer_h == 0.0 || drawer_h >= box_front,
         "the drawer front height is too low for a drawer box",
     )?;
+    // The sides and back: 0, or at least a slide's members (45 mm) and the bottom with an
+    // undermount slide's recess. Taller is not refused: each drawer's boards are capped by its
+    // box and its sides (`drawers`), as a taller value in Parameters is, so Edit of such a
+    // cabinet still builds.
+    for (value, what) in box_h.iter().zip(["side", "back"]) {
+        check(
+            drawers == 0.0 || *value == 0.0 || *value >= MIN_BOX_SIDE,
+            &format!(
+                "the drawer {what} height must be 0 or at least {}",
+                kit.length(MIN_BOX_SIDE)
+            ),
+        )?;
+    }
     check(
         drawers == 0.0 || inner_w - 2.0 * SLIDE >= 100.0,
         "too narrow for drawers",
@@ -294,10 +373,70 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     )?;
     let handles = p.get("handles").and_then(Value::as_str).unwrap_or("none");
     check(
-        matches!(handles, "none" | "knob" | "pull"),
-        "handles must be none, knob or pull",
+        matches!(
+            handles,
+            "none" | "knob" | "pull" | "grip" | "groove" | "tab"
+        ),
+        "handles must be none, knob, pull, grip, groove or tab",
     )?;
+    crate::fittings::profile_fits(handles, t)?;
+    let door_handles = crate::fittings::door_handles(p)?;
+    crate::fittings::profile_fits(door_handles, t)?;
+    // only checked on a cabinet with fronts to cut them into
+    let grooves = match doors > 0.0 || drawers > 0.0 {
+        true => crate::fittings::grooves(p, size, t, doors > 0.0)?,
+        false => None,
+    };
+    let door_w = (w - 2.0 * o - (doors + 1.0) * g) / doors.max(1.0);
+    let smallest = (doors > 0.0).then_some(door_w.min(door_h));
+    let frame = match doors > 0.0 || drawers > 0.0 {
+        true => crate::fittings::frame(p, size, t, smallest, drawers > 0.0)?,
+        false => None,
+    };
     let handle_at = crate::fittings::handle_position(p)?;
+    let low = if drawer_h > 0.0 {
+        front_h.min(drawer_h)
+    } else {
+        front_h
+    };
+    let wide = w - 2.0 * o - 2.0 * g;
+    let framed_drawers = drawers > 0.0
+        && !integrated
+        && frame.is_some_and(|[fw, _]| low.min(wide) >= crate::fittings::framed(fw));
+    let glass = p.get("front_style").and_then(Value::as_str) == Some("glass");
+    // a glass drawer front's handle goes in the middle of its top rail (auto too) or bottom rail
+    check(
+        !(glass && framed_drawers && matches!(handles, "knob" | "pull") && handle_at == "middle"),
+        "a glass drawer front's handle must be at the top or the bottom (Handle position): in the middle it would go through the glass",
+    )?;
+    // the fronts with a grip edge: the doors, the drawers, or both
+    let mut gripped = Vec::new();
+    if doors > 0.0 && door_handles == "grip" {
+        gripped.push(door_h);
+    }
+    if drawers > 0.0 && handles == "grip" {
+        gripped.extend([front_h, drawer_h]);
+    }
+    let lowest = gripped
+        .into_iter()
+        .filter(|&h| h > 0.0)
+        .fold(f64::MAX, f64::min);
+    let grip_gap = match lowest < f64::MAX {
+        true => crate::fittings::grip_gap("grip", handle_at, size, lowest)?,
+        false => None,
+    };
+    // a grip edge's drawer box is the gap lower too: it must still fit (`box_front`); a sink
+    // base's top front is a false front with no box (the rest are `front_h`)
+    let lowest_drawer = match drawer_h > 0.0 && !sink {
+        true => front_h.min(drawer_h),
+        false => front_h,
+    };
+    check(
+        grip_gap.is_none_or(|gap| {
+            drawers == 0.0 || handles != "grip" || lowest_drawer - gap >= box_front
+        }),
+        "the drawer fronts are too low for that grip gap: a drawer box would be under 50 mm",
+    )?;
     let hinge_right = match p
         .get("door_hinge")
         .and_then(Value::as_str)
@@ -308,7 +447,9 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         _ => return Err("door_hinge must be left or right".into()),
     };
     check(
-        handles == "none" || doors == 0.0 || (w - 2.0 * o - (doors + 1.0) * g) / doors >= 150.0,
+        door_handles == "none"
+            || doors == 0.0
+            || (w - 2.0 * o - (doors + 1.0) * g) / doors >= 150.0,
         "doors are too narrow for handles",
     )?;
     check(
@@ -336,20 +477,48 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         !sink || shelf_d + o >= 2.0 * RAIL_D,
         "too shallow for a sink base: its two 100 mm rails would overlap",
     )?;
+    // The front strip stands `STRIP_SETBACK` in and the back one `PIN_SETBACK` from the back:
+    // a strip's width apart at the least.
+    use crate::fittings::{PIN_SETBACK, STRIP, STRIP_SETBACK};
+    let strips_d = PIN_SETBACK + STRIP_SETBACK + STRIP[0];
+    check(
+        !pilasters || shelf_d >= strips_d,
+        &format!(
+            "too shallow for pilaster strips: the shelves need {strips_d} mm of depth or more"
+        ),
+    )?;
     // The slides' length, and so their screw holes, from the box's depth (`crate::hardware`).
-    let box_d = if sink {
-        shelf_d / 2.0
-    } else {
-        shelf_d - BOX_BEHIND
-    };
     let kind_of = p
         .get("slide_type")
         .and_then(Value::as_str)
         .unwrap_or("full");
-    let wood = kind_of == "wood";
+    // On runners the box runs to the back (#257), from a reveal before the carcass when overlay.
+    let box_d = match (sink, matches!(kind_of, "wood" | "strips")) {
+        (true, _) => shelf_d / 2.0,
+        (false, true) => shelf_d + if inset { 0.0 } else { g },
+        (false, false) => shelf_d - BOX_BEHIND,
+    };
+    let strips = kind_of == "strips";
+    let strip = [size("strip_thickness", 12.0)?, size("strip_height", 18.0)?];
+    check(
+        !strips
+            || drawers == 0.0
+            || ((6.0..=30.0).contains(&strip[0]) && (10.0..=60.0).contains(&strip[1])),
+        "the runner strips must be 6 to 30 mm thick and 10 to 60 mm high",
+    )?;
+    // the bottom must bear on the strips: less play than a strip is thick
+    let play = size("runner_play", 1.0)?;
+    check(
+        !strips || drawers == 0.0 || (0.0..strip[0]).contains(&play),
+        "the runner play must be less than the strips are thick",
+    )?;
+    // Dado runners (`wood`), and strip runners in the same way but on strips, not in grooves:
+    // no slides, no stop.
+    let grooved = kind_of == "wood";
+    let wood = grooved || strips;
     let runner = [size("runner_depth", 6.0)?, size("runner_play", 1.0)?];
     check(
-        !wood || drawers == 0.0 || ((3.0..=t - 6.0).contains(&runner[0]) && (0.0..runner[0]).contains(&runner[1])),
+        !grooved || drawers == 0.0 || ((3.0..=t - 6.0).contains(&runner[0]) && (0.0..runner[0]).contains(&runner[1])),
         "the runner groove must be 3 mm deep up to the panel thickness less 6 mm, with less play than its depth",
     )?;
     // Undermount (Blum's rule): the box 42 mm narrower inside than the opening, which leaves
@@ -358,6 +527,11 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     check(
         !under || drawers == 0.0 || box_t[0] <= 16.0,
         "undermount slides need drawer box sides of 16 mm or less",
+    )?;
+    // the false back (#258) must stand clear in front of the box's back
+    check(
+        !wood || drawers == 0.0 || FALSE_BACK * box_d + box_t[0] <= box_d - box_t[0],
+        "too shallow for runner drawers: the false back would run into the box's back",
     )?;
     check(
         wood || under || drawers == 0.0 || box_d >= MIN_SLIDE,
@@ -375,7 +549,7 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     };
     let named = crate::hardware::SLIDE_TYPES.iter().find(|t| t.0 == kind_of);
     let named = named
-        .ok_or("slide_type must be partial, full, over, wood, under_partial or under_full")?
+        .ok_or("slide_type must be partial, full, over, wood, strips, under_partial or under_full")?
         .1;
     // A wooden runner has no stop: the drawer comes out two thirds of its box's depth.
     let travel = match wood {
@@ -383,6 +557,34 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         false => crate::hardware::travel(kind_of, slide.0),
     };
     let slide_type = (named, travel);
+    // An integrated front is only as wide as the box (#223), so a pull's two holes must fit it:
+    // the box as `drawers` makes it for each slide type.
+    let box_w = match (strips, grooved, under) {
+        (true, _, _) => inner_w - 2.0 * (strip[0] + play),
+        (_, true, _) => inner_w - 2.0 * runner[1],
+        (_, _, true) => inner_w - 42.0 + 2.0 * box_t[0],
+        _ => inner_w - 2.0 * SLIDE,
+    };
+    check(
+        !(integrated && drawers > 0.0 && handles == "pull") || box_w >= 150.0,
+        "integrated drawer fronts are too narrow for pulls",
+    )?;
+    // the tab's bottom lies under the box at the front's lower edge: undermount runners and
+    // strips go under the bottom, and drawers over doors have the rail under them
+    check(
+        !(drawers > 0.0 && tabbed) || !(under || strips),
+        "a bottom tab needs side-mount slides or dado runners",
+    )?;
+    check(
+        !(drawers > 0.0 && tabbed && mixed && drawers_top),
+        "a bottom tab needs the drawers under the doors, not over them",
+    )?;
+    // the bottom's groove (#247) goes into an integrated front too: leave 3 mm outside it
+    check(
+        !(integrated && drawers > 0.0 && !tabbed && !strips && !grooved)
+            || t >= super::drawers::BOTTOM_GROOVE + 3.0,
+        "integrated drawer fronts must be at least 9 mm thick for the bottom's groove",
+    )?;
     Ok(Input {
         kind,
         w,
@@ -395,16 +597,24 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         plinth_setback,
         shelves,
         dividers,
+        double,
         doors,
         drawers,
         pins,
+        pilasters,
         fixed,
         back,
         wall_mount,
         mount_t,
         mount_h,
         handles,
+        door_handles,
         handle_at,
+        grooves,
+        frame,
+        glass,
+        framed_drawers,
+        grip_gap,
         hinge_right,
         inset,
         reveal: g,
@@ -415,9 +625,13 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         drawer_h,
         mixed,
         box_t,
+        box_h,
+        tab_w,
         runner: wood.then_some(runner),
+        strip: strips.then_some(strip),
         under,
         box_fingers,
+        integrated,
         drawers_top,
         door_h,
         drawer_z,

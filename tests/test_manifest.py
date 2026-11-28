@@ -6,8 +6,9 @@ from helpers import *
 
 DRAWN = {"type", "title", "description", "default", "minimum", "maximum", "minLength", "maxLength", "oneOf", "maxItems", "x-solidcraft-visible-when",
          "x-solidcraft-enabled-when",
-         "x-solidcraft-defaults"}
+         "x-solidcraft-defaults", "x-solidcraft-selection", "x-solidcraft-help"}
 WHEN = "x-solidcraft-visible-when"
+PICKS = "x-solidcraft-selection"  # a pick field of another name (Cabinet's Line): exactly version 1 and accept
 
 
 def conditions(condition):
@@ -53,7 +54,7 @@ def test_choices_have_titles(approval):
             # A selection field with any other keyword, `default` too, has no dialog (0.49:
             # "This entry needs to be run from the agent or CLI").
             if field["type"] == "array":
-                assert set(field) <= {"type", "title", "description", "maxItems", WHEN}, at
+                assert set(field) <= {"type", "title", "description", "maxItems", WHEN, PICKS}, at
             # A field shown only when it applies (0.46). Hidden, it is left out of Run and not
             # required; it still has a default for when it shows, as `required` orders it.
             # Its controllers are sibling scalar fields, and each value one they can have. A
@@ -82,11 +83,15 @@ def test_choices_have_titles(approval):
                 assert fits(field, rule["value"]), (at, rule)
             # Its description is the field's hover tooltip: every field explains itself.
             assert field.get("description", "").strip(), at
-            # The one list the dialog draws: `selection`, picked in the viewport (0.44). The app
+            # The lists the dialog draws: `selection`, picked in the viewport (0.44). The app
             # reserves that name for bodies, faces and edges, which costs the manifest nothing;
-            # faces matter, as a click on a board selects one. Another array, or more keywords
-            # on this one, leaves Run turned off.
-            assert (field["type"] == "array") == (name == "selection"), at
+            # faces matter, as a click on a board selects one. Another array needs
+            # `x-solidcraft-selection` (Cabinet's Line, which takes sketch lines too); any other
+            # keyword leaves Run turned off.
+            assert (field["type"] == "array") == (name == "selection" or PICKS in field), at
+            if PICKS in field:
+                assert field[PICKS]["version"] == 1 and set(field[PICKS]) == {"version", "accept"}, at
+                assert set(field[PICKS]["accept"]) <= {"edge", "face", "sketch_curve", "sketch_point", "body", "profile"}, at
             # The dialog keeps a number within its bounds; a value the plugin refuses past them
             # only stops the preview, with no message. The reveal is 0.5 to 6 mm in every unit.
             if name == "reveal":
@@ -100,14 +105,28 @@ def test_choices_have_titles(approval):
             assert field["default"] in values, at
             for o in options:
                 assert set(o) <= {"const", "title", "description"} and isinstance(o["const"], str) and o.get("title", o["const"]), at
-    assert choices == 60, choices
+    assert choices == 73, choices
     # SolidCraft 0.45 refuses a manifest over 64 KiB; the package carries it without white space.
     packed = (PKG / "plugin.json").read_bytes()
     assert json.loads(packed) == manifest and len(packed) < 64 * 1024, len(packed)
-    # Each function names its icon, and the package has it.
+    # The settings dropdown (`runtime.ribbon_groups`, SolidCraft 0.50): one Model-tab button
+    # listing exactly the settings' section entries, each with a menu slot of its own.
+    sections = [e["name"] for e in manifest["runtime"]["entries"] if e["name"].startswith("settings-")]
+    assert sections == [f"settings-{s}" for s in ("general", "fronts", "doors", "drawers", "plinth", "joinery", "cutlist", "display")]
+    assert manifest["runtime"]["ribbon_groups"] == [
+        {"label": "Woodwork settings", "icon": "icons/settings.svg", "entries": sections}], manifest["runtime"]["ribbon_groups"]
+    titles = ["General", "Fronts", "Doors", "Drawer", "Plinth and wall mount", "Joinery", "Cut list and worktop", "Display"]
+    slots = {e["name"]: e.get("slots") for e in manifest["runtime"]["entries"] if e["name"].startswith("settings")}
+    assert slots == {s: [{"kind": "menu", "name": f"{t} settings"}] for s, t in zip(sections, titles)}, slots
+    # Settings only store values, so their dialogs have no Preview box: a job has none. Display
+    # keeps it, as its preview shows See-through boards.
+    jobs = {e["name"] for e in manifest["runtime"]["entries"] if e["name"].startswith("settings-") and e.get("job")}
+    assert jobs == set(sections) - {"settings-display"}, jobs
+    # Each function names its icon, and the package has it (the settings' dialogs share one).
     for entry in manifest["runtime"]["entries"]:
         icon = entry["input_schema"]["x-solidcraft-icon"]
-        assert icon == f"icons/{entry['name']}.svg" and (PKG / icon).is_file(), icon
+        own = "settings" if entry["name"].startswith("settings") else entry["name"]
+        assert icon == f"icons/{own}.svg" and (PKG / icon).is_file(), icon
     # The plugin still gets the value, not the title.
     results = cli([plugin(approval, "corner", {"shape": "diagonal", "doors": "hinged right"}), MEASURE])
     assert "Cabinet Door" in boxes(results[1]), boxes(results[1])

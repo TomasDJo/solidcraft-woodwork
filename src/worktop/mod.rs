@@ -231,6 +231,13 @@ impl Piece {
     }
 }
 
+/// A side wing's legs: their side, and how far in from the wing's edges, in mm.
+const LEG: f64 = 40.0;
+const LEG_IN: f64 = 30.0;
+
+/// A bolt hole for the tool's feet in its shelf, in mm: an M6 bolt with play.
+const BOLT_D: f64 = 8.0;
+
 /// The selected cabinets' worktop pieces, longest first, and the height of its underside.
 pub fn plan(
     measure: &Value,
@@ -511,7 +518,15 @@ pub fn piece_of(body: &str, name: &str) -> bool {
     let rest = body.strip_prefix(name);
     rest.is_some_and(|r| {
         r.is_empty()
-            || [" Tool shelf", " Tool batten L", " Tool batten R"].contains(&r)
+            || [
+                " Tool shelf",
+                " Tool batten L",
+                " Tool batten R",
+                " Wing",
+                " Wing Leg 1",
+                " Wing Leg 2",
+            ]
+            .contains(&r)
             || r.strip_prefix(' ')
                 .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
     })
@@ -694,6 +709,98 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
         cut("cut-out", opening, top, thickness);
     }
     let mut parts = names.clone();
+    // A side wing (#172): the first piece carried on past its left or right end, as deep and
+    // as thick, for long stock beside a tool, on two legs at its free end down to the floor
+    // the cabinets stand on.
+    // Fold-down: no legs; the wing is a sub-component hinged on the end's lower edge, down on
+    // brackets that are not modelled.
+    let side = choice("wing", "none", &["none", "left", "right"])?;
+    let fold = choice("wing_support", "legs", &["legs", "fold"])? == "fold";
+    if side != "none" {
+        let long = size("wing_length", 600.0)?;
+        check(
+            fold || long >= LEG_IN + LEG,
+            "wing length must be at least 70 mm, so both legs stand under the wing",
+        )?;
+        check(long > 0.0, "wing length must be more than 0")?;
+        let square = match side.as_str() {
+            "left" => (first.left.0 - first.left.1).abs() < 1e-6,
+            _ => (first.right_end.0 - first.right_end.1).abs() < 1e-6,
+        };
+        check(
+            square,
+            &format!("a side wing needs a square end: `{target}`'s {side} end is mitred"),
+        )?;
+        let (x0, x1) = match side.as_str() {
+            "left" => (-long, 0.0),
+            _ => (first.length(), first.length() + long),
+        };
+        let wing = format!("{name} Wing");
+        let (at, size) = first.world_box([x0, 0.0, x1, first.depth]);
+        if fold {
+            kit.push(("component.create", json!({"name": wing, "grounded": false})));
+        }
+        kit.push((
+            "solid.box",
+            json!({
+                "length": mm(size[0]), "width": mm(size[1]), "height": mm(thickness),
+                "corner": [mm(at[0]), mm(at[1]), mm(top)], "operation": "new",
+                "name": wing, "body_name": wing,
+            }),
+        ));
+        if fold {
+            // The hinge line: along the end's lower edge, pointing so that opening turns the
+            // wing down (towards the wall on the right end, away from it on the left).
+            // ponytail: numbers, as the whole worktop is; it is made again with it.
+            let (end, sign) = if side == "left" {
+                (0.0, -1.0)
+            } else {
+                (first.length(), 1.0)
+            };
+            let hinge = first.world(end, 0.0);
+            let axis = [first.back[0] * sign, first.back[1] * sign, 0.0].map(|v| v.round() as i32);
+            let occurrence = format!("{wing}:1");
+            let joint = format!("{wing} hinge");
+            kit.push(("component.activate", json!({"component": name})));
+            kit.push((
+                "joint.as_built",
+                json!({
+                    "type": "revolute", "a": format!("{name}:1"), "b": occurrence, "name": joint,
+                    "at": {"occurrence": occurrence, "point": [hinge[0], hinge[1], top], "z": axis},
+                }),
+            ));
+            kit.push(("joint.limits", json!({"joint": joint, "min": 0, "max": 90})));
+        } else {
+            // its legs, 40 mm square, 30 mm in from the free end and the front and back edges
+            let floor = (measure["bodies"].as_array().into_iter().flatten())
+                .filter(|b| {
+                    owner(measure, b["name"].as_str().unwrap_or(""))
+                        .is_some_and(|c| cabinets.iter().any(|n| n == c))
+                })
+                .filter_map(|b| b["bbox"]["min"][2].as_f64())
+                .fold(f64::INFINITY, f64::min);
+            let floor = if floor.is_finite() { floor } else { 0.0 };
+            let x = if side == "left" {
+                x0 + LEG_IN
+            } else {
+                x1 - LEG_IN - LEG
+            };
+            for (n, y) in [LEG_IN, first.depth - LEG_IN - LEG].into_iter().enumerate() {
+                let leg = format!("{wing} Leg {}", n + 1);
+                let (at, size) = first.world_box([x, y, x + LEG, y + LEG]);
+                kit.push((
+                    "solid.box",
+                    json!({
+                        "length": mm(size[0]), "width": mm(size[1]), "height": mm(top - floor),
+                        "corner": [mm(at[0]), mm(at[1]), mm(floor)], "operation": "new",
+                        "name": leg, "body_name": leg,
+                    }),
+                ));
+                parts.push(leg);
+            }
+        }
+        parts.push(wing);
+    }
     let mut tool = Value::Null;
     if choice("tool", "none", &["none", "benchtop"])? == "benchtop" {
         let (w, d, h) = (
@@ -710,6 +817,7 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
             size("tool_y", 300.0)?,
             size("tool_clearance", 3.0)?,
         );
+        let (bx, by) = (size("bolt_x", 0.0)?, size("bolt_y", 0.0)?);
         let (w, d) = (w / 2.0 + gap, d / 2.0 + gap);
         let opening = [tx - w, ty - d, tx + w, ty + d];
         check(
@@ -779,9 +887,39 @@ pub fn build(p: &Value, cabinets: &[String], measure: &Value) -> Result<(Command
                 "new",
             ),
         ];
+        // Bolt holes for the tool's feet (#172): a rectangle of them round the tool's middle,
+        // `bolt_x` apart across and `bolt_y` front to back (0 and 0: none; one 0: a pair).
+        let mut centres: Vec<(f64, f64)> = Vec::new();
+        if bx > 0.0 || by > 0.0 {
+            for x in [tx - bx / 2.0, tx + bx / 2.0] {
+                for y in [ty - by / 2.0, ty + by / 2.0] {
+                    if !centres.contains(&(x, y)) {
+                        centres.push((x, y));
+                    }
+                }
+            }
+        }
+        let r = BOLT_D / 2.0;
+        for (n, &(x, y)) in centres.iter().enumerate() {
+            check(
+                x - r >= shelf[0] && x + r <= shelf[2] && y - r >= shelf[1] && y + r <= shelf[3],
+                "bolt spacing: the tool's bolt holes would be off its shelf",
+            )?;
+            let at = first.world(x, y);
+            kit.push((
+                "solid.cylinder",
+                json!({
+                    "diameter": mm(BOLT_D), "height": mm(BOARD),
+                    "base": [mm(at[0]), mm(at[1]), mm(shelf_top - BOARD)], "axis": "Z",
+                    "operation": "cut", "targets": [&bodies[0]],
+                    "name": format!("{name} Tool bolt hole {}", n + 1),
+                }),
+            ));
+        }
         parts.extend(bodies.iter().cloned());
         tool = json!({
             "cabinet": cabinet, "shelf_z": round(shelf_top), "bodies": bodies,
+            "bolt_holes": centres.len(),
             "cut": {"targets": cut, "min": space[0], "max": space[1]},
         });
     }

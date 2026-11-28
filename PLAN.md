@@ -67,6 +67,7 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Doors and drawers are sub-components with hinge and slide joints
 - [x] Drawers: a drawer unit with fronts and boxes sized for 12.7 mm slides
 - [x] Hardware list in the cut list: hinges, slides, shelf pins, screws, dowels, handles
+- [x] Shelf pilaster strips (#264): Shelf support Pin holes or Pilaster strips, on box and corner cabinets, dados with strip and clip models, strips by length and clips in the hardware list
 - [x] Handle holes in doors and drawer fronts: knob or 128 mm pull
 - [x] Corner cabinet: L-shaped, left or right, with doors
 - [x] Automatic names: a taken name gets the next free number
@@ -94,6 +95,8 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Hinges that follow a resize: a door opens about its own edge after the cabinet changed size
 - [x] Sink base: a cabinet kind with two rails instead of a top, no shelves
 - [x] Sink base with drawers: a false front before the sink, half-depth boxes below (#55)
+- [x] Integrated drawer fronts: the box's own front board is the front, a Woodwork setting (#163)
+- [x] Bottom tab: a tab of the bottom's stock under each drawer front to pull by, the front scooped above it (#181)
 - [x] Cut list saved as a CSV file, in a folder approved at install (SolidCraft 0.43)
 - [x] Cut list saved as a printable PDF, with tick boxes for boards and hardware
 - [x] Edge banding and grain direction in the cut list
@@ -119,6 +122,24 @@ and dado, no rabbet), 9 (box cabinets only for slide and plate holes) and 10 (DX
 - [x] Version 0.4.0, for SolidCraft 0.47 (works on 0.46)
 - [x] Version 0.5.0, for SolidCraft 0.49
 - [x] Faster in a large design: placing, Edit, a panel, a worktop, Material and Apply settings measure only the cabinets they read (`inspect.measure` with `names_only`, then the bodies of those cabinets; a whole kitchen took over a second each time), and one pattern drills every panel's shelf-pin rows where their rows match (a feature less per panel)
+- [x] A sketch line or a free edge selected when the Cabinet dialog opens sets Place Along a line, on it (#212)
+- [x] Place Along a line (#147, step 1): its back on a picked sketch line, model edge or wall face, from either end or the middle with an offset, facing away from the wall or flipped; quarter turns only; Width from line follows a sketch line's driving length dimension by expression
+- [x] Along a line, step 2 (#147): the cabinet grows away from its Start at end (its translation an expression over its own width and depth), Height from line (a second pick, following a sketch dimension), and Apply settings reading the remembered lines again (width, height and place), so an edge or undimensioned line is followed by a rebuild
+- [x] Shared parameter groups for matched cabinets (#137): Match selected points every cabinet of a run at `Run_<first>_height` and the rest, so deleting a cabinet breaks none and changing one cabinet's own parameter takes only it out
+- [x] Prices and a cost estimate (#56): Woodwork settings' Prices (`name = price` text), the cut list prices each sheet by material and thickness, the banding a metre and the hardware a piece (longest matching name), lists what has no price yet, and shows it in its reply, the PDF and the CSV
+
+- [x] Mobile base (#101): one frame of boards on edge under the picked cabinets' footprint, a cross board where two meet, a block and a locking caster in each corner (and a middle pair on a long frame), the cabinets stood on it; made again by its name
+- [x] Connector bolts between the cabinets on a mobile base (#198): four 9 mm holes through each pair of touching sides, counted in the cut list
+- [x] Cabinets held to their mobile base by a link, kept by Edit and Apply settings, also along a line (#215; Apply settings makes the base again under cabinets that went back onto their lines)
+- [x] Frame screws on a mobile base (#198): two 4.5 mm holes down through each cabinet's bottom into each frame board it rests on, counted in the cut list
+- [x] Mobile base of timber (#219): any section, 48 x 98 by default, bought in running metres per section in the cut list
+- [x] Mobile base edited like a cabinet (#239): a picked board opens its values, picked cabinets are added; a long job, so many cabinets fit
+- [x] Mobile base leftovers (#198): the frame follows a cabinet that changes size on Apply settings (a tool cabinet's height from the worktop dropped)
+- [x] Connector bolts without a mobile base, counterbored for M6 heads and washers (#260): entry Connector bolts on the picked cabinets, washers in the cut list
+
+- [x] Bolt holes for the tool's feet in the tool station's shelf (#172): Bolt spacing across and front to back, four (or two) 8 mm holes round the tool's middle
+- [x] Side wing on the worktop (#172): Side wing (left or right end) and Wing length, the first piece carried on past a square end on two 40 mm legs to the floor
+- [x] Fold-down wing (#172): Wing support Fold-down, the side wing on a hinge at the worktop end's lower edge, folding down 90 degrees
 
 ## Open
 
@@ -142,7 +163,15 @@ Cabinets:
 - [x] Shared hardware models (#70): a simple hinge (cup and arm in the door, mounting plate on the side) in each cup and a slide's two members on each drawer, copies of definitions in `Woodwork hardware` at the root, moving with the doors and drawers; field Hardware models (shown, none, or cutting the cups for SolidCraft 0.47)
 - [x] Drawer slide length: standard lengths in mm or inches, Auto the longest that fits, a field to choose one; the models, screw holes and the cut list's hardware line follow it
 - [x] Slide type (partial, full extension, over-travel) and hinge opening (95, 110, 165 degrees) set the joints' limits; hinges per door by its height (2 to 5)
+- [x] Drawer side and back heights (#221): lower box sides and back in Woodwork settings, parameters capped by the box and the sides
+- [x] Grooved fronts (#182): vertical or horizontal, square, round or V grooves on doors and drawer fronts, the count following a resize
+- [x] Strip runners (#146): Slide type Strip runners, a 12 x 18 mm strip on each side under each drawer, the bottom wider than the box resting on them, no groove; strips in the cut list (screw holes not drilled)
+- [x] False back in runner drawers (#258): a board between the box's sides at four fifths of its depth, on dado and strip runners
 - [ ] Undermount slides (box width less 42, notches, rear hook holes), and the cup's screw holes
+- [x] Doors meeting on a divider: with three doors or more the end doors hinge on the sides, and a door hinged on a divider gets half overlay hinges (the 9.5 mm cranked model, its own line in the hardware list) (#157)
+- [x] Double dividers where overlay doors meet, so every door gets full overlay hinges (#176)
+- [x] Hinge models that look like concealed hinges: the cup with its rim, a boss, the arm and a cruciform plate (part of #140)
+- [x] Door swing (#140): the hinge line at the door's front edge is already the effective pivot of a concealed hinge's swing; the cut list warns of a door that meets another cabinet's front when both are open
 - [ ] Hinges in the model with hinge types (#60); hinge models that cut their cups by default once SolidCraft 0.47 is out (upstream tangency-labs/solidcraft#20787)
 - [x] Woodwork settings: material, thickness, reveal, handles and plinth defaults kept in the design, which the Cabinet and Corner dialogs start from through the dialog hook (#61). Per design, not per user (upstream #19979); the last used values are not remembered (the hook cannot write)
 - [x] Joinery and hardware are design wide: the two methods, their sizes, hardware models, hinge opening and slide type are Woodwork settings, no longer Cabinet and Corner fields (a new cabinet takes them and remembers them; Edit changes the methods, models, opening and type of one cabinet; slide length is Auto at build, chosen in Edit); the manifest 6.5 KB smaller

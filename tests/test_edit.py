@@ -27,7 +27,7 @@ def test_shelves_and_handles_on_a_cabinet_that_was_moved_and_resized(approval):
                    select("A Top"),
                    plugin(approval, "edit", {"shelves": 3, "doors": 2, "handles": "pull", "shelf_pins": "yes"}),
                    MEASURE,
-                   change("A_height", "900 mm"),
+                   change("Run_A_height", "900 mm"),  # the run's shared height (#137)
                    MEASURE,
                    {"command": "component.list", "params": {"compact": True}}])
     assert results[13]["result"]["edited"], results[13]

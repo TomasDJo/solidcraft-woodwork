@@ -54,8 +54,19 @@ def cli(script, *extra):
         subprocess.run([CLI, "run", str(path), "--results", "--quiet", "--json-out", str(out), *extra],
                        cwd=ROOT, check=True, env=env())
         results = iter(json.loads(out.read_text(encoding="utf-8")))
-        return [[next(results) for _ in group][1] if isinstance(group, tuple) else next(results)
+        return [entry_result(group, [next(results) for _ in group]) if isinstance(group, tuple) else next(results)
                 for group in script]
+
+
+def is_settings(step):
+    """Whether a step, or every step of a group, is a Woodwork settings run."""
+    steps = step if isinstance(step, tuple) else (step,)
+    return all(s.get("params", {}).get("entry", "").startswith("settings-") for s in steps)
+
+
+def entry_result(group, results):
+    """A group's result: its first step that is no settings run, else its last."""
+    return next((r for s, r in zip(group, results) if not is_settings(s)), results[-1])
 
 
 # The fields Woodwork settings keep for the whole design (no field of these entries any more):
@@ -65,7 +76,14 @@ MOVED = {
                  "handle_position": ("handle_position", "auto"), "plinth_type": ("plinth_type", "board"),
                  "plinth_setback": ("plinth_setback", 50), "labels": ("labels", "no"),
                  "cleat_height": ("cleat_height", 90), "cleat_thickness": ("cleat_thickness", 18),
-                 "drawer_thickness": ("drawer_thickness", 12), "drawer_bottom": ("drawer_bottom", 6)},
+                 "drawer_thickness": ("drawer_thickness", 12), "drawer_bottom": ("drawer_bottom", 6),
+                 "drawer_side_height": ("drawer_side_height", 0), "drawer_back_height": ("drawer_back_height", 0),
+                 "tab_width": ("tab_width", 120),
+                 "front_style": ("front_style", "flat"), "groove_shape": ("groove_shape", "square"),
+                 "groove_spacing": ("groove_spacing", 50), "groove_depth": ("groove_depth", 3),
+                 "frame_width": ("frame_width", 60), "panel_thickness": ("panel_thickness", 6),
+                 "grip_gap": ("grip_gap", 20), "handles": ("handles", "none"),
+                 "door_handles": ("door_handles", "none")},
     "cutlist": {"banding": ("banding", "1"), "size": ("cut_sizes", "finished"), "sheet": ("sheet", "2440x1220"),
                 "kerf": ("kerf", 4), "trim": ("trim", 10)},
     "worktop": {"material": ("worktop_material", "Oak"), "thickness": ("worktop_thickness", 38)},
@@ -73,7 +91,9 @@ MOVED = {
 
 # Fields Edit had that are design-wide now (Woodwork settings), with the setting's default.
 DESIGN_WIDE = {"joints": "dowels", "joints_inner": "dowels", "hardware_models": "on", "hinge_angle": "110",
-               "slide_type": "full", "reveal": 2, "plinth_setback": 50}
+               "slide_type": "full", "reveal": 2, "plinth_setback": 50,
+               "groove_shape": "square", "groove_spacing": 50, "groove_depth": 3,
+               "frame_width": 60, "panel_thickness": 6, "grip_gap": 20}
 
 
 def plugin(approval, entry, params=None):
@@ -83,6 +103,13 @@ def plugin(approval, entry, params=None):
     to its default after it, a group `cli` runs as one step; a cabinet's plinth height too,
     the cabinet then Plinth Yes. A cabinet the test gives no plinth stands on the floor."""
     params = dict(params or {})
+    if entry == "settings":
+        steps = settings_steps(approval, params)
+        return steps[0] if len(steps) == 1 else tuple(steps)
+    # Handles were one field for doors and drawers; the tests still give `handles` for both
+    # (a bottom tab is the drawers' only).
+    if entry in ("cabinet", "corner", "edit") and "handles" in params and params["handles"] != "tab":
+        params.setdefault("door_handles", params["handles"])
     # Corner cabinets are Cabinet with a corner shape (its doors are `corner_doors`).
     if entry == "corner":
         entry = "cabinet"
@@ -98,11 +125,11 @@ def plugin(approval, entry, params=None):
                 wide.setdefault("plinth_type", "board")
             reset = {k: DESIGN_WIDE.get(k, "board") for k in wide}
             again = {"with": "settings"}  # no cabinets picked in its field: all of them
-            steps = [entry_step(approval, "settings", wide | {"units": "mm"})]
+            steps = settings_steps(approval, wide | {"units": "mm"})
             if set(params) - {"selection"}:
                 steps.append(entry_step(approval, "edit", params))
             steps.append(entry_step(approval, "rebuild", again))
-            return (*steps, entry_step(approval, "settings", reset | {"units": "mm"}))
+            return (*steps, *resetting(approval, reset, wide))
     moved = MOVED.get("cabinets" if entry in ("cabinet", "corner") else entry, {})
     setting = {}
     for field, (key, _) in moved.items():
@@ -126,8 +153,42 @@ def plugin(approval, entry, params=None):
     if "plinth" in setting:
         reset["plinth"] = 100
     units = params.get("units", "mm")
-    return (entry_step(approval, "settings", setting | {"units": units}), step,
-            entry_step(approval, "settings", reset | {"units": "mm"}))
+    return (*settings_steps(approval, setting | {"units": units}), step, *resetting(approval, reset, setting))
+
+
+def resetting(approval, reset, given):
+    """Settings back to their defaults after a run that set `given`. A field that another one
+    shows goes first, with its controller still as given (a section entry wants the controller
+    with it, and leaves out a field its value hides: Flat hides the groove shape); then the
+    rest, the controllers among them."""
+    manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
+    shows = {k: f["x-solidcraft-visible-when"].get("field") for e in manifest["runtime"]["entries"]
+             if e["name"].startswith("settings-") for k, f in e["input_schema"]["properties"].items()
+             if "x-solidcraft-visible-when" in f}
+    first = {k: v for k, v in reset.items() if k in shows}
+    for k in list(first):
+        controller = shows[k]
+        if controller in given or controller in reset:
+            first[controller] = given.get(controller, reset.get(controller))
+    rest = {k: v for k, v in reset.items() if k not in shows}
+    # Units with both: a length default (mm) must not be read in the inches an inch cabinet left.
+    mm = {"units": "mm"}
+    return (*(settings_steps(approval, first | mm) if first else ()), *settings_steps(approval, rest | mm))
+
+
+def settings_steps(approval, settings):
+    """Woodwork settings as runs of their section entries (`settings-general`, ...), each with
+    its own fields, General (with the units) first; none given is one General run."""
+    manifest = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))
+    sections = [e for e in manifest["runtime"]["entries"] if e["name"].startswith("settings-")]
+    steps, left = [], dict(settings)
+    for section in sections:
+        own = {k: left.pop(k) for k in list(left) if k in section["input_schema"]["properties"]}
+        if own:
+            steps.append(entry_step(approval, section["name"], own))
+    if left:
+        raise KeyError(f"no Woodwork setting: {sorted(left)}")
+    return steps or [entry_step(approval, "settings-general", {})]
 
 
 def holds(condition, values):
@@ -155,7 +216,7 @@ def entry_step(approval, entry, params=None):
     # but these, which start at Keep.
     defaults = {key: field.get("default", []) for key, field in schema["properties"].items()
                 if ("default" in field or field["type"] == "array")
-                and (entry != "settings" or key in ("units", "material", "handles", "camera"))}
+                and (not entry.startswith("settings-") or key in ("units", "material", "handles", "camera"))}
     # Each field's conditional default when its rule holds, as the dialog does (sizes in inches).
     given = defaults | (params or {})
     for key, field in schema["properties"].items():

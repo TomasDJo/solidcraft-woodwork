@@ -164,3 +164,43 @@ def test_corner_l_boards_show_their_outline(approval):
     assert not [n for n, p in laid.items() if "corner" in p and n.split()[1] in ("Side", "Back")], laid
     laid = {p["part"]: p for layout in results[3]["result"]["layouts"] for p in layout["parts"]}
     assert "corner" not in laid["D Bottom"], laid["D Bottom"]
+
+
+def test_a_cost_estimate_from_the_prices_in_the_settings(approval):
+    # Prices in Woodwork settings (#56): the cut list prices its sheets per material and
+    # thickness, the banding a metre and the hardware a piece (`Hinge` prices every hinge
+    # line), says what has no price yet, and adds the estimate to its CSV.
+    prices = "Birch plywood 18 = 80; Banding = 0.5; Hinge = 3"
+    results = designed(approval, NONE, [plugin(approval, "cabinet", {"doors": 2, "handles": "knob"}),
+                                        setting(approval, {"prices": prices}),
+                                        plugin(approval, "cutlist", {})])
+    list_ = results[1]["result"]
+    cost, sheets = list_["cost"], {(s["material"], s["thickness_mm"]): s["sheets"] for s in list_["sheets"]}
+    lines = {l["item"]: l for l in cost["lines"]}
+    birch = lines["Birch plywood 18"]
+    assert birch["price"] == 80 and birch["total"] == 80 * sheets[("Birch plywood", 18.0)], birch
+    hinges = [l for name, l in lines.items() if name.startswith("Hinge")]
+    assert hinges and all(l["price"] == 3 for l in hinges), hinges
+    # the back is another sheet, and the knobs have no price yet: asked for, ready to copy
+    assert any(m.endswith(" 6 = ?") for m in cost["missing"]), cost["missing"]
+    assert any(m.startswith("Knob") for m in cost["missing"]), cost["missing"]
+    priced = sum(l.get("total", 0) for l in cost["lines"])
+    assert abs(cost["total"] - priced) < 0.01 and cost["total"] > 0, cost
+    assert "\nCost,Qty,Unit,Price,Total\n" in list_["csv"], list_["csv"][-400:]
+
+
+def test_a_door_beside_a_drawer_clashes(approval):
+    # #140: A's door hinged on its right, with B's drawers placed right of it: opened past 90
+    # degrees the door swings in front of B's drawer fronts. Hinged left, away from B: nothing.
+    def listed(hinge, settings=NONE):
+        results = designed(approval, settings, [plugin(approval, "cabinet", {"name": "A", "doors": 1, "door_hinge": hinge}),
+                                            select("A Top"), plugin(approval, "cabinet", {"name": "B", "drawers": 2, "place": "right"}),
+                                            plugin(approval, "cutlist")])
+        return results[-1]["result"]
+    right = listed("right")
+    assert right["clashes"] == ["A Door (open) meets B Drawer 1 Front (open)", "A Door (open) meets B Drawer 2 Front (open)"], right["clashes"]
+    assert "Clash,\"A Door (open) meets B Drawer 1 Front (open)\"" in right["csv"]
+    assert listed("left")["clashes"] == []
+    # integrated drawer fronts: the box's own front is the front
+    integrated = listed("right", {**NONE, "drawer_front": "integrated"})["clashes"]
+    assert integrated == ["A Door (open) meets B Drawer 1 Box front (open)", "A Door (open) meets B Drawer 2 Box front (open)"], integrated

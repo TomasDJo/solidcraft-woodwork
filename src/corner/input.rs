@@ -20,10 +20,16 @@ pub struct Input<'a> {
     pub dr: f64,
     pub shelves: u32,
     pub pins: bool,
+    /// With `pins`, pilaster strips in dados and clips instead of the rows of holes (#264).
+    pub pilasters: bool,
     /// Which end the doors hang on, if there are doors.
     pub on_return: Option<bool>,
     pub handles: &'a str,
     pub handle_at: &'a str,
+    pub grooves: Option<crate::fittings::Grooves<'a>>,
+    pub frame: Option<[f64; 2]>,
+    pub grip_gap: Option<f64>,
+    pub glass: bool,
     pub right: bool,
     pub diagonal: bool,
     /// The L's bottom, top and shelves each made as two boards dowelled together.
@@ -56,6 +62,16 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         .get("shelf_pins")
         .and_then(Value::as_bool)
         .unwrap_or(false);
+    // Movable shelves on pins, or on clips in pilaster strips (#264).
+    let pilasters = match p
+        .get("shelf_support")
+        .and_then(Value::as_str)
+        .unwrap_or("pins")
+    {
+        "pins" => false,
+        "strips" => true,
+        _ => return Err("shelf_support must be pins or strips".into()),
+    } && pins;
     let diagonal = match p.get("shape").and_then(Value::as_str).unwrap_or("L-shaped") {
         "L-shaped" => false,
         "diagonal" => true,
@@ -81,10 +97,30 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
     let doors = on_return.is_some();
     let handles = p.get("handles").and_then(Value::as_str).unwrap_or("none");
     check(
-        matches!(handles, "none" | "knob" | "pull"),
-        "handles must be none, knob or pull",
+        matches!(
+            handles,
+            "none" | "knob" | "pull" | "grip" | "groove" | "tab"
+        ),
+        "handles must be none, knob, pull, grip, groove or tab",
     )?;
+    // only doors: they take the doors' handles
+    let handles = crate::fittings::door_handles(p)?;
+    crate::fittings::profile_fits(handles, t)?;
+    let grooves = match doors {
+        true => crate::fittings::grooves(p, size, t, true)?,
+        false => None,
+    };
+    // ponytail: the doors' least size by the carcass (a leg's front less the other's depth)
+    let smallest = (a.min(b) - d).min(h - plinth);
+    let frame = match doors {
+        true => crate::fittings::frame(p, size, t, Some(smallest), false)?,
+        false => None,
+    };
     let handle_at = crate::fittings::handle_position(p)?;
+    let grip_gap = match doors {
+        true => crate::fittings::grip_gap(handles, handle_at, size, h - plinth)?,
+        false => None,
+    };
     let inset = match p.get("fronts").and_then(Value::as_str).unwrap_or("overlay") {
         "overlay" => false,
         "inset" => doors,
@@ -163,9 +199,14 @@ pub fn read<'a>(kit: &Kit, p: &'a Value) -> Result<Input<'a>, String> {
         dr,
         shelves: shelves as u32,
         pins,
+        pilasters,
         on_return,
         handles,
         handle_at,
+        grooves,
+        frame,
+        grip_gap,
+        glass: p.get("front_style").and_then(Value::as_str) == Some("glass"),
         right,
         diagonal,
         split,

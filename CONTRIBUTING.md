@@ -14,12 +14,12 @@ All four must pass. CI runs them on the SolidCraft version named in `.github/wor
 
 ## Pull requests
 
-- One branch and one pull request per feature or fix, into `main`. No stacked PR chains; a PR is
+- One branch and one pull request per feature or fix, into `develop`. No stacked PR chains; a PR is
   merged on its own once it is done and green.
 - Every fix and every function has a test that fails without it.
 - Update `docs/usage.md` in the same PR (and `README.md` when a function is added).
 - The description says what changes in plain words, what you ran to check it, and has a
   screenshot for anything visible in a dialog or the model (or a line `No picture: <reason>`).
-- Link the issue with `Closes #N`, or write a line `No issue: <reason>`.
+- Link the issue with `Closes #N` (`Part of #N` when the PR is one step and the issue stays open), or write a line `No issue: <reason>`.
 
-The PR checks enforce the last two and the base branch. Releases are cut from `main` by the maintainer.
+The PR checks enforce the last two and the base branch. `main` is what was last released: at a release the maintainer merges `develop` into `main` (a pull request) and tags it, so the help links and the Workshop show only released work.

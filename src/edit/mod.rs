@@ -11,7 +11,7 @@ pub const KEY: &str = "io.github.tomasdjo.woodwork";
 /// The sizes that are design parameters: on an edit they are read from the design, where the
 /// user may have changed them, not from what was remembered.
 /// `wall_rail` is here so that `Kit` knows the cabinet has it (see `cabinet::build`).
-const SIZES: [&str; 24] = [
+const SIZES: [&str; 34] = [
     "width",
     "height",
     "depth",
@@ -24,8 +24,13 @@ const SIZES: [&str; 24] = [
     "drawer_height",
     "drawer_thickness",
     "drawer_bottom",
+    "drawer_side_height",
+    "drawer_back_height",
+    "tab_width",
     "runner_depth",
     "runner_play",
+    "strip_thickness",
+    "strip_height",
     "cleat_height",
     "cleat_thickness",
     "wall_rail",
@@ -37,6 +42,14 @@ const SIZES: [&str; 24] = [
     "dowel_length",
     "dado_depth",
     "finger_width",
+    // grooved fronts' (`fittings::groove_sizes`)
+    "groove_spacing",
+    "groove_depth",
+    // shaker fronts' (`fittings::frame_sizes`)
+    "frame_width",
+    "panel_thickness",
+    // a grip edge's gap (#230)
+    "grip_gap",
 ];
 
 /// The Edit fields only a box cabinet takes, and only a corner cabinet: the dialog hook hides
@@ -58,17 +71,20 @@ const BOX_ONLY: [&str; 11] = [
 ];
 const CORNER_ONLY: [&str; 3] = ["corner_doors", "shape", "return"];
 /// The Edit fields both kinds of cabinet take.
-const CABINETS: [&str; 12] = [
+const CABINETS: [&str; 15] = [
     "width",
     "height",
     "depth",
     "shelves",
     "shelf_pins",
+    "shelf_support",
     "handles",
+    "door_handles",
     "handle_position",
     "plinth",
     "plinth_type",
     "fronts",
+    "front_style",
     "wall_mount",
     "labels",
 ];
@@ -88,7 +104,16 @@ pub const NEW_ONLY: [&str; 9] = [
     "match",
     "name",
 ];
-pub const EDIT_ONLY: [&str; 5] = ["fronts", "handle_position", "back", "plinth_type", "labels"];
+pub const EDIT_ONLY: [&str; 8] = [
+    "handles",
+    "door_handles",
+    "fronts",
+    "front_style",
+    "handle_position",
+    "back",
+    "plinth_type",
+    "labels",
+];
 /// Edit's sizes, read from the cabinet's parameters (`<Prefix>_<key>`, in mm) by the hook.
 pub const SHOWN_SIZES: [&str; 5] = ["width", "height", "depth", "return", "drawer_height"];
 
@@ -122,7 +147,9 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
         "door_hinge",
         "drawers_at",
         "fronts",
+        "front_style",
         "handles",
+        "door_handles",
         "handle_position",
         "plinth_type",
         "wall_mount",
@@ -130,6 +157,7 @@ pub fn shown(entry: &str, params: &Value) -> Map<String, Value> {
         "kind",
         "shape",
         "sizing",
+        "shelf_support",
     ];
     let numbers = [
         "shelves",
@@ -258,13 +286,16 @@ fn assumed(key: &str) -> Option<Value> {
         "shape" => json!("L-shaped"),
         "door_hinge" | "drawers_at" => json!(if key == "door_hinge" { "left" } else { "top" }),
         "corner_doors" | "handles" | "wall_mount" => json!("none"),
+        "door_handles" => json!("none"),
         "doors" | "drawers" | "dividers" | "drawer_height" => json!(0),
         "shelves" => json!(1),
         "fronts" => json!("overlay"),
+        "front_style" => json!("flat"),
         "handle_position" => json!("auto"),
         "back" => json!("groove"),
         "plinth_type" => json!("board"),
         "sizing" => json!("outside"),
+        "shelf_support" => json!("pins"),
         _ => return None,
     })
 }
@@ -342,7 +373,16 @@ pub fn changed(params: &Value, base: &Value) -> Vec<String> {
 /// are not part of that.
 pub fn remember(entry: &str, params: &Value, name: &str) -> Value {
     let mut params = params.as_object().cloned().unwrap_or_default();
-    for key in ["place", "match", "selection", "_match", "_existing", "mode"] {
+    // The line fields stay (`line`, `start_at`, ...): Apply settings reads the line again.
+    for key in [
+        "place",
+        "match",
+        "selection",
+        "_match",
+        "_existing",
+        "mode",
+        "_line",
+    ] {
         params.remove(key);
     }
     params.insert("name".into(), json!(name));

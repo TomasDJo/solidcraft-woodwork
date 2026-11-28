@@ -46,8 +46,23 @@ fn an_open_door_is_measured_in_its_own_component() {
         body("A Caster 1", [80.0, 80.0, 100.0], 100_000.0),
         // a worktop is bought at its box, mitred or cut out, so not measured either
         body("Worktop 1", [2800.0, 600.0, 38.0], 2800.0 * 600.0 * 38.0 * 0.9),
+        // but a fold-down wing half way down is a board turned on its hinge: measured
+        body("Worktop Wing", [309.7, 600.0, 309.7], 400.0 * 600.0 * 38.0),
     ]});
-    assert_eq!(turned(&measured), ["Ajar", "Open"]);
+    assert_eq!(turned(&measured), ["Ajar", "Open", "Worktop Wing"]);
+    // a few tenths of a degree off level it still fills 97 % of its box: measured all the same
+    let barely = json!({"bodies": [body("Bench Worktop Wing", [400.0, 600.0, 39.05], 400.0 * 600.0 * 38.0)]});
+    assert_eq!(turned(&barely), ["Bench Worktop Wing"]);
+    // and bought at its own size, not its box
+    let wing = json!({"bodies": [{"name": "Worktop Wing", "material": "Oak", "volume_mm3": 400.0 * 600.0 * 38.0,
+                                  "bbox": {"min": [0, 0, 0], "max": [309.7, 600.0, 309.7]}}]});
+    let local = BTreeMap::from([("Worktop Wing".to_string(), [400.0, 600.0, 38.0])]);
+    let list = cutlist(&wing, &local, false, &json!({})).unwrap();
+    assert_eq!(
+        list["worktops"][0]["thickness"], 38.0,
+        "{}",
+        list["worktops"]
+    );
 
     let mesh = json!({"positions": [[0, 0, 0], [397, 18, 716], [397, 0, 0]]});
     let local = BTreeMap::from([("Side L".to_string(), extents(&mesh))]);
@@ -127,7 +142,8 @@ fn hardware_is_counted_from_names() {
     let named =
         |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
     let design = json!({"timeline": named(&[
-        "A Door hinge cup 1", "A Door hinge cup 2", "A Door handle 1", "A Door handle 2",
+        "A Door hinge cup 1", "A Door hinge cup 2",
+        "A Door 2 hinge cup 1 (half overlay)", "A Door 2 hinge cup 2 (half overlay)", "A Door handle 1", "A Door handle 2",
         "A Side L pins", "A Side R pins", "A 2 Drawer 1 Front handle 1",
         "A joint Side L Bottom pilot", "A joint Side L Bottom row",
         "C Bottom return dowel 1", "C Bottom return dowel 2",
@@ -136,6 +152,12 @@ fn hardware_is_counted_from_names() {
         "A 3 Drawer 1 Left slide 2 (450 mm, full extension)",
         "A 3 Drawer 1 Right slide 1 (450 mm, full extension)",
         "A 3 Drawer 2 Left slide 1 (18 in, partial extension)",
+        // a connector bolt is counted at its first side
+        "A Side R connector bolt 1 to B Side L", "B Side L connector hole 1 to A Side R",
+        "A Side R connector counterbore 1 to B Side L", "B Side L connector counterbore 1 to A Side R",
+        // drilled before the counterbores (#260): still two washers
+        "C Side R connector bolt 1 to D Side L", "D Side L connector hole 1 to C Side R",
+        "A Bottom frame screw 1 into Bench Frame front",
     ])});
     let mut bodies = named(&[
         "A Shelf 1",
@@ -155,13 +177,13 @@ fn hardware_is_counted_from_names() {
     bodies.push(json!({"name": "A Bottom", "face_types": {"cylinder": 6}}));
     bodies.push(json!({"name": "A Top", "face_types": {"cylinder": 6}}));
     bodies.push(json!({"name": "A 2 Top", "face_types": {"cylinder": 3}}));
-    let list = hardware(&json!({"bodies": bodies}), &design);
+    let list = hardware(&json!({"bodies": bodies}), &BTreeMap::new(), &design);
     let expected = json!([
-        {"item": "Hinge, cup", "qty": 2}, {"item": "Drawer slide, partial extension, 18 in, pair", "qty": 1},
+        {"item": "Hinge, cup", "qty": 2}, {"item": "Hinge, cup, half overlay", "qty": 2}, {"item": "Drawer slide, partial extension, 18 in, pair", "qty": 1},
         {"item": "Drawer slide, full extension, 450 mm, pair", "qty": 1}, {"item": "Drawer slide, pair", "qty": 1},
         {"item": "Shelf pin, 5 mm", "qty": 8}, {"item": "Confirmat screw, 7 x 50 mm", "qty": 12},
         {"item": "Dowel, 8 x 60 mm", "qty": 2}, {"item": "Adjustable leg", "qty": 3},
-        {"item": "Caster, locking", "qty": 2},
+        {"item": "Connector bolt, M6", "qty": 2}, {"item": "Washer, M6", "qty": 4}, {"item": "Frame screw, 4 x 50 mm", "qty": 1}, {"item": "Caster, locking", "qty": 2},
         {"item": "Knob", "qty": 1}, {"item": "Pull, 128 mm", "qty": 1},
     ]);
     assert_eq!(list, expected);
@@ -182,7 +204,7 @@ fn steel_wall_rails_are_bought_to_length() {
         .iter()
         .map(|n| json!({"name": n}))
         .collect();
-    let list = hardware(&json!({"bodies": bodies}), &design);
+    let list = hardware(&json!({"bodies": bodies}), &BTreeMap::new(), &design);
     let expected = json!([
         {"item": "Steel wall rail, 600 mm", "qty": 2},
         {"item": "Steel wall rail, 800 mm", "qty": 2},
@@ -379,6 +401,31 @@ fn banding_and_grain_by_part() {
 }
 
 #[test]
+fn an_integrated_drawer_front_is_banded_as_a_front() {
+    // #163: a box front with no `Drawer 1 Front` is the front; beside one it is the box's
+    let mut design = cabinet(false);
+    let bodies = design["bodies"].as_array_mut().unwrap();
+    let body = |name: &str, max: [f64; 3]| json!({"name": name, "material": "Oak", "bbox": {"min": [0, 0, 0], "max": max}});
+    bodies.push(body("A Drawer 1 Box front", [596.0, 18.0, 180.0]));
+    bodies.push(body("A Drawer 2 Box front", [476.0, 12.0, 150.0]));
+    bodies.push(body("A Drawer 2 Front", [596.0, 18.0, 181.0]));
+    let list = cutlist(&design, &BTreeMap::new(), false, &json!({})).unwrap();
+    let banding = |part: &str| row(&list, part)["banding"].clone();
+    let band = |l: u64, w: u64| json!({"length": l, "width": w});
+    assert_eq!(banding("A Drawer 1 Box front"), band(2, 2));
+    assert_eq!(banding("A Drawer 2 Box front"), band(0, 0));
+    assert_eq!(banding("A Drawer 2 Front"), band(2, 2));
+    // a cabinet whose name holds the words keeps them
+    let design = json!({"bodies": [
+        body("A Box front Side L", [18.0, 560.0, 400.0]),
+        body("A Box front Drawer 1 Box front", [596.0, 18.0, 180.0]),
+    ]});
+    let list = cutlist(&design, &BTreeMap::new(), false, &json!({})).unwrap();
+    let banded = &row(&list, "A Box front Drawer 1 Box front")["banding"];
+    assert_eq!(banded, &band(2, 2));
+}
+
+#[test]
 fn cut_size_takes_off_the_banding() {
     let options = json!({"banding": "2", "size": "cut"});
     let list = cutlist(&cabinet(false), &BTreeMap::new(), false, &options).unwrap();
@@ -530,6 +577,35 @@ fn sheets_from_cutting_layouts() {
     let laid = &list["layouts"][0]["parts"];
     assert_eq!(laid.as_array().unwrap().len(), 1);
     assert_eq!(laid[0]["part"], "Kitchen Worktop Tool shelf");
+    // a timber frame is bought by length per section, laid out on no sheet
+    let frame = json!({"bodies": [
+        body("Base Frame front", "Softwood timber", [1200.0, 45.0, 70.0]),
+        body("Base Frame back", "Softwood timber", [1200.0, 45.0, 70.0]),
+        body("Base Frame left", "Softwood timber", [45.0, 470.0, 70.0]),
+        // a caster block: a piece of its own size, out of the running metres
+        body("Base Block 1", "Softwood timber", [90.0, 90.0, 70.0]),
+    ]});
+    let list = cutlist(&frame, &BTreeMap::new(), false, &json!({})).unwrap();
+    assert_eq!(list["sheets"], json!([]));
+    assert_eq!(list["timber"].as_array().unwrap().len(), 4);
+    assert_eq!(
+        list["timber_metres"],
+        json!([{"material": "Softwood timber", "section": "45 x 70 mm", "thickness_mm": 45.0,
+                "width_mm": 70.0, "metres": 2.87}])
+    );
+    let block = (list["timber"].as_array().unwrap().iter())
+        .find(|p| p["part"] == "Base Block 1")
+        .unwrap();
+    assert_eq!(block["note"], "caster block");
+    // and in the CSV, on a row of its own
+    assert!(list["csv"]
+        .as_str()
+        .unwrap()
+        .contains("\"Base Block 1 (caster block)\""));
+    assert!(list["csv"]
+        .as_str()
+        .unwrap()
+        .contains("\"Softwood timber\",45 x 70 mm,2.87"));
     // an oak door 400 high and 1300 wide fits the sheet only with its grain across it
     let door = json!({"bodies": [
         body("A Side L", "Oak", [18.0, 560.0, 400.0]),
@@ -604,7 +680,7 @@ fn a_sink_base_and_a_rail_under_drawers() {
     let expected = json!([
         {"item": "Confirmat screw, 7 x 50 mm", "qty": 10}, {"item": "Dowel, 8 x 35 mm", "qty": 12},
     ]);
-    assert_eq!(hardware(&bodies, &design), expected);
+    assert_eq!(hardware(&bodies, &BTreeMap::new(), &design), expected);
 }
 
 #[test]
@@ -689,7 +765,7 @@ fn panels_beside_a_cabinet() {
 fn a_split_corner_shelfs_dowels_are_their_own_line() {
     let design = json!({"timeline": [{"name": "C Shelf 1 return dowel 1"}]});
     assert_eq!(
-        hardware(&json!({"bodies": []}), &design),
+        hardware(&json!({"bodies": []}), &BTreeMap::new(), &design),
         json!([{"item": "Dowel, 8 x 60 mm", "qty": 1}])
     );
 }
@@ -747,4 +823,229 @@ fn finger_jointed_boards_are_noted() {
     let design = json!({"timeline": [{"name": "A Side L finger Bottom"}, {"name": "A Bottom finger Side L"},
                                      {"name": "A Bottom finger Side R"}, {"name": "A fingers 1"}]});
     assert_eq!(fingered(&design), ["A Bottom", "A Side L"]);
+}
+
+#[test]
+fn shaker_boards_grain() {
+    // rails across the cabinet, stiles and the panel upright; the panel's edges in the groove
+    assert_eq!(role("Door rail top", 0).1, Some(0));
+    assert_eq!(role("Drawer 2 Front rail bottom", 0).1, Some(0));
+    assert_eq!(role("Door L stile", 0).1, Some(2));
+    // a corner's return door: its rails along the return
+    assert_eq!(role("Door return rail top", 0).1, Some(1));
+    let panel = role("Drawer 1 Front panel", 0);
+    assert!(matches!(panel, (Edges::None, Some(2))));
+    assert!(matches!(role("Door rail top", 0).0, Edges::All));
+}
+
+#[test]
+fn glass_panes_are_bought_by_size() {
+    // two panes alike and one smaller, standing or lying; no board line for them
+    let pane =
+        |name: &str, max: [f64; 3]| json!({"name": name, "bbox": {"min": [0, 0, 0], "max": max}});
+    let bodies = json!({"bodies": [
+        pane("A Door L glass", [492.0, 4.0, 612.0]),
+        pane("A Door R glass", [492.0, 4.0, 612.0]),
+        pane("B Door return glass", [4.0, 300.4, 500.0]),
+    ]});
+    assert_eq!(
+        hardware(&bodies, &BTreeMap::new(), &json!({})),
+        json!([
+            {"item": "Glass, 4 mm, 500 x 300 mm", "qty": 1},
+            {"item": "Glass, 4 mm, 612 x 492 mm", "qty": 2},
+        ])
+    ); // a pane standing open: its own size, not its world box
+    let open = json!({"bodies": [pane("A Door glass", [478.0, 350.7, 612.0])]});
+    let local = BTreeMap::from([("A Door glass".to_string(), [492.0, 4.0, 612.0])]);
+    assert_eq!(
+        hardware(&open, &local, &json!({})),
+        json!([{"item": "Glass, 4 mm, 612 x 492 mm", "qty": 1}])
+    );
+}
+
+#[test]
+fn drawers_on_strips_or_runners_count_no_slides() {
+    let named =
+        |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
+    let pairs = |list: &Value| -> u64 {
+        (list.as_array().into_iter().flatten())
+            .filter(|h| h["item"] == "Drawer slide, pair")
+            .filter_map(|h| h["qty"].as_u64())
+            .sum()
+    };
+    // A's drawer 1 on strips, drawer 2 on slides; a cabinet named with ` Drawer ` in it too
+    let bodies = named(&[
+        "A Drawer 1 Front",
+        "A Side L strip 1",
+        "A Drawer 2 Front",
+        "B Drawer C Drawer 1 Front",
+        "B Drawer C Side L strip 1",
+    ]);
+    let list = hardware(
+        &json!({"bodies": bodies}),
+        &BTreeMap::new(),
+        &json!({"timeline": []}),
+    );
+    assert_eq!(pairs(&list), 1, "{list}");
+    // without the strip it counts again
+    let bodies = named(&["A Drawer 1 Front"]);
+    assert_eq!(
+        pairs(&hardware(
+            &json!({"bodies": bodies}),
+            &BTreeMap::new(),
+            &json!({"timeline": []})
+        )),
+        1
+    );
+    // a groove (dado runners) is a feature, also under such a name
+    let design = json!({"timeline": named(&["B Drawer C Side L runner 1"])});
+    let bodies = named(&["B Drawer C Drawer 1 Front"]);
+    assert_eq!(
+        pairs(&hardware(
+            &json!({"bodies": bodies}),
+            &BTreeMap::new(),
+            &design
+        )),
+        0
+    );
+}
+
+#[test]
+fn a_door_hinged_beside_another_cabinets_front_clashes() {
+    // #140: A (600 wide, x -300 to 300) has one door hinged on Side R, beside B (300 to 900)
+    // with a drawer front; C stands 400 mm on, beyond reach
+    let body = |name: &str, min: [f64; 3], max: [f64; 3]| json!({"name": name, "bbox": {"min": min, "max": max}});
+    let carcass = |c: &str, x0: f64| {
+        vec![
+            body(
+                &format!("{c} Side L"),
+                [x0, -280.0, 0.0],
+                [x0 + 18.0, 280.0, 720.0],
+            ),
+            body(
+                &format!("{c} Side R"),
+                [x0 + 582.0, -280.0, 0.0],
+                [x0 + 600.0, 280.0, 720.0],
+            ),
+        ]
+    };
+    let mut bodies = carcass("A", -300.0);
+    bodies.extend(carcass("B", 300.0));
+    bodies.extend(carcass("C", 1300.0));
+    bodies.push(body(
+        "A Door",
+        [-298.0, -298.0, 2.0],
+        [298.0, -280.0, 718.0],
+    ));
+    bodies.push(body(
+        "B Drawer 1 Front",
+        [302.0, -298.0, 400.0],
+        [898.0, -280.0, 718.0],
+    ));
+    bodies.push(body(
+        "C Door",
+        [1302.0, -298.0, 2.0],
+        [1898.0, -280.0, 718.0],
+    ));
+    let measure = json!({ "bodies": bodies });
+    let design = |plate: &str| json!({"timeline": [{"name": plate}]});
+    assert_eq!(
+        clashes(&measure, &design("A Side R hinge plate 1.1")),
+        ["A Door (open) meets B Drawer 1 Front (open)"]
+    );
+    // hinged on its other side, away from B: nothing
+    assert!(clashes(&measure, &design("A Side L hinge plate 1.1")).is_empty());
+    // a front left open in the design (not thin across the front) is skipped
+    let mut opened = measure.clone();
+    opened["bodies"][7] = body(
+        "B Drawer 1 Front",
+        [302.0, -700.0, 400.0],
+        [320.0, -280.0, 718.0],
+    );
+    assert!(clashes(&opened, &design("A Side R hinge plate 1.1")).is_empty());
+}
+
+#[test]
+fn clashes_take_integrated_fronts_and_quote_names() {
+    // an integrated drawer front is the box's `Box front`; a separate front's box front behind
+    // it is no front of its own
+    let body = |name: &str, min: [f64; 3], max: [f64; 3]| json!({"name": name, "bbox": {"min": min, "max": max}});
+    let mut bodies = vec![
+        body("A Side L", [-300.0, -280.0, 0.0], [-282.0, 280.0, 720.0]),
+        body("A Side R", [282.0, -280.0, 0.0], [300.0, 280.0, 720.0]),
+        body("A Door", [-298.0, -298.0, 2.0], [298.0, -280.0, 718.0]),
+        body(
+            "B \"Tall\" Side L",
+            [300.0, -280.0, 0.0],
+            [318.0, 280.0, 720.0],
+        ),
+        body(
+            "B \"Tall\" Side R",
+            [882.0, -280.0, 0.0],
+            [900.0, 280.0, 720.0],
+        ),
+        // where an integrated front stands: a side and a slide's gap in (18 + 12.7), so 32.7 mm
+        // past the door's hinge edge
+        body(
+            "B \"Tall\" Drawer 1 Box front",
+            [330.7, -298.0, 400.0],
+            [869.3, -280.0, 718.0],
+        ),
+    ];
+    let design = json!({"timeline": [{"name": "A Side R hinge plate 1.1"}]});
+    let found = clashes(&json!({ "bodies": bodies.clone() }), &design);
+    assert_eq!(
+        found,
+        ["A Door (open) meets B \"Tall\" Drawer 1 Box front (open)"]
+    );
+    assert_eq!(
+        clash_csv(&found),
+        "Clash,\"A Door (open) meets B \"\"Tall\"\" Drawer 1 Box front (open)\"\n"
+    );
+    // with a separate front, only the front counts; a cabinet 400 mm on is out of reach (above)
+    bodies.push(body(
+        "B \"Tall\" Drawer 1 Front",
+        [302.0, -316.0, 400.0],
+        [898.0, -298.0, 718.0],
+    ));
+    let found = clashes(&json!({ "bodies": bodies }), &design);
+    assert_eq!(
+        found,
+        ["A Door (open) meets B \"Tall\" Drawer 1 Front (open)"]
+    );
+}
+
+#[test]
+fn pilaster_strips_and_clips_are_counted() {
+    // #264: the strips by their length, from the models' names; four clips a shelf
+    let named =
+        |names: &[&str]| -> Vec<Value> { names.iter().map(|n| json!({"name": n})).collect() };
+    let design = json!({"timeline": named(&[
+        "A Side L pilaster dado front", "A Side L pilaster front (652 mm)", "A Side L pilaster back (652 mm)",
+        "A Side R pilaster front (652 mm)", "A Side R pilaster back (652 mm)", "Oak dado cabinet Side L pilaster front (400 mm)",
+    ])}); // a cabinet name with ` dado ` in it still counts its strips
+    let measure = json!({"bodies": named(&["A Side L", "A Shelf 1", "A Shelf 2"])});
+    let list = hardware(&measure, &BTreeMap::new(), &design);
+    let qty = |item: &str| {
+        list.as_array()
+            .unwrap()
+            .iter()
+            .find(|h| h["item"] == item)
+            .map(|h| h["qty"].clone())
+    };
+    assert_eq!(qty("Shelf clip"), Some(json!(8)));
+    assert_eq!(qty("Shelf pilaster strip, 652 mm"), Some(json!(4)));
+    assert_eq!(qty("Shelf pilaster strip, 400 mm"), Some(json!(1)));
+    assert_eq!(qty("Shelf pin, 5 mm"), None);
+    // a corner cabinet, with strips in its backs too: eight a shelf
+    let corner = json!({"timeline": named(&["C Side L pilaster dado front", "C Back return pilaster dado front"])});
+    let measure = json!({"bodies": named(&["C Side L", "C Shelf 1", "C Shelf 1 return"])});
+    let list = hardware(&measure, &BTreeMap::new(), &corner);
+    let clips = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| h["item"] == "Shelf clip")
+        .map(|h| h["qty"].clone());
+    assert_eq!(clips, Some(json!(8)));
 }

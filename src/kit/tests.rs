@@ -1,25 +1,110 @@
 use super::*;
 
 #[test]
-fn a_matched_cabinet_points_at_the_selected_ones_parameters() {
+fn a_matched_cabinet_points_at_the_runs_shared_parameters() {
     let design = json!({"params": [
-        {"name": "Base_1_height", "value": 900.0}, {"name": "Base_1_depth", "value": 400.0},
-        {"name": "Base_1_thickness", "value": 19.0}, {"name": "Base_1_width", "value": 800.0},
+        {"name": "Base_1_height", "value": 900.0, "expression": "Tall - 100 mm"},
+        {"name": "Base_1_depth", "value": 400.0, "expression": "400 mm"},
+        {"name": "Base_1_thickness", "value": 19.0, "expression": "19 mm"},
+        {"name": "Base_1_width", "value": 800.0, "expression": "800 mm"},
     ]});
     let link = matched("Base 1", &design).unwrap();
-    // the dialog's own height and plinth are ignored: Base 1 has no plinth
+    // the first match makes the run's parameter, with Base 1's expression, and points Base 1 at it
+    assert_eq!(
+        link["setup"][0],
+        json!(["parameters.add", {"name": "Run_Base_1_height",
+        "expression": "Tall - 100 mm", "comment": "shared by the cabinets matched to Base 1"}])
+    );
+    assert_eq!(
+        link["setup"][1],
+        json!(["parameters.change",
+        {"name": "Base_1_height", "expression": "Run_Base_1_height"}])
+    );
+    assert_eq!(link["setup"].as_array().unwrap().len(), 6); // height, depth, thickness
+                                                            // the dialog's own height and plinth are ignored: Base 1 has no plinth
     let p = json!({"name": "B", "height": 720, "plinth": 100, "_match": link});
     let (commands, summary) = crate::cabinet::build(&p).unwrap();
     let expression = |name: &str| {
         let found = commands.iter().find(|c| c.1["name"] == name);
         found.map(|c| c.1["expression"].clone())
     };
-    assert_eq!(expression("B_height"), Some(json!("Base_1_height")));
-    assert_eq!(expression("B_thickness"), Some(json!("Base_1_thickness")));
+    assert_eq!(expression("B_height"), Some(json!("Run_Base_1_height")));
+    assert_eq!(
+        expression("B_thickness"),
+        Some(json!("Run_Base_1_thickness"))
+    );
     assert_eq!(expression("B_width"), Some(json!("600 mm")));
     assert_eq!(expression("B_plinth"), None);
     assert_eq!(summary["size"]["height"], 900.0);
     assert!(matched("Base 2", &design).is_err());
+    // a cabinet already in a run shares it: nothing made, the same parameters
+    let design = json!({"params": [
+        {"name": "Run_Base_1_height", "value": 900.0, "expression": "900 mm"},
+        {"name": "B_height", "value": 900.0, "expression": "Run_Base_1_height"},
+        // a size of its own (Edit gave it a number): a run of its own for that size
+        {"name": "B_depth", "value": 300.0, "expression": "300 mm"},
+    ]});
+    let link = matched("B", &design).unwrap();
+    assert_eq!(
+        link["names"],
+        json!({"height": "Run_Base_1_height", "depth": "Run_B_depth"})
+    );
+    assert_eq!(link["setup"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn a_run_does_not_hang_on_the_first_cabinets_own_parameters() {
+    // A_depth over A's own height: the run takes the value, so A's height changed alone, or
+    // A deleted, leaves the run's depth as it was; a design-wide name (Tall) is kept.
+    let design = json!({"params": [
+        {"name": "A_height", "value": 900.0, "expression": "Tall"},
+        {"name": "A_depth", "value": 600.0, "expression": "A_height - 300 mm"},
+        {"name": "A_thickness", "value": 18.0, "expression": "18 mm"},
+        {"name": "BA_thick", "value": 1.0, "expression": "1 mm"},
+    ]});
+    let link = matched("A", &design).unwrap();
+    let added = |name: &str| {
+        let all = link["setup"].as_array().unwrap();
+        let found = all
+            .iter()
+            .find(|s| s[0] == "parameters.add" && s[1]["name"] == name);
+        found.map(|s| s[1]["expression"].clone())
+    };
+    assert_eq!(added("Run_A_height"), Some(json!("Tall")));
+    assert_eq!(added("Run_A_depth"), Some(json!("600 mm")));
+    assert!(names_own("2 * A_height", "A") && !names_own("BA_height + Tall", "A"));
+}
+
+#[test]
+fn width_from_a_line_is_an_expression_over_its_dimension() {
+    let p = json!({"name": "B", "width": 1150, "_line": {"width": "Wall_l1 - 50 mm"}});
+    let (commands, summary) = crate::cabinet::build(&p).unwrap();
+    let found = commands.iter().find(|c| c.1["name"] == "B_width");
+    assert_eq!(
+        found.map(|c| c.1["expression"].clone()),
+        Some(json!("Wall_l1 - 50 mm"))
+    );
+    assert_eq!(summary["size"]["width"], 1150.0);
+}
+
+#[test]
+fn a_rebuilt_size_from_a_line_keeps_its_expression() {
+    // Apply settings in an inch design: the line's width read again, rounded to 1e-6 in, is
+    // 1e-5 mm off the parameter already over the line's dimension: left as it is
+    let line = json!({"width": "Wall_l1 - 2 in"});
+    let p = json!({"name": "B", "units": "in", "width": 45.244094, "_line": line,
+        "_existing": {"width": 1149.2}});
+    let commands = crate::cabinet::build(&p).unwrap().0;
+    assert!(
+        !commands.iter().any(|c| c.1["name"] == "B_width"),
+        "{commands:?}"
+    );
+    // a line read longer (an undimensioned one): the line's expression, not a number
+    let p = json!({"name": "B", "units": "in", "width": 50, "_line": line,
+        "_existing": {"width": 1149.2}});
+    let commands = crate::cabinet::build(&p).unwrap().0;
+    let change = commands.iter().find(|c| c.1["name"] == "B_width").unwrap();
+    assert_eq!(change.1["expression"], "Wall_l1 - 2 in");
 }
 
 #[test]
@@ -37,7 +122,7 @@ fn a_matched_plinth_takes_the_set_back_when_there_is_one() {
     let commands = crate::cabinet::build(&p).unwrap().0;
     assert_eq!(
         expression(&commands, "B_plinth_setback"),
-        Some(json!("A_plinth_setback"))
+        Some(json!("Run_A_plinth_setback"))
     );
     // without one (on legs, or older) the dialog's
     let design = json!({"params": [

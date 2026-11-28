@@ -1,7 +1,7 @@
 //! The corner cabinet's doors: a bi-fold pair, the second hung on the first.
 
 use super::Corner;
-use crate::fittings::{self, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, HANDLE_D};
 use crate::hardware;
 use crate::kit::mm;
 
@@ -57,19 +57,44 @@ pub fn build(corner: &Corner, on_return: bool) {
     let cups = hardware::cups(&z0, &z1, h - plinth - 2.0 * o_mm, &base);
     // The second door, the one that folds, carries the handle: upright at its free end, away
     // from the fold, at the height the box cabinet would put it.
-    let handle_z = fittings::handle_height(
-        handles,
-        handle_at,
-        &z0,
-        &z1,
-        h - plinth,
-        fittings::floor_unit(plinth, d),
-    );
+    let floor = fittings::floor_unit(plinth, d);
+    let handle_z = fittings::handle_height(handles, handle_at, &z0, &z1, h - plinth, floor);
+    // Grooves in both doors' faces; a grip edge or groove instead of a handle along the second
+    // door's top or bottom.
+    let profile = |part: &str, lo: [&str; 3], size: [&str; 3], along: usize, back: i32, second| {
+        let at = |x: &str, y: &str, z: &str| kit.at(x, y, z);
+        if let Some((g, sizes)) = &corner.grooves {
+            fittings::front_grooves(kit, part, g, sizes, at, lo, size, along, back);
+        }
+        if second {
+            let top = fittings::grip_on_top(handle_at, floor);
+            fittings::grip(kit, part, handles, at, lo, size, along, back, top);
+        }
+    };
+    // The second door's height: with a grip edge the grip gap short of its grip edge (#230).
+    let height = |second: bool| match second {
+        true => fittings::gripped(
+            corner.egap.as_deref(),
+            &z0,
+            &door_h,
+            fittings::grip_on_top(handle_at, floor),
+        ),
+        false => (z0.clone(), door_h.clone()),
+    };
     let screws = fittings::screw_heights(handles, &handle_z);
     // Holes from a door's back face: hinge cups at `cup`, and on the second door the handle
     // screws at `pull`. Both are x and y; `into` is the way into the door, and from the cups
     // towards its hinge edge.
+    // the second door's cups over its own height, shorter with a grip gap
+    let (gz, gh) = height(true);
+    let second_cups = hardware::cups(
+        &gz,
+        &format!("{gz} + {gh}"),
+        h - plinth - 2.0 * o_mm - corner.gap,
+        &base,
+    );
     let holes = |part: &str, cup: [&str; 2], pull: [&str; 2], second: bool, into: [[i32; 3]; 2]| {
+        let cups = if second { &second_cups } else { &cups };
         let hole = |at: [&str; 2], z: &str, d: f64, depth: &str, what: String| {
             let position = kit.at(&corner.point(at[0]), at[1], z);
             fittings::hole(kit, part, position, into[0], &mm(d), depth, &what);
@@ -81,23 +106,42 @@ pub fn build(corner: &Corner, on_return: bool) {
             (false, true) => Some(18.0),
             (false, false) => Some(0.0),
         };
-        hardware::cup_holes(kit, part, |z| kit.at(&cup_x, cup[1], z), into, crank, &cups);
+        hardware::cup_holes(kit, part, |z| kit.at(&cup_x, cup[1], z), into, crank, cups);
         for (j, z) in screws.iter().enumerate().filter(|_| second) {
             hole(pull, z, HANDLE_D, et, format!("handle {}", j + 1));
         }
     };
-    let (cup_c, edge) = ("HW_cup_inset", mm(HANDLE_EDGE));
+    let (cup_c, edge) = (
+        "HW_cup_inset",
+        fittings::handle_edge(corner.eframe.as_ref()),
+    );
     // On the back leg, facing the front.
     let face_y = &long_y; // the back leg door's back face
     let door_x = if on_return { &short_x } else { &long_x };
     let door = || {
         kit.open("Door");
-        corner.panel(
-            "Door",
-            [door_x, &format!("{face_y} - {et}"), &z0],
-            [&format!("{ea} - {o} - ({door_x})"), et, &door_h],
-            None,
+        let (y, w) = (
+            format!("{face_y} - {et}"),
+            format!("{ea} - {o} - ({door_x})"),
         );
+        let x = corner.from(door_x, &w);
+        // a shaker door's own name is the stile with its cups: at the fold, or the leg's end
+        let at = |x: &str, y: &str, z: &str| kit.at(x, y, z);
+        let (z, door_h) = height(on_return);
+        let (lo, size) = ([x.as_str(), &y, &z], [w.as_str(), et, &door_h]);
+        let main_low = on_return != corner.right;
+        fittings::front(
+            kit,
+            "Door",
+            corner.eframe.as_ref(),
+            at,
+            lo,
+            size,
+            0,
+            main_low,
+            corner.glass,
+        );
+        profile("Door", lo, size, 0, 1, on_return);
         let cup_x = match on_return {
             true => format!("{short_x} + {cup_c}"),
             false => format!("{ea} - {o} - {cup_c}"),
@@ -117,12 +161,24 @@ pub fn build(corner: &Corner, on_return: bool) {
     let return_y = if on_return { &long_y } else { &short_y };
     let door_return = || {
         kit.open("Door return");
-        corner.panel(
+        let long = format!("{return_y} - {o}");
+        let x = corner.from(face_x, et);
+        let (z, door_h) = height(!on_return);
+        let (lo, size) = ([x.as_str(), &o, &z], [et.as_str(), &long, &door_h]);
+        let at = |x: &str, y: &str, z: &str| kit.at(x, y, z);
+        let frame = corner.eframe.as_ref();
+        fittings::front(
+            kit,
             "Door return",
-            [face_x, &o, &z0],
-            [et, &format!("{return_y} - {o}"), &door_h],
-            None,
+            frame,
+            at,
+            lo,
+            size,
+            1,
+            on_return,
+            corner.glass,
         );
+        profile("Door return", lo, size, 1, -flip, !on_return);
         let cup_y = match on_return {
             true => format!("{o} + {cup_c}"),
             false => format!("{short_y} - {cup_c}"),

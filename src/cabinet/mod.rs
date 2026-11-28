@@ -10,7 +10,9 @@ mod doors;
 mod drawers;
 mod input;
 
-use crate::fittings::{self, PinRows, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::fittings::{
+    self, PinRows, CLIP, HANDLE_D, LEG_INSET, PIN_SETBACK, PITCH, STRIP, STRIP_SETBACK,
+};
 use crate::joint::{Joinery, Joint, BOTTOM, CARCASS, INNER};
 use crate::kit::{check, mm, Kit};
 use crate::Commands;
@@ -43,6 +45,12 @@ struct Cabinet<'a> {
     // outside (a panel when inset, which is also where the shelves start); and the y of the
     // fronts' front and back faces.
     er: String,
+    /// Grooved fronts' spacing and depth parameters, on a cabinet with fronts.
+    egrooves: Option<[String; 2]>,
+    /// Shaker fronts' frame width and panel thickness parameters.
+    eframe: Option<[String; 2]>,
+    /// A grip edge's gap, the parameter `<Prefix>_grip_gap` (#230).
+    egap: Option<String>,
     ein: String,
     efront: String,
     eback: String,
@@ -83,14 +91,21 @@ pub fn from_drawers(p: &mut Value) -> Result<(), String> {
     let input = input::read(&kit, &trial)?;
     check(input.drawers > 0.0, "drawer inside size needs drawers")?;
     let [bt, _] = input.box_t;
-    let clear = input.runner.map_or(drawers::SLIDE, |[_, play]| play);
+    // On strip runners the box also stands a strip's thickness off each side (#267).
+    let strip = input.strip.map_or(0.0, |[st, _]| st);
+    let clear = input
+        .runner
+        .map_or(drawers::SLIDE, |[_, play]| play + strip);
     let w = match input.under {
         true => inside[0] + 42.0 + 2.0 * input.t, // Blum's rule
         false => inside[0] + 2.0 * (bt + clear + input.t),
     };
-    let mut box_d = inside[1] + 2.0 * bt;
-    let mut shelf_d = match input.kind {
-        "sink" => 2.0 * box_d,
+    // An integrated front (#163) stands before the box: one box board in the depth, not two.
+    let mut box_d = inside[1] + if input.integrated { bt } else { 2.0 * bt };
+    let mut shelf_d = match (input.kind, input.runner) {
+        ("sink", _) => 2.0 * box_d,
+        // on runners the box reaches the back (#257), from a reveal before an overlay carcass
+        (_, Some(_)) => box_d - if input.inset { 0.0 } else { input.reveal },
         _ => box_d + drawers::BOX_BEHIND,
     };
     if input.under {
@@ -143,7 +158,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
     joinery.fits(BOTTOM, side_mm, p, "the sides")?;
     joinery.fits(INNER, input.shelf_d, p, "the dividers and the rail")?;
     // a divider between fixed shelves in dados is grooved from both sides at the same height
-    let both = input.fixed && input.shelves > 0.0 && input.dividers > 0.0;
+    let both = input.fixed && input.shelves > 0.0 && input.dividers > 0.0 && !input.double;
     check(
         !both || joinery.method(INNER) != "dado" || 2.0 * kit.size(p, "dado_depth", 6.0)? <= input.t - 3.0,
         "`dado_depth`: fixed shelves on both sides of a divider would groove it through; at most (thickness - 3 mm) / 2",
@@ -152,8 +167,14 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         "none" => mm(0.0),
         _ => parameter("back_thickness", input.bt, "back panel thickness"),
     };
+    // A plinth taken away sets its parameter to 0: Edit and Apply settings read the sizes from
+    // the parameters (`edit::merge`), so a stale height would bring the plinth back.
     let epl = match input.plinth > 0.0 {
         true => parameter("plinth", input.plinth, "plinth height"),
+        false if kit.has("plinth") => {
+            parameter("plinth", 0.0, "plinth height");
+            mm(0.0)
+        }
         false => mm(0.0),
     };
     let emount = fittings::mount_sizes(&kit, input.wall_mount, input.mount_t, input.mount_h, &et);
@@ -177,6 +198,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         ),
         false => mm(input.reveal),
     };
+    let egrooves = (input.grooves).map(|g| fittings::groove_sizes(&kit, &g));
+    let eframe = (input.frame).map(|f| fittings::frame_sizes(&kit, f));
+    let egap = (input.grip_gap).map(|g| kit.parameter("grip_gap", g, "grip edge gap"));
     let (ein, efront, eback) = match input.inset {
         true => (et.clone(), mm(0.0), et.clone()),
         false => (mm(0.0), format!("-{er} - {et}"), format!("-{er}")),
@@ -229,7 +253,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         kit: &kit,
         input,
         joinery,
-        ecell: format!("(({eiw} - {n}*{et}) / {})", n + 1),
+        ecell: format!(
+            "(({eiw} - {}*{et}) / {})",
+            n * (1 + u32::from(input.double)),
+            n + 1
+        ),
         eiw,
         ech: format!("({eh} - {epl} - 2*{et})"),
         ew,
@@ -242,6 +270,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         eshelf_d,
         emount,
         er,
+        egrooves,
+        eframe,
+        egap,
         ein,
         efront,
         eback,
@@ -383,15 +414,14 @@ impl Cabinet<'_> {
             let at = [[et.as_str(), &y, &z], [eiw.as_str(), tm, mh]];
             fittings::mount_board(kit, input.wall_mount, tm, board, at, "", [9, 3]);
         }
-        // Left face of each divider. They stand between bottom and top, as deep as the shelves.
-        let divider_x: Vec<String> = (1..=n).map(|k| format!("({ecell} + {et}) * {k}")).collect();
-        for (k, x) in divider_x.iter().enumerate() {
-            let part = format!("Divider {}", k + 1);
+        // The dividers' boards. They stand between bottom and top, as deep as the shelves.
+        let dividers = self.dividers();
+        for (part, x, _) in &dividers {
             let (z0, tall) = match self.joinery.extension(INNER) {
                 Some(g) => (format!("{bottom_top} - {g}"), format!("{ech} + 2*{g}")),
                 None => (bottom_top.clone(), ech.to_string()),
             };
-            panel(&part, [x, ein, &z0], [et, eshelf_d, &tall], false);
+            panel(part, [x, ein, &z0], [et, eshelf_d, &tall], false);
             // its ends into the bottom's top face and the top's underside
             let mid = format!("{x} + {et}/2");
             for (face, z, up) in [
@@ -428,6 +458,9 @@ impl Cabinet<'_> {
                 let z = format!("{ebase} + {over}");
                 if !input.fixed {
                     panel(&part, [&x, ein, &z], [ecell, eshelf_d, et], false);
+                    if input.pilasters {
+                        self.clips(&part, &x, &z);
+                    }
                     continue;
                 }
                 // Fixed: joined at both ends, to a side or a divider, by the inside's method;
@@ -437,14 +470,19 @@ impl Cabinet<'_> {
                     None => (x.clone(), ecell.clone()),
                 };
                 panel(&part, [&x0, ein, &z], [&wide, eshelf_d, et], false);
-                let face = |k: u32| match k {
-                    0 => "Side L".to_string(),
-                    k if k > n => "Side R".to_string(),
-                    k => format!("Divider {k}"),
+                // the compartment's left end, then its right
+                let face = |k: u32, right: bool| match (k, input.double) {
+                    (0, _) => "Side L".to_string(),
+                    (k, _) if k > n => "Side R".to_string(),
+                    (k, false) => format!("Divider {k}"),
+                    (k, true) => format!("Divider {k} {}", if right { "L" } else { "R" }),
                 };
                 let mid = format!("{z} + {et}/2");
                 let right = format!("{x} + {ecell}");
-                for (face, plane, into) in [(face(cell), &x, 1), (face(cell + 1), &right, -1)] {
+                for (face, plane, into) in [
+                    (face(cell, false), &x, 1),
+                    (face(cell + 1, true), &right, -1),
+                ] {
                     let joint = Joint {
                         face,
                         end: part.clone(),
@@ -455,7 +493,8 @@ impl Cabinet<'_> {
                         run: eshelf_d.clone(),
                         single: false,
                         // right of a divider: between the holes from the shelf on its left
-                        between: into == 1 && cell > 0,
+                        // (a double divider's two boards each carry one shelf)
+                        between: into == 1 && cell > 0 && !input.double,
                     };
                     self.joinery.joint(INNER, &joint);
                 }
@@ -550,9 +589,10 @@ impl Cabinet<'_> {
             }
             _ => {}
         }
-        match input.pins {
-            true => self.pins(&divider_x, &elast, &ebase),
-            false => Vec::new(),
+        match (input.pins, input.pilasters) {
+            (true, true) => self.strips(&dividers, &ebase, &ezone),
+            (true, false) => self.pins(&dividers, &elast, &ebase),
+            _ => Vec::new(),
         }
     }
 
@@ -605,19 +645,133 @@ impl Cabinet<'_> {
         }
     }
 
+    /// Each divider's boards: its name, its left face and the face its shelves rest on (0 both,
+    /// -1 its left, 1 its right). A double divider is two boards side by side, `L` and `R`,
+    /// each carrying the shelves on its outer face.
+    fn dividers(&self) -> Vec<(String, String, i32)> {
+        let Cabinet { input, et, .. } = self;
+        let mut boards = Vec::new();
+        for k in 1..=input.dividers as u32 {
+            let right = self.cell_x(k); // the compartment right of it
+            match input.double {
+                false => boards.push((format!("Divider {k}"), format!("{right} - {et}"), 0)),
+                true => {
+                    boards.push((format!("Divider {k} L"), format!("{right} - 2*{et}"), -1));
+                    boards.push((format!("Divider {k} R"), format!("{right} - {et}"), 1));
+                }
+            }
+        }
+        boards
+    }
+
+    /// Pilaster strips (#264) instead of pin rows: in each face that carries shelves, a dado
+    /// `STRIP` wide and deep on the pin rows' back line and `STRIP_SETBACK` behind the front (clear
+    /// of the hinge plates), over the shelves' height,
+    /// and a strip in it, flush with the face: `<board> pilaster dado <row>` and the model
+    /// `<board> pilaster <row> (<length> mm)` (a name with ` pilaster ` is a hardware model,
+    /// which the cut list counts by that length). A divider carrying shelves on both faces has a
+    /// pair on each (`left`, `right`).
+    fn strips(&self, dividers: &[(String, String, i32)], base: &str, zone: &str) -> Commands {
+        let Cabinet {
+            kit,
+            input,
+            ew,
+            et,
+            ein,
+            eshelf_d,
+            ..
+        } = self;
+        // the face's x, the way into the board, and what tells two faces of one board apart
+        let mut faces = vec![
+            ("Side L".to_string(), et.clone(), -1, ""),
+            ("Side R".to_string(), format!("{ew} - {et}"), 1, ""),
+        ];
+        for (part, x, face) in dividers {
+            match face {
+                0 => {
+                    faces.push((part.clone(), x.clone(), 1, " left"));
+                    faces.push((part.clone(), format!("{x} + {et}"), -1, " right"));
+                }
+                -1 => faces.push((part.clone(), x.clone(), 1, "")),
+                _ => faces.push((part.clone(), format!("{x} + {et}"), -1, "")),
+            }
+        }
+        let [w, deep] = [mm(STRIP[0]), mm(STRIP[1])];
+        let length = (input.clear_h).round();
+        let rows = [
+            ("front", format!("{ein} + {}", mm(STRIP_SETBACK))),
+            ("back", format!("{ein} + {eshelf_d} - {}", mm(PIN_SETBACK))),
+        ];
+        for (board, fx, into, which) in faces {
+            let x0 = match into {
+                1 => fx.clone(),
+                _ => format!("{fx} - {deep}"),
+            };
+            let target = [format!("{} {board}", kit.name)];
+            for (row, y) in &rows {
+                let y0 = format!("{y} - {w}/2");
+                let (corner, size) = ([x0.as_str(), &y0, base], [deep.as_str(), &w, zone]);
+                kit.panel(
+                    &format!("{board} pilaster dado {row}{which}"),
+                    corner,
+                    size,
+                    Some(&target),
+                );
+                let strip = format!("{board} pilaster {row}{which} ({length} mm)");
+                kit.model(&strip, corner, size);
+            }
+        }
+        // ponytail: made with the carcass, not with the holes after the joinery
+        Vec::new()
+    }
+
+    /// Four clips under a shelf on pilaster strips (#264): one model `<shelf> clip` at its
+    /// front left, out of the strip's face, and a pattern of it to the other three.
+    fn clips(&self, shelf: &str, x: &str, z: &str) {
+        let Cabinet {
+            kit,
+            ein,
+            ecell,
+            eshelf_d,
+            ..
+        } = self;
+        let [w, out, high] = [mm(STRIP[0]), mm(CLIP[0]), mm(CLIP[1])];
+        let clip = format!("{shelf} clip");
+        let y = format!("{ein} + {} - {w}/2", mm(STRIP_SETBACK));
+        kit.model(&clip, [x, &y, &format!("{z} - {high}")], [&out, &w, &high]);
+        kit.push((
+            "solid.pattern.rectangular",
+            json!({
+                "bodies": [format!("{} {clip}", kit.name)], "name": format!("{} {clip}s", kit.name),
+                "dir1": [1, 0, 0], "count1": 2, "spacing1": format!("{ecell} - {out}"),
+                "dir2": [0, 1, 0], "count2": 2, "spacing2": format!("{eshelf_d} - {}", mm(PIN_SETBACK + STRIP_SETBACK)),
+            }),
+        ));
+    }
+
     /// One hole per panel, repeated up the panel and across to the rear row. Blind in the
-    /// sides; through a divider, which carries shelves on both faces.
-    fn pins(&self, divider_x: &[String], top_row: &str, base: &str) -> Commands {
+    /// sides and a double divider's boards; through a divider, which carries shelves on both
+    /// faces.
+    fn pins(&self, dividers: &[(String, String, i32)], top_row: &str, base: &str) -> Commands {
         let Cabinet {
             kit, ew, et, ein, ..
         } = self;
         let blind = fittings::blind_pin(et);
         let mut rows = vec![
             ("Side L".to_string(), et.clone(), blind.clone(), -1),
-            ("Side R".to_string(), format!("{ew} - {et}"), blind, 1),
+            (
+                "Side R".to_string(),
+                format!("{ew} - {et}"),
+                blind.clone(),
+                1,
+            ),
         ];
-        for (k, x) in divider_x.iter().enumerate() {
-            rows.push((format!("Divider {}", k + 1), x.clone(), et.clone(), 1));
+        for (part, x, face) in dividers {
+            rows.push(match face {
+                0 => (part.clone(), x.clone(), et.clone(), 1),
+                -1 => (part.clone(), x.clone(), blind.clone(), 1),
+                _ => (part.clone(), format!("{x} + {et}"), blind.clone(), -1),
+            });
         }
         let z = format!("{base} + {}", mm(2.0 * PITCH));
         let mut drill = Vec::new();
@@ -661,14 +815,71 @@ impl Cabinet<'_> {
 
     /// The left face of compartment `cell`.
     fn cell_x(&self, cell: u32) -> String {
-        let Cabinet { et, ecell, .. } = self;
-        format!("{et} + ({ecell} + {et}) * {cell}")
+        let Cabinet {
+            input, et, ecell, ..
+        } = self;
+        match input.double {
+            false => format!("{et} + ({ecell} + {et}) * {cell}"),
+            true => format!("{et} + ({ecell} + 2*{et}) * {cell}"),
+        }
+    }
+
+    /// A grip edge or finger groove along a front's top or bottom edge (`fittings::grip`): the
+    /// front is the box from `lo` to `lo + size`, its back face towards +y.
+    fn grip(&self, body: &str, lo: [&str; 3], size: [&str; 3], top: bool) {
+        let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
+        fittings::grip(self.kit, body, self.handles(body), at, lo, size, 0, 1, top);
+    }
+
+    /// A door or drawer front (`fittings::front`): one board, or a shaker front when the
+    /// cabinet has them and `framed`; with glass fronts a pane instead of the panel. Its back face
+    /// towards +y; `main_low`: `<body>` is the left stile.
+    fn front(&self, body: &str, lo: [&str; 3], size: [&str; 3], main_low: bool, framed: bool) {
+        let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
+        let frame = self.eframe.as_ref().filter(|_| framed);
+        let glass = self.input.glass;
+        fittings::front(self.kit, body, frame, at, lo, size, 0, main_low, glass);
+    }
+
+    /// A front from `z`, `h` high, cut back by the grip gap at its grip edge (`top`, else the
+    /// bottom) when it has a grip edge (`fittings::gripped`).
+    fn gripped(&self, z: &str, h: &str, top: bool) -> (String, String) {
+        let gap = self
+            .egap
+            .as_deref()
+            .filter(|_| self.input.handles == "grip");
+        fittings::gripped(gap, z, h, top)
+    }
+
+    /// `gripped` for a door, by the doors' handles.
+    fn gripped_door(&self, z: &str, h: &str, top: bool) -> (String, String) {
+        let gap = self
+            .egap
+            .as_deref()
+            .filter(|_| self.input.door_handles == "grip");
+        fittings::gripped(gap, z, h, top)
+    }
+
+    /// The handles of a front by its part: a door's are the doors' (`Input::door_handles`).
+    fn handles(&self, body: &str) -> &str {
+        match body.starts_with("Door") {
+            true => self.input.door_handles,
+            false => self.input.handles,
+        }
+    }
+
+    /// Grooves in a front's face (`fittings::front_grooves`), the front as for `grip`.
+    fn grooves(&self, body: &str, lo: [&str; 3], size: [&str; 3]) {
+        if let (Some(g), Some(sizes)) = (&self.input.grooves, &self.egrooves) {
+            let at = |x: &str, y: &str, z: &str| self.kit.at(x, y, z);
+            fittings::front_grooves(self.kit, body, g, sizes, at, lo, size, 0, 1);
+        }
     }
 
     /// Screw holes for a knob (one) or a pull (two), through a front from its back face.
     /// `along` is the axis the pull lies on: 0 across, 2 upright.
     fn handle(&self, body: &str, x: &str, z: &str, along: usize) {
-        let offsets = fittings::screw_offsets(self.input.handles);
+        let offsets = fittings::screw_offsets(self.handles(body));
         for (j, offset) in offsets.iter().enumerate() {
             let mut at = [x.to_string(), self.eback.clone(), z.to_string()];
             at[along] = format!("{} + {}", at[along], mm(*offset));

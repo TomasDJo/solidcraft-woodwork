@@ -1,8 +1,10 @@
 //! Woodworking plugin for SolidCraft. The modules are plain Rust that turn parameters into
 //! app commands, so `cargo test` covers them; only `guest` touches the wasm bindings.
 
+mod base;
 mod cabinet;
 mod corner;
+mod cost;
 mod cutlist;
 mod drawing;
 mod dxf;
@@ -11,6 +13,7 @@ mod fittings;
 mod hardware;
 mod joint;
 mod kit;
+mod line;
 mod material;
 mod nesting;
 mod panel;
@@ -19,7 +22,7 @@ mod select;
 mod settings;
 mod worktop;
 
-use kit::check;
+use kit::{check, num};
 use serde_json::{json, Map, Value};
 
 /// App commands with their arguments, in the order they run.
@@ -83,9 +86,20 @@ fn component(
     if commands.iter().any(|c| c.0 == "occurrence.copy") {
         let definitions = hardware::definitions(&tree, &hardware::wanted(&commands));
         if !definitions.is_empty() {
+            // Hidden each time: a `browser.visibility` in a plugin run is kept since 0.51.2
+            // (tangency-labs/solidcraft#22153), and so `HOME` can stand on the origin.
+            let mut home = hardware::home(&tree);
             for (command, args) in definitions {
-                run(command, args)?;
+                let new = command == "component.create" && args["name"] == hardware::HOME;
+                let reply = run(command, args)?;
+                if new {
+                    home = reply["occurrence"].clone();
+                }
             }
+            run(
+                "browser.visibility",
+                json!({"visible": false, "paths": [[home]]}),
+            )?;
             let mut back = json!({"component": tree["active"]});
             if let Some(copy) = path.as_array().and_then(|path| path.last()) {
                 back["occurrence"] = copy.clone();
@@ -144,11 +158,14 @@ fn component(
     let board = params["material"].as_str().unwrap_or(default);
     if board != "none" {
         let bodies = summary["bodies"].as_array().into_iter().flatten();
-        let bodies: Vec<String> = bodies
+        let (glass, bodies): (Vec<String>, Vec<String>) = bodies
             .filter_map(|b| b.as_str())
             .map(String::from)
-            .collect();
+            .partition(|b| fittings::is_glass(b));
         material::assign(run, board, &bodies)?;
+        if !glass.is_empty() {
+            material::assign(run, "Glass", &glass)?;
+        }
     }
     // Back to where the user was working.
     let mut back = json!({"component": made["parent"]});
@@ -198,8 +215,15 @@ fn apply(
     // Measured only what is built again: its boards' materials, and its panels.
     let measure = measured(names_only, &names, run)?;
     let mut todo = Vec::new();
+    // The mobile bases these cabinets stand on: each made again at the end (#198), so its frame
+    // follows a cabinet that changed size, whether or not the settings change the cabinet.
+    let tree = run("component.list", json!({}))?;
+    let mut rebased: Vec<String> = Vec::new();
     for name in names {
         let about = run("component.metadata", json!({"component": name}))?;
+        if let Some(base) = reached_base(&about, &tree, run).filter(|b| !rebased.contains(b)) {
+            rebased.push(base);
+        }
         let ours = &about["metadata"][edit::KEY];
         let Some(entry) = ours["entry"]
             .as_str()
@@ -214,11 +238,13 @@ fn apply(
             false => todo.push((name, about, entry, base, vec![])),
             true => match settings::apply(&entry, &base, stored) {
                 Some((params, changed)) => todo.push((name, about, entry, params, changed)),
+                // along a line: built again all the same, to read the line again
+                None if along(&base) => todo.push((name, about, entry, base, vec!["line".into()])),
                 None => skipped.push(json!({"cabinet": name, "why": "already has these settings"})),
             },
         }
     }
-    let (mut applied, mut changes) = (Vec::new(), Map::new());
+    let (mut applied, mut changes, mut lines) = (Vec::new(), Map::new(), Map::new());
     let count = todo.len();
     for (i, (name, about, entry, params, changed)) in todo.into_iter().enumerate() {
         let message = format!("{name} ({} of {count})", i + 1);
@@ -230,9 +256,29 @@ fn apply(
             "document.inspect",
             json!({"bodies": false, "timeline": false}),
         )?;
-        rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
+        let built = rebuild(&name, &about, &entry, &params, &design, &measure, true, run)?;
+        // along a line: what it read, or why it was left where it stood
+        if let Some(said) = built["line"].as_str() {
+            lines.insert(name.clone(), json!(said));
+        }
+        if let Some(base) = built["rebase"]
+            .as_str()
+            .filter(|b| !rebased.iter().any(|r| r == b))
+        {
+            rebased.push(base.to_string());
+        }
         changes.insert(name.clone(), json!(changed));
         applied.push(name);
+    }
+    // The bases, made again under their cabinets with what they remember (#215, #198): as Mobile
+    // base run again by its name, nothing picked, so a frame follows a resize and a line.
+    for base in &rebased {
+        let about = run("component.metadata", json!({"component": base}))?;
+        let mut again = about["metadata"][edit::KEY]["params"].clone();
+        again["name"] = json!(base);
+        again["selection"] = json!([]);
+        run("select.clear", json!({}))?;
+        execute("base", &again, run)?;
     }
     let with = if settings {
         "with the settings"
@@ -243,13 +289,17 @@ fn apply(
     if !skipped.is_empty() {
         message += &format!("; {} skipped (see skipped)", skipped.len());
     }
-    Ok(json!({"applied": applied, "changed": changes, "skipped": skipped, "message": message}))
+    Ok(
+        json!({"applied": applied, "changed": changes, "lines": lines, "skipped": skipped,
+        "message": message}),
+    )
 }
 
 /// Builds the cabinet `name` again from `params` (`edit::merge`'s), where it stands: the same
 /// name, place, links, the materials of the boards that had another than the rest, and its
 /// panels. `about` is its `component.metadata`, `design` and `measure` read before. Edit, and
 /// Apply settings.
+#[allow(clippy::too_many_arguments)]
 fn rebuild(
     name: &str,
     about: &Value,
@@ -257,6 +307,7 @@ fn rebuild(
     params: &Value,
     design: &Value,
     measure: &Value,
+    follow_line: bool,
     run: Run,
 ) -> Result<Value, String> {
     let name = name.to_string();
@@ -274,6 +325,24 @@ fn rebuild(
             false => params["sizing"] = json!("outside"),
         }
     }
+    // Along a line: read it again (Apply settings follows an edge or an undimensioned line so).
+    // A line that can no longer be read leaves the cabinet where it stands, and says why.
+    let found = match along(&params) {
+        true => Some(along_line(&mut params, design, run)),
+        false => None,
+    };
+    // On a mobile base (#215) that is still there, the base holds it: it goes back where it
+    // stood and is held to the base again; a line still sets its width and height, not where it
+    // stands.
+    let was = &about["metadata"][edit::KEY]["link"];
+    let base = live_base(about, &tree);
+    // Apply settings (`follow_line`): a cabinet on a base along a line goes back onto its line,
+    // on the floor, and Apply settings makes its base again under it (`rebase`), so the base
+    // follows the line and the cabinet rides on it.
+    let read = found.as_ref().is_some_and(|f| f.is_ok());
+    let (base, rebase) = on_base_or_line(base, follow_line, read);
+    // (a line that could not be read is kept: the reply says why, the base still holds it)
+    let found = found.filter(|f| base.is_none() || f.is_err());
     let params = &params;
     run("component.activate", json!({"component": parent}))?;
     let gone = run("component.delete", json!({"component": name}))?;
@@ -306,25 +375,38 @@ fn rebuild(
             )?;
         }
     }
-    run(
-        "occurrence.move",
-        json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
-    )?;
+    let mut placed = false;
+    match found {
+        Some(Ok(found)) => {
+            place_along(&made["occurrence"], &mut summary, params, &found, run)?;
+            placed = true;
+        }
+        Some(Err(why)) => summary["line"] = json!(format!("{why}: left where it stood")),
+        None => {}
+    }
+    if !placed {
+        run(
+            "occurrence.move",
+            json!({"occurrence": made["occurrence"], "to_matrix": matrix, "move_grounded": true}),
+        )?;
+    }
     // Held again to the cabinet it stood against, when that is still there; and the
     // cabinets that were held to it, to the new one.
     let stands = |matrix: &Value| [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
-    let was = &about["metadata"][edit::KEY]["link"];
     // This cabinet and the one it was held to: what the links read.
     let mut linked = vec![name.clone()];
     linked.extend(was["to"].as_str().map(String::from));
     let measure = measured(body_names(run)?, &linked, run)?;
     let mut held = false;
-    if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
+    if let Some(base) = base {
+        on_base(base, &name, run)?;
+        held = true;
+    } else if let (Some(to), Some(place)) = (was["to"].as_str(), was["place"].as_str()) {
         if let Ok(other) = select::named(&measure, to) {
             held = link(&other, place, &name, stands(&matrix), run)?;
         }
     }
-    if !held {
+    if !held && !placed {
         run(
             "occurrence.ground",
             json!({"occurrence": made["occurrence"], "grounded": grounded}),
@@ -345,6 +427,9 @@ fn rebuild(
                 json!({"occurrence": format!("{other}:1"), "grounded": true}),
             )?;
         }
+    }
+    if let Some(base) = rebase {
+        summary["rebase"] = json!(base);
     }
     // Back to where the user was working, unless that was inside the old cabinet.
     let inside = gone["deleted"]
@@ -447,6 +532,94 @@ fn link(
     noted(other, place, name, run)
 }
 
+/// The mobile base a cabinet's `component.metadata` (`about`) notes it is held to, when that
+/// base is still in the design (`component.list`'s `tree`): then the base places it (#215).
+fn live_base<'a>(about: &'a Value, tree: &Value) -> Option<&'a str> {
+    let was = &about["metadata"][edit::KEY]["link"];
+    let base = was["to"].as_str().filter(|_| was["place"] == "base")?;
+    let mut all = tree["components"].as_array().into_iter().flatten();
+    all.any(|c| c["name"] == base).then_some(base)
+}
+
+/// The live mobile base a cabinet stands on, held to it directly or through the cabinets it is
+/// placed against (a `right` link to a neighbour that is on the base): its own note first
+/// (`about`), then each neighbour's, stopping on a loop. For making the base again (#198), not
+/// for holding a cabinet, which `live_base` does.
+fn reached_base(about: &Value, tree: &Value, run: Run) -> Option<String> {
+    let mut about = about.clone();
+    let mut seen: Vec<String> = Vec::new();
+    loop {
+        if let Some(base) = live_base(&about, tree) {
+            return Some(base.to_string());
+        }
+        let to = about["metadata"][edit::KEY]["link"]["to"]
+            .as_str()?
+            .to_string();
+        if seen.contains(&to) {
+            return None;
+        }
+        seen.push(to.clone());
+        about = run("component.metadata", json!({"component": to})).ok()?;
+    }
+}
+
+/// Who places a cabinet on the live base `base` in `rebuild`: the base (held to it again), or,
+/// in Apply settings (`follow_line`) with its line read, the line, and then the base is made
+/// again under it (the second). Neither without a base.
+fn on_base_or_line(
+    base: Option<&str>,
+    follow_line: bool,
+    read: bool,
+) -> (Option<&str>, Option<&str>) {
+    match follow_line && read {
+        true => (None, base),
+        false => (base, None),
+    }
+}
+
+/// Before the base `base` is made again: the cabinets it holds lose their links with it, so
+/// they are grounded where they stand and go up or down to the new frame as any grounded one.
+fn release(base: &str, tree: &Value, run: Run) -> Result<(), String> {
+    for cabinet in edit::hanging(tree, &run("joint.list", json!({}))?, base) {
+        run(
+            "occurrence.ground",
+            json!({"occurrence": format!("{cabinet}:1"), "grounded": true}),
+        )?;
+    }
+    Ok(())
+}
+
+/// Holds the cabinet `name` to the mobile base `base` where it stands, with a rigid link
+/// `<name> link` like a cabinet's on top of another, and notes it (`place: base`), so Edit makes
+/// it again (#215). The cabinet is not grounded then: it rides on the base.
+fn on_base(base: &str, name: &str, run: Run) -> Result<(), String> {
+    let tree = run("component.list", json!({}))?;
+    let (_, matrix, _) = edit::placement(&tree, name)?;
+    let at = [0, 1, 2].map(|i| matrix[i][3].as_f64().unwrap_or(0.0));
+    let frame = |occurrence: String| json!({"occurrence": occurrence, "frame": {"origin": at, "z": [0, 0, 1], "x": [1, 0, 0]}});
+    run(
+        "occurrence.ground",
+        json!({"occurrence": format!("{name}:1"), "grounded": false}),
+    )?;
+    run(
+        "joint.create",
+        json!({
+            "type": "rigid", "name": format!("{name} link"), "flip": true, "offset": "0 mm",
+            "a": frame(format!("{base}:1")), "b": frame(format!("{name}:1")), "quiet": true,
+        }),
+    )?;
+    let about = run("component.metadata", json!({"component": name}))?;
+    let mut ours = about["metadata"][edit::KEY].clone();
+    if ours.is_object() {
+        ours["link"] = json!({"to": base, "place": "base"});
+        run(
+            "component.metadata.set",
+            json!({"component": name, "values": { edit::KEY: ours }}),
+        )?;
+    }
+    Ok(())
+}
+
 /// Notes a link on the placed cabinet's component, so Edit can make it again.
 fn noted(other: &select::Cabinet, place: &str, name: &str, run: Run) -> Result<bool, String> {
     let about = run("component.metadata", json!({"component": name}))?;
@@ -459,6 +632,79 @@ fn noted(other: &select::Cabinet, place: &str, name: &str, run: Run) -> Result<b
         )?;
     }
     Ok(true)
+}
+
+/// A cut at world coordinates (#198): its feature's name, the board it goes into, its box in the
+/// world, and its diameter.
+type WorldCut = (String, String, [[f64; 3]; 2], f64);
+
+/// Every feature's name in the design's timeline.
+fn timeline_names(run: Run) -> Result<Vec<String>, String> {
+    let timeline = run(
+        "document.inspect",
+        json!({"bodies": false, "timeline": "summary"}),
+    )?;
+    Ok((timeline["timeline"].as_array().into_iter().flatten())
+        .filter_map(|f| f["name"].as_str().map(String::from))
+        .collect())
+}
+
+/// Each connector bolt's hole through both sides, named on each, and each side's counterbore
+/// (#198, #260). The names do not depend on the pick order, so a run again finds them.
+fn bolt_cuts(holes: &[base::Bolt]) -> Vec<WorldCut> {
+    let mut wanted = Vec::new();
+    for (sides, n, world, counterbores) in holes {
+        for (k, (side, what)) in sides.iter().zip(["bolt", "hole"]).enumerate() {
+            let other = &sides[1 - k];
+            let bolt = format!("{side} connector {what} {n} to {other}");
+            wanted.push((bolt, side.clone(), *world, base::BOLT_D));
+            let bore = format!("{side} connector counterbore {n} to {other}");
+            wanted.push((bore, side.clone(), counterbores[k], base::COUNTERBORE_D));
+        }
+    }
+    wanted
+}
+
+/// Cuts each of `wanted` as a cylinder along its box's odd size (the one that is not its
+/// diameter), in its cabinet's own component (`inside`), after the commands `cuts` already holds
+/// for that cabinet; one whose name is in `had` (a run again) is left as it is.
+// ponytail: a cut the cabinet does not remember: Edit cabinet makes its board whole again (run
+// it again), and a cabinet moved away keeps its old holes.
+fn cut_world(
+    now: &Value,
+    wanted: &[WorldCut],
+    had: &[String],
+    mut cuts: Vec<(String, Commands)>,
+    run: Run,
+) -> Result<(), String> {
+    let tree = run("component.list", json!({}))?;
+    for (feature, board, world, d) in wanted {
+        let cabinet = select::owner(now, board).unwrap_or_default().to_string();
+        if had.contains(feature) || cabinet.is_empty() {
+            continue;
+        }
+        let (corner, size) = worktop::local(*world, &edit::placement(&tree, &cabinet)?.1);
+        let off = |i: usize| (size[i] - d).abs();
+        let along = (0..3)
+            .max_by(|&a, &b| off(a).total_cmp(&off(b)))
+            .unwrap_or(0);
+        let base = [0, 1, 2].map(|i| corner[i] + if i == along { 0.0 } else { size[i] / 2.0 });
+        let mut axis = [0, 0, 0];
+        axis[along] = 1;
+        let args = json!({
+            "base": base.map(kit::mm), "axis": axis, "diameter": kit::mm(*d),
+            "height": kit::mm(size[along]), "operation": "cut", "targets": [board],
+            "name": feature,
+        });
+        match cuts.iter_mut().find(|c| c.0 == cabinet) {
+            Some(c) => c.1.push(("solid.cylinder", args)),
+            None => cuts.push((cabinet, vec![("solid.cylinder", args)])),
+        }
+    }
+    for (cabinet, commands) in cuts {
+        inside(&cabinet, commands, run)?;
+    }
+    Ok(())
 }
 
 /// Runs `commands` with the cabinet `name`'s component active. In a plugin run the app shifts
@@ -712,6 +958,215 @@ pub fn execute(entry: &str, params: &Value, run: Run) -> Result<Value, String> {
     Ok(summary)
 }
 
+/// mm per unit of the dialog's `units`.
+fn unit_mm(params: &Value) -> f64 {
+    if params["units"] == "in" {
+        25.4
+    } else {
+        1.0
+    }
+}
+
+/// Place: Along a line (#147). Reads the picked sketch line, edge or wall face (`line`), and
+/// with Width from line sets the width, with a Height from line pick (`height_line`) the height:
+/// over a sketch line's driving length dimension when it has one (named first if the app named
+/// it `d<n>`), so the cabinet follows it with no rebuild; else read now, and again by Apply
+/// settings. Returns the line, the way the front faces, and what the summary says about it.
+fn along_line(
+    params: &mut Value,
+    design: &Value,
+    run: Run,
+) -> Result<(line::Line, [f64; 2], String), String> {
+    let picked = params["line"][0].clone();
+    let tall = params["height_line"][0].clone();
+    // A command that fails ends the whole run, so a pick that is gone (Apply settings reads
+    // a remembered one) is refused here, where the caller can leave the cabinet standing.
+    let bodies = match [&picked, &tall].iter().any(|p| p["body"].is_string()) {
+        true => body_names(run)?,
+        false => Value::Null,
+    };
+    for pick in [&picked, &tall].into_iter().filter(|p| !p.is_null()) {
+        there(pick, design, &bodies)?;
+    }
+    let index = picked["index"].as_u64().unwrap_or(u64::MAX);
+    let (line, sketch) = match picked["type"].as_str() {
+        Some("external_sketch_curve") => {
+            let sketch = run("sketch.inspect", json!({"sketch": picked["sketch"]}))?;
+            let curve = picked["id"].as_str().unwrap_or_default();
+            let found = line::from_sketch(&sketch, curve)?;
+            (found, Some((sketch, curve.to_string())))
+        }
+        Some(kind @ ("edge" | "face")) => {
+            let body = json!({"body": picked["body"]});
+            let edges = run("model.edges", body.clone())?;
+            let faces = run("model.faces", body)?;
+            let found = match kind {
+                "edge" => line::from_edge(&edges, &faces, index)?,
+                _ => line::from_face(&edges, &faces, index)?,
+            };
+            (found, None)
+        }
+        _ => {
+            return Err(
+                "Along a line: pick a line (a sketch line, a model edge or a wall face)".into(),
+            )
+        }
+    };
+    let front = line::facing(&line, params["faces"] == "flip");
+    let start = params["start_at"].as_str().unwrap_or("left").to_string();
+    check(
+        matches!(start.as_str(), "left" | "right" | "middle"),
+        "start_at must be left, right or middle",
+    )?;
+    let scale = unit_mm(params);
+    let unit = if scale == 1.0 { "mm" } else { "in" };
+    let offset = num(params, "offset", 0.0)?;
+    let mut said = Vec::new();
+    if params["width_from_line"] == true {
+        // Drawer sizing works the width out from the boxes' inside: one or the other.
+        check(
+            params["sizing"] != "drawer",
+            "Width from line and Size by the drawers' inside don't go together: pick one",
+        )?;
+        let width = line::width(&line, &start, offset * scale);
+        check(width > 0.0, "the line is shorter than the offset")?;
+        params["width"] = json!((width / scale * 1e6).round() / 1e6);
+        params["sizing"] = json!("outside");
+        match follow(line.dimension.clone(), sketch, design, run)? {
+            Some(name) => {
+                let off = if start == "middle" {
+                    2.0 * offset.abs()
+                } else {
+                    offset
+                };
+                params["_line"]["width"] = json!(match off == 0.0 {
+                    true => name.clone(),
+                    false => format!("{name} - {off} {unit}"),
+                });
+                said.push(format!("width follows {name}"));
+            }
+            None => said.push("width read from the line".to_string()),
+        }
+    }
+    if !tall.is_null() {
+        let (length, dimension, sketch) = match tall["type"].as_str() {
+            Some("external_sketch_curve") => {
+                let sketch = run("sketch.inspect", json!({"sketch": tall["sketch"]}))?;
+                let curve = tall["id"].as_str().unwrap_or_default().to_string();
+                let (length, dimension) = line::sketch_length(&sketch, &curve)?;
+                (length, dimension, Some((sketch, curve)))
+            }
+            Some("edge") => {
+                let edges = run("model.edges", json!({"body": tall["body"]}))?;
+                let index = tall["index"].as_u64().unwrap_or(u64::MAX);
+                (line::edge_length(&edges, index)?, None, None)
+            }
+            _ => return Err("Height from line: pick a sketch line or an edge".into()),
+        };
+        params["height"] = json!((length / scale * 1e6).round() / 1e6);
+        match follow(dimension, sketch, design, run)? {
+            Some(name) => {
+                params["_line"]["height"] = json!(name);
+                said.push(format!("height follows {name}"));
+            }
+            None => said.push("height read from the line".to_string()),
+        }
+    }
+    let mut message = String::from("Placed along the line");
+    if !said.is_empty() {
+        message += &format!(", {}", said.join(", "));
+    }
+    message += ". Apply settings reads the line again after it changes";
+    Ok((line, front, message))
+}
+
+/// Whether a picked line's sketch (`document.inspect`'s `sketches`) or body (`body_names`) is
+/// still in the design.
+fn there(pick: &Value, design: &Value, bodies: &Value) -> Result<(), String> {
+    let found = match (pick["sketch"].as_u64(), pick["body"].as_str()) {
+        (Some(id), _) => (design["sketches"].as_array().into_iter().flatten())
+            .any(|s| s["id"].as_u64() == Some(id)),
+        (None, Some(body)) => {
+            (bodies["bodies"].as_array().into_iter().flatten()).any(|b| b["name"] == body)
+        }
+        (None, None) => true, // what it is, `along_line` says
+    };
+    check(found, "the picked line is no longer in the design")
+}
+
+/// A sketch line's driving dimension as the parameter to follow: named after the sketch and
+/// the line first when the app named it (`d1`). None without one.
+fn follow(
+    dimension: Option<String>,
+    sketch: Option<(Value, String)>,
+    design: &Value,
+    run: Run,
+) -> Result<Option<String>, String> {
+    let (Some(dimension), Some((sketch, curve))) = (dimension, sketch) else {
+        return Ok(None);
+    };
+    if !line::unnamed(&dimension) {
+        return Ok(Some(dimension));
+    }
+    let sketch_name = sketch["name"].as_str().unwrap_or("Line");
+    let name = line::dimension_name(sketch_name, &curve, design);
+    let rename = json!({"name": dimension, "new_name": name});
+    run("parameters.rename", rename)?;
+    Ok(Some(name))
+}
+
+/// Place Along a line's fields, which only a cabinet placed so keeps.
+const LINE_FIELDS: [&str; 6] = [
+    "line",
+    "height_line",
+    "start_at",
+    "offset",
+    "faces",
+    "width_from_line",
+];
+
+/// Whether a cabinet's params place it along a line it remembers.
+fn along(params: &Value) -> bool {
+    params["line"].as_array().is_some_and(|l| !l.is_empty())
+}
+
+/// Grounds a cabinet made on the origin and moves it along its line: turned to face the
+/// front, its translation expressions over its own width and depth (`Kit`'s `centre`), so it
+/// grows away from its Start at end. A grounded occurrence keeps following them only when it
+/// was grounded before the move (grounded after, it stays where it was).
+fn place_along(
+    occurrence: &Value,
+    summary: &mut Value,
+    params: &Value,
+    found: &(line::Line, [f64; 2], String),
+    run: Run,
+) -> Result<(), String> {
+    let (line, front, message) = found;
+    let start = params["start_at"].as_str().unwrap_or("left");
+    let offset = num(params, "offset", 0.0)? * unit_mm(params);
+    let centre = &summary["centre"];
+    let size = [0, 1].map(|i| centre[i].as_str().unwrap_or("0 mm").to_string());
+    let (at, degrees) = line::translate(line, *front, start, offset, [&size[0], &size[1]]);
+    run(
+        "occurrence.ground",
+        json!({"occurrence": occurrence, "grounded": true}),
+    )?;
+    if degrees != 0 {
+        run(
+            "occurrence.move",
+            json!({"occurrence": occurrence, "axis": [0, 0, 1],
+                "angle": format!("{degrees} deg"), "move_grounded": true}),
+        )?;
+    }
+    run(
+        "occurrence.move",
+        json!({"occurrence": occurrence, "space": "world", "translate": at, "move_grounded": true}),
+    )?;
+    summary["placed"] = json!("along the line");
+    summary["line"] = json!(message);
+    Ok(())
+}
+
 fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Value, String> {
     // One Cabinet dialog for both builders: a corner shape goes to the corner one, with the
     // fields it knows (its `doors` are the dialog's `corner_doors`), and is remembered as such.
@@ -734,8 +1189,11 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // Where it goes: on the origin, or against the cabinet that is selected.
             let mut place = params["place"].as_str().unwrap_or("origin");
             check(
-                matches!(place, "origin" | "auto" | "right" | "left" | "above"),
-                "place must be origin, auto, right, left or above",
+                matches!(
+                    place,
+                    "origin" | "auto" | "right" | "left" | "above" | "line"
+                ),
+                "place must be origin, auto, right, left, above or line",
             )?;
             let matching = match params["match"].as_str().unwrap_or("no") {
                 "no" => false,
@@ -755,7 +1213,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // Match selected with nothing picked or selected: the dialog hides the field then,
             // but still sends a value it had.
             let matching = matching && !picked.is_empty();
-            let measure = match matching || place != "origin" {
+            let measure = match matching || !matches!(place, "origin" | "line") {
                 true => picked_measure(&picked, run)?,
                 false => Value::Null,
             };
@@ -773,15 +1231,35 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             // A name that is taken gets the next free number: Cabinet, Cabinet 2, Cabinet 3.
             let name = params["name"].as_str().unwrap_or("Cabinet");
             params["name"] = json!(kit::free_name(name, &design));
-            if matching || place != "origin" {
+            // Against the selected cabinet: Auto settled above.
+            let beside_one = !matches!(place, "origin" | "line");
+            // Not along a line: no line fields, or Apply settings would place it along one.
+            if place != "line" {
+                if let Some(all) = params.as_object_mut() {
+                    for key in LINE_FIELDS {
+                        all.remove(key);
+                    }
+                }
+            }
+            // Along a line: read it now, as Width from line sizes the cabinet.
+            let along = match place {
+                "line" => Some(along_line(&mut params, &design, run)?),
+                _ => None,
+            };
+            if matching || beside_one {
                 let mut found = select::cabinet(&picked, &measure)?;
                 if matching {
                     params["_match"] = kit::matched(&found.name, &design)?;
+                    // the run's shared parameters, made and pointed at the first time
+                    let setup = params["_match"]["setup"].take();
+                    for step in setup.as_array().into_iter().flatten() {
+                        run(step[0].as_str().unwrap_or_default(), step[1].clone())?;
+                    }
                 }
                 // A panel on that side: the new cabinet stands beyond it, not linked, since the
                 // link holds the two sides' seats together.
                 beyond = matches!(place, "left" | "right") && found.with_panel(&measure, place);
-                if place != "origin" {
+                if beside_one {
                     beside = Some(found);
                 }
             }
@@ -790,6 +1268,10 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             }
             let (mut summary, made) = make(entry, &params, &design, run)?;
             let mut held = false;
+            if let Some(found) = &along {
+                place_along(&made["occurrence"], &mut summary, &params, found, run)?;
+                held = true; // grounded before the move, so it follows its sizes
+            }
             if let Some(other) = beside {
                 // Against that cabinet's side, or on top of it, turned the way it is turned.
                 let size = |key: &str| summary["size"][key].as_f64().unwrap_or(0.0);
@@ -869,8 +1351,27 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 let message = format!("{name}: nothing changed");
                 return Ok(json!({"name": name, "edited": false, "message": message}));
             }
-            let mut summary = rebuild(&name, &about, &entry, &params, &design, &measure, run)?;
+            // A width or height typed in Edit is the cabinet's own from now on, not the line's.
+            let mut params = params;
+            if changed.iter().any(|c| c == "width") {
+                params["width_from_line"] = json!(false);
+            }
+            if changed.iter().any(|c| c == "height") {
+                params["height_line"] = json!([]);
+            }
+            let tree = run("component.list", json!({}))?;
+            let base = reached_base(&about, &tree, run);
+            let mut summary = rebuild(
+                &name, &about, &entry, &params, &design, &measure, false, run,
+            )?;
             summary["edited"] = json!(true);
+            // A new size on a mobile base: the frame is numeric, so it is made again by a run of
+            // its own (#198), which an Edit has no room for in its 256 commands.
+            if let Some(base) = base.filter(|_| base::resized(&changed)) {
+                summary["base"] = json!(format!(
+                    "{base} still has its old frame: run Mobile base {base} again, or Apply settings, to fit it"
+                ));
+            }
             summary["changed"] = json!(changed);
             Ok(summary)
         }
@@ -889,6 +1390,11 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 }
                 _ => return Err("scope must be cabinet or parts".into()),
             };
+            // a glass door's pane stays glass
+            let bodies: Vec<String> = bodies
+                .into_iter()
+                .filter(|b| !fittings::is_glass(b))
+                .collect();
             if bodies.is_empty() {
                 return Err("select a cabinet or some of its parts first".into());
             }
@@ -940,6 +1446,208 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             params["side"] = json!(side);
             let bodies = panel(&name, &params, &measure, run)?;
             Ok(json!({"cabinet": name, "side": side, "bodies": bodies}))
+        }
+        "bolts" => {
+            // Connector bolts (#260) through the touching sides of the picked cabinets, as
+            // Mobile base drills them, without a base.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let names = body_names(run)?;
+            let mut cabinets: Vec<String> = Vec::new();
+            for body in select::picked(params, &design) {
+                let cabinet = select::owner(&names, &body)
+                    .ok_or(format!("`{body}` is not part of a cabinet"))?;
+                if !cabinets.iter().any(|c| c == cabinet) {
+                    cabinets.push(cabinet.to_string());
+                }
+            }
+            check(
+                cabinets.len() > 1,
+                "pick a board of each cabinet to bolt together: two or more, side by side",
+            )?;
+            let now = measured(names, &cabinets, run)?;
+            let holes = base::bolts(&now, &cabinets)?;
+            check(
+                !holes.is_empty(),
+                "no two of the picked cabinets stand side to side, touching",
+            )?;
+            cut_world(
+                &now,
+                &bolt_cuts(&holes),
+                &timeline_names(run)?,
+                Vec::new(),
+                run,
+            )?;
+            Ok(json!({"bolts": holes.len(), "cabinets": cabinets}))
+        }
+        "base" => {
+            // A mobile base (#101) under the picked cabinets: a frame on casters in a component
+            // of its own, at world coordinates like a worktop, and the cabinets stood on it.
+            // Run again with its name, it is made again (over the cabinets it remembers when
+            // none is picked), and the cabinets go up or down to its new top.
+            let design = run(
+                "document.inspect",
+                json!({"bodies": false, "timeline": false}),
+            )?;
+            let names = body_names(run)?;
+            let tree = run("component.list", json!({}))?;
+            let components: Vec<&str> = (tree["components"].as_array().into_iter().flatten())
+                .filter_map(|c| c["name"].as_str())
+                .collect();
+            let mut params = params.clone();
+            let name = params["name"].as_str().unwrap_or("Base").trim().to_string();
+            let mut cabinets: Vec<String> = Vec::new();
+            // A board of this base picked (#239): the cabinets picked beside it are added to the
+            // ones it stands under, not put in their place.
+            let ours = base::file(&name);
+            let mut adding = false;
+            for body in select::picked(&params, &design) {
+                if base::owner(&body, &[ours.as_str()]).is_some() {
+                    adding = true;
+                    continue;
+                }
+                let cabinet = select::owner(&names, &body)
+                    .ok_or(format!("`{body}` is not part of a cabinet"))?;
+                if !cabinets.iter().any(|c| c == cabinet) {
+                    cabinets.push(cabinet.to_string());
+                }
+            }
+            let again = components.contains(&name.as_str());
+            if again {
+                let about = run("component.metadata", json!({"component": name}))?;
+                let ours = &about["metadata"][edit::KEY];
+                check(
+                    ours["entry"] == "base",
+                    &format!("name: `{name}` is taken; choose another"),
+                )?;
+                if cabinets.is_empty() || adding {
+                    let all = ours["cabinets"].as_array().into_iter().flatten();
+                    let kept: Vec<String> =
+                        all.filter_map(|c| c.as_str().map(String::from)).collect();
+                    let new = cabinets.into_iter().filter(|c| !kept.contains(c));
+                    cabinets = kept.iter().cloned().chain(new).collect();
+                }
+            }
+            let measure = measured(names, &cabinets, run)?;
+            // a cabinet deleted since the base remembered it is left out
+            cabinets.retain(|c| select::named(&measure, c).is_ok());
+            let (plans, floors) = base::plans(&measure, &cabinets)?;
+            params["name"] = json!(name);
+            if base::timber(&params)?.is_some() {
+                params["material"] = json!(material::TIMBER.0);
+            }
+            let built = base::build(&params, &plans)?;
+            let lift = built.1["lift"].as_f64().unwrap_or(0.0);
+            if again {
+                release(&name, &tree, run)?;
+                run("component.delete", json!({"component": name}))?;
+            }
+            let tree = run("component.list", json!({}))?;
+            // ponytail: made in the active component at world coordinates, as a worktop is, so
+            // that component must stand on the origin, unturned.
+            let (mut summary, made) = component(built, &params, "Birch plywood", run)?;
+            run(
+                "occurrence.ground",
+                json!({"occurrence": made["occurrence"], "grounded": true}),
+            )?;
+            // The cabinets on the frame: each grounded one moved up by its own height to go; one
+            // held to its neighbour goes with it.
+            let mut raised = Map::new();
+            for (cabinet, floor) in cabinets.iter().zip(&floors) {
+                // to the micrometre: a board with holes measures a hair off
+                let up = ((lift - floor) * 1e3).round() / 1e3;
+                let (_, _, grounded) = edit::placement(&tree, cabinet)?;
+                if grounded && up.abs() > 1e-6 {
+                    run(
+                        "occurrence.move",
+                        json!({"occurrence": format!("{cabinet}:1"), "space": "world",
+                            "translate": [0, 0, up], "move_grounded": true}),
+                    )?;
+                }
+                raised.insert(cabinet.clone(), json!(up));
+            }
+            // Each must stand on the frame now: one held to a cabinet that is not on it (or
+            // not grounded and held by nothing) did not move, and the run is refused.
+            let now = measured(body_names(run)?, &cabinets, run)?;
+            let (_, after) = base::plans(&now, &cabinets)?;
+            for (cabinet, floor) in cabinets.iter().zip(after) {
+                check(
+                    (floor - lift).abs() < 0.5,
+                    &format!("`{cabinet}` did not go up onto the base: it is held to a cabinet that is not on it, or stands loose; pick that cabinet too, or ground `{cabinet}`"),
+                )?;
+            }
+            // Connector bolts through the sides that touch (#198), and screws into the frame.
+            let had = timeline_names(run)?;
+            let holes = base::bolts(&now, &cabinets)?;
+            // the frame's boards beside the cabinets, for the screws into it
+            let mut both = now.clone();
+            let frame = run("inspect.measure", json!({"bodies": summary["bodies"]}))?;
+            if let (Some(all), Some(boards)) =
+                (both["bodies"].as_array_mut(), frame["bodies"].as_array())
+            {
+                all.extend(boards.iter().cloned());
+            }
+            let screws = base::screws(&both, &cabinets, &name);
+            let mut wanted = bolt_cuts(&holes);
+            // A screw's name holds where it is, so a frame made again with other sizes finds its
+            // old holes stale: they are deleted, and the new ones cut.
+            for screw in &screws {
+                let (bottom, _, _, world) = screw;
+                wanted.push((
+                    base::screw_name(screw),
+                    bottom.clone(),
+                    *world,
+                    base::SCREW_D,
+                ));
+            }
+            let names: Vec<String> = wanted.iter().map(|w| w.0.clone()).collect();
+            let had_names: Vec<&str> = had.iter().map(String::as_str).collect();
+            let mut cuts: Vec<(String, Commands)> = Vec::new();
+            for cabinet in &cabinets {
+                let stale = base::stale_screws(&had_names, &names, cabinet);
+                if !stale.is_empty() {
+                    cuts.push((
+                        cabinet.clone(),
+                        vec![("timeline.delete", json!({"features": stale}))],
+                    ));
+                }
+            }
+            cut_world(&now, &wanted, &had, cuts, run)?;
+            summary["bolts"] = json!(holes.len());
+            summary["screws"] = json!(screws.len());
+            // Each cabinet on the frame that no neighbour holds is held to the base (#215), so it
+            // rides on it and Edit and Apply settings put it back on it.
+            let joints = run("joint.list", json!({}))?;
+            let tree = run("component.list", json!({}))?;
+            for cabinet in &cabinets {
+                if !edit::links(&tree, &joints, cabinet).iter().any(|l| l.1) {
+                    on_base(&name, cabinet, run)?;
+                }
+            }
+            let mut values = edit::remember("base", &params, &name);
+            values[edit::KEY]["cabinets"] = json!(cabinets);
+            run(
+                "component.metadata.set",
+                json!({"component": name, "values": values}),
+            )?;
+            // its dialog's values, for the hook to fill the dialog when a board of it is picked
+            let mut kept = params.clone();
+            if let Some(all) = kept.as_object_mut() {
+                all.remove("selection");
+                // a timber frame's material is no choice of the field
+                if base::timber(&params)?.is_some() {
+                    all.remove("material");
+                }
+            }
+            run(
+                "_put_blob",
+                json!({"name": base::file(&name), "data": kept}),
+            )?;
+            summary["cabinets"] = json!(cabinets);
+            summary["raised"] = Value::Object(raised);
+            Ok(summary)
         }
         "worktop" => {
             // A worktop over the selected cabinets, in a component of its own on the origin.
@@ -1124,7 +1832,22 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             params["_corners"] = Value::Object(corners);
             let params = &params;
             let mut list = cutlist::cutlist(&measure, &local, imperial, params)?;
-            list["hardware"] = cutlist::hardware(&measure, &design);
+            list["hardware"] = cutlist::hardware(&measure, &local, &design);
+            // Doors that meet another cabinet's front when both are open (#140), also in the CSV.
+            let clashes = cutlist::clashes(&measure, &design);
+            if let Some(text) = list["csv"].as_str() {
+                list["csv"] = json!(format!("{text}{}", cutlist::clash_csv(&clashes)));
+            }
+            list["clashes"] = json!(clashes);
+            // Prices from Woodwork settings: the estimate, and what has no price yet (#56).
+            let prices = params["prices"].as_str().unwrap_or_default();
+            list["cost"] = cost::estimate(&list, prices)?;
+            if !prices.trim().is_empty() {
+                let csv = cost::csv(&list["cost"]);
+                if let Some(text) = list["csv"].as_str().map(|t| t.to_string() + &csv) {
+                    list["csv"] = json!(text);
+                }
+            }
             if params["format"] == "dxf" && cutlist::file_name(entry, params)?.is_some() {
                 // The holes of each drilled board, for the DXF files: one command a board.
                 // ponytail: past the 256-command limit (less what this run used) the rest of
@@ -1296,7 +2019,10 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                       "message": message}),
             )
         }
-        "settings" => {
+        // `settings` (no manifest entry: the unit tests) and one entry a section, one storage
+        "settings" | "settings-general" | "settings-fronts" | "settings-doors"
+        | "settings-drawers" | "settings-plinth" | "settings-joinery" | "settings-cutlist"
+        | "settings-display" => {
             let stored = run("storage.get", json!({}))?;
             run(
                 "storage.patch",
@@ -1474,6 +2200,26 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
         };
         return Ok(edit::hidden(values, &design));
     }
+    // Mobile base (#239): a board of a base picked fills the dialog with that base's values.
+    if entry == "base" {
+        let field = select::picked(values, &Value::Null);
+        let picked = match field.is_empty() {
+            true => run("_selection", json!({}))
+                .map(|d| select::picked(values, &d))
+                .unwrap_or_default(),
+            false => field,
+        };
+        let stored = run("storage.get", json!({"plugin": "woodwork"})).unwrap_or_default();
+        let files: Vec<&str> = (stored["blobs"].as_array().into_iter().flatten())
+            .filter_map(|b| b["name"].as_str())
+            .filter(|n| n.starts_with("base/"))
+            .collect();
+        let Some(base) = picked.iter().find_map(|b| base::owner(b, &files)) else {
+            return Ok(json!({}));
+        };
+        let kept = run("_get_blob", json!({"name": format!("base/{base}.json")}));
+        return Ok(kept.map_or(json!({}), |k| base::fields(&k)));
+    }
     let stored = run("storage.get", json!({"plugin": "woodwork"}))?;
     // Apply settings: which cabinets the picked parts are, from our files' names (`storage.get`,
     // small: no design read for the 10M fuel), as the run resolves them.
@@ -1523,6 +2269,16 @@ pub fn dialog(entry: &str, values: &Value, run: Run) -> Result<Value, String> {
             reply["match"] = settings::matching(values, &design);
             if let Some(all) = reply.as_object_mut() {
                 all.extend(settings::matched_sizes(values, &design));
+            }
+            // A sketch line or a free edge selected (#212): Place Along a line, on it. Answered
+            // whatever Place is now, as a reply that drops a value puts the field back; a field
+            // the user changed keeps theirs.
+            if let Some(pick) = line::from_selection(values, &design) {
+                reply["place"] = json!({ "default": "line" });
+                reply["line"] = json!({ "default": [pick] });
+                // the other field Along a line shows that has no default: none (a script that
+                // left Place out is checked with it)
+                reply["height_line"] = json!({ "default": [] });
             }
             // Mode Auto, a new cabinet (`select::auto`): the Edit fields hidden, and the
             // hint says so. (The hook cannot set Mode: a reply that does is refused whole.)

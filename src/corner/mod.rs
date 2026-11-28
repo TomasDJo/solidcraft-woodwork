@@ -15,13 +15,17 @@ mod diagonal;
 mod doors;
 mod input;
 
-use crate::fittings::{self, PinRows, LEG_INSET, PIN_SETBACK, PITCH};
+use crate::fittings::{self, PinRows, CLIP, LEG_INSET, PIN_SETBACK, PITCH, STRIP, STRIP_SETBACK};
 use crate::joint::{Joinery, Joint, BOTTOM, CARCASS};
 use crate::kit::{mm, Kit};
 use crate::Commands;
 pub use input::hand;
 use input::Input;
 use serde_json::{json, Value};
+
+/// A face carrying shelves (`Corner::shelf_faces`): board, first row's place, way in, way to
+/// the second row, run.
+type ShelfFace = (String, [String; 2], [i32; 3], [i32; 3], String);
 
 // Split boards: two dowels across each joint, in from its ends far enough for the shortest
 // leg (`input` keeps it 100 mm or more).
@@ -38,6 +42,13 @@ struct Corner<'a> {
     split: bool, // the L-shaped boards as two dowelled boards
     handles: &'a str,
     handle_at: &'a str,
+    /// Grooved fronts and their spacing and depth parameters, on a cabinet with doors.
+    grooves: Option<(fittings::Grooves<'a>, [String; 2])>,
+    /// Shaker doors' frame width and panel thickness parameters.
+    eframe: Option<[String; 2]>,
+    glass: bool,          // glass doors: a pane in the frame
+    egap: Option<String>, // a grip edge's gap, the parameter
+    gap: f64,             // and in mm, 0 without one
     a: f64,
     b: f64,
     d: f64,
@@ -48,6 +59,7 @@ struct Corner<'a> {
     dr: f64,              // depth at the return's end: `d` on the L
     g: f64,               // the reveal around the doors, and its parameter
     inset: bool,          // the doors inside the opening, the shelves a panel back behind them
+    pilasters: bool,      // movable shelves on pilaster strips and clips, not pins (#264)
     er: String,
     ea: String,
     eb: String,
@@ -81,9 +93,14 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         dr,
         shelves,
         pins,
+        pilasters,
         on_return,
         handles,
         handle_at,
+        grooves,
+        frame,
+        grip_gap,
+        glass,
         right,
         diagonal,
         split,
@@ -115,8 +132,13 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         false => shortest[..3].iter().fold(f64::MAX, |a, b| a.min(*b)),
     };
     joinery.fits(CARCASS, shortest, p, "the shortest joint")?;
+    // As on the box cabinet: a plinth taken away sets its parameter to 0.
     let epl = match plinth > 0.0 {
         true => kit.parameter("plinth", plinth, "plinth height"),
+        false if kit.has("plinth") => {
+            kit.parameter("plinth", 0.0, "plinth height");
+            mm(0.0)
+        }
         false => mm(0.0),
     };
     // As on the box cabinet.
@@ -130,6 +152,9 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         true => kit.parameter_as("reveal", reveal, "gap around the doors", mm(reveal)),
         false => mm(reveal),
     };
+    let grooves = grooves.map(|g| (g, fittings::groove_sizes(&kit, &g)));
+    let eframe = frame.map(|f| fittings::frame_sizes(&kit, f));
+    let egap = grip_gap.map(|g| kit.parameter("grip_gap", g, "grip edge gap"));
     let emount = fittings::mount_sizes(&kit, wall_mount, mount_t, mount_h, &et);
     // A rail on each wall.
     let steel = wall_mount == "steel";
@@ -148,6 +173,11 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         split,
         handles,
         handle_at,
+        grooves,
+        eframe,
+        glass,
+        egap,
+        gap: grip_gap.unwrap_or(0.0),
         a,
         b,
         d,
@@ -158,6 +188,7 @@ pub fn build(p: &Value) -> Result<(Commands, Value), String> {
         dr,
         g: reveal,
         inset,
+        pilasters,
         er,
         ea,
         eb,
@@ -569,9 +600,17 @@ impl Corner<'_> {
                 None,
             );
         }
-        match pins {
-            true => self.pins(&elast),
-            false => Vec::new(),
+        match (pins, self.pilasters) {
+            (true, true) => {
+                let shelves: Vec<(String, String)> = (boards.iter())
+                    .filter(|b| b.0.starts_with("Shelf ") && !b.0.ends_with(" return"))
+                    .map(|b| (b.0.clone(), b.1.clone()))
+                    .collect();
+                self.strips(&ech, clear_h.round(), &shelves);
+                Vec::new()
+            }
+            (true, false) => self.pins(&elast),
+            _ => Vec::new(),
         }
     }
 
@@ -837,21 +876,13 @@ impl Corner<'_> {
         }
     }
 
-    /// Like the box cabinet's: one blind hole per panel, repeated up it and across to a
-    /// second row. Two rows in each end and in each back, 37 mm from the corners of a leg.
-    fn pins(&self, top_row: &str) -> Commands {
-        let Corner {
-            kit,
-            ea,
-            eb,
-            ed,
-            et,
-            epl,
-            ..
-        } = self;
+    /// The faces that carry the shelves: each end and each back, with the first pin row's place
+    /// on its inner face (37 mm from the corners of a leg, x before `point`), the way into the
+    /// board, the way to the second row, and the distance the two rows run over.
+    fn shelf_faces(&self) -> Vec<ShelfFace> {
+        let Corner { ea, eb, ed, et, .. } = self;
         let flip = self.flip();
         let (back_end, return_end) = self.ends();
-        let blind = fittings::blind_pin(et);
         // Behind inset doors the shelves, so the rows, end a panel further back.
         let (front, o) = match self.inset {
             true => (format!("{eb} - {ed} + {et}"), format!(" - {et}")),
@@ -872,32 +903,124 @@ impl Corner<'_> {
             format!("{front} + {}", mm(PIN_SETBACK)),
         );
         let wall_x = format!("{ea} - {et}");
-        // (panel, the first hole on its inner face, the way in, the way to the second row)
-        let rows = [
-            (back_end, [&wall_x, &far], [flip, 0, 0], [0, 1, 0]),
-            (return_end, [&near, et], [0, -1, 0], [flip, 0, 0]),
-            ("Back", [&near, &back_y], [0, 1, 0], [flip, 0, 0]),
-            ("Back return", [&back_x, &far], [-flip, 0, 0], [0, 1, 0]),
-        ];
-        let z = format!("{epl} + {et} + {}", mm(2.0 * PITCH));
         let (run, return_run) = (format!("{ed} - {et}{o}"), format!("{} - {et}{o}", self.edr));
+        vec![
+            (
+                back_end.to_string(),
+                [wall_x, far.clone()],
+                [flip, 0, 0],
+                [0, 1, 0],
+                run.clone(),
+            ),
+            (
+                return_end.to_string(),
+                [near.clone(), et.clone()],
+                [0, -1, 0],
+                [flip, 0, 0],
+                return_run,
+            ),
+            (
+                "Back".to_string(),
+                [near, back_y],
+                [0, 1, 0],
+                [flip, 0, 0],
+                run.clone(),
+            ),
+            (
+                "Back return".to_string(),
+                [back_x, far],
+                [-flip, 0, 0],
+                [0, 1, 0],
+                run,
+            ),
+        ]
+    }
+
+    /// Like the box cabinet's: one blind hole per panel, repeated up it and across to a
+    /// second row. Two rows in each end and in each back.
+    fn pins(&self, top_row: &str) -> Commands {
+        let Corner { kit, et, epl, .. } = self;
+        let blind = fittings::blind_pin(et);
+        let z = format!("{epl} + {et} + {}", mm(2.0 * PITCH));
         let mut drill = Vec::new();
-        for (part, [x, y], into, across) in rows {
+        for (part, [x, y], into, across, run) in self.shelf_faces() {
             let rows = PinRows {
-                part,
-                position: kit.at(&self.point(x), y, &z),
+                part: &part,
+                position: kit.at(&self.point(&x), &y, &z),
                 into,
                 depth: &blind,
                 across,
-                run: if part == return_end {
-                    &return_run
-                } else {
-                    &run
-                },
+                run: &run,
             };
             drill.extend(fittings::pin_rows(kit, top_row, rows));
         }
         fittings::shared_pin_rows(kit, drill)
+    }
+
+    /// Pilaster strips (#264), as the box cabinet's: on each face that carries shelves a dado
+    /// `STRIP` wide and deep on each pin row's line (the one by the opening `STRIP_SETBACK` in)
+    /// over the shelves' height, a strip model in
+    /// it, and under each shelf (`shelves`, their lower faces) a clip at the first strip and a
+    /// pattern of it to the second. `length` is the strips' in mm, for their names.
+    fn strips(&self, zone: &str, length: f64, shelves: &[(String, String)]) {
+        let Corner { kit, et, epl, .. } = self;
+        let [w, deep, out, high] = [STRIP[0], STRIP[1], CLIP[0], CLIP[1]].map(mm);
+        let base = format!("{epl} + {et}");
+        for (part, [x, y], into, across, run) in self.shelf_faces() {
+            let first = [self.point(&x), y];
+            let a = usize::from(into[0] == 0); // the axis into the board; `1 - a` is along the face
+                                               // The row by the opening stands `STRIP_SETBACK` in, clear of the hinge plates: a
+                                               // face along y starts at the front (first row), one along x at the wall (second).
+            let back = mm(STRIP_SETBACK - PIN_SETBACK);
+            let shift = if across[1] != 0 {
+                back.clone()
+            } else {
+                mm(0.0)
+            };
+            let spacing = format!("{run} - {} - {back}", mm(2.0 * PIN_SETBACK));
+            let target = [format!("{} {part}", kit.name)];
+            // one axis's low end and size: into the board, out of it (a clip), or across a row
+            let span = |at: &str, axis: usize, row: usize, way: i32, size: &str| match axis == a {
+                true if way > 0 => (at.to_string(), size.to_string()),
+                true => (format!("{at} - {size}"), size.to_string()),
+                false => {
+                    let sign = if across[axis] < 0 { "-" } else { "+" };
+                    let centre = format!("{at} {sign} ({shift} + {row}*({spacing}))");
+                    (format!("{centre} - {w}/2"), w.clone())
+                }
+            };
+            let rows = [("front", 0), ("back", 1)];
+            for (name, row) in rows {
+                let [(x0, sx), (y0, sy)] =
+                    [0, 1].map(|axis| span(&first[axis], axis, row, into[a], &deep));
+                let (corner, size) = ([x0.as_str(), &y0, &base], [sx.as_str(), &sy, zone]);
+                kit.panel(
+                    &format!("{part} pilaster dado {name}"),
+                    corner,
+                    size,
+                    Some(&target),
+                );
+                kit.model(
+                    &format!("{part} pilaster {name} ({length} mm)"),
+                    corner,
+                    size,
+                );
+            }
+            for (shelf, z) in shelves {
+                let clip = format!("{shelf} {part} clip");
+                let [(x0, sx), (y0, sy)] =
+                    [0, 1].map(|axis| span(&first[axis], axis, 0, -into[a], &out));
+                let z0 = format!("{z} - {high}");
+                kit.model(&clip, [&x0, &y0, &z0], [&sx, &sy, &high]);
+                kit.push((
+                    "solid.pattern.rectangular",
+                    json!({
+                        "bodies": [format!("{} {clip}", kit.name)], "name": format!("{} {clip}s", kit.name),
+                        "dir1": across, "count1": 2, "spacing1": spacing,
+                    }),
+                ));
+            }
+        }
     }
 }
 

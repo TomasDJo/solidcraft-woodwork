@@ -75,9 +75,63 @@ SHOTS = [
      [lambda: run("cabinet", {"doors": 2, "drawers": 1, "plinth": 100, "handles": "pull"})], ONE),
     ("fronts", "Fronts: overlay (left) cover the carcass edges, inset (right) sit inside it.",
      row("cabinet", [{"doors": 2, **BASE}, {"doors": 2, "fronts": "inset", **BASE}]), TWO),
+    ("grip-edges", "Grip edges on the doors (left) and finger grooves on the drawers (right): no handles.",
+     [*row("cabinet", [{"doors": 2, "plinth": 100, "handles": "grip"},
+                       {"drawers": 3, "plinth": 100, "handles": "groove"}]), drive("A Door R hinge", 100)],
+     cam([375, -100, 420], 2000, yaw=-0.5, pitch=0.4)),
+    ("grooved-fronts", "Grooved fronts: vertical square grooves on the doors (left), round horizontal ones on the drawers (right).",
+     row("cabinet", [{"doors": 2, **BASE, "front_style": "vertical"},
+                     {"drawers": 3, "plinth": 100, "handles": "grip", "front_style": "horizontal", "groove_shape": "round",
+                      "groove_spacing": 40}]), TWO),
+    ("v-grooves", "V-grooved fronts: vertical V grooves on the doors (left), horizontal ones on the drawers (right).",
+     row("cabinet", [{"doors": 2, **BASE, "front_style": "vertical", "groove_shape": "v"},
+                     {"drawers": 3, "plinth": 100, "handles": "grip", "front_style": "horizontal", "groove_shape": "v",
+                      "groove_spacing": 40}]), TWO),
+    ("shaker-fronts", "Shaker fronts: a frame of stiles and rails round a thinner panel, on doors and drawers.",
+     row("cabinet", [{"doors": 2, **BASE, "front_style": "shaker"},
+                     {"drawers": 2, **BASE, "front_style": "shaker"}]), TWO),
+    ("glass-fronts", "Glass doors: the shaker frame round a glass pane, the shelf behind it showing.",
+     [lambda: run("cabinet", {"doors": 2, **BASE, "front_style": "glass"})], ONE),
     ("open", "Doors and drawers open on their joints, with the hinge and slide models.",
      [lambda: run("cabinet", {"doors": 1, "drawers": 1, **BASE}),
       drive("Cabinet Door hinge", 100), drive("Cabinet Drawer 1 slide", 350)], cam([0, -200, 380], 2400, yaw=-0.9)),
+    ("drawer-heights", "Lower drawer sides and an even lower back, the box's front full height.",
+     [lambda: run("cabinet", {"drawers": 2, "plinth": 100, "handles": "pull", "drawer_side_height": 100,
+                              "drawer_back_height": 70}),
+      drive("Cabinet Drawer 2 slide", 400)], cam([0, -250, 600], 1500, yaw=-0.6, pitch=0.5)),
+    ("drawer-back-taller", "Low finger-jointed sides and a back taller than them.",
+     [lambda: run("settings", {"drawer_joints": "finger"}),
+      lambda: run("cabinet", {"drawers": 2, "plinth": 100, "handles": "pull", "drawer_side_height": 100,
+                              "drawer_back_height": 200}),
+      drive("Cabinet Drawer 2 slide", 400)], cam([0, -250, 600], 1500, yaw=-0.6, pitch=0.5)),
+    ("hinge-model", "A hinge model: the cup and its rim in the door, the boss and arm, and the cross-shaped plate on the side.",
+     [lambda: run("cabinet", {"doors": 1}), drive("Cabinet Door hinge", 100)],
+     cam([-265, -270, 610], 700, yaw=-0.9, pitch=0.3)),
+    ("integrated-fronts", "Integrated drawer fronts with finger joints: the box's own front is the front.",
+     [lambda: run("settings", {"drawer_front": "integrated", "drawer_joints": "finger"}),
+      lambda: run("cabinet", {"drawers": 3, "plinth": 100, "handles": "pull"}), drive("Cabinet Drawer 2 slide", 350)],
+     cam([0, -250, 420], 1600, yaw=-0.7, pitch=0.35)),
+    ("divider-hinges", "Three doors: the end ones hinge on the sides, the middle one on a divider with half overlay hinges.",
+     [lambda: run("cabinet", {"width": 900, "height": 720, "depth": 320, "dividers": 2, "doors": 3, "door_hinge": "right", "shelves": 1,
+                              "handles": "pull"}),
+      drive("Cabinet Door 1 hinge", 30), drive("Cabinet Door 2 hinge", 95)], cam([0, -200, 360], 1450, yaw=0.6, pitch=0.3)),
+    ("double-dividers", "Double dividers: the middle door hangs on its own board with standard hinges.",
+     [lambda: run("settings", {"double_dividers": "yes"}),
+      lambda: run("cabinet", {"width": 900, "height": 720, "depth": 320, "dividers": 2, "doors": 3, "door_hinge": "right",
+                              "shelves": 1, "handles": "pull"}),
+      drive("Cabinet Door 1 hinge", 30), drive("Cabinet Door 2 hinge", 95)], cam([0, -200, 360], 1450, yaw=0.6, pitch=0.3)),
+    ("bottom-tab", "Bottom tab: inset fronts stand on each drawer's bottom, which sticks out past them to pull by.",
+     [lambda: run("settings", {"drawer_bottom": 12}),
+      lambda: run("cabinet", {"drawers": 3, "plinth": 100, "handles": "tab"}), drive("Cabinet Drawer 2 slide", 250)],
+     cam([0, -300, 150], 900, yaw=-0.3, pitch=0.15)),
+    ("pilaster-strips", "Shelves on pilaster strips: a strip at the front and back of each side, four clips under each shelf, the front strip behind the doors' hinge plates.",
+     [lambda: run("settings", {"see_through": "on"}),
+      lambda: run("cabinet", {"doors": 2, "shelves": 2, "shelf_pins": True, "shelf_support": "strips", **BASE}),
+      drive("Cabinet Door L hinge", 100), drive("Cabinet Door R hinge", 100)],
+     cam([-150, -200, 450], 700, yaw=-0.9, pitch=0.3)),
+    ("bottom-groove", "A drawer cut through: its bottom sits in a groove 10 mm up in the box front, sides and back.",
+     [lambda: run("cabinet", {"drawers": 2})],
+     [*cam([0, -260, 40], 250, yaw=-1.5, pitch=0.15), "--section", "YZ"]),
     ("sink", "A sink base: two rails instead of a top, no shelves.",
      [lambda: run("cabinet", {"kind": "sink", "doors": 2, **BASE})], cam([0, 0, 380], 2100, pitch=0.6)),
     ("plinths", "Plinth types: board, notched sides, legs and casters.",
@@ -92,6 +146,13 @@ SHOTS = [
     ("wood-runners", "Wooden runners: each drawer's bottom runs in a groove in the sides.",
      [lambda: run("settings", {"slide_type": "wood", "drawer_bottom": 9}), lambda: run("cabinet", {"drawers": 3})],
      [*cam([-100, 0, 420], 1000, yaw=-0.3, pitch=0.1), "--section", "y=150,flip"]),
+    ("strip-runners", "Strip runners: each drawer's bottom rests on a wooden strip on each side, no groove.",
+     [lambda: run("settings", {"slide_type": "strips", "drawer_bottom": 9}), lambda: run("cabinet", {"drawers": 3})],
+     [*cam([-100, 0, 420], 1000, yaw=-0.3, pitch=0.1), "--section", "y=150,flip"]),
+    ("false-back", "Runner drawers cut through: each box's false back at four fifths of its depth.",
+     [lambda: run("settings", {"slide_type": "wood", "drawer_bottom": 9}),
+      lambda: run("cabinet", {"drawers": 3, "plinth": 100, "handles": "pull"})],
+     [*cam([0, 0, 420], 1400, yaw=-1.2), "--section", "YZ"]),
     ("corner", "An L-shaped corner cabinet with a pair of folding doors.",
      [lambda: run("corner", {"doors": "hinged left", **BASE})], CORNER),
     ("corner-diagonal", "A diagonal corner cabinet: one door across the corner.",
@@ -103,6 +164,75 @@ SHOTS = [
       lambda: run("cabinet", {"name": "B", "place": "auto", "drawers": 3, "plinth": 100, "handles": "pull"}),
       pick("B Side R"), lambda: run("cabinet", {"name": "C", "place": "auto", "doors": 1, **BASE})],
      cam([600, 0, 380], 3000, yaw=-0.4)),
+    ("line", "Along a line: two cabinets against a wall's face, from its left and right ends.",
+     [{"command": "solid.box", "params": {"name": "Wall", "body_name": "Wall", "corner": [-1000, 300, 0],
+                                          "length": 2000, "width": 100, "height": 1200}},
+      lambda: run("cabinet", {"name": "A", "doors": 2, **BASE, "place": "line", "offset": 150,
+                              "line": [{"type": "face", "body": "Wall", "index": 3}]}),
+      lambda: run("cabinet", {"name": "B", "drawers": 3, "plinth": 100, "handles": "pull", "place": "line",
+                              "start_at": "right", "offset": 150,
+                              "line": [{"type": "face", "body": "Wall", "index": 3}]})],
+     cam([0, 0, 450], 3200, yaw=-0.4)),
+    ("line-fill", "Width from line: one cabinet fills the wall between two side walls.",
+     [*[{"command": "solid.box", "params": {"name": n, "body_name": n, "corner": c, "length": l, "width": w, "height": 1200}}
+        for n, c, l, w in (("Wall", [-800, 300, 0], 1600, 100), ("Wall L", [-900, -400, 0], 100, 800),
+                           ("Wall R", [800, -400, 0], 100, 800))],
+      lambda: run("cabinet", {"name": "A", "doors": 2, "dividers": 1, **BASE, "place": "line", "width_from_line": True,
+                              "line": [{"type": "face", "body": "Wall", "index": 3}]})],
+     cam([0, 0, 450], 3000, yaw=-0.35)),
+    ("match-run", "A matched run: three cabinets sized by their shared group, Run_A_height set to 850 mm.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "match": "selected", "drawers": 3, "handles": "pull"}),
+      pick("B Side R"),
+      lambda: run("cabinet", {"name": "C", "place": "auto", "match": "selected", "doors": 1, "handles": "knob"}),
+      {"command": "parameters.change", "params": {"name": "Run_A_height", "expression": "850 mm"}}],
+     cam([600, 0, 420], 3000, yaw=-0.4)),
+    ("cost", "The cut list's PDF with a cost estimate from the prices in Woodwork settings.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "drawers": 3, "plinth": 100, "handles": "pull"}),
+      lambda: run("settings", {"prices": "Birch plywood 18 = 80; Birch plywood 6 = 35; Banding = 0.5; "
+                                         "Hinge = 3.2; Drawer slide = 12; Shelf pin = 0.1; Knob = 2.5"})],
+     "pdf"),
+    ("base", "A mobile base: one frame on locking casters under a run of two cabinets.",
+     [lambda: run("cabinet", {"name": "A", "doors": 2, "handles": "knob", "height": 760}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "drawers": 3, "handles": "pull", "height": 760}),
+      pick("A Side L", "B Side L"), lambda: run("base", {"name": "Bench"})],
+     cam([300, 0, 500], 3000, yaw=-0.4, pitch=0.12)),
+    ("base-timber", "A mobile base of 48 x 98 mm timber under a cabinet, bought in running metres.",
+     [lambda: run("cabinet", {"name": "A", "width": 600, "doors": 2, "handles": "knob", **BASE, "plinth": 0}), pick("A Side L"),
+      lambda: run("base", {"name": "Cart", "frame_material": "timber"})],
+     cam([0, 0, 380], 1700, yaw=-0.5, pitch=0.12)),
+    ("base-stiffeners", "A long base seen from below: stiffeners across the frame and casters spaced evenly between the corners.",
+     [lambda: run("cabinet", {"name": "A", "width": 800, "shelves": 0, "doors": 2, **BASE, "plinth": 0}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "width": 800, "shelves": 0, "doors": 2, **BASE, "plinth": 0}),
+      pick("B Side R"),
+      lambda: run("cabinet", {"name": "C", "place": "auto", "width": 800, "shelves": 0, "doors": 2, **BASE, "plinth": 0}),
+      pick("A Side L", "B Side L", "C Side L"), lambda: run("base", {"name": "Bench"})],
+     cam([800, 0, 100], 3400, yaw=-0.5, pitch=-0.55)),
+    ("base-bolts", "Connector bolts: four 9 mm holes through the touching sides of two cabinets on a base, seen through the boards.",
+     [lambda: run("cabinet", {"name": "A", "width": 600, "shelves": 0, **BASE}), pick("A Side R"),
+      lambda: run("cabinet", {"name": "B", "place": "auto", "width": 600, "shelves": 0, **BASE}),
+      pick("A Side L", "B Side L"), lambda: run("base", {"name": "Bench"}),
+      lambda: run("settings", {"see_through": "on"})],
+     cam([300, 0, 550], 1400, yaw=-0.9, pitch=0.15)),
+    ("base-screws", "Frame screws: two holes down through the cabinet's bottom into each frame board under it, seen through the boards.",
+     [lambda: run("cabinet", {"name": "A", "width": 600, "shelves": 0, "doors": 0, **BASE, "plinth": 0}), pick("A Side L"),
+      lambda: run("base", {"name": "Bench"}), lambda: run("settings", {"see_through": "on"})],
+     cam([0, 0, 200], 1500, yaw=-0.5, pitch=0.9)),
+    ("tool-bolts", "Bolt holes for the tool's feet: four 8 mm holes through the tool's shelf, seen through the opening.",
+     [lambda: run("cabinet", {"name": "S", "width": 900, "depth": 650, "shelves": 0, "doors": 2, **BASE}), pick("S Top"),
+      lambda: run("worktop", {"tool": "benchtop", "tool_width": 640, "tool_depth": 540, "tool_height": 300,
+                              "tool_x": 450, "tool_y": 345, "bolt_x": 400, "bolt_y": 300})],
+     cam([0, 0, 450], 1600, yaw=-0.3, pitch=1.45)),
+    ("side-wing", "A side wing: the worktop carried on 600 mm past the run's right end, on two legs.",
+     [lambda: run("cabinet", {"name": "S", "width": 900, "shelves": 0, "doors": 2, **BASE}), pick("S Top"),
+      lambda: run("worktop", {"wing": "right", "wing_length": 600})],
+     cam([300, 0, 450], 2300)),
+    ("fold-wing", "A fold-down wing, half way down on its hinge at the end of the worktop.",
+     [lambda: run("cabinet", {"name": "S", "width": 900, "shelves": 0, "doors": 2, **BASE}), pick("S Top"),
+      lambda: run("worktop", {"wing": "right", "wing_length": 400, "wing_support": "fold"}),
+      drive("Worktop Wing hinge", 45)],
+     cam([300, 0, 450], 2300)),
     ("panel", "Panel: an end panel on the right, a filler with its return on the left.",
      [lambda: run("cabinet", {"name": "A", "doors": 2, **BASE}), pick("A Side R"), lambda: run("panel", {"kind": "end"}),
       pick("A Side L"), lambda: run("panel", {"kind": "filler", "width": 50})], ONE),
@@ -124,7 +254,33 @@ SHOTS = [
 ]
 
 
+def draw_pdf(name, steps):
+    """The cut list saved as a PDF (in a profile of its own, with its folder approved), its
+    hardware and cost tables drawn with PyMuPDF."""
+    import fitz
+    sys.path.insert(0, str(ROOT / "tests"))
+    from helpers import own_profile
+    folder = ROOT / "dist" / "cost-picture"
+    with own_profile(folder) as install:
+        install["params"]["approve"]["folders"].append(
+            {"name": "cutlists", "path": str(folder), "read": False, "write": True})
+        steps = [step() if callable(step) else step for step in steps]
+        cli([install, *flat(steps), run("cutlist", {"file": "Cost", "diagrams": "no"})])
+        page = next(p for p in fitz.open(folder / "Cost.pdf") if p.search_for("Hardware"))
+        top = page.search_for("Hardware")[0].y0 - 12
+        bottom = max(b[3] for b in page.get_text("blocks")) + 12
+        clip = fitz.Rect(0, top, page.rect.width, bottom)
+        shot = page.get_pixmap(clip=clip, matrix=fitz.Matrix(SIZE[0] / page.rect.width, SIZE[0] / page.rect.width))
+        png = folder / "shot.png"
+        shot.save(png)
+    from PIL import Image
+    Image.open(png).convert("RGB").quantize(128).save(OUT / f"{name}.png", optimize=True)
+    print(f"{name}.png  {(OUT / f'{name}.png').stat().st_size // 1024} KB")
+
+
 def draw(name, steps, options):
+    if options == "pdf":
+        return draw_pdf(name, steps)
     script = flat([step() if callable(step) else step for step in steps])
     with tempfile.TemporaryDirectory(dir=ROOT / "dist") as folder:
         path, png = Path(folder) / "script.json", Path(folder) / "shot.png"

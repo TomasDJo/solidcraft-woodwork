@@ -107,7 +107,11 @@ pub fn cup_holes(
     // modelled.
     let cut = kit.models == "cut" && crank.is_some();
     for (j, z) in cups.iter().enumerate() {
-        let what = format!("hinge cup {}", j + 1);
+        // A half overlay hinge's cups say so, for the cut list's hardware.
+        let what = match crank == Some(HALF_OVERLAY) {
+            true => format!("hinge cup {} (half overlay)", j + 1),
+            false => format!("hinge cup {}", j + 1),
+        };
         if !cut {
             fittings::hole(kit, door, at(z), into, "HW_cup_d", "HW_cup_depth", &what);
         }
@@ -174,17 +178,7 @@ pub const SLIDE_UNDER: &str = "HW slide under";
 /// bottom stands above the sides' lower edge for it.
 pub const UNDER_SIZE: [f64; 2] = [12.0, 14.0];
 pub const UNDER_RECESS: f64 = 13.0;
-// ponytail: `browser.visibility` set in a plugin run is not kept (0.46.1; the same command
-// through the CLI is), so the definitions stand just under the floor (their tops 1 mm below
-// it), turned half round so that they reach forward from 15 mm in front of the back of a
-// 560 mm deep cabinet on the origin: under the first cabinet's back, away from the fronts
-// that are looked at through see-through boards. No view from above sees them (from below
-// they show), and Fit frames about 3 % wider than without them. A slide longer than 530 mm
-// reaches out in front. A hidden flag upstream would do better.
-/// Where `HOME` stands: a row-major 3 x 4 placement, half a turn about Z.
-const HIDDEN: [f64; 12] = [
-    -1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 265.0, 0.0, 0.0, 1.0, -25.0,
-];
+/// Where `HOME` stands, hidden (`lib.rs` `component`). An older design's stood under the floor.
 const ORIGIN: [f64; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
 // The models' sizes in mm, from a common hinge (35 mm cup, 0 mm cruciform plate on the 37/32
@@ -194,6 +188,16 @@ const ORIGIN: [f64; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
 pub const PLATE_SIZE: [f64; 3] = [8.5, 40.0, 48.0];
 /// The arm: thickness off the plate, length back from the door's back face, height.
 pub const ARM_SIZE: [f64; 3] = [11.0, 52.0, 16.0];
+/// The cup's rim on the door's back face: diameter and thickness (#140).
+const RIM: [f64; 2] = [40.0, 1.5];
+/// The hinge's boss over the cup, where the arm's links pivot: length back from the door,
+/// height (as thick as the arm) (#140).
+const BOSS: [f64; 2] = [14.0, 26.0];
+/// The cruciform plate's wings over the two screw holes: depth along the side and thickness
+/// off it; as high as the plate. Its middle, which carries the arm, is as high as the arm.
+const WINGS: [f64; 2] = [12.0, 3.0];
+/// How far the rim and the boss stand off the door's back face.
+const LIFT: f64 = 0.1;
 /// How far the cup's centre is inside the side's inner face on a full overlay door (22.5 mm
 /// in from the edge, 18 mm sides, 2 mm reveal): where a straight arm's plate is. A cranked arm
 /// (9.5 for half overlay, on a divider; 18 for inset) reaches that much further.
@@ -206,6 +210,9 @@ pub const MEMBERS: [(&str, f64, f64); 3] = [
     (SLIDE_DRAWER, 4.0, 35.0),
 ];
 
+/// A half overlay hinge's crank, for a door that covers half of a divider.
+pub const HALF_OVERLAY: f64 = 9.5;
+
 /// The hinge model for an arm cranked `crank` mm: 0 (straight, full overlay), 9.5 or 18.
 pub fn hinge(crank: f64) -> String {
     match crank {
@@ -215,11 +222,12 @@ pub fn hinge(crank: f64) -> String {
 }
 
 /// The slide types, as the `slide_type` field names them, and as the cut list does.
-pub const SLIDE_TYPES: [(&str, &str); 6] = [
+pub const SLIDE_TYPES: [(&str, &str); 7] = [
     ("partial", "partial extension"),
     ("full", "full extension"),
     ("over", "over-travel"),
     ("wood", "dado runners"),
+    ("strips", "strip runners"),
     ("under_partial", "undermount partial extension"),
     ("under_full", "undermount full extension"),
 ];
@@ -325,7 +333,17 @@ pub fn is_model(body: &str) -> bool {
         .rsplit_once(" (")
         .filter(|(_, n)| n.trim_end_matches(')').parse::<u32>().is_ok());
     let body_of = copy.map_or(body, |(name, _)| name);
-    [HINGE, SLIDE].iter().any(|m| body.starts_with(m)) || body_of.ends_with(" fastener")
+    [HINGE, SLIDE].iter().any(|m| body.starts_with(m))
+        || [" fastener", " clip"].iter().any(|e| body_of.ends_with(e))
+        || strip_length(body).is_some()
+}
+
+/// A pilaster strip model's length, from its name `<board> pilaster <row> (<length> mm)` (#264).
+/// Only the name's end counts, so the boards of a cabinet called `Oak pilaster cabinet` are none.
+pub fn strip_length(body: &str) -> Option<&str> {
+    let (head, length) = body.strip_suffix(')')?.rsplit_once(" (")?;
+    let mm = length.strip_suffix(" mm")?.parse::<f64>().is_ok();
+    (mm && head.contains(" pilaster ")).then_some(length)
 }
 
 /// Takes the models out of `inspect.measure`'s reply: they are not boards, nor part of any
@@ -374,8 +392,8 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
         commands.push(create(HOME));
     } else {
         // In a plugin run a body made in a moved component lands shifted by where it stands
-        // (as a hole does, see `inside` in lib.rs): so `HOME` goes back to the origin while
-        // a definition is added, and under the floor again after.
+        // (as a hole does, see `inside` in lib.rs), and an older design's `HOME` stood under
+        // the floor: so it goes back to the origin, and stays there.
         commands.push(at(ORIGIN));
         commands.push(activate(HOME));
     }
@@ -385,8 +403,15 @@ pub fn definitions(tree: &Value, wanted: &[String]) -> Commands {
         commands.push(activate(HOME));
     }
     commands.push(activate("root"));
-    commands.push(at(HIDDEN));
     commands
+}
+
+/// `HOME`'s placement's occurrence id in `tree` (`component.list`'s reply), if it is there.
+pub fn home(tree: &Value) -> Value {
+    let all = tree["components"].as_array().into_iter().flatten();
+    (all.filter(|c| c["name"] == HOME))
+        .find_map(|c| c["occurrences"].get(0).map(|o| o["id"].clone()))
+        .unwrap_or_default()
 }
 
 /// A model's body, about its own origin, its -Y into the board it sits on and its -X towards
@@ -428,14 +453,35 @@ fn shape(model: &str) -> Commands {
         )];
     }
     let [plate_t, plate_d, plate_h] = PLATE_SIZE;
+    // a part joined to the model's first one
+    let joined = |mut part: Value, what: &str| {
+        part["operation"] = json!("join");
+        part["targets"] = json!([model]);
+        part["name"] = json!(format!("{model} {what}"));
+        part.as_object_mut().map(|a| a.remove("body_name"));
+        part
+    };
     match model {
-        PLATE => vec![(
-            "solid.box",
-            block(
-                [&mm(-plate_d / 2.0), &mm(0.0), &mm(-plate_h / 2.0)],
-                [&mm(plate_d), &mm(plate_t), &mm(plate_h)],
-            ),
-        )],
+        // A cruciform plate: its middle along the side carries the arm, its wings up and down
+        // hold the two screws.
+        PLATE => {
+            let mid_h = ARM_SIZE[2];
+            let [wing_d, wing_t] = WINGS;
+            let wings = block(
+                [&mm(-wing_d / 2.0), &mm(0.0), &mm(-plate_h / 2.0)],
+                [&mm(wing_d), &mm(wing_t), &mm(plate_h)],
+            );
+            vec![
+                (
+                    "solid.box",
+                    block(
+                        [&mm(-plate_d / 2.0), &mm(0.0), &mm(-mid_h / 2.0)],
+                        [&mm(plate_d), &mm(plate_t), &mm(mid_h)],
+                    ),
+                ),
+                ("solid.box", joined(wings, "wings")),
+            ]
+        }
         _ => {
             let crank: f64 = model
                 .strip_prefix("HW hinge crank ")
@@ -449,15 +495,28 @@ fn shape(model: &str) -> Commands {
             // into the cup, so the two are one body, back to the plate's end.
             let [arm_t, arm_l, arm_h] = ARM_SIZE;
             let x0 = plate_t - ARM_REACH - crank;
-            let mut arm = block(
+            let arm = block(
                 [&mm(x0), &mm(-1.0), &mm(-arm_h / 2.0)],
                 [&mm(arm_t), &mm(arm_l + 1.0), &mm(arm_h)],
             );
-            arm["operation"] = json!("join");
-            arm["targets"] = json!([model]);
-            arm["name"] = json!(format!("{model} arm"));
-            arm.as_object_mut().map(|a| a.remove("body_name"));
-            vec![("solid.cylinder", cup), ("solid.box", arm)]
+            // the rim on the door's back face, outside the cup hole, and the boss over the cup
+            // where the arm starts, both `LIFT` off the door (joined through the arm), so `cut`
+            // cuts only the cup: on the face itself they split the cup hole's face
+            let rim = json!({
+                "base": [mm(0.0), mm(LIFT), mm(0.0)], "axis": [0, 1, 0],
+                "diameter": mm(RIM[0]), "height": mm(RIM[1]),
+            });
+            let [boss_l, boss_h] = BOSS;
+            let boss = block(
+                [&mm(x0), &mm(LIFT), &mm(-boss_h / 2.0)],
+                [&mm(arm_t), &mm(boss_l), &mm(boss_h)],
+            );
+            vec![
+                ("solid.cylinder", cup),
+                ("solid.box", joined(arm, "arm")),
+                ("solid.cylinder", joined(rim, "rim")),
+                ("solid.box", joined(boss, "boss")),
+            ]
         }
     }
 }
@@ -511,7 +570,7 @@ pub fn cost(commands: &Commands) -> usize {
     let shared = if used(commands) { PARAMETERS.len() } else { 0 };
     let definitions = match copies {
         0 => 0,
-        _ => definitions(&json!({}), &wanted(commands)).len() + 2, // and back to the user's component; one more when `HOME` is there already
+        _ => definitions(&json!({}), &wanted(commands)).len() + 2, // hidden and back to the user's component; one more when `HOME` is there already
     };
     commands.len() + copies + 2 * cuts + usize::from(cuts > 0) + shared + definitions
 }

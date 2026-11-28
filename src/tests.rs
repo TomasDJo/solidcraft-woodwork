@@ -264,15 +264,24 @@ fn a_panel_is_made_in_its_cabinet_and_kept() {
 
 #[test]
 fn settings_patch_then_show_and_the_hook_names_our_data() {
-    assert_eq!(
-        calls("settings"),
-        [
-            "storage.get",
-            "storage.patch",
-            "storage.get",
-            "material.list"
-        ]
-    );
+    // the internal entry and every section's (Doors since #211)
+    for entry in [
+        "settings",
+        "settings-fronts",
+        "settings-doors",
+        "settings-display",
+    ] {
+        assert_eq!(
+            calls(entry),
+            [
+                "storage.get",
+                "storage.patch",
+                "storage.get",
+                "material.list"
+            ],
+            "{entry}"
+        );
+    }
     let mut asked = Vec::new();
     let mut run = |command: &str, args: Value| {
         asked.push(json!([command, args]));
@@ -285,6 +294,37 @@ fn settings_patch_then_show_and_the_hook_names_our_data() {
     assert_eq!(asked.len(), 2);
     assert_eq!(reply["material"]["default"], "MDF");
     assert_eq!(reply["match"], json!({"visible": false}));
+}
+
+#[test]
+fn a_selected_sketch_line_sets_place_line_and_the_line_in_the_hook() {
+    // #212: the design's selection, a sketch line: Place Along a line, on it
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => json!({"bodies": ["A Side L"], "selection": [
+                {"type": "sketch_curve", "sketch": 2, "id": "l1"}]}),
+            _ => json!({}),
+        })
+    };
+    let reply = dialog("cabinet", &json!({"mode": "new"}), &mut run).unwrap();
+    assert_eq!(reply["place"], json!({"default": "line"}));
+    let pick = json!({"type": "external_sketch_curve", "sketch": 2, "id": "l1"});
+    assert_eq!(reply["line"], json!({"default": [pick]}));
+    assert_eq!(reply["height_line"], json!({"default": []}));
+    // a cabinet's board selected: no answer for Place, so it stays Auto
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => {
+                json!({"bodies": ["A Side L"], "selection": [{"name": "A Side L"}]})
+            }
+            _ => json!({}),
+        })
+    };
+    let reply = dialog("cabinet", &json!({"mode": "new"}), &mut run).unwrap();
+    assert!(
+        reply.get("place").is_none() && reply.get("line").is_none(),
+        "{reply}"
+    );
 }
 
 #[test]
@@ -744,4 +784,494 @@ fn mode_auto_says_a_refused_change_when_editing_and_when_new() {
     assert_eq!(reply["mode"]["hint"], "Auto: a new cabinet", "{reply}");
     let text = reply["doors"]["hint"].as_str().unwrap_or_default();
     assert!(text.contains("dividers + 1 = 1 here"), "{reply}");
+}
+
+#[test]
+fn a_cabinet_not_along_a_line_remembers_no_line() {
+    // A script's stale line fields with Place At the origin: not kept, or Apply settings would
+    // move the cabinet onto that line.
+    let mut kept = Value::Null;
+    let mut run = |command: &str, args: Value| {
+        if command == "component.metadata.set" {
+            kept = args["values"].clone();
+        }
+        Ok(json!({}))
+    };
+    let params = json!({"place": "origin", "line": [{"type": "edge", "body": "Wall", "index": 1}],
+        "height_line": [], "start_at": "right", "offset": 5, "faces": "flip", "width_from_line": true});
+    execute("cabinet", &params, &mut run).unwrap();
+    let remembered = &kept[edit::KEY]["params"];
+    for key in LINE_FIELDS {
+        assert!(remembered.get(key).is_none(), "{key}: {remembered}");
+    }
+}
+
+#[test]
+fn along_a_line_names_its_dimension_and_sizes_the_width_by_it() {
+    // A sketch line 1200 long in an inch design's dialog: the offset is in inches, the app's
+    // `d1` is renamed after the sketch, and the width is an expression over it.
+    let sketch = json!({
+        "name": "Wall line",
+        "curves": [{"id": "l1", "type": "line", "start": "l1.start", "end": "l1.end"}],
+        "points": [{"id": "l1.start", "world": [0.0, 0.0, 0.0]}, {"id": "l1.end", "world": [1200.0, 0.0, 0.0]}],
+        "constraints": [{"type": "length", "l": 0, "param": "d1"}],
+    });
+    let mut called: Vec<(String, Value)> = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        called.push((command.to_string(), args));
+        Ok(sketch.clone())
+    };
+    let mut params = json!({"units": "in", "offset": 2, "start_at": "left", "width_from_line": true,
+        "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
+    let design = json!({"params": [], "sketches": [{"id": 1}, {"id": 2}]});
+    let (_, front, follows) = along_line(&mut params, &design, &mut run).unwrap();
+    assert_eq!(front, [0.0, -1.0]);
+    assert!(follows.contains("width follows Wall_line_l1"), "{follows}");
+    assert_eq!(called[0].0, "sketch.inspect");
+    assert_eq!(
+        called[1],
+        (
+            "parameters.rename".into(),
+            json!({"name": "d1", "new_name": "Wall_line_l1"})
+        )
+    );
+    assert_eq!(params["_line"]["width"], "Wall_line_l1 - 2 in");
+    // (1200 mm - 2 in) in inches, rounded
+    assert_eq!(params["width"], json!(45.244094));
+    // a dimension already named is used as it is; no pick, or drawer sizing, is refused
+    let mut named = sketch.clone();
+    named["constraints"][0]["param"] = json!("Run");
+    let mut run = |_: &str, _: Value| Ok(named.clone());
+    let mut p = json!({"width_from_line": true, "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}],
+        "height_line": [{"type": "external_sketch_curve", "sketch": 2, "id": "l1"}]});
+    let (_, _, said) = along_line(&mut p, &design, &mut run).unwrap();
+    assert_eq!(p["_line"]["width"], "Run");
+    // Height from line: as tall as that line, following its dimension
+    assert_eq!(
+        (p["height"].clone(), p["_line"]["height"].clone()),
+        (json!(1200.0), json!("Run"))
+    );
+    assert!(said.contains("height follows Run"), "{said}");
+    let mut p = json!({"width_from_line": true, "sizing": "drawer",
+        "line": [{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]});
+    assert!(along_line(&mut p, &design, &mut run)
+        .unwrap_err()
+        .contains("drawers' inside"));
+    let mut p = json!({"line": []});
+    assert!(along_line(&mut p, &design, &mut run)
+        .unwrap_err()
+        .contains("pick a line"));
+    let pick = json!([{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]);
+    let mut p = json!({"width_from_line": true, "offset": 1300, "line": pick});
+    let err = along_line(&mut p, &design, &mut run).unwrap_err();
+    assert!(err.contains("shorter than the offset"), "{err}");
+    // a sketch no longer in the design: refused before any command, which would end the run
+    let mut p = json!({"line": [{"type": "external_sketch_curve", "sketch": 7, "id": "l1"}]});
+    let err = along_line(&mut p, &design, &mut run).unwrap_err();
+    assert!(err.contains("no longer in the design"), "{err}");
+    let mut p = json!({"start_at": "end", "line": pick});
+    let err = along_line(&mut p, &design, &mut run).unwrap_err();
+    assert!(err.contains("start_at must be"), "{err}");
+}
+
+#[test]
+fn apply_settings_says_why_a_cabinet_stayed_off_its_line() {
+    // A cabinet along a line whose sketch is gone: built again where it stood, with the reason
+    // in the reply's `lines` (end to end: tests/test_place.py, with the wall suppressed).
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "document.inspect" => json!({"sketches": [], "params": [
+                {"name": "B_width", "value": 600.0}, {"name": "B_height", "value": 720.0},
+                {"name": "B_depth", "value": 560.0}, {"name": "B_thickness", "value": 18.0}]}),
+            "inspect.measure" => json!({"bodies": [{"name": "B Side L"}]}),
+            "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet",
+                "params": {"name": "B", "line": [{"type": "external_sketch_curve", "sketch": 7, "id": "l1"}]}}}}),
+            "component.list" => json!({"active": 0, "components": [{"name": "B", "occurrences": [
+                {"id": 1, "parent": 0, "transform": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}]}]}),
+            "joint.list" => json!({"joints": []}),
+            _ => json!({}),
+        })
+    };
+    let reply = apply(&json!({}), &json!({}), true, true, &mut run).unwrap();
+    assert_eq!(reply["applied"], json!(["B"]), "{reply}");
+    let why = reply["lines"]["B"].as_str().unwrap_or_default();
+    assert!(
+        why.contains("no longer in the design") && why.contains("left where it stood"),
+        "{reply}"
+    );
+}
+
+#[test]
+fn a_base_refuses_a_cabinet_that_would_not_stand_on_it() {
+    // B is held to a cabinet that is not picked (not grounded): it does not move, so the run is
+    // refused, naming B, and nothing is left made
+    let side = |name: &str, x: f64| json!({"name": name, "bbox": {"min": [x, 0.0, 0.0], "max": [x + 18.0, 560.0, 720.0]}});
+    let bodies = json!({"bodies": [side("B Side L", 0.0), side("B Side R", 582.0)]});
+    let mut run = |command: &str, _: Value| {
+        Ok(match command {
+            "inspect.measure" => bodies.clone(),
+            "component.list" => json!({"active": 0, "components": [{"name": "B", "occurrences": [
+                {"id": 1, "parent": 0, "grounded": false,
+                 "transform": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]}]}]}),
+            _ => json!({}),
+        })
+    };
+    let params = json!({"name": "Bench", "selection": ["B Side L"]});
+    let err = execute("base", &params, &mut run).unwrap_err();
+    assert!(err.contains("`B` did not go up onto the base"), "{err}");
+}
+
+/// `component.list` with cabinet A (occurrence 7, at x 100, y 200, z 170) and the base Bench (3).
+fn on_a_base() -> Value {
+    let at = json!([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [100, 200, 170, 1]]);
+    json!({"components": [
+        {"name": "A", "occurrences": [{"id": 7, "transform": at, "grounded": true}]},
+        {"name": "Bench", "occurrences": [{"id": 3, "grounded": true}]},
+    ]})
+}
+
+#[test]
+fn a_cabinet_is_held_to_its_base_and_notes_it() {
+    let mut asked = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        asked.push(json!([command, args]));
+        Ok(match command {
+            "component.list" => on_a_base(),
+            "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet"}}}),
+            _ => json!({}),
+        })
+    };
+    on_base("Bench", "A", &mut run).unwrap();
+    let find = |name: &str| asked.iter().find(|a| a[0] == name).map(|a| a[1].clone());
+    // no longer grounded: it rides on the base
+    assert_eq!(
+        find("occurrence.ground").unwrap(),
+        json!({"occurrence": "A:1", "grounded": false})
+    );
+    let joint = find("joint.create").unwrap();
+    assert_eq!(
+        (&joint["type"], &joint["name"]),
+        (&json!("rigid"), &json!("A link"))
+    );
+    assert_eq!(
+        (&joint["a"]["occurrence"], &joint["b"]["occurrence"]),
+        (&json!("Bench:1"), &json!("A:1"))
+    );
+    // both frames at the cabinet's origin, so nothing moves
+    assert_eq!(joint["a"]["frame"]["origin"], json!([100.0, 200.0, 170.0]));
+    let noted = find("component.metadata.set").unwrap();
+    assert_eq!(
+        noted["values"][edit::KEY]["link"],
+        json!({"to": "Bench", "place": "base"})
+    );
+}
+
+#[test]
+fn only_a_base_still_there_places_a_cabinet_again() {
+    let noted = |to: &str, place: &str| json!({"metadata": {edit::KEY: {"link": {"to": to, "place": place}}}});
+    let tree = on_a_base();
+    assert_eq!(live_base(&noted("Bench", "base"), &tree), Some("Bench"));
+    // a base deleted since: the cabinet goes back as it stood alone (its line, if any)
+    assert_eq!(live_base(&noted("Gone", "base"), &tree), None);
+    // a link to a neighbour is not a base's
+    assert_eq!(live_base(&noted("Bench", "right"), &tree), None);
+    assert_eq!(live_base(&json!({}), &tree), None);
+}
+
+#[test]
+fn a_cabinet_beside_one_on_a_base_reaches_that_base() {
+    let noted = |to: &str, place: &str| json!({"metadata": {edit::KEY: {"link": {"to": to, "place": place}}}});
+    let tree = on_a_base();
+    // B is beside A, A on Bench; C and D are placed against each other (a loop)
+    let mut run = |_: &str, args: Value| {
+        Ok(match args["component"].as_str() {
+            Some("A") => noted("Bench", "base"),
+            Some("C") => noted("D", "right"),
+            Some("D") => noted("C", "right"),
+            _ => json!({}),
+        })
+    };
+    assert_eq!(
+        reached_base(&noted("A", "right"), &tree, &mut run),
+        Some("Bench".into())
+    );
+    assert_eq!(
+        reached_base(&noted("Bench", "base"), &tree, &mut run),
+        Some("Bench".into())
+    );
+    assert_eq!(reached_base(&noted("C", "right"), &tree, &mut run), None);
+    assert_eq!(reached_base(&json!({}), &tree, &mut run), None);
+}
+
+#[test]
+fn a_base_made_again_grounds_the_cabinets_it_held_first() {
+    let mut asked = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        asked.push(json!([command, args]));
+        Ok(match command {
+            "joint.list" => json!({"joints": [{"name": "A link", "a": 3, "b": 7}]}),
+            _ => json!({}),
+        })
+    };
+    release("Bench", &on_a_base(), &mut run).unwrap();
+    assert_eq!(
+        asked[1],
+        json!(["occurrence.ground", {"occurrence": "A:1", "grounded": true}])
+    );
+    assert_eq!(asked.len(), 2);
+}
+
+/// An app with cabinet A (occurrence 7) on the base Bench (occurrence 3), held by `A link`, A
+/// placed along the sketch line `l1` and noted as held to Bench; `base` false leaves Bench out
+/// of the design. Each call is kept with its arguments.
+fn on_bench(
+    base: bool,
+    called: &mut Vec<(String, Value)>,
+) -> impl FnMut(&str, Value) -> Result<Value, String> + '_ {
+    let side = |name: &str, x: f64| json!({"name": name, "bbox": {"min": [x, -280, 170], "max": [x + 18.0, 280, 890]}});
+    let square = json!([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 170, 1]]);
+    let mut components = vec![
+        json!({"id": 1, "name": "A", "occurrences": [{"id": 7, "parent": 0, "transform": square, "grounded": false}]}),
+    ];
+    if base {
+        components.push(json!({"id": 2, "name": "Bench", "occurrences": [{"id": 3, "parent": 0, "transform": square, "grounded": true}]}));
+    }
+    let line = json!([{"type": "external_sketch_curve", "sketch": 1, "id": "l1"}]);
+    move |command: &str, args: Value| {
+        called.push((command.to_string(), args.clone()));
+        Ok(match command {
+            "document.inspect" => json!({"selection": [{"name": "A Side L"}], "params": [],
+                "sketches": [{"id": 1, "name": "Wall line"}],
+                "bodies": [{"name": "A Side L"}, {"name": "A Side R"}]}),
+            "inspect.measure" => {
+                json!({"bodies": [side("A Side L", 0.0), side("A Side R", 582.0)]})
+            }
+            "sketch.inspect" => json!({
+                "curves": [{"id": "l1", "type": "line", "start": "l1.start", "end": "l1.end"}],
+                "points": [{"id": "l1.start", "world": [0.0, 500.0, 0.0]}, {"id": "l1.end", "world": [1200.0, 500.0, 0.0]}],
+                "constraints": []}),
+            "component.metadata" if args["component"] == "Bench" => {
+                json!({"metadata": {edit::KEY: {"entry": "base", "params": {"name": "Bench"}, "cabinets": ["A"]}}})
+            }
+            "component.metadata" => json!({"metadata": {edit::KEY: {"entry": "cabinet",
+                "params": {"name": "A", "doors": 1, "line": line, "start_at": "left"},
+                "link": {"to": "Bench", "place": "base"}}}}),
+            "component.list" => json!({"components": components}),
+            "joint.list" => json!({"joints": [{"name": "A link", "a": 3, "b": 7}]}),
+            _ => json!({}),
+        })
+    }
+}
+
+#[test]
+fn edit_of_a_cabinet_on_a_base_holds_it_there_not_on_its_line() {
+    let dialog = json!({"doors": 2, "width": 600, "drawers": 0, "handles": "none", "plinth": "yes",
+        "shelf_pins": false, "labels": "no", "fronts": "overlay"});
+    let mut called = Vec::new();
+    execute("edit", &dialog, &mut on_bench(true, &mut called)).unwrap();
+    // back where it stood (the base's height), not moved onto its line, and held to the base
+    let moved_onto_line = called
+        .iter()
+        .any(|(c, a)| c == "occurrence.move" && a.get("translate").is_some());
+    assert!(!moved_onto_line, "placed along its line");
+    assert!(called
+        .iter()
+        .any(|(c, a)| c == "occurrence.move" && a.get("to_matrix").is_some()));
+    let link = called
+        .iter()
+        .find(|(c, a)| c == "joint.create" && a["name"] == "A link")
+        .map(|c| &c.1);
+    assert_eq!(
+        link.map(|a| &a["a"]["occurrence"]),
+        Some(&json!("Bench:1")),
+        "{called:?}"
+    );
+    // the base gone: the line places it again, and nothing holds it to a base
+    let mut called = Vec::new();
+    execute("edit", &dialog, &mut on_bench(false, &mut called)).unwrap();
+    assert!(called
+        .iter()
+        .any(|(c, a)| c == "occurrence.move" && a.get("translate").is_some()));
+    assert!(!called
+        .iter()
+        .any(|(c, a)| c == "joint.create" && a["name"] == "A link"));
+}
+
+#[test]
+fn mobile_base_run_again_grounds_what_it_held_before_deleting_itself() {
+    let mut called = Vec::new();
+    let _ = execute(
+        "base",
+        &json!({"name": "Bench"}),
+        &mut on_bench(true, &mut called),
+    );
+    let at = |command: &str, args: Value| called.iter().position(|c| c.0 == command && c.1 == args);
+    let grounded = at(
+        "occurrence.ground",
+        json!({"occurrence": "A:1", "grounded": true}),
+    );
+    let deleted = at("component.delete", json!({"component": "Bench"}));
+    assert!(grounded.is_some() && deleted.is_some(), "{called:?}");
+    assert!(grounded < deleted, "grounded after the base was deleted");
+}
+
+#[test]
+fn apply_settings_puts_a_cabinet_on_a_base_back_on_its_line_and_the_base_under_it() {
+    // Edit: the base holds it; Apply settings with the line read: the line, then a new base
+    assert_eq!(
+        on_base_or_line(Some("Bench"), false, true),
+        (Some("Bench"), None)
+    );
+    assert_eq!(
+        on_base_or_line(Some("Bench"), true, true),
+        (None, Some("Bench"))
+    );
+    // a line that cannot be read: the base holds it, also in Apply settings
+    assert_eq!(
+        on_base_or_line(Some("Bench"), true, false),
+        (Some("Bench"), None)
+    );
+    assert_eq!(on_base_or_line(None, true, true), (None, None));
+}
+
+#[test]
+fn apply_settings_puts_a_cabinet_on_a_base_back_on_its_line_then_makes_the_base_again() {
+    let mut called = Vec::new();
+    let _ = execute(
+        "rebuild",
+        &json!({"selection": []}),
+        &mut on_bench(true, &mut called),
+    );
+    let onto_line =
+        (called.iter()).position(|(c, a)| c == "occurrence.move" && a.get("translate").is_some());
+    let base_again =
+        (called.iter()).position(|(c, a)| c == "component.delete" && a["component"] == "Bench");
+    assert!(onto_line.is_some() && base_again.is_some(), "{called:?}");
+    assert!(onto_line < base_again);
+}
+
+#[test]
+fn apply_settings_says_why_a_line_was_not_read_for_a_cabinet_on_a_base() {
+    // the line's sketch deleted: A stays on its base, and Apply settings' `lines` says why
+    let mut called = Vec::new();
+    let mut inner = on_bench(true, &mut called);
+    let mut run = |command: &str, args: Value| match command {
+        "document.inspect" => Ok(json!({"selection": [], "params": [], "sketches": [],
+            "bodies": [{"name": "A Side L"}, {"name": "A Side R"}]})),
+        _ => inner(command, args),
+    };
+    let reply = execute("rebuild", &json!({"selection": []}), &mut run).unwrap();
+    let said = reply["lines"]["A"].as_str().unwrap_or_default();
+    assert!(
+        said.contains("no longer in the design") && said.contains("left where it stood"),
+        "{reply}"
+    );
+    drop(inner);
+    // held to the base again, not placed along the line; and the base made again under it, as
+    // Apply settings does for every base (#198), so its frame follows a resize
+    assert!(called
+        .iter()
+        .any(|(c, a)| c == "joint.create" && a["a"]["occurrence"] == "Bench:1"));
+    assert!(!called
+        .iter()
+        .any(|(c, a)| c == "occurrence.move" && a.get("translate").is_some()));
+    assert!(called
+        .iter()
+        .any(|(c, a)| c == "component.delete" && a["component"] == "Bench"));
+}
+
+#[test]
+fn connector_bolt_cuts_keep_their_names_skip_what_is_there_and_bore_across_the_side() {
+    // #260: one bolt between A Side R and B Side L, as base::bolts gives it
+    let hole = [[582.0, 135.5, 345.5], [618.0, 144.5, 354.5]];
+    let bores = [
+        [[582.0, 130.0, 340.0], [588.0, 150.0, 360.0]],
+        [[612.0, 130.0, 340.0], [618.0, 150.0, 360.0]],
+    ];
+    let bolt = (
+        ["A Side R".to_string(), "B Side L".to_string()],
+        1,
+        hole,
+        bores,
+    );
+    let wanted = bolt_cuts(&[bolt]);
+    let names: Vec<&str> = wanted.iter().map(|w| w.0.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "A Side R connector bolt 1 to B Side L",
+            "A Side R connector counterbore 1 to B Side L",
+            "B Side L connector hole 1 to A Side R",
+            "B Side L connector counterbore 1 to A Side R",
+        ]
+    );
+    // cut in each cabinet at the origin; the bolt already in the timeline is left as it is
+    let side = |name: &str, x: f64| json!({"name": name, "bbox": {"min": [x, 0, 170], "max": [x + 18.0, 560, 890]}});
+    let now = json!({"bodies": [side("A Side L", 0.0), side("A Side R", 582.0),
+        side("B Side L", 600.0), side("B Side R", 1182.0)]});
+    let square = json!([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]);
+    let tree = json!({"components": [
+        {"id": 1, "name": "A", "occurrences": [{"id": 2, "parent": 0, "transform": square}]},
+        {"id": 3, "name": "B", "occurrences": [{"id": 4, "parent": 0, "transform": square}]}]});
+    let mut cylinders: Vec<Value> = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        if command == "solid.cylinder" {
+            cylinders.push(args);
+        }
+        Ok(match command {
+            "component.list" => tree.clone(),
+            _ => json!({}),
+        })
+    };
+    let had = ["A Side R connector bolt 1 to B Side L".to_string()];
+    cut_world(&now, &wanted, &had, Vec::new(), &mut run).unwrap();
+    let cut: Vec<&str> = cylinders
+        .iter()
+        .filter_map(|c| c["name"].as_str())
+        .collect();
+    assert_eq!(cut.len(), 3, "{cut:?}");
+    assert!(!cut.contains(&"A Side R connector bolt 1 to B Side L"));
+    // a 6 x 20 x 20 counterbore runs along x, 6 deep, not along a 20 mm size
+    let bore = (cylinders.iter())
+        .find(|c| c["name"] == "A Side R connector counterbore 1 to B Side L")
+        .unwrap();
+    assert_eq!(bore["axis"], json!([1, 0, 0]));
+    assert_eq!(
+        (bore["height"].as_str(), bore["diameter"].as_str()),
+        (Some("6 mm"), Some("20 mm"))
+    );
+}
+
+#[test]
+fn the_hardware_definitions_are_hidden_where_they_are_made() {
+    // `HOME`'s placement: a new one by `component.create`'s reply, an existing one from the tree
+    let hidden = |components: Value| {
+        let mut called: Vec<(String, Value)> = Vec::new();
+        let mut run = |command: &str, args: Value| {
+            called.push((command.to_string(), args.clone()));
+            Ok(match command {
+                "component.list" => json!({"active": 0, "components": components.clone()}),
+                "component.create" if args["name"] == hardware::HOME => json!({"occurrence": 9}),
+                _ => json!({}),
+            })
+        };
+        let copy = ("occurrence.copy", json!({"component": hardware::HINGE}));
+        let _ = component(
+            (vec![copy], json!({"name": "Cabinet"})),
+            &json!({}),
+            "",
+            &mut run,
+        );
+        (called.into_iter())
+            .filter(|c| c.0 == "browser.visibility")
+            .map(|c| c.1)
+            .collect::<Vec<_>>()
+    };
+    let hide = |id: i64| vec![json!({"visible": false, "paths": [[id]]})];
+    assert_eq!(hidden(json!([{"name": "Untitled"}])), hide(9));
+    let home = json!({"name": hardware::HOME, "occurrences": [{"id": 4}]});
+    assert_eq!(hidden(json!([{"name": "Untitled"}, home])), hide(4));
+    // all there already: nothing made, nothing hidden again
+    let hinge = json!({"name": hardware::HINGE});
+    assert!(hidden(json!([{"name": "Untitled"}, home, hinge])).is_empty());
 }

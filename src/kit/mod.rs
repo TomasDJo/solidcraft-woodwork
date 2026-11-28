@@ -73,26 +73,77 @@ pub fn free_name(name: &str, design: &Value) -> String {
 /// legs, or made before it was a field) keeps the dialog's.
 pub const MATCHED: [&str; 5] = ["height", "depth", "thickness", "plinth", "plinth_setback"];
 
+///
+/// Shared groups (#137): each matched size points at a parameter of the run, `Run_<A>_<key>`,
+/// not at the selected cabinet's own. The first match makes it (with the selected cabinet's
+/// expression) and points that cabinet's parameter at it too: `setup`, the commands `lib.rs`
+/// runs before the build. A cabinet already in a run (its parameter is just a `Run_` name)
+/// shares that one. So deleting any cabinet of the run breaks none of the others.
 pub fn matched(cabinet: &str, design: &Value) -> Result<Value, String> {
     let from = prefix(cabinet);
-    let mut values = serde_json::Map::new();
+    let all: Vec<&Value> = design["params"].as_array().into_iter().flatten().collect();
+    let taken = |n: &str| all.iter().any(|p| p["name"] == n);
+    let (mut values, mut names, mut setup) =
+        (serde_json::Map::new(), serde_json::Map::new(), vec![]);
     for key in MATCHED {
         let id = format!("{from}_{key}");
-        let all = design["params"].as_array().into_iter().flatten();
-        let found = all.into_iter().find(|p| p["name"] == id.as_str());
-        if let Some(v) = found.and_then(|p| p["value"].as_f64()) {
-            values.insert(key.into(), json!(v));
-        }
+        let Some(found) = all.iter().find(|p| p["name"] == id.as_str()) else {
+            continue;
+        };
+        let Some(v) = found["value"].as_f64() else {
+            continue;
+        };
+        values.insert(key.into(), json!(v));
+        let expression = found["expression"].as_str().unwrap_or_default().trim();
+        let group = match expression.starts_with("Run_") && taken(expression) {
+            true => expression.to_string(),
+            false => {
+                let stem = format!("Run_{from}_{key}");
+                let group = (1..)
+                    .map(|i| {
+                        if i == 1 {
+                            stem.clone()
+                        } else {
+                            format!("{stem}_{i}")
+                        }
+                    })
+                    .find(|n| !taken(n))
+                    .unwrap_or(stem);
+                let comment = format!("shared by the cabinets matched to {cabinet}");
+                // An expression over the cabinet's own parameters (`A_height - 300 mm`) would
+                // tie the run to that cabinet: the run takes its value instead.
+                // ponytail: a value, not the expression rewritten over the run's names.
+                let shared = match names_own(expression, &from) {
+                    true => format!("{v} mm"),
+                    false => expression.to_string(),
+                };
+                setup.push(json!(["parameters.add", {"name": group, "expression": shared, "comment": comment}]));
+                setup.push(json!(["parameters.change", {"name": id, "expression": group}]));
+                group
+            }
+        };
+        names.insert(key.into(), json!(group));
     }
     check(
         values.contains_key("height"),
         &format!("`{cabinet}` has no parameters to match"),
     )?;
-    Ok(json!({"prefix": from, "values": values}))
+    Ok(json!({"prefix": from, "values": values, "names": names, "setup": setup}))
+}
+
+/// Whether an expression names one of the cabinet `prefix`'s parameters (`A_height`, not
+/// `BA_height` or `Tall`).
+fn names_own(expression: &str, prefix: &str) -> bool {
+    let own = format!("{prefix}_");
+    expression.match_indices(&own).any(|(i, _)| {
+        let before = expression[..i].chars().next_back();
+        !before.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+    })
 }
 
 pub struct Kit {
     link: Value,     // `_match`, or null
+    line: Value,     // `_line`: a size's expression over a picked line's dimension (#147)
     existing: Value, // `_existing`: the parameters an edited cabinet already has, in mm
     labels: bool,    // write each board's name and size on it
     /// `hardware_models`: on, off or cut (`crate::hardware::model`)
@@ -107,6 +158,9 @@ pub struct Kit {
     commands: RefCell<Commands>,
     bodies: RefCell<Vec<String>>,
     joints: RefCell<Vec<String>>,
+    /// A front made of several boards (`fittings::front`): its part and the boards, which every
+    /// hole into the part cuts (`targets`).
+    pieces: RefCell<Vec<(String, Vec<String>)>>,
 }
 
 impl Kit {
@@ -142,6 +196,7 @@ impl Kit {
             unit,
             scale,
             link: p.get("_match").cloned().unwrap_or_default(),
+            line: p.get("_line").cloned().unwrap_or_default(),
             existing: p.get("_existing").cloned().unwrap_or_default(),
             labels: p.get("labels").and_then(Value::as_bool).unwrap_or(false),
             models,
@@ -150,6 +205,7 @@ impl Kit {
             commands: RefCell::default(),
             bodies: RefCell::default(),
             joints: RefCell::default(),
+            pieces: RefCell::default(),
         })
     }
 
@@ -190,8 +246,12 @@ impl Kit {
         // A cabinet that is built again keeps its parameters, and whatever they are linked
         // to: one is only touched when the edit gave it another value.
         if let Some(now) = self.existing.get(key).and_then(Value::as_f64) {
-            if (now - mm_value).abs() > 1e-6 {
-                let expression = length;
+            // A size from a line keeps the line's expression: one already over it differs from
+            // the value read only by its rounding (an inch value to 1e-6 in, 1e-5 mm off).
+            let over = self.line[key].as_str();
+            let tolerance = if over.is_some() { 1e-3 } else { 1e-6 };
+            if (now - mm_value).abs() > tolerance {
+                let expression = over.map_or(length, String::from);
                 self.push((
                     "parameters.change",
                     json!({"name": id, "expression": expression}),
@@ -199,10 +259,16 @@ impl Kit {
             }
             return id;
         }
-        // A matched size is the selected cabinet's parameter: change it there, both follow.
-        let expression = match self.link["values"].get(key) {
-            Some(_) => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
-            None => length,
+        // A matched size is the run's parameter: change it there, the whole run follows.
+        // Width from line: the line's dimension, so the cabinet follows it.
+        let expression = match (self.link["values"].get(key), self.line[key].as_str()) {
+            // the run's shared parameter (#137), else (an older `_match`) the selected cabinet's
+            (Some(_), _) => match self.link["names"][key].as_str() {
+                Some(group) => group.to_string(),
+                None => format!("{}_{key}", self.link["prefix"].as_str().unwrap_or_default()),
+            },
+            (None, Some(over)) => over.to_string(),
+            (None, None) => length,
         };
         self.push((
             "parameters.add",
@@ -226,8 +292,35 @@ impl Kit {
         json!([format!("{x} - {w}/2"), format!("{y} - {d}/2"), z])
     }
 
+    /// The bodies a cut into `part` works on: the part's board, or a frame's boards.
+    pub fn targets(&self, part: &str) -> Vec<String> {
+        let pieces = self.pieces.borrow();
+        match pieces.iter().find(|(p, _)| p == part) {
+            Some((_, boards)) => boards.clone(),
+            None => vec![format!("{} {part}", self.name)],
+        }
+    }
+
+    /// Notes that `part` is made of `boards` (`targets`).
+    pub fn pieces(&self, part: &str, boards: Vec<String>) {
+        self.pieces.borrow_mut().push((part.to_string(), boards));
+    }
+
     pub fn push(&self, command: (&'static str, Value)) {
         self.commands.borrow_mut().push(command);
+    }
+
+    /// A hardware model's box, as `panel` makes a board's but not one of the cabinet's bodies,
+    /// so it takes no board material and stays the app's grey (#264).
+    pub fn model(&self, part: &str, corner: [&str; 3], size: [&str; 3]) {
+        let body = format!("{} {part}", self.name);
+        self.push((
+            "solid.box",
+            json!({
+                "length": size[0], "width": size[1], "height": size[2],
+                "corner": self.at(corner[0], corner[1], corner[2]), "name": body, "body_name": body,
+            }),
+        ));
     }
 
     /// A panel, or with `cut` its volume taken out of those bodies.
@@ -488,6 +581,8 @@ impl Kit {
         let summary = json!({
             "name": self.name,
             "size": { "width": size[0], "height": size[1], "depth": size[2] },
+            // the box's width and depth as expressions: Along a line places it by them
+            "centre": self.centre.borrow().clone(),
             "bodies": self.bodies.take(),
             "joints": self.joints.take(), // drive them to open doors and drawers
             "parameters": format!("{0}_width, {0}_height, ...", self.prefix),

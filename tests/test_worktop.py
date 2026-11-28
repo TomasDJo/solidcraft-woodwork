@@ -185,3 +185,65 @@ def test_a_tool_too_short_is_refused(approval):
     script.write_text(json.dumps(flat(steps)), encoding="utf-8")
     done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
     assert done.returncode and "the shelf would be above the worktop's underside" in done.stderr, done.stderr
+
+
+def test_bolt_holes_for_the_tools_feet(approval):
+    # Bolt spacing 400 across and 300 front to back: four 8 mm holes through the tool's shelf,
+    # round the tool's middle. One spacing only: a pair.
+    tool = {"tool": "benchtop", "tool_width": 640, "tool_depth": 540, "tool_height": 300,
+            "tool_x": 450, "tool_y": 345, "tool_clearance": 3, "bolt_x": 400, "bolt_y": 300}
+    cabinet = plugin(approval, "cabinet", {"name": "S", "width": 900, "depth": 650, "shelves": 0})
+    results = cli([cabinet, pick("S Top"), plugin(approval, "worktop", tool), MEASURE])
+    made, measure = results[2]["result"], results[3]
+    assert made["tool"]["bolt_holes"] == 4, made["tool"]
+    assert cylinders(measure, "Worktop Tool shelf") == 4, cylinders(measure, "Worktop Tool shelf")
+    shelf = boxes(measure)["Worktop Tool shelf"]
+    whole = (shelf[3] - shelf[0]) * (shelf[4] - shelf[1]) * 18
+    assert abs(volume(measure, "Worktop Tool shelf") - (whole - 4 * 3.14159 * 16 * 18)) < 30, volume(measure, "Worktop Tool shelf")
+    pair = cli([cabinet, pick("S Top"), plugin(approval, "worktop", {**tool, "bolt_y": 0}), MEASURE])
+    assert cylinders(pair[3], "Worktop Tool shelf") == 2
+    # in an inch design the holes land in the same place, through the shelf
+    inch = cli([{"command": "document.units", "params": {"units": "in"}}, cabinet, pick("S Top"),
+                plugin(approval, "worktop", tool), MEASURE])
+    assert cylinders(inch[4], "Worktop Tool shelf") == 4, cylinders(inch[4], "Worktop Tool shelf")
+    assert boxes(inch[4])["Worktop Tool shelf"] == shelf
+
+
+def test_side_wing_on_two_legs(approval):
+    # A 600 mm wing past the run's right end: as deep and thick as the top, on two legs to the
+    # floor; in an inch design the same.
+    cabinet = plugin(approval, "cabinet", {"name": "S", "width": 600, "shelves": 0})
+    for units in ("mm", "in"):
+        wing = {"wing": "right", "wing_length": 600 if units == "mm" else 600 / 25.4}
+        steps = [cabinet, pick("S Top"), plugin(approval, "worktop", {**wing, "units": units}), MEASURE]
+        if units == "in":
+            steps.insert(0, {"command": "document.units", "params": {"units": "in"}})
+        measure = cli(steps)[-1]
+        found = boxes(measure)
+        top, side = found["Worktop"], found["Worktop Wing"]
+        assert [round(v, 1) for v in side] == [round(v, 1) for v in [top[3], top[1], top[2], top[3] + 600, top[4], top[5]]], side
+        for n in (1, 2):
+            leg = found[f"Worktop Wing Leg {n}"]
+            assert round(leg[2], 1) == round(found["S Side L"][2], 1) and round(leg[5], 1) == round(top[2], 1), leg
+            assert round(leg[3], 1) == round(top[3] + 570, 1), leg
+    # fold-down: no legs, and driven open (90) it hangs down from the end's lower edge
+    fold = {"wing": "right", "wing_length": 400, "wing_support": "fold"}
+    drive = lambda value: {"command": "joint.drive", "params": {"joint": "Worktop Wing hinge", "value": value}}  # noqa: E731
+    results = cli([cabinet, pick("S Top"), plugin(approval, "worktop", fold), MEASURE, drive(90), MEASURE,
+                   drive(45), plugin(approval, "cutlist"), drive(0.1), plugin(approval, "cutlist")])
+    flat_box, down = boxes(results[3]), boxes(results[5])
+    # half way down, or barely off level, it is still bought at its own size, not its box
+    for listed in (results[7], results[9]):
+        wing = next(w for w in listed["result"]["worktops"] if w["part"] == "Worktop Wing")
+        assert [wing["length"], wing["width"], wing["thickness"]] == [600, 400, 38], wing
+    top = flat_box["Worktop"]
+    assert "Worktop Wing Leg 1" not in flat_box
+    assert [round(v, 1) for v in flat_box["Worktop Wing"]] == [round(v, 1) for v in [top[3], top[1], top[2], top[3] + 400, top[4], top[5]]]
+    hung = down["Worktop Wing"]
+    assert [round(v, 1) for v in hung] == [round(v, 1) for v in [top[3], top[1], top[2] - 400, top[3] + 38, top[4], top[2]]], hung
+    # a wing too short for its legs is refused
+    script = ROOT / "dist" / "refused-wing.json"
+    script.write_text(json.dumps(flat([cabinet, pick("S Top"),
+                                       plugin(approval, "worktop", {"wing": "right", "wing_length": 4})])), encoding="utf-8")
+    done = subprocess.run([CLI, "run", str(script), "--quiet"], capture_output=True, text=True)
+    assert done.returncode and "wing length must be at least 70 mm" in done.stderr, done.stderr

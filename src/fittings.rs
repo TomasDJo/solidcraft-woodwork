@@ -8,6 +8,15 @@ use serde_json::{json, Value};
 pub const PITCH: f64 = 32.0; // 32 mm system: shelf pin holes
 pub const PIN_SETBACK: f64 = 37.0; // pin rows, from the front and from the back of the shelf
 pub const PIN_D: f64 = 5.0;
+/// A shelf pilaster strip's width and thickness, and so its dado's (#264).
+pub const STRIP: [f64; 2] = [16.0, 5.0];
+/// The front strip's middle, from the front of the shelf: behind a hinge plate on the pin
+/// rows' line (`PLATE_SIZE` 40 deep, centred on it) with 3 mm to spare, so a door's plates
+/// and their screw holes stay clear of it. On every face, doors or not: one shelf for all.
+pub const STRIP_SETBACK: f64 =
+    PIN_SETBACK + crate::hardware::PLATE_SIZE[1] / 2.0 + 3.0 + STRIP[0] / 2.0;
+/// A pilaster clip: how far it stands out of the strip's face, and its height (#264).
+pub const CLIP: [f64; 2] = [10.0, 6.0];
 pub const DOOR_GAP: f64 = 2.0; // the default reveal: around and between the fronts
 pub const CUP_D: f64 = 35.0; // hinge cup
 pub const CUP_DEPTH: f64 = 13.0;
@@ -17,6 +26,13 @@ pub const HANDLE_D: f64 = 5.0; // screw hole for a knob or pull
 pub const PULL: f64 = 128.0; // between the two screws of a pull
 pub const HANDLE_EDGE: f64 = 50.0; // on a door: from its opening edge
 pub const HANDLE_END: f64 = 100.0; // and from its top or bottom to the nearest hole
+pub const GROOVE_D: f64 = 20.0; // a finger groove: a half round, 20 mm high and 10 deep
+pub const GROOVE_EDGE: f64 = 25.0; // its middle, from the front's edge
+pub const GRIP_LAND: f64 = 6.0; // a grip edge's 45-degree bevel leaves this much of the edge
+pub const TAB_OUT: f64 = 12.0; // a drawer bottom's tab (#181): how far past the front it sticks out,
+pub const TAB_R: f64 = 10.0; // and the radius of its two front corners
+pub const COVE_R: f64 = 6.0; // a cove under the tab's part past the front (#256): its radius,
+pub const COVE_DEPTH: f64 = 3.0; // and how deep it goes, at most half the bottom's thickness
 
 /// The top row of pins, counted in pitches above the bottom panel. Pin holes sit on a 32 mm
 /// grid there, two pitches clear of both ends of the clear height.
@@ -141,7 +157,7 @@ pub fn hole(
         json!({
             "base": position, "axis": into,
             "diameter": d, "height": depth, "operation": "cut",
-            "targets": [format!("{name} {part}")],
+            "targets": kit.targets(part),
             "name": format!("{name} {part} {what}"),
         }),
     ));
@@ -168,7 +184,7 @@ const HINGES: [f64; 3] = [900.0, 1600.0, 2000.0];
 /// Where the screws of a knob (one) or a pull (two) sit, from the handle's middle.
 pub fn screw_offsets(handles: &str) -> &'static [f64] {
     match handles {
-        "none" => &[],
+        "none" | "grip" | "groove" | "tab" => &[],
         "knob" => &[0.0],
         _ => &[-PULL / 2.0, PULL / 2.0],
     }
@@ -186,6 +202,32 @@ pub fn screw_heights(handles: &str, handle_z: &str) -> Vec<String> {
         }
     });
     screws.collect()
+}
+
+/// The doors' handles (`door_handles`, Woodwork settings' Doors); `handles` is the drawer
+/// fronts' (Drawers), which may also be a bottom tab.
+pub fn door_handles(p: &Value) -> Result<&str, String> {
+    match p
+        .get("door_handles")
+        .and_then(Value::as_str)
+        .unwrap_or("none")
+    {
+        h @ ("none" | "knob" | "pull" | "grip" | "groove") => Ok(h),
+        _ => Err("door_handles must be none, knob, pull, grip or groove".into()),
+    }
+}
+
+/// Whether a handle-less front of `t` mm keeps wood behind its grip: a grip edge's bevel
+/// leaves `GRIP_LAND`, and a finger groove must not come through.
+pub fn profile_fits(handles: &str, t: f64) -> Result<(), String> {
+    match handles {
+        "grip" if t <= GRIP_LAND => Err(format!("a grip edge needs fronts over {GRIP_LAND} mm")),
+        "groove" if t <= GROOVE_D / 2.0 => Err(format!(
+            "a finger groove needs fronts over {} mm",
+            GROOVE_D / 2.0
+        )),
+        _ => Ok(()),
+    }
 }
 
 /// The `handle_position` field: where on a door its handle sits.
@@ -458,6 +500,503 @@ pub fn floor_unit(plinth: f64, depth: f64) -> bool {
     plinth > 0.0 || depth >= 450.0
 }
 
+/// `handle_position` with auto settled: top, middle or bottom.
+fn place(at: &str, front_h: f64, floor: bool) -> &str {
+    match at {
+        "auto" if front_h > 1200.0 => "middle",
+        "auto" if floor => "top",
+        "auto" => "bottom",
+        at => at,
+    }
+}
+
+/// Grooved fronts (`front_style` vertical or horizontal, #182): `shape` square or round,
+/// `spacing` and `depth` in mm (the design-wide settings `groove_spacing`, `groove_depth`).
+#[derive(Clone, Copy)]
+pub struct Grooves<'a> {
+    pub style: &'a str,
+    pub shape: &'a str,
+    pub mm: [f64; 2],
+}
+
+/// The fields `front_style`, `groove_shape`, `groove_spacing` and `groove_depth` (the sizes as
+/// `size` reads them, in mm): `None` for flat fronts. A groove stays clear of the hinge cups
+/// behind it (`CUP_DEPTH`) on a cabinet with doors, and of half the front without.
+pub fn grooves<'a>(
+    p: &'a Value,
+    size: impl Fn(&str, f64) -> Result<f64, String>,
+    t: f64,
+    doors: bool,
+) -> Result<Option<Grooves<'a>>, String> {
+    let style = p.get("front_style").and_then(Value::as_str);
+    let shape = p.get("groove_shape").and_then(Value::as_str);
+    let (style, shape) = match (style.unwrap_or("flat"), shape.unwrap_or("square")) {
+        ("flat" | "shaker" | "glass", _) => return Ok(None),
+        (s @ ("vertical" | "horizontal"), g @ ("square" | "round" | "v")) => (s, g),
+        ("vertical" | "horizontal", _) => {
+            return Err("groove_shape must be square, round or v".into())
+        }
+        _ => return Err("front_style must be flat, vertical, horizontal, shaker or glass".into()),
+    };
+    let [spacing, depth] = [size("groove_spacing", 50.0)?, size("groove_depth", 3.0)?];
+    let most = if doors { t - CUP_DEPTH - 1.0 } else { t / 2.0 };
+    if !(0.5..=most).contains(&depth) {
+        return Err(format!(
+            "the front grooves' depth must be 0.5 to {most} mm in a {t} mm front"
+        ));
+    }
+    if spacing < 4.0 * depth + 4.0 {
+        return Err("the front grooves are too close for their depth".into());
+    }
+    Ok(Some(Grooves {
+        style,
+        shape,
+        mm: [spacing, depth],
+    }))
+}
+
+/// Shaker fronts (`front_style` shaker, #183): the frame's stiles and rails `frame_width` wide
+/// round a `panel_thickness` panel, in mm (design-wide settings). `None` for other styles.
+/// The smallest door must leave room for its panel; a stile takes the hinge cups and the handle.
+pub fn frame(
+    p: &Value,
+    size: impl Fn(&str, f64) -> Result<f64, String>,
+    t: f64,
+    smallest_door: Option<f64>,
+    drawers: bool,
+) -> Result<Option<[f64; 2]>, String> {
+    if !matches!(
+        p.get("front_style").and_then(Value::as_str),
+        Some("shaker" | "glass")
+    ) {
+        return Ok(None);
+    }
+    let [fw, pt] = [size("frame_width", 60.0)?, size("panel_thickness", 6.0)?];
+    if !(55.0..=150.0).contains(&fw) {
+        return Err("a shaker frame must be 55 to 150 mm wide".into());
+    }
+    if !(3.0..=t - 6.0).contains(&pt) {
+        return Err(format!("a shaker panel must be 3 to {} mm thick", t - 6.0));
+    }
+    if smallest_door.is_some_and(|d| d < framed(fw)) {
+        return Err(format!(
+            "doors are too small for a {fw} mm shaker frame: {} mm or more",
+            framed(fw)
+        ));
+    }
+    // the drawer handles where there are drawers, the door handles where there are doors
+    let handles = p.get("handles").and_then(Value::as_str);
+    let drawer_grip = drawers && matches!(handles, Some("grip" | "groove"));
+    let door_grip = smallest_door.is_some() && matches!(door_handles(p)?, "grip" | "groove");
+    if drawer_grip || door_grip {
+        return Err("a grip edge or finger groove needs flat fronts, not shaker or glass".into());
+    }
+    Ok(Some([fw, pt]))
+}
+
+/// The least width and height a front takes a frame of `fw` mm in: a panel of 60 mm or more.
+pub fn framed(fw: f64) -> f64 {
+    2.0 * fw + 60.0
+}
+
+/// The frame's width and panel thickness as the cabinet's parameters, made once a build.
+pub fn frame_sizes(kit: &Kit, mm: [f64; 2]) -> [String; 2] {
+    [
+        kit.parameter("frame_width", mm[0], "shaker frame width"),
+        kit.parameter("panel_thickness", mm[1], "shaker panel thickness"),
+    ]
+}
+
+/// How far a door's handle is from its opening edge: `HANDLE_EDGE`, or the middle of a shaker
+/// door's stile.
+pub fn handle_edge(frame: Option<&[String; 2]>) -> String {
+    match frame {
+        Some([fw, _]) => format!("{fw}/2"),
+        None => mm(HANDLE_EDGE),
+    }
+}
+
+/// A glass door's pane (`front_style` glass): this thick, in the frame's groove as a panel is.
+pub const GLASS_T: f64 = 4.0;
+
+/// Whether a body is a glass door's pane (`front` with `glass`): bought, not a board.
+pub fn is_glass(body: &str) -> bool {
+    body.ends_with(" glass")
+}
+
+/// How deep the panel sits in the frame's groove, each side.
+pub const PANEL_GROOVE: f64 = 8.0;
+
+/// A front as one board, or with `frame` (its width and panel thickness parameters) a shaker
+/// front: `<part>` is the stile at the low end of `along` (`main_low`) or at the high one, the
+/// other is `<part> stile`, between them `<part> rail bottom` and `rail top`, and `<part> panel`
+/// in the middle, centred in the front's thickness and `PANEL_GROOVE` into a groove all round
+/// (one box cut of the panel's size through the four frame boards). The front as for `grip`.
+/// Every later hole into the part cuts all five (`Kit::targets`).
+// ponytail: the rails butt between the stiles; a stub tenon or dowels are not cut
+#[allow(clippy::too_many_arguments)]
+pub fn front(
+    kit: &Kit,
+    part: &str,
+    frame: Option<&[String; 2]>,
+    at: impl Fn(&str, &str, &str) -> Value,
+    lo: [&str; 3],
+    size: [&str; 3],
+    along: usize,
+    main_low: bool,
+    glass: bool,
+) {
+    let Some([fw, pt]) = frame else {
+        return kit.panel_at(part, at(lo[0], lo[1], lo[2]), size, None);
+    };
+    let across = 1 - along;
+    // a box from (along, across, up) `from`, of `extent`
+    let place = |from: [String; 3], extent: [String; 3]| {
+        let [a, c, z] = from;
+        let [sa, sc, sz] = extent;
+        let mut p = [String::new(), String::new(), z];
+        let mut s = [String::new(), String::new(), sz];
+        (p[along], p[across], s[along], s[across]) = (a, c, sa, sc);
+        (at(&p[0], &p[1], &p[2]), s)
+    };
+    let (a0, c0, z0) = (lo[along], lo[across], lo[2]);
+    let (la, lc, lz) = (size[along], size[across], size[2]);
+    let far = format!("{a0} + {la} - {fw}");
+    let (main, other) = match main_low {
+        true => (a0.to_string(), far),
+        false => (far, a0.to_string()),
+    };
+    let inner = format!("{la} - 2*{fw}");
+    let rail = format!("{a0} + {fw}");
+    let boards = [
+        (
+            part.to_string(),
+            main,
+            z0.to_string(),
+            fw.clone(),
+            lz.to_string(),
+        ),
+        (
+            format!("{part} stile"),
+            other,
+            z0.to_string(),
+            fw.clone(),
+            lz.to_string(),
+        ),
+        (
+            format!("{part} rail bottom"),
+            rail.clone(),
+            z0.to_string(),
+            inner.clone(),
+            fw.clone(),
+        ),
+        (
+            format!("{part} rail top"),
+            rail,
+            format!("{z0} + {lz} - {fw}"),
+            inner,
+            fw.clone(),
+        ),
+    ];
+    let mut all = Vec::new();
+    for (name, a, z, sa, sz) in boards {
+        let (corner, s) = place([a, c0.to_string(), z], [sa, lc.to_string(), sz]);
+        kit.panel_at(&name, corner, [&s[0], &s[1], &s[2]], None);
+        all.push(format!("{} {name}", kit.name));
+    }
+    let g = mm(PANEL_GROOVE);
+    // a glass door's pane in the panel's place, `GLASS_T` thick; holes leave it out
+    let (pane, pt) = match glass {
+        true => ("glass", mm(GLASS_T)),
+        false => ("panel", pt.clone()),
+    };
+    let (corner, s) = place(
+        [
+            format!("{a0} + {fw} - {g}"),
+            format!("{c0} + ({lc} - {pt})/2"),
+            format!("{z0} + {fw} - {g}"),
+        ],
+        [
+            format!("{la} - 2*{fw} + 2*{g}"),
+            pt,
+            format!("{lz} - 2*{fw} + 2*{g}"),
+        ],
+    );
+    let size = [s[0].as_str(), &s[1], &s[2]];
+    kit.panel_at(&format!("{part} groove"), corner.clone(), size, Some(&all));
+    kit.panel_at(&format!("{part} {pane}"), corner, size, None);
+    if !glass {
+        all.push(format!("{} {part} panel", kit.name));
+    }
+    kit.pieces(part, all);
+}
+
+/// The grooves' spacing and depth as the cabinet's parameters, made once a build.
+pub fn groove_sizes(kit: &Kit, g: &Grooves) -> [String; 2] {
+    [
+        kit.parameter("groove_spacing", g.mm[0], "front groove spacing"),
+        kit.parameter("groove_depth", g.mm[1], "front groove depth"),
+    ]
+}
+
+/// Grooves in a front's face, `sizes` apart about (the spacing evened out so the strips between
+/// are alike) and as deep, `2*depth` wide: square (a box cut) or round (a half-round cylinder
+/// cut), each run the front's whole length and a millimetre past it. One cut and one pattern,
+/// its count an expression, so they follow a resize. The front as for `grip`.
+#[allow(clippy::too_many_arguments)]
+pub fn front_grooves(
+    kit: &Kit,
+    part: &str,
+    g: &Grooves,
+    [spacing, depth]: &[String; 2],
+    at: impl Fn(&str, &str, &str) -> Value,
+    lo: [&str; 3],
+    size: [&str; 3],
+    along: usize,
+    back: i32,
+) {
+    let across = 1 - along;
+    // the grooves run along `run` and repeat along `step`
+    let (run, step) = match g.style {
+        "vertical" => (2, along),
+        _ => (along, 2),
+    };
+    let strips = format!("max(round(({}) / {spacing}), 2)", size[step]);
+    let pitch = format!("({}) / {strips}", size[step]);
+    let first = format!("{} + {pitch}", lo[step]);
+    let face = match back {
+        1 => lo[across].to_string(),
+        _ => format!("{} + {}", lo[across], size[across]),
+    };
+    let mut axis = [0, 0, 0];
+    axis[run] = 1;
+    let mut p = [String::new(), String::new(), String::new()];
+    let name = format!("{} {part} front groove", kit.name);
+    let length = format!("{} + 2 mm", size[run]);
+    p[run] = format!("{} - 1 mm", lo[run]);
+    match g.shape {
+        // A V (#182), 90 degrees, `depth` deep: a triangle sketched square to the groove at its
+        // start, a millimetre before the face, extruded along the front as a cut. A turned box
+        // and a combine would do it too, but those cannot be patterned (SolidCraft 0.50); an
+        // extrude can. Its points are expressions over the depth, with units, so it follows
+        // `_groove_depth` as the other shapes do.
+        "v" => {
+            p[step] = first;
+            p[across] = face;
+            // the sketch's x along the step, its y into the front; its normal along the run
+            let mut x = [0, 0, 0];
+            x[step] = 1;
+            let mut y = [0, 0, 0];
+            y[across] = if back == 1 { 1 } else { -1 };
+            let normal = [
+                x[1] * y[2] - x[2] * y[1],
+                x[2] * y[0] - x[0] * y[2],
+                x[0] * y[1] - x[1] * y[0],
+            ];
+            if normal[run] < 0 {
+                x[step] = -1;
+            }
+            let sketch = format!("{name} V");
+            kit.push((
+                "sketch.create",
+                json!({"plane": {"origin": at(&p[0], &p[1], &p[2]), "x_dir": x, "y_dir": y},
+                    "name": sketch}),
+            ));
+            kit.push((
+                "sketch.line",
+                json!({"points": [
+                    [format!("-({depth} + 1 mm)"), "-1 mm"],
+                    ["0 mm", depth],
+                    [format!("{depth} + 1 mm"), "-1 mm"],
+                ], "closed": true}),
+            ));
+            kit.push(("sketch.finish", json!({})));
+            kit.push((
+                "solid.extrude",
+                json!({"sketch": sketch, "distance": length, "operation": "cut",
+                    "targets": [format!("{} {part}", kit.name)], "name": name}),
+            ));
+        }
+        "round" => {
+            p[step] = first;
+            p[across] = face;
+            let d = format!("2*{depth}");
+            hole(
+                kit,
+                part,
+                at(&p[0], &p[1], &p[2]),
+                axis,
+                &d,
+                &length,
+                "front groove",
+            );
+        }
+        _ => {
+            // from a millimetre in front of the face to `depth` behind it
+            p[step] = format!("{first} - {depth}");
+            p[across] = match back {
+                1 => format!("{face} - 1 mm"),
+                _ => format!("{face} - {depth}"),
+            };
+            let mut dims = [String::new(), String::new(), String::new()];
+            dims[run] = length;
+            dims[step] = format!("2*{depth}");
+            dims[across] = format!("{depth} + 1 mm");
+            kit.push((
+                "solid.box",
+                json!({
+                    "corner": at(&p[0], &p[1], &p[2]), "length": dims[0], "width": dims[1],
+                    "height": dims[2], "operation": "cut",
+                    "targets": [format!("{} {part}", kit.name)], "name": name,
+                }),
+            ));
+        }
+    }
+    let mut dir = [0, 0, 0];
+    dir[step] = 1;
+    kit.push((
+        "solid.pattern.rectangular",
+        json!({
+            "features": [name], "dir1": dir, "count1": format!("{strips} - 1"),
+            "spacing1": pitch, "name": format!("{name}s"),
+        }),
+    ));
+}
+
+/// `grip_gap` (#230): with a grip edge, how far a front stops short of its grip edge, in mm,
+/// so a finger fits in the gap behind the bevel; `None` for other handles. A grip edge goes on
+/// the top or the bottom edge, never the middle, and leaves the front `MIN_GRIPPED` high.
+pub fn grip_gap(
+    handles: &str,
+    at: &str,
+    size: impl Fn(&str, f64) -> Result<f64, String>,
+    lowest_front: f64,
+) -> Result<Option<f64>, String> {
+    if handles != "grip" {
+        return Ok(None);
+    }
+    if at == "middle" {
+        return Err(
+            "a grip edge goes on the top or the bottom edge (Handle position), not the middle"
+                .into(),
+        );
+    }
+    let gap = size("grip_gap", GRIP_GAP)?;
+    if !(5.0..=50.0).contains(&gap) {
+        return Err("the grip gap must be 5 to 50 mm".into());
+    }
+    if lowest_front - gap < MIN_GRIPPED {
+        return Err(format!(
+            "the fronts are too low for a {gap} mm grip gap: {MIN_GRIPPED} mm must be left"
+        ));
+    }
+    Ok(Some(gap))
+}
+
+pub const GRIP_GAP: f64 = 20.0; // `grip_gap`'s default
+const MIN_GRIPPED: f64 = 80.0; // what a grip gap must leave of a front
+
+/// A front from `z`, `h` high, with a grip edge `gap` (the parameter) shorter at its grip edge
+/// (`top`, else the bottom); as it is without one.
+pub fn gripped(gap: Option<&str>, z: &str, h: &str, top: bool) -> (String, String) {
+    match (gap, top) {
+        (None, _) => (z.to_string(), h.to_string()),
+        (Some(g), true) => (z.to_string(), format!("({h} - {g})")),
+        (Some(g), false) => (format!("{z} + {g}"), format!("({h} - {g})")),
+    }
+}
+
+/// Whether a door's grip edge or groove (`handles` grip or groove) is along its top edge, else
+/// its bottom: auto by the kind of unit (also on a tall door), and middle is the top.
+pub fn grip_on_top(at: &str, floor: bool) -> bool {
+    match at {
+        "auto" => floor,
+        at => at != "bottom",
+    }
+}
+
+/// A handle-less front's grip along its top (`top`) or bottom edge, for `handles` grip (a
+/// 45-degree bevel along the back of the edge: a box turned on the edge and cut away) or groove
+/// (a half-round groove in the front face, a cylinder cut); nothing for other handles. The
+/// front is the box from `lo` to `lo + size` in the builder's coordinates, `along` its
+/// horizontal axis (0 or 1) and `back` the way (1 or -1) across it to its back face; `at` turns
+/// a point into the command's. Both cuts reach a millimetre past the ends.
+#[allow(clippy::too_many_arguments)]
+pub fn grip(
+    kit: &Kit,
+    part: &str,
+    handles: &str,
+    at: impl Fn(&str, &str, &str) -> Value,
+    lo: [&str; 3],
+    size: [&str; 3],
+    along: usize,
+    back: i32,
+    top: bool,
+) {
+    let across = 1 - along;
+    let face = |back_face: bool| match (back == 1) == back_face {
+        true => format!("{} + {}", lo[across], size[across]),
+        false => lo[across].to_string(),
+    };
+    let edge = match top {
+        true => format!("{} + {}", lo[2], size[2]),
+        false => lo[2].to_string(),
+    };
+    let mut axis = [0, 0, 0];
+    axis[along] = 1;
+    let point = |a: String, c: String, z: String| {
+        let mut p = [String::new(), String::new(), z];
+        (p[along], p[across]) = (a, c);
+        at(&p[0], &p[1], &p[2])
+    };
+    let body = format!("{} {part}", kit.name);
+    match handles {
+        "groove" => {
+            let z = match top {
+                true => format!("{edge} - {}", mm(GROOVE_EDGE)),
+                false => format!("{edge} + {}", mm(GROOVE_EDGE)),
+            };
+            let base = point(format!("{} - 1 mm", lo[along]), face(false), z);
+            let length = format!("{} + 2 mm", size[along]);
+            hole(kit, part, base, axis, &mm(GROOVE_D), &length, "groove");
+        }
+        "grip" => {
+            // A square on the back edge, turned 45 degrees: what it takes of the front is the
+            // bevel, `t - GRIP_LAND` along both faces.
+            let centre = point(
+                format!("{} + ({})/2", lo[along], size[along]),
+                face(true),
+                edge,
+            );
+            let side = format!("sqrt(2)*({} - {})", size[across], mm(GRIP_LAND));
+            let mut dims = [side.clone(), side.clone(), side];
+            dims[along] = format!("{} + 2 mm", size[along]);
+            let cutter = format!("{body} grip");
+            kit.push((
+                "solid.box",
+                json!({
+                    "center": centre, "length": dims[0], "width": dims[1], "height": dims[2],
+                    "name": format!("{cutter} cutter"), "body_name": cutter,
+                }),
+            ));
+            kit.push((
+                "solid.move",
+                json!({
+                    "bodies": [cutter], "origin": centre, "axis": axis, "angle": "45 deg",
+                    "name": format!("{cutter} turn"),
+                }),
+            ));
+            kit.push((
+                "solid.combine",
+                json!({
+                    "target": body, "tools": [cutter], "operation": "cut", "name": cutter,
+                }),
+            ));
+        }
+        _ => {}
+    }
+}
+
 /// The middle of the handle on a door from `z0` up to `z1`, at `at`: top, middle, bottom or
 /// auto. `front_h` is the cabinet's height above its plinth, in mm.
 pub fn handle_height(
@@ -470,13 +1009,7 @@ pub fn handle_height(
 ) -> String {
     let half = if handles == "pull" { PULL / 2.0 } else { 0.0 };
     let end = mm(HANDLE_END + half);
-    let at = match at {
-        "auto" if front_h > 1200.0 => "middle",
-        "auto" if floor => "top",
-        "auto" => "bottom",
-        at => at,
-    };
-    match at {
+    match place(at, front_h, floor) {
         "middle" => format!("({z0} + {z1}) / 2"),
         "top" => format!("{z1} - {end}"),
         _ => format!("{z0} + {end}"),

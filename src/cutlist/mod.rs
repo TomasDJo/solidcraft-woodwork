@@ -35,11 +35,16 @@ pub fn turned(measure: &Value) -> Vec<String> {
         (body["volume_mm3"].as_f64()).is_some_and(|volume| volume < 0.97 * sides.product::<f64>())
     };
     // A leg or a caster is not a board, so never measured. A worktop is bought at its box, also
-    // when it is mitred or has a cut-out, and it stands square in a component on the origin.
+    // when it is mitred or has a cut-out, and it stands square in a component on the origin;
+    // but a fold-down wing turns on its hinge, so it is always measured in its own component:
+    // a few degrees off level still fills 97 % of its box.
     bodies
-        .filter(loose)
-        .filter_map(|body| body["name"].as_str().map(String::from))
-        .filter(|name| !crate::fittings::is_foot(name) && !worktop(name))
+        .filter_map(|body| Some((body, body["name"].as_str()?)))
+        .filter(|(body, name)| {
+            (worktop(name) && name.ends_with(" Wing"))
+                || (loose(body) && !crate::fittings::is_foot(name) && !worktop(name))
+        })
+        .map(|(_, name)| name.to_string())
         .collect()
 }
 
@@ -173,7 +178,7 @@ fn hull(mut points: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 
 /// The hardware to buy, counted from what the plugin made: feature names in `timeline`
 /// (`document.inspect`'s reply) and bodies in `measure`.
-pub fn hardware(measure: &Value, design: &Value) -> Value {
+pub fn hardware(measure: &Value, local: &BTreeMap<String, [f64; 3]>, design: &Value) -> Value {
     let named = |list: &Value| -> Vec<String> {
         let items = list.as_array().into_iter().flatten();
         items
@@ -214,10 +219,15 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             *slides.entry(length).or_default() += 1;
         }
     }
-    // a drawer on wooden runners (`<Name> Side L runner <n>`) has no slides
+    // a drawer on wooden runners (`<Name> Side L runner <n>`) or strips (`<Name> Side L strip
+    // <n>`, a body) has no slides
+    // (split at the last ` Drawer `, as a cabinet's own name may hold one)
     let runners = |b: &String| {
-        let runner = b.replacen(" Drawer ", " Side L runner ", 1);
-        features.contains(&runner.trim_end_matches(" Front").to_string())
+        let Some((cabinet, n)) = b.trim_end_matches(" Front").rsplit_once(" Drawer ") else {
+            return false;
+        };
+        features.contains(&format!("{cabinet} Side L runner {n}"))
+            || bodies.contains(&format!("{cabinet} Side L strip {n}"))
     };
     let drawers = |b: &&String| b.contains(" Drawer ") && b.ends_with(" Front") && !runners(b);
     let counts = [
@@ -225,7 +235,15 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             "Hinge, cup",
             features
                 .iter()
-                .filter(|f| f.contains(" hinge cup "))
+                .filter(|f| f.contains(" hinge cup ") && !f.ends_with(" (half overlay)"))
+                .count() as u64,
+        ),
+        (
+            // a door hinged on a divider covers only half of it (`cabinet::doors`)
+            "Hinge, cup, half overlay",
+            features
+                .iter()
+                .filter(|f| f.contains(" hinge cup ") && f.ends_with(" (half overlay)"))
                 .count() as u64,
         ),
         (
@@ -238,6 +256,17 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             cabinets(" Side L pins")
                 .map(|c| {
                     let corner = features.contains(&format!("{c} Back return pins"));
+                    shelves(c) * if corner { 8 } else { 4 }
+                })
+                .sum(),
+        ),
+        (
+            // four under each shelf on pilaster strips (#264)
+            "Shelf clip",
+            // (eight under a corner cabinet's, which has strips in its backs too)
+            cabinets(" Side L pilaster dado front")
+                .map(|c| {
+                    let corner = features.contains(&format!("{c} Back return pilaster dado front"));
                     shelves(c) * if corner { 8 } else { 4 }
                 })
                 .sum(),
@@ -262,6 +291,29 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
             bodies.iter().filter(|b| crate::fittings::is_leg(b)).count() as u64,
         ),
         (
+            "Connector bolt, M6",
+            features
+                .iter()
+                .filter(|f| f.contains(" connector bolt "))
+                .count() as u64,
+        ),
+        (
+            // one under the bolt's head and one under its nut (#260), also for a bolt drilled
+            // before the counterbores
+            "Washer, M6",
+            2 * features
+                .iter()
+                .filter(|f| f.contains(" connector bolt "))
+                .count() as u64,
+        ),
+        (
+            "Frame screw, 4 x 50 mm",
+            features
+                .iter()
+                .filter(|f| f.contains(" frame screw "))
+                .count() as u64,
+        ),
+        (
             "Caster, locking",
             bodies
                 .iter()
@@ -275,7 +327,52 @@ pub fn hardware(measure: &Value, design: &Value) -> Value {
     let mut list: Vec<Value> = bought
         .map(|(item, qty)| json!({"item": item, "qty": qty}))
         .collect();
-    let at = usize::from(list.first().is_some_and(|h| h["item"] == "Hinge, cup"));
+    // pilaster strips by their length, in their models' names: `<board> pilaster front (652 mm)`
+    let mut strips: BTreeMap<&str, u64> = BTreeMap::new();
+    for length in features
+        .iter()
+        .filter_map(|f| crate::hardware::strip_length(f))
+    {
+        *strips.entry(length).or_default() += 1;
+    }
+    for (length, qty) in strips {
+        list.push(json!({"item": format!("Shelf pilaster strip, {length}"), "qty": qty}));
+    }
+    // glass doors' panes by size, the two longer sides of each pane's box (or its own size)
+    let mut panes: BTreeMap<String, u64> = BTreeMap::new();
+    let all = measure["bodies"].as_array().into_iter().flatten();
+    for pane in all.filter(|b| crate::fittings::is_glass(b["name"].as_str().unwrap_or(""))) {
+        let side = |i: usize| {
+            let (max, min) = (
+                pane["bbox"]["max"][i].as_f64(),
+                pane["bbox"]["min"][i].as_f64(),
+            );
+            max.zip(min).map_or(0.0, |(max, min)| max - min)
+        };
+        // a pane standing open is sized in its own component, as a turned board is (`turned`)
+        let name = pane["name"].as_str().unwrap_or_default();
+        let mut sides = (local.get(name).copied()).unwrap_or([side(0), side(1), side(2)]);
+        sides.sort_by(|a, b| b.total_cmp(a));
+        let item = format!(
+            "Glass, {} mm, {} x {} mm",
+            crate::fittings::GLASS_T,
+            sides[0].round(),
+            sides[1].round()
+        );
+        *panes.entry(item).or_default() += 1;
+    }
+    list.extend(
+        panes
+            .into_iter()
+            .map(|(item, qty)| json!({"item": item, "qty": qty})),
+    );
+    // after the hinges
+    let hinge = |h: &&Value| {
+        h["item"]
+            .as_str()
+            .is_some_and(|i| i.starts_with("Hinge, cup"))
+    };
+    let at = list.iter().take_while(hinge).count();
     for (slide, qty) in slides.into_iter().rev() {
         let (length, kind) = slide.split_once(", ").unwrap_or((slide, ""));
         let item = format!("Drawer slide, {kind}, {length}, pair").replace(", ,", ",");
@@ -335,6 +432,107 @@ pub fn notched(design: &Value) -> Vec<String> {
 
 /// What a notched side's line in the cut list says.
 pub const NOTCHED: &str = "notched for the toe kick; size over the notch";
+
+/// The CSV's lines for `clashes`, a quoted field each (quotes in a name doubled).
+pub fn clash_csv(clashes: &[String]) -> String {
+    let lines = clashes.iter().map(|c| {
+        format!(
+            "Clash,\"{}\"
+",
+            c.replace('"', "\"\"")
+        )
+    });
+    lines.collect()
+}
+
+/// Doors that can hit another cabinet's front when both are open (#140). A box cabinet's door
+/// hinged on a side (the side has `hinge plate` holes) turns about its front edge there; opened
+/// past 90 degrees, as every hinge opening does (95 to 165), it swings in front of the next
+/// cabinet, and meets a door or a drawer front standing right beside its hinge edge when that
+/// is open too. One line per pair: "<door> (open) meets <front> (open)". Fronts are told by
+/// their names (` Door`, ` Front`) and must be shut: a board thin across the front.
+/// ponytail: box cabinets in quarter turns only, and doors already open in the design (not
+/// thin) are skipped; a door hinged on a divider never reaches past its cabinet.
+pub fn clashes(measure: &Value, design: &Value) -> Vec<String> {
+    let bodies: Vec<(&str, [f64; 6])> = (measure["bodies"].as_array().into_iter().flatten())
+        .filter_map(|b| {
+            let get = |k: &str, i: usize| b["bbox"][k][i].as_f64();
+            let mut bx = [0.0; 6];
+            for i in 0..3 {
+                bx[i] = get("min", i)?;
+                bx[i + 3] = get("max", i)?;
+            }
+            Some((b["name"].as_str()?, bx))
+        })
+        .collect();
+    let find = |name: &str| bodies.iter().find(|b| b.0 == name).map(|b| b.1);
+    let mid = |b: [f64; 6], i: usize| (b[i] + b[i + 3]) / 2.0;
+    let features = design["timeline"].as_array().into_iter().flatten();
+    let names: Vec<&str> = features.filter_map(|f| f["name"].as_str()).collect();
+    // a shut front: thin (a board's thickness) across the axis `across`, the other one along
+    let shut = |b: [f64; 6], across: usize| b[across + 3] - b[across] <= 40.0;
+    // an integrated drawer front is the box's `Box front`, its drawer with no `Front` (#163)
+    let is_front = |n: &str| {
+        let integrated = n
+            .strip_suffix(" Box front")
+            .is_some_and(|d| find(&format!("{d} Front")).is_none());
+        n.contains(" Door") || n.ends_with(" Front") || integrated
+    };
+    let mut found = Vec::new();
+    for (side_name, side) in bodies.iter().filter(|b| b.0.ends_with(" Side L")) {
+        let cabinet = &side_name[..side_name.len() - " Side L".len()];
+        let Some(other) = find(&format!("{cabinet} Side R")) else {
+            continue;
+        };
+        if find(&format!("{cabinet} Back return")).is_some() {
+            continue; // a corner cabinet
+        }
+        // the width runs between the sides; the fronts face along the other horizontal axis
+        let along = usize::from(
+            (mid(*side, 1) - mid(other, 1)).abs() > (mid(*side, 0) - mid(other, 0)).abs(),
+        );
+        let across = 1 - along;
+        let own = |n: &&(&str, [f64; 6])| {
+            n.0.starts_with(&format!("{cabinet} Door")) && shut(n.1, across)
+        };
+        for (hinge, toward) in [("Side L", *side), ("Side R", other)] {
+            let plate = format!("{cabinet} {hinge} hinge plate ");
+            if !names.iter().any(|n| n.starts_with(&plate)) {
+                continue;
+            }
+            // the door nearest that side, and its edge there
+            let centre = (mid(*side, along) + mid(other, along)) / 2.0;
+            let sign = if mid(toward, along) < centre {
+                -1.0
+            } else {
+                1.0
+            };
+            let edge = |b: [f64; 6]| if sign < 0.0 { b[along] } else { b[along + 3] };
+            let door = bodies
+                .iter()
+                .filter(own)
+                .max_by(|a, b| (sign * edge(a.1)).total_cmp(&(sign * edge(b.1))));
+            let Some((door, d)) = door else { continue };
+            let hinge_edge = edge(*d);
+            for (front, f) in bodies
+                .iter()
+                .filter(|b| is_front(b.0) && !b.0.starts_with(&format!("{cabinet} ")))
+            {
+                // beside the hinge edge, outwards, at most 60 mm on (an integrated front starts
+                // a side and a slide's gap in); in the same front plane
+                // and overlapping in height
+                let near = if sign < 0.0 { f[along + 3] } else { f[along] };
+                let gap = sign * (near - hinge_edge);
+                let plane = (mid(*f, across) - mid(*d, across)).abs() <= 30.0;
+                let height = f[2] < d[5] && d[2] < f[5];
+                if shut(*f, across) && (0.0..=60.0).contains(&gap) && plane && height {
+                    found.push(format!("{door} (open) meets {front} (open)"));
+                }
+            }
+        }
+    }
+    found
+}
 
 /// The sides grooved for wooden drawer runners (`<Side> runner <n>`), as `notched`.
 pub fn grooved(design: &Value) -> Vec<String> {
@@ -454,6 +652,20 @@ fn role(part: &str, width: usize) -> (Edges, Option<usize>) {
         "Rail back" => (Edges::None, Some(width)), // hidden under the worktop
         _ if part.starts_with("Shelf ") => (Edges::Front, Some(width)),
         _ if part.starts_with("Divider ") => (Edges::Front, Some(2)),
+        // a shaker front's boards (`fittings::front`): rails across, stiles and panel upright
+        // a corner's return door's rails run along its return, across the cabinet's width
+        _ if part.ends_with(" rail top") || part.ends_with(" rail bottom") => {
+            let along = if part.starts_with("Door return ") {
+                1 - width
+            } else {
+                width
+            };
+            (Edges::All, Some(along))
+        }
+        _ if part.ends_with(" stile") => (Edges::All, Some(2)),
+        _ if part.ends_with(" panel") && (part.starts_with("Door") || drawer) => {
+            (Edges::None, Some(2))
+        }
         _ if part.starts_with("Door")
             || drawer && part.ends_with(" Front")
             || part == "False front" =>
@@ -542,7 +754,10 @@ pub fn cutlist(
     let bodies: Vec<&Value> = (measure["bodies"].as_array())
         .ok_or("inspect.measure returned no bodies")?
         .iter()
-        .filter(|b| !crate::fittings::is_foot(b["name"].as_str().unwrap_or("")))
+        .filter(|b| {
+            let name = b["name"].as_str().unwrap_or("");
+            !crate::fittings::is_foot(name) && !crate::fittings::is_glass(name)
+        })
         .collect();
     // A board's note: notched for the toe kick, grooved for runners, or both.
     let noted = |name: &str| {
@@ -551,6 +766,7 @@ pub fn cutlist(
             (has("_notched"), NOTCHED),
             (has("_grooved"), GROOVED),
             (has("_fingered"), FINGERED),
+            (crate::base::is_block(name), "caster block"),
         ];
         let notes: Vec<&str> = notes.iter().filter(|n| n.0).map(|n| n.1).collect();
         notes.join("; ")
@@ -598,8 +814,15 @@ pub fn cutlist(
         let name = body["name"].as_str().unwrap_or("?").to_string();
         let tenths = size(body)?.map(|mm| (mm * 10.0).round() as i64);
         let material = body["material"].as_str().unwrap_or("").to_string();
+        // A drawer box's front with no `Drawer <n> Front` is the front (integrated, #163).
+        let front = format!("{} Front", name.strip_suffix(" Box front").unwrap_or(&name));
+        let part = match name.ends_with(" Box front") && !bodies.iter().any(|b| b["name"] == *front)
+        {
+            true => &front,
+            false => &name,
+        };
         let (edges, grain) = match crate::select::owner(measure, &name) {
-            Some(cabinet) => role(&name[cabinet.len() + 1..], width_axis(cabinet, &name)?),
+            Some(cabinet) => role(&part[cabinet.len() + 1..], width_axis(cabinet, &name)?),
             None => (Edges::None, None),
         };
         // Thinnest axis is the thickness; the length runs along the grain on a grained board,
@@ -662,6 +885,8 @@ pub fn cutlist(
     type Laid = (crate::nesting::Part, String, usize); // a part, its name and its row
     let mut pieces: BTreeMap<(String, i64), Vec<Laid>> = BTreeMap::new(); // to lay out, the same
     let mut worktops = Vec::new();
+    let mut timber = Vec::new();
+    let mut metres: BTreeMap<(i64, i64), f64> = BTreeMap::new(); // timber per section, in tenths of a mm
     for ((t, l, w, material, le, we, notch), names) in &rows {
         let qty = names.len();
         let row_m2 = mm(*l) * mm(*w) * qty as f64 / 1e6;
@@ -678,12 +903,23 @@ pub fn cutlist(
         let grain = crate::material::GRAINED.contains(&material.as_str());
         let (row, one_m2) = (parts.len(), mm(*l) * mm(*w) / 1e6);
         for name in names {
-            // A worktop: bought to length.
-            if worktop(name) {
-                worktops.push(
-                    json!({"part": name, "material": material, "thickness": shown(*t),
-                                     "length": shown(cl), "width": shown(cw)}),
-                );
+            // A worktop, or solid timber (a mobile base's frame): bought to length.
+            let bought = match worktop(name) {
+                _ if material == crate::material::TIMBER.0 => Some(&mut timber),
+                true => Some(&mut worktops),
+                false => None,
+            };
+            if let Some(list) = bought {
+                let mut piece = json!({"part": name, "material": material, "thickness": shown(*t),
+                                       "length": shown(cl), "width": shown(cw)});
+                // a mobile base's caster block is a piece of its own size, not a length of a
+                // section, so it stays out of the running metres
+                if crate::base::is_block(name) {
+                    piece["note"] = json!("caster block");
+                } else if material == crate::material::TIMBER.0 {
+                    *metres.entry((*t, *w)).or_insert(0.0) += mm(*l) / 1000.0;
+                }
+                list.push(piece);
                 continue;
             }
             *stock.entry((material.clone(), *t)).or_insert(0.0) += one_m2;
@@ -733,7 +969,7 @@ pub fn cutlist(
             |placed: &[crate::nesting::Placed]| placed.iter().map(|p| p.w * p.h).sum::<f64>();
         let used: f64 = laid.iter().map(|placed| area(placed)).sum();
         sheets.push(json!({
-            "material": material, "thickness": shown(*t), "area_m2": round(*m2),
+            "material": material, "thickness": shown(*t), "thickness_mm": mm(*t), "area_m2": round(*m2),
             "sheets": laid.len(), "yield_pct": if laid.is_empty() { 0.0 } else { percent(used, laid.len()) },
         }));
         for placed in &laid {
@@ -802,8 +1038,28 @@ pub fn cutlist(
             );
         }
     }
+    // Timber to buy: the metres of each section, as a timber yard sells it.
+    let lengths: Vec<Value> = (metres.iter())
+        .map(|((t, w), m)| {
+            json!({"material": crate::material::TIMBER.0, "section": format!("{} x {} mm", mm(*t), mm(*w)),
+                   "thickness_mm": mm(*t), "width_mm": mm(*w), "metres": round(*m)})
+        })
+        .collect();
+    if !lengths.is_empty() {
+        csv += "\nTimber,Section,Metres\n";
+        for total in &lengths {
+            csv += &format!(
+                "{},{},{}\n",
+                quoted(total["material"].as_str().unwrap_or("")),
+                total["section"].as_str().unwrap_or(""),
+                text(&total["metres"])
+            );
+        }
+    }
     let mut list = json!({
         "units": units,
+        "timber": timber,
+        "timber_metres": lengths,
         "size": if cut { "cut" } else { "finished" },
         "banding_mm": mm(band),
         "sheets": sheets,

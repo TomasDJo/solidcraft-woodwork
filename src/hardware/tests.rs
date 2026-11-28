@@ -239,6 +239,24 @@ fn with_cut_the_models_cut_the_cups() {
 }
 
 #[test]
+fn a_half_overlay_hinge_cuts_cups_named_so() {
+    // the middle of three overlay doors hangs on a divider: its cups, drilled or cut by the
+    // model, say half overlay, for the cut list's hardware (#157)
+    let p = json!({"width": 900, "dividers": 2, "doors": 3});
+    let (drilled, _) = crate::cabinet::build(&p).unwrap();
+    assert!(drilled
+        .iter()
+        .any(|c| c.1["name"] == "Cabinet Door 2 hinge cup 1 (half overlay)"));
+    let p = json!({"width": 900, "dividers": 2, "doors": 3, "hardware_models": "cut"});
+    let (cut, _) = crate::cabinet::build(&p).unwrap();
+    let hinges = copies(&cut, &hinge(HALF_OVERLAY));
+    assert_eq!(
+        hinges[0]["_cut"],
+        "Cabinet Door 2 hinge cup 1 (half overlay)"
+    );
+}
+
+#[test]
 fn the_models_are_counted_against_the_command_limit() {
     let (commands, _) = crate::cabinet::build(&json!({"doors": 1})).unwrap();
     let n = commands.len();
@@ -250,7 +268,7 @@ fn the_models_are_counted_against_the_command_limit() {
     assert_eq!(cost(&cut), n - 2 + 4 + 4 + 1 + PARAMETERS.len() + made);
     // a cabinet the models would take over the limit is made without them
     let big = json!({"width": 2400, "height": 2400, "dividers": 7, "doors": 8, "shelves": 3,
-                     "handles": "pull"});
+                     "handles": "pull", "door_handles": "pull"});
     let mut off = big.clone();
     off["hardware_models"] = json!("off");
     let (with, summary) = crate::cabinet::build(&big).unwrap();
@@ -294,13 +312,12 @@ fn the_definitions_are_made_once_at_the_root() {
     );
     let bodies: Vec<&Value> = commands.iter().map(|c| &c.1["body_name"]).collect();
     assert!(all.iter().all(|m| bodies.contains(&&json!(m))));
-    // out of sight, under the floor, placed absolutely
-    let moved = commands.last().unwrap();
-    assert_eq!(moved.0, "occurrence.move");
-    let to = &moved.1["to_matrix"];
-    assert_eq!(to, &json!(HIDDEN));
-    // under the floor, turned half round about Z, near the back of a cabinet on the origin
-    const { assert!(HIDDEN[11] < -24.0 && HIDDEN[0] == -1.0 && HIDDEN[5] == -1.0 && HIDDEN[7] > 200.0) };
+    // on the origin, where it was made (hidden by `lib.rs`), back at the root
+    assert!(commands.iter().all(|c| c.0 != "occurrence.move"));
+    assert_eq!(commands.last().unwrap().1["component"], "root");
+    let tree = json!({"components": [{"name": HOME, "occurrences": [{"id": 7}]}]});
+    assert_eq!(home(&tree), json!(7));
+    assert!(home(&json!({"components": []})).is_null());
     // all there: nothing; one missing (a new length): only that one, in the hardware component
     let have = |names: &[&str]| {
         let components: Vec<Value> = names.iter().map(|n| json!({"name": n})).collect();
@@ -316,7 +333,7 @@ fn the_definitions_are_made_once_at_the_root() {
     assert!(definitions(&tree, &all).is_empty());
     let commands = definitions(&tree, &["HW slide drawer 300 mm".into()]);
     // a definition added later is made with `HOME` on the origin (a body made in a moved
-    // component lands shifted in a plugin run), and `HOME` goes under the floor again after
+    // component lands shifted in a plugin run; an older design's stood under the floor)
     let origin = json!(ORIGIN);
     assert_eq!(commands[1].0, "occurrence.move");
     assert_eq!(commands[1].1["to_matrix"], origin);
@@ -325,8 +342,10 @@ fn the_definitions_are_made_once_at_the_root() {
         ("component.activate", json!({"component": HOME}))
     );
     assert_eq!(commands[3].1["name"], "HW slide drawer 300 mm");
-    let last = commands.last().unwrap();
-    assert_eq!(last.1["to_matrix"], json!(HIDDEN));
+    assert_eq!(
+        commands.iter().filter(|c| c.0 == "occurrence.move").count(),
+        1
+    );
 }
 
 #[test]
@@ -336,6 +355,17 @@ fn the_models_are_hidden_from_every_reader() {
         "HW slide drawer 450 mm (Base:1/Base Drawer 1:1/HW slide drawer 450 mm:2)"
     ));
     assert!(!is_model("Base Door L") && !is_model("HW_cup_d"));
+    // a pilaster strip by its name's end, not a cabinet named with the word (#264)
+    assert!(is_model("Oak Side L pilaster front (652 mm)"));
+    assert_eq!(
+        strip_length("Oak pilaster cabinet Side L pilaster back (652 mm)"),
+        Some("652 mm")
+    );
+    assert!(!is_model("Oak pilaster cabinet Side L"));
+    assert_eq!(
+        strip_length("Oak pilaster cabinet Side L pilaster dado front"),
+        None
+    );
     let mut measure = json!({"bodies": [{"name": "Base Side L"}, {"name": "HW hinge (Base:1/HW hinge:2)"}, {"name": "HW hinge"}]});
     hide(&mut measure);
     assert_eq!(measure, json!({"bodies": [{"name": "Base Side L"}]}));
@@ -434,6 +464,36 @@ fn the_arm_is_cranked_for_inset_doors_and_dividers() {
     assert_eq!(
         (&plate["length"], &plate["width"]),
         (&json!("40 mm"), &json!("8.5 mm"))
+    );
+    // recognisable (#140): the cup has a 40 mm rim and a boss where the arm starts, outside
+    // the door (+Y), joined into one body; the plate is a cross, its wings 48 mm high
+    let parts = |model: &str| -> Vec<String> {
+        let made = shape(model);
+        made.iter()
+            .map(|c| c.1["name"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(
+        parts(HINGE),
+        [
+            "HW hinge cup",
+            "HW hinge arm",
+            "HW hinge rim",
+            "HW hinge boss"
+        ]
+    );
+    let made = shape(HINGE);
+    assert_eq!(
+        (&made[2].1["diameter"], &made[2].1["axis"]),
+        (&json!("40 mm"), &json!([0, 1, 0]))
+    );
+    assert_eq!(made[3].1["corner"][1], "0.1 mm");
+    assert!(made[1..].iter().all(|c| c.1["targets"] == json!([HINGE])));
+    assert_eq!(parts(PLATE), ["HW hinge plate", "HW hinge plate wings"]);
+    let plate = shape(PLATE);
+    assert_eq!(
+        (&plate[0].1["height"], &plate[1].1["height"]),
+        (&json!("16 mm"), &json!("48 mm"))
     );
 }
 

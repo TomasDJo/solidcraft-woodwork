@@ -10,14 +10,18 @@ fn design() -> Value {
 #[test]
 fn a_cabinet_remembers_how_it_was_made() {
     let params = json!({"width": 600, "doors": 2, "place": "right", "match": "selected",
-        "_match": {"prefix": "B"}, "name": "A"});
+        "_match": {"prefix": "B"}, "name": "A", "line": [{"type": "edge"}], "start_at": "right",
+        "offset": 50, "faces": "flip", "width_from_line": true, "_line": {"width": "L - 50 mm"}});
     let kept = remember("cabinet", &params, "A 2");
     let ours = &kept[KEY];
     assert_eq!(ours["entry"], "cabinet");
-    // under the name it got, and without where it was placed or what it was matched to
+    // under the name it got, and without where it was placed or what it was matched to; the
+    // line it stands along stays, for Apply settings to read again (not the expression made
+    // from it, which the width parameter keeps)
     assert_eq!(
         ours["params"],
-        json!({"width": 600, "doors": 2, "name": "A 2"})
+        json!({"width": 600, "doors": 2, "name": "A 2", "line": [{"type": "edge"}],
+            "start_at": "right", "offset": 50, "faces": "flip", "width_from_line": true})
     );
 }
 
@@ -28,7 +32,7 @@ fn an_edit_keeps_what_is_not_changed() {
         &json!({"width": 600, "shelves": 1, "doors": 2}),
         "A",
     );
-    let changes = json!({"shelves": 3, "doors": null, "handles": "keep", "shelf_pins": "yes",
+    let changes = json!({"shelves": 3, "doors": null, "handles": "keep", "door_handles": "keep", "shelf_pins": "yes",
         "labels": "no", "door_hinge": "right"});
     let (entry, params) = merge(&made[KEY], &changes, &design()).unwrap();
     assert_eq!(entry, "cabinet");
@@ -451,4 +455,51 @@ fn a_design_wide_setting_is_refused_not_ignored() {
         &json!({"joints": "keep", "material": "Oak", "plinth": "yes", "shelves": 2})
     )
     .is_ok());
+}
+
+#[test]
+fn the_grip_gap_comes_from_its_parameter() {
+    // an inch cabinet with grip edges: the gap as the design has it now, in the cabinet's unit
+    let made = remember(
+        "cabinet",
+        &json!({"units": "in", "handles": "grip", "grip_gap": 0.75}),
+        "A",
+    );
+    let design = json!({"params": [{"name": "A_grip_gap", "value": 25.4}]});
+    let (_, params) = merge(&made[KEY], &json!({}), &design).unwrap();
+    assert_eq!(params["grip_gap"], 1.0);
+    assert_eq!(params["_existing"]["grip_gap"], 25.4);
+}
+
+#[test]
+fn edit_starts_at_the_cabinets_shelf_support() {
+    // a cabinet on pilaster strips shows strips, not the `pins` fallback (#264)
+    for entry in ["cabinet", "corner"] {
+        let made = remember(
+            entry,
+            &json!({"shelf_pins": true, "shelf_support": "strips"}),
+            "A",
+        );
+        let (entry, base) = merge(&made[KEY], &json!({}), &design()).unwrap();
+        let reply = fields(&entry, &shown(&entry, &base), &Map::new());
+        assert_eq!(reply["shelf_support"], json!({"default": "strips"}));
+    }
+}
+
+#[test]
+fn the_door_handles_go_through_edit() {
+    // a chosen value survives `merge` and the dialog shows it; Edit can change it
+    let made = remember("cabinet", &json!({"doors": 1, "door_handles": "pull"}), "A");
+    let (entry, base) = merge(&made[KEY], &json!({}), &design()).unwrap();
+    assert_eq!(base["door_handles"], "pull");
+    assert_eq!(shown(&entry, &base)["door_handles"], "pull");
+    let reply = fields(&entry, &shown(&entry, &base), &Map::new());
+    assert_eq!(reply["door_handles"], json!({"default": "pull"}));
+    let (_, params) = merge(&made[KEY], &json!({"door_handles": "knob"}), &design()).unwrap();
+    assert_eq!(changed(&params, &base), ["door_handles"]);
+    // a cabinet that remembers none shows none (`assumed`)
+    let old = remember("cabinet", &json!({"doors": 1}), "A");
+    let (entry, base) = merge(&old[KEY], &json!({}), &design()).unwrap();
+    let reply = fields(&entry, &shown(&entry, &base), &Map::new());
+    assert_eq!(reply["door_handles"], json!({"default": "none"}));
 }

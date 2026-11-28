@@ -6,7 +6,7 @@
 //! in a right one, and its -Y faces the room.
 
 use super::Corner;
-use crate::fittings::{self, HANDLE_D, HANDLE_EDGE};
+use crate::fittings::{self, HANDLE_D};
 use crate::hardware;
 use crate::kit::mm;
 use serde_json::{json, Value};
@@ -78,15 +78,31 @@ pub fn door(corner: &Corner, on_return: bool) {
     let (cup_x, pull_x) = match at_end {
         true => (
             format!("{x1} - HW_cup_inset"),
-            format!("{x0} + {}", mm(HANDLE_EDGE)),
+            format!("{x0} + {}", fittings::handle_edge(corner.eframe.as_ref())),
         ),
         false => (
             format!("{x0} + HW_cup_inset"),
-            format!("{x1} - {}", mm(HANDLE_EDGE)),
+            format!("{x1} - {}", fittings::handle_edge(corner.eframe.as_ref())),
         ),
     };
     kit.open("Door");
-    kit.panel_at("Door", json!([x0, &front, z0]), [&len, et, &door_h], None);
+    let at = |x: &str, y: &str, z: &str| json!([x, y, z]);
+    // with a grip edge the door stops the grip gap short of its grip edge (#230)
+    let floor = fittings::floor_unit(plinth, d);
+    let top = fittings::grip_on_top(handle_at, floor);
+    let (gz, gh) = fittings::gripped(corner.egap.as_deref(), &z0, &door_h, top);
+    let lo = [x0.as_str(), front.as_str(), gz.as_str()];
+    fittings::front(
+        kit,
+        "Door",
+        corner.eframe.as_ref(),
+        at,
+        lo,
+        [&len, et, &gh],
+        0,
+        !at_end,
+        corner.glass,
+    );
     let hole = |x: &str, z: &str, d: f64, depth: &str, what: String| {
         fittings::hole(
             kit,
@@ -101,19 +117,20 @@ pub fn door(corner: &Corner, on_return: bool) {
     // ponytail: no plate holes: the ends stand at 45 degrees to the door, which takes a
     // hinge for that angle.
     let base = format!("{epl} + {et}");
-    let cups = hardware::cups(&z0, &z1, h - plinth - 2.0 * o_mm, &base);
+    // over the door's own height, shorter with a grip gap
+    let cup_top = format!("{gz} + {gh}");
+    let cups = hardware::cups(&gz, &cup_top, h - plinth - 2.0 * o_mm - corner.gap, &base);
     let at = |z: &str| json!([cup_x, back, z]);
     let toward = [if at_end { 1 } else { -1 }, 0, 0];
     let crank = if corner.inset { 18.0 } else { 0.0 };
     hardware::cup_holes(kit, "Door", at, [[0, -1, 0], toward], Some(crank), &cups);
-    let handle_z = fittings::handle_height(
-        handles,
-        handle_at,
-        &z0,
-        &z1,
-        h - plinth,
-        fittings::floor_unit(plinth, d),
-    );
+    let handle_z = fittings::handle_height(handles, handle_at, &z0, &z1, h - plinth, floor);
+    // A grip edge or groove instead, along its top or bottom: the door is still square here.
+    let at = |x: &str, y: &str, z: &str| json!([x, y, z]);
+    fittings::grip(kit, "Door", handles, at, lo, [&len, et, &gh], 0, 1, top);
+    if let Some((g, sizes)) = &corner.grooves {
+        fittings::front_grooves(kit, "Door", g, sizes, at, lo, [&len, et, &gh], 0, 1);
+    }
     let screws = fittings::screw_heights(handles, &handle_z);
     for (j, z) in screws.iter().enumerate() {
         hole(&pull_x, z, HANDLE_D, et, format!("handle {}", j + 1));

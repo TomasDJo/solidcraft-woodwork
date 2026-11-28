@@ -6,7 +6,7 @@ use crate::{joint, kit};
 use serde_json::{json, Map, Value};
 
 /// The fields Settings keeps that the Cabinet and Corner dialogs show: the hook's defaults.
-const FIELDS: [&str; 4] = ["material", "thickness", "reveal", "handles"];
+const FIELDS: [&str; 3] = ["material", "thickness", "reveal"];
 
 /// What a setting is: a choice and its default, a length (kept in mm, shown and given in the
 /// dialog's unit) or a number in mm in every unit, with its default and bounds in mm. A
@@ -41,7 +41,9 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("reveal", "", Mm(2.0, 0.5, 6.0), Hook),
         // the Cabinet dialog's defaults, so Settings starts at them (not Keep) when none is stored
         ("material", "", Choice("Birch plywood"), Hook),
-        ("handles", "", Choice("none"), Hook),
+        ("handles", "", Choice("none"), Cabinets),
+        // `handles` is the drawer fronts' (Drawers settings), these the doors' (Doors)
+        ("door_handles", "", Choice("none"), Cabinets),
         ("joints", "", Choice("dowels"), Cabinets),
         ("finger_bottom", "", Choice("no"), Cabinets),
         ("joints_inner", "", Choice("dowels"), Box),
@@ -51,13 +53,27 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("hinge_angle", "", Choice("110"), Cabinets),
         ("slide_type", "", Choice("full"), Box),
         ("drawer_joints", "", Choice("none"), Box),
+        ("drawer_front", "", Choice("separate"), Box),
         ("fastener_models", "", Choice("off"), Cabinets),
         ("back", "", Choice("groove"), Box),
         ("back_thickness", "", Length(6.0, 3.175, 50.0), Box),
         ("drawer_thickness", "", Length(12.0, 10.0, 25.0), Box),
         ("drawer_bottom", "", Length(6.0, 3.175, 19.0), Box),
+        ("drawer_side_height", "", Length(0.0, 0.0, 1000.0), Box),
+        ("drawer_back_height", "", Length(0.0, 0.0, 1000.0), Box),
+        ("tab_width", "", Length(120.0, 40.0, 600.0), Box),
+        ("strip_thickness", "", Length(12.0, 6.0, 30.0), Box),
+        ("strip_height", "", Length(18.0, 10.0, 60.0), Box),
         ("fronts", "", Choice("overlay"), Cabinets),
+        ("double_dividers", "", Choice("no"), Box),
         ("handle_position", "", Choice("auto"), Cabinets),
+        ("grip_gap", "", Length(20.0, 5.0, 50.0), Cabinets),
+        ("front_style", "", Choice("flat"), Cabinets),
+        ("groove_shape", "", Choice("square"), Cabinets),
+        ("groove_spacing", "", Length(50.0, 10.0, 300.0), Cabinets),
+        ("groove_depth", "", Length(3.0, 0.5, 10.0), Cabinets),
+        ("frame_width", "", Length(60.0, 55.0, 150.0), Cabinets),
+        ("panel_thickness", "", Length(6.0, 3.0, 25.0), Cabinets),
         // `plinth` is Cabinet's Yes or No (`design`)
         ("plinth", "", Length(100.0, 0.0, 500.0), Nothing),
         ("plinth_type", "", Choice("board"), Cabinets),
@@ -70,6 +86,8 @@ fn table() -> Vec<(&'static str, &'static str, Def, To)> {
         ("sheet", "", Choice("2440x1220"), Cutlist),
         ("kerf", "", Mm(4.0, 0.0, 10.0), Cutlist),
         ("trim", "", Mm(10.0, 0.0, 50.0), Cutlist),
+        // free text, `name = price; ...` (`cost::prices`): a choice of no fixed values
+        ("prices", "", Choice(""), Cutlist),
         ("worktop_material", "material", Choice("Oak"), Worktop),
         (
             "worktop_thickness",
@@ -221,7 +239,7 @@ pub fn design(entry: &str, params: &mut Value, stored: &Value) {
                     None => default,
                 };
                 match key {
-                    "labels" | "finger_bottom" => json!(v == "yes"),
+                    "labels" | "finger_bottom" | "double_dividers" => json!(v == "yes"),
                     _ => json!(v),
                 }
             }
@@ -268,8 +286,10 @@ pub fn edit_plinth(changes: &Value, remembered: &Value, design: &Value, stored: 
 /// The per-cabinet fields that Settings also gives a default (Plinth's Yes or No through its
 /// height). A cabinet whose value is not the default it was built with chose its own, which
 /// Apply settings keeps; one that has that default follows the settings.
-pub const PER_CABINET: [&str; 7] = [
+pub const PER_CABINET: [&str; 9] = [
     "handles",
+    "door_handles",
+    "front_style",
     "fronts",
     "back",
     "plinth",
@@ -279,18 +299,12 @@ pub const PER_CABINET: [&str; 7] = [
 ];
 
 /// What the `PER_CABINET` fields of a cabinet made now with `stored` would be, as its params
-/// hold them (labels a flag, the plinth a height, handles the dialog's None when not stored).
+/// hold them (labels a flag, the plinth a height).
 /// A cabinet remembers it as `_defaults` (`lib.rs`), so Apply settings knows later which of its
 /// values were the defaults then.
 pub fn defaults(entry: &str, units: &Value, stored: &Value) -> Value {
     let mut fresh = json!({"units": units});
     design(entry, &mut fresh, stored);
-    let handles = &stored["document"]["settings"]["handles"];
-    fresh["handles"] = if handles.is_string() {
-        handles.clone()
-    } else {
-        json!("none")
-    };
     let mut out = Map::new();
     for key in PER_CABINET {
         if let Some(v) = fresh.get(key) {
@@ -457,6 +471,10 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
         // Woodwork settings' own fields
         ("back thickness", "back_thickness"),
         ("drawer box", "drawer_thickness"),
+        ("front grooves", "groove_depth"),
+        ("grip gap", "grip_gap"),
+        ("glass drawer", "handles"),
+        ("shaker", "frame_width"),
         ("cleat thickness", "cleat_thickness"),
         ("cleat", "cleat_height"),
         ("panels of", "thickness"),
@@ -502,7 +520,9 @@ pub fn problem(why: &str, corner: bool) -> (&'static str, String) {
 pub fn on_cabinet(field: &'static str) -> &'static str {
     match field {
         "cleat_height" | "cleat_thickness" => "wall_mount",
-        "back_thickness" | "drawer_thickness" => "shape",
+        "back_thickness" | "drawer_thickness" | "groove_depth" | "frame_width" | "grip_gap" => {
+            "shape"
+        }
         f => f,
     }
 }
@@ -537,7 +557,10 @@ pub fn trouble(values: &Value, stored: &Value) -> Option<(String, String)> {
 /// Settings dialog gets every setting with a default, stored or the default, and no hint.
 pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     let mut reply = Map::new();
-    let own = entry == "settings";
+    // Settings is a dialog per section (`settings-<section>`): the hook answers that section's
+    // fields only, as a reply naming another field is ignored whole.
+    let section = entry.strip_prefix("settings-");
+    let own = entry == "settings" || section.is_some();
     if !own && !matches!(entry, "cabinet" | "corner") {
         return Value::Object(reply);
     }
@@ -555,10 +578,9 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
     } else {
         settings.retain(|key, _| FIELDS.contains(&key.as_str()));
     }
-    // Settings' sizes are in Units, which only General (and All) show; the other sections use
-    // the stored one, said in each size's hint
-    let shown = values["section"].as_str().unwrap_or("all");
-    let with_units = matches!(shown, "general" | "all") || !own;
+    // Settings' sizes are in Units, which only General (and the scripts' entry) has; the other
+    // sections use the stored one, said in each size's hint
+    let with_units = matches!(section, None | Some("general"));
     let stored_units = stored["document"]["settings"]["units"]
         .as_str()
         .unwrap_or("mm");
@@ -586,35 +608,26 @@ pub fn fields(entry: &str, values: &Value, stored: &Value) -> Value {
         };
         reply.insert(key.clone(), field);
     }
-    // Settings' Section shows one group of fields: the others hidden by the hook, which (unlike
-    // a schema condition) still sends them, so a script's values are all used and the dialog's
-    // hidden ones are the stored values, which `patch` leaves out.
-    if own {
-        reply.insert(
-            "section".into(),
-            json!({"hint": "Pick a group to see its settings"}),
-        );
-        // a divider row under Section, greyed and never stored (filled for a script)
-        reply.insert("divider".into(), json!({ "default": DIVIDER }));
-        for (section, keys) in SECTIONS {
-            if shown == "all" || shown == section {
-                continue;
-            }
-            for key in keys {
-                let field = reply.entry(key.to_string()).or_insert(json!({}));
-                field["visible"] = json!(false);
-            }
+    if let Some(section) = section {
+        let keys = SECTIONS
+            .iter()
+            .find(|s| s.0 == section)
+            .map_or(&[][..], |s| s.1);
+        reply.retain(|key, _| keys.contains(&key.as_str()));
+        // Finger-joint the bottom too only matters over a board or notch plinth; Plinth type is
+        // in another dialog, so the stored one decides (a schema condition can't name it).
+        let plinth = stored["document"]["settings"]["plinth_type"].as_str();
+        if section == "joinery" && matches!(plinth, Some("legs" | "casters")) {
+            let field = reply.entry("finger_bottom").or_insert(json!({}));
+            field["visible"] = json!(false);
         }
     }
     Value::Object(reply)
 }
 
-/// The divider row under Settings' Section: a greyed field, its value never stored.
-pub const DIVIDER: &str = "────────────────────";
-
-/// Settings' sections (its field `section`, the same in the manifest) and their fields. Apply
-/// to shows in every section.
-pub const SECTIONS: [(&str, &[&str]); 7] = [
+/// Settings' sections, an entry each (`settings-<section>`, the same fields in the manifest).
+/// The entry `settings` (no dialog, for scripts) takes them all, and Apply to.
+pub const SECTIONS: [(&str, &[&str]); 8] = [
     (
         "general",
         &[
@@ -631,18 +644,31 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
         &[
             "fronts",
             "reveal",
-            "handles",
             "handle_position",
-            "hinge_angle",
+            "grip_gap",
+            "front_style",
+            "groove_shape",
+            "groove_spacing",
+            "groove_depth",
+            "frame_width",
+            "panel_thickness",
         ],
     ),
+    ("doors", &["door_handles", "hinge_angle", "double_dividers"]),
     (
         "drawers",
         &[
+            "handles",
             "drawer_thickness",
             "drawer_bottom",
+            "drawer_side_height",
+            "drawer_back_height",
+            "tab_width",
             "drawer_joints",
+            "drawer_front",
             "slide_type",
+            "strip_thickness",
+            "strip_height",
         ],
     ),
     (
@@ -681,6 +707,7 @@ pub const SECTIONS: [(&str, &[&str]); 7] = [
             "sheet",
             "kerf",
             "trim",
+            "prices",
             "worktop_material",
             "worktop_thickness",
         ],

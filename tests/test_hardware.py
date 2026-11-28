@@ -64,18 +64,28 @@ def test_plate_holes_go_into_the_pin_holes_or_clear_of_them(approval):
 
 
 def test_three_doors_and_a_right_hung_one(approval):
-    # Three doors hinge left, right, left: plate holes in Side L only (the other hinge edges are
-    # on dividers, which get none). A single door hinged right: the plate on Side R. Inches.
+    # Three doors over two dividers (#157): the end doors hinge on the sides (plate holes in
+    # both), so only the middle one hinges on a divider, which it covers half of: half overlay
+    # hinges (the 9.5 mm cranked model, and their own line in the cut list's hardware), and
+    # no plate holes in the divider. Inset, the three alternate as before (left, right, left):
+    # the third hangs on a divider, so Side R gets no plate holes. A single door hinged right:
+    # the plate on Side R. Inches.
     results = designed(approval, NONE, [plugin(approval, "cabinet", {"name": "T", "width": 900, "dividers": 2, "doors": 3}),
                    plugin(approval, "cabinet", {"name": "R", "units": "in", "width": 18, "height": 30, "depth": 12,
                                                 "thickness": 0.75, "back_thickness": 0.25, "doors": 1, "door_hinge": "right"}),
-                   MEASURE, faces("R Door"), faces("R Side R")])
-    measure = results[2]
+                   plugin(approval, "cabinet", {"name": "I", "width": 900, "dividers": 2, "doors": 3, "fronts": "inset"}),
+                   MEASURE, faces("R Door"), faces("R Side R"), plugin(approval, "cutlist")])
+    measure = results[3]
     assert [cylinders(measure, f"T Door {n}") for n in (1, 2, 3)] == [2, 2, 2]
-    assert (cylinders(measure, "T Side L"), cylinders(measure, "T Side R")) == (4, 0)
-    assert cylinders(measure, "R Side L") == 0 and len(holes(results[4], 2.5)) == 4
+    assert (cylinders(measure, "T Side L"), cylinders(measure, "T Side R")) == (4, 4)
+    cranked = sorted(n.split(" (")[1] for n in models(measure, "HW hinge crank 9.5 (T:1/"))
+    assert len(cranked) == 2 and all(n.startswith("T:1/T Door 2:1/") for n in cranked), cranked
+    hardware = {h["item"]: h["qty"] for h in results[-1]["result"]["hardware"]}
+    assert (hardware["Hinge, cup"], hardware["Hinge, cup, half overlay"]) == (4 + 2 + 6, 2), hardware
+    assert (cylinders(measure, "I Side L"), cylinders(measure, "I Side R")) == (4, 0)
+    assert cylinders(measure, "R Side L") == 0 and len(holes(results[5], 2.5)) == 4
     # 18 in wide: the right edge at 9 in less the reveal, the cup 22.5 mm in from it
-    assert [h[0] for h in holes(results[3], 17.5)] == [round(9 * 25.4 - 2 - 22.5, 1)] * 2, holes(results[3], 17.5)
+    assert [h[0] for h in holes(results[4], 17.5)] == [round(9 * 25.4 - 2 - 22.5, 1)] * 2, holes(results[4], 17.5)
 
 
 def test_slides_drill_the_sides_and_the_boxes(approval):
@@ -118,6 +128,14 @@ def models(measure, model="HW "):
     return {name: box for name, box in boxes(measure, models=True).items() if name.startswith(model)}
 
 
+INSPECT = {"command": "document.inspect", "params": {}}
+
+
+def hidden(inspect):
+    """The names of the bodies `document.inspect` says are hidden."""
+    return {b["name"] for b in inspect["bodies"] if not b["visible"]}
+
+
 def middle(box):
     return [round((box[i] + box[i + 3]) / 2, 1) for i in range(3)]
 
@@ -126,12 +144,12 @@ def test_models_show_and_move_with_the_doors_and_drawers(approval):
     # One door and one drawer: a hinge model (cup and arm) in each cup, in the door's component,
     # and its mounting plate on the side, in the cabinet's; a slide's drawer
     # member on each box side in the drawer's component, its cabinet member on each carcass side.
-    # The definitions are made once, under the floor, in a component at the root.
+    # The definitions are made once, hidden, in a component at the root.
     results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1}), MEASURE, faces("Cabinet Door"),
                    drive("Cabinet Door hinge", 90), drive("Cabinet Drawer 1 slide", 200), MEASURE,
                    change("Cabinet_width", "700 mm"), drive("Cabinet Door hinge", 0), drive("Cabinet Drawer 1 slide", 0), MEASURE,
                    plugin(approval, "cabinet", {"name": "B", "doors": 1}),
-                   {"command": "component.list", "params": {"compact": True}}],
+                   {"command": "component.list", "params": {"compact": True}}, INSPECT],
                   "--save", str(ROOT / "dist" / "models.sc"))
     shut, opened, wider = models(results[1]), models(results[5]), models(results[9])
     hinges = sorted(n for n in shut if n.startswith("HW hinge (Cabinet:1/Cabinet Door:1/"))
@@ -144,17 +162,22 @@ def test_models_show_and_move_with_the_doors_and_drawers(approval):
     assert all(abs(shut[n][4] - shut[n][1] - 500) < 0.01 for n in drawer + carcass)
     assert all(shut[n][0] == -282 and shut[n][3] == -273.5 and shut[n][4] - shut[n][1] == 40
                and middle(shut[n])[1] == -243 for n in plates), [shut[n] for n in plates]
+    # a hinge is its cup with a 40 mm rim on the door, a boss and an arm; the plate a cross (#140)
+    assert all(round(shut[n][5] - shut[n][2], 2) == 40 for n in hinges), [shut[n] for n in hinges]
+    assert all(round(shut[n][5] - shut[n][2], 2) == 48 for n in plates), [shut[n] for n in plates]
+    # a cross, not a full block: the 40 x 8.5 x 16 middle and the 12 x 3 x 48 wings (40 * 8.5 * 48 = 16320 as a block)
+    assert all(volume(results[1], n) == 40 * 8.5 * 16 + 12 * 3 * (48 - 16) for n in plates), [volume(results[1], n) for n in plates]
     # each hinge's cup is in a cup hole: its middle on the hole's axis, half the depth in
     cups = holes(results[2], 17.5)
     for name, cup in zip(hinges, sorted(cups, key=lambda c: c[2])):
         x, _, z = middle(shut[name])
         assert abs(x - cup[0]) < 0.2 and abs(z - cup[2]) < 0.2, (name, shut[name], cup)
-    for name in [*hinges, *plates, *carcass, *drawer]:  # under the floor: the definitions only
+    for name in [*hinges, *plates, *carcass, *drawer]:  # the copies stand on the floor
         assert shut[name][2] > 0, (name, shut[name])
     definitions = {"HW hinge", "HW hinge plate", "HW slide cabinet 500 mm", "HW slide middle 500 mm",
                    "HW slide drawer 500 mm"}
     assert {n for n in shut if "(" not in n} == definitions
-    assert all(shut[n][5] < 0 for n in definitions)
+    assert hidden(results[-1]) == definitions  # and only they are hidden
     # open: the hinges swing with the door, the drawer members slide 200 out, the cabinet members stay
     assert all(opened[n] != shut[n] for n in hinges)
     # (the middle members, on a full extension slide, are in the drawer's component too)
@@ -228,20 +251,18 @@ def test_slide_type_and_hinge_angle_set_the_joints_limits(approval):
     assert hardware["Drawer slide, partial extension, 500 mm, pair"] == 1, hardware
 
 
-def test_definitions_made_later_stay_under_the_floor(approval):
-    # The first cabinet makes Woodwork hardware and moves it under the floor; a later one adds
-    # definitions to it (a cranked hinge for an inset door, another slide length). They went
-    # in at the origin, shifted by where the component stood: now every one is under the floor
-    # and under the first cabinet, its copies still in their cups.
+def test_definitions_made_later_stay_hidden(approval):
+    # The first cabinet makes Woodwork hardware and hides it; a later one adds definitions to it
+    # (a cranked hinge for an inset door, another slide length): hidden too, after saving, and
+    # their copies in their cups.
     results = cli([plugin(approval, "cabinet", {"doors": 1, "drawers": 1}),
                    plugin(approval, "cabinet", {"name": "B", "doors": 1, "fronts": "inset", "drawers": 1,
                                                 "depth": 450, "place": "origin"}),  # 400 mm slides
-                   MEASURE, faces("B Door")])
+                   MEASURE, faces("B Door")], "--save", str(ROOT / "dist" / "later.sc"))
     shut = models(results[2])
     definitions = {n: b for n, b in shut.items() if "(" not in n}
     assert {"HW hinge crank 18", "HW slide drawer 400 mm", "HW hinge"} <= set(definitions), sorted(definitions)
-    for name, box in definitions.items():
-        assert box[5] < 0 and box[2] > -60 and -280 <= box[1], (name, box)
+    assert hidden(cli([INSPECT], "--in", str(ROOT / "dist" / "later.sc"))[0]) == set(definitions)
     cups = holes(results[3], 17.5)
     hinges = sorted(n for n in shut if n.startswith("HW hinge crank 18 (B:1/B Door:1/"))
     assert len(hinges) == 2 and all(abs(middle(shut[n])[2] - z) < 0.2 for n, (_, _, z) in zip(hinges, sorted(cups, key=lambda c: c[2]))), (hinges, cups)
@@ -262,7 +283,7 @@ def misplaced(steps):
     measure, joints = results[-2], results[-1]
     folds = [j["name"][:-len(" fold")] for j in joints["joints"] if j["name"].endswith(" fold")]
     names = [b["name"] for b in measure["bodies"]]
-    boards = [n for n in names if not n.startswith("HW ") and (" Door" in n or " Side " in n)]
+    boards = [n for n in names if not n.startswith("HW ") and (" Door" in n or " Side " in n or " Divider " in n)]
     found = cli(flat(steps) + [faces(n) for n in boards])[-len(boards):]
     round_faces = [(f["cylinder"]["radius"], f["centroid"], n) for n, each in zip(boards, found)
                    for f in each["faces"] if f.get("cylinder")]
@@ -280,9 +301,30 @@ def misplaced(steps):
     return off, len(hinges), len(cups)
 
 
+def test_double_dividers(approval):
+    # Woodwork settings' Double dividers (#176): three overlay doors on two dividers of two
+    # boards each, 18 mm, so each compartment is (900 - 6 * 18) / 3 = 264 wide. The middle door
+    # (hinged left) hangs on divider 1's right board: plain hinges, plates in that board, and no
+    # half overlay line in the hardware list. Two doors on two dividers keep single ones.
+    results = designed(approval, {**NONE, "double_dividers": "yes"}, [
+        plugin(approval, "cabinet", {"name": "W", "width": 900, "dividers": 2, "doors": 3}),
+        plugin(approval, "cabinet", {"name": "S", "width": 900, "dividers": 2, "doors": 2, "place": "origin"}),
+        MEASURE, plugin(approval, "cutlist")])
+    measure = results[2]
+    box = boxes(measure)
+    left, right = box["W Divider 1 L"], box["W Divider 1 R"]
+    assert (round(left[3] - left[0], 3), round(right[0] - left[3], 3)) == (18, 0), (left, right)
+    assert round(left[0] - box["W Side L"][3], 3) == 264, (left, box["W Side L"])
+    assert [cylinders(measure, f"W {b}") for b in ("Side L", "Divider 1 L", "Divider 1 R", "Divider 2 L", "Divider 2 R", "Side R")]         == [4, 0, 4, 0, 0, 4]
+    assert not models(measure, "HW hinge crank 9.5 (W:1/")
+    assert "S Divider 1" in box and "S Divider 1 L" not in box
+    hardware = {h["item"]: h["qty"] for h in results[-1]["result"]["hardware"]}
+    assert "Hinge, cup, half overlay" not in hardware and hardware["Hinge, cup"] == 6 + 4, hardware
+
+
 def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
     # Box cabinets (doors made after a drawers-only cabinet made the hardware component, inset,
-    # a door on a divider), L-shaped corners left and right hung on either end, inset, and the
+    # a door on a divider, and on a double divider's board), L-shaped corners left and right hung on either end, inset, and the
     # diagonal door; and after Edit of a box and a corner cabinet that stand off the origin
     # (no copies left behind: as many hinges as cups). A corner's fold door has cups but no
     # hinge models.
@@ -294,6 +336,8 @@ def test_every_hinge_sits_in_its_cup_and_every_plate_on_its_holes(approval):
         "box": [cab({"drawers": 2}), cab({"name": "B", "doors": 2, "place": "origin"}),
                 cab({"name": "I", "doors": 1, "fronts": "inset", "place": "origin"}),
                 cab({"name": "T", "width": 900, "dividers": 2, "doors": 3, "place": "origin"})],
+        "double": [setting(approval, {"double_dividers": "yes"}),
+                   cab({"name": "W", "width": 900, "dividers": 2, "doors": 3, "door_hinge": "right"})],
         "L": [cab({"name": f"L{i}", "shape": "L-shaped", "corner": corner, "corner_doors": doors, "fronts": fronts, "place": "origin"})
               for i, (corner, doors, fronts) in enumerate([("left", "hinged left", "overlay"), ("left", "hinged right", "overlay"),
                                                            ("right", "hinged left", "overlay"), ("right", "hinged right", "inset")])],
@@ -332,3 +376,26 @@ def test_undermount_slides(approval):
     assert abs(out["Cabinet Drawer 1 Front"][1] - (box["Cabinet Drawer 1 Front"][1] - 500)) < 0.01
     hardware = {h["item"]: h["qty"] for h in results[5]["result"]["hardware"]}
     assert hardware.get("Drawer slide, undermount full extension, 500 mm, pair") == 2, hardware
+
+
+def test_pilaster_strips_clear_the_hinge_plates(approval):
+    # Pilaster strips with doors: the front strip stands 68 mm behind the opening's front, so
+    # its strip (and dado) is clear of each hinge plate (37 +- 20 mm) on every board a door
+    # hangs on: sides, a double divider's boards, inset, both ends of a corner, inset there.
+    # (A diagonal door's hinges have no plate models.)
+    strips = {"shelves": 2, "shelf_pins": True, "shelf_support": "strips", "place": "origin"}
+    cabinets = {"B": {"doors": 2}, "I": {"doors": 1, "fronts": "inset"},
+                "W": {"width": 900, "dividers": 2, "doors": 3},
+                "WI": {"width": 900, "dividers": 2, "doors": 3, "fronts": "inset"},
+                "L": {"shape": "L-shaped", "corner_doors": "hinged left"},
+                "R": {"shape": "L-shaped", "corner_doors": "hinged right", "fronts": "inset"}}
+    script = [plugin(approval, "cabinet", {"name": n, **p, **strips}) for n, p in cabinets.items()]
+    measure = designed(approval, {**NONE, "double_dividers": "yes"}, [*script, MEASURE])[-1]
+    every = boxes(measure, models=True)
+    apart = lambda a, b: any(a[i + 3] <= b[i] + 0.01 or b[i + 3] <= a[i] + 0.01 for i in range(3))
+    for name in cabinets:
+        plates = [b for n, b in every.items() if n.startswith(f"HW hinge plate ({name}:1/")]
+        posts = [b for n, b in every.items() if n.startswith(f"{name} ") and " pilaster " in n]
+        assert plates and len(posts) >= 4, (name, sorted(every))
+        clash = [(p, s) for p in plates for s in posts if not apart(p, s)]
+        assert not clash, (name, clash)

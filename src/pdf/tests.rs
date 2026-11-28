@@ -175,6 +175,18 @@ fn cutting_diagrams_follow_the_field() {
     }
 }
 
+#[test]
+fn timber_is_listed_bought_to_length() {
+    let mut listed = list(1);
+    listed["timber"] = json!([{"part": "Base Frame front", "material": "Softwood timber",
+                               "thickness": 48.0, "length": 1200.0, "width": 98.0}]);
+    let pdf = render(&listed, "Kitchen", false);
+    well_formed(&pdf);
+    let has = |bytes: &[u8]| pdf.windows(bytes.len()).any(|w| w == bytes);
+    assert!(has(b"(Timber, bought to length)"), "timber heading");
+    assert!(has(b"(Base Frame front)"), "timber part row");
+}
+
 /// A cut list of `boards` boards in one row, all laid out on one sheet but the last.
 fn boards(boards: usize) -> Value {
     let names: Vec<String> = (0..boards).map(|i| format!("Base Shelf {i}")).collect();
@@ -222,6 +234,12 @@ fn labels_escape_and_shorten_names() {
     let text = String::from_utf8_lossy(&pdf);
     assert!(text.contains(r"(Side \(L\))") && text.contains("(bought to length)"));
     assert!(!text.contains("2.4 w"), "no banded edge");
+    // a timber part is bought to length too, not "not on a sheet"
+    list["parts"][0]["parts"] = json!(["Base Frame front"]);
+    list["worktops"] = json!([]);
+    list["timber"] = json!([{"part": "Base Frame front"}]);
+    let text = String::from_utf8_lossy(&labels::render(&list)).to_string();
+    assert!(text.contains("(bought to length)") && !text.contains("(not on a sheet)"));
     let (size, cut) = labels::fit(&"Drawer ".repeat(10), 11.0, 174.0);
     assert!(size == 7.0 && cut.ends_with("...") && width(&cut, 7.0) * 1.06 <= 174.0);
     assert_eq!(labels::fit("Side L", 11.0, 174.0), (11.0, "Side L".into()));
@@ -238,6 +256,22 @@ fn a_notched_side_says_so() {
     boards["parts"][0]["note"] = json!("notched");
     let text = String::from_utf8_lossy(&labels::render(&boards)).to_string();
     assert!(text.contains("(#1, sheet 1 of 1, notched)"), "{text}");
+}
+
+#[test]
+fn the_cost_table_shows_whenever_prices_are_given() {
+    // Prices filled in, none for this design's lines: the table still shows, its lines saying
+    // "no price"; with Prices empty there is none
+    let mut l = list(1);
+    l["cost"] = json!({"given": true, "total": 0.0,
+        "lines": [{"item": "Birch plywood 18", "qty": 2, "unit": "sheets"}]});
+    let text = String::from_utf8_lossy(&render(&l, "Kitchen", false)).to_string();
+    assert!(
+        text.contains("(Cost)") && text.contains("(no price)"),
+        "{text}"
+    );
+    l["cost"]["given"] = json!(false);
+    assert!(!String::from_utf8_lossy(&render(&l, "Kitchen", false)).contains("(Cost)"));
 }
 
 #[test]

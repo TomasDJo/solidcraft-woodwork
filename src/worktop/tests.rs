@@ -503,10 +503,155 @@ fn a_benchtop_tool_on_a_shelf_in_the_cabinet_below() {
         .as_array()
         .unwrap()
         .contains(&json!("Worktop Tool shelf")));
+    // no bolt spacing: no bolt holes
+    assert_eq!(summary["tool"]["bolt_holes"], 0);
     // none asked for: no tool
     let (commands, summary) = build(&json!({}), &names(&["A"]), &m).unwrap();
     assert!(!commands.iter().any(|c| c.1["name"] == "Worktop Tool shelf"));
     assert!(summary.get("tool").is_none());
+}
+
+#[test]
+fn a_side_wing_carries_the_top_on_past_an_end_on_two_legs() {
+    // A from x 0 to 1000: a 600 mm wing past its right end, as deep and thick as the top
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let p = json!({"wing": "right", "wing_length": 600});
+    let (commands, summary) = build(&p, &names(&["A"]), &m).unwrap();
+    let top = named(&commands, "Worktop");
+    let wing = named(&commands, "Worktop Wing");
+    let y = top["corner"][1].as_f64().unwrap();
+    assert_eq!(
+        wing["corner"],
+        json!(["1000 mm", format!("{y} mm"), "720 mm"])
+    );
+    assert_eq!(
+        [&wing["length"], &wing["width"], &wing["height"]],
+        [&json!("600 mm"), &top["width"], &top["height"]]
+    );
+    // two 40 mm legs, 30 in from the free end and the edges, from the floor to its underside
+    let leg = named(&commands, "Worktop Wing Leg 1");
+    assert_eq!(
+        leg["corner"],
+        json!(["1530 mm", format!("{} mm", y + 30.0), "0 mm"])
+    );
+    assert_eq!(
+        [&leg["length"], &leg["height"]],
+        [&json!("40 mm"), &json!("720 mm")]
+    );
+    assert!(commands.iter().any(|c| c.1["name"] == "Worktop Wing Leg 2"));
+    let bodies = summary["bodies"].as_array().unwrap();
+    assert!(
+        bodies.contains(&json!("Worktop Wing")) && bodies.contains(&json!("Worktop Wing Leg 2"))
+    );
+    // made again with the worktop: its parts are the worktop's
+    assert!(piece_of("Worktop Wing", "Worktop") && piece_of("Worktop Wing Leg 1", "Worktop"));
+    // on the left end it reaches back from x 0
+    let (commands, _) = build(
+        &json!({"wing": "left", "wing_length": 300}),
+        &names(&["A"]),
+        &m,
+    )
+    .unwrap();
+    assert_eq!(named(&commands, "Worktop Wing")["corner"][0], "-300 mm");
+    assert!(build(&json!({"wing": "up"}), &names(&["A"]), &m).is_err());
+    // too short for its legs: refused, 70 mm is enough
+    let short = build(
+        &json!({"wing": "right", "wing_length": 4}),
+        &names(&["A"]),
+        &m,
+    );
+    assert!(short.unwrap_err().contains("at least 70 mm"));
+    assert!(build(
+        &json!({"wing": "right", "wing_length": 70}),
+        &names(&["A"]),
+        &m
+    )
+    .is_ok());
+}
+
+#[test]
+fn a_fold_down_wing_hangs_on_a_hinge_at_the_ends_lower_edge() {
+    // A from x 0 to 1000, front at y 0 facing -Y: the wing in a component of its own, no legs
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let p = json!({"wing": "right", "wing_length": 400, "wing_support": "fold"});
+    let (commands, summary) = build(&p, &names(&["A"]), &m).unwrap();
+    let at = |command: &str, name: &str| {
+        (commands.iter())
+            .position(|c| c.0 == command && c.1["name"] == name)
+            .unwrap()
+    };
+    let wing = at("solid.box", "Worktop Wing");
+    assert!(at("component.create", "Worktop Wing") < wing);
+    assert_eq!(commands[wing].1["length"], "400 mm");
+    assert!(!commands.iter().any(|c| c.1["name"] == "Worktop Wing Leg 1"));
+    // the hinge along the depth at the end's lower edge, made back in the worktop's component
+    let hinge = &commands[at("joint.as_built", "Worktop Wing hinge")];
+    assert!(commands[..at("joint.as_built", "Worktop Wing hinge")]
+        .iter()
+        .rev()
+        .find(|c| c.0 == "component.activate")
+        .is_some_and(|c| c.1["component"] == "Worktop"));
+    assert_eq!(hinge.1["a"], "Worktop:1");
+    assert_eq!(hinge.1["b"], "Worktop Wing:1");
+    let point = &hinge.1["at"]["point"];
+    let y = named(&commands, "Worktop")["corner"][1].as_f64().unwrap();
+    assert_eq!(point, &json!([1000.0, y, 720.0]));
+    assert_eq!(hinge.1["at"]["z"], json!([0, 1, 0]));
+    assert!(commands.iter().any(|c| c.0 == "joint.limits"
+        && c.1["joint"] == "Worktop Wing hinge"
+        && c.1["max"] == 90));
+    let bodies = summary["bodies"].as_array().unwrap();
+    assert!(bodies.contains(&json!("Worktop Wing")));
+    // on the left end the axis points the other way, so it too folds down; any length will do
+    let p = json!({"wing": "left", "wing_length": 50, "wing_support": "fold"});
+    let (commands, _) = build(&p, &names(&["A"]), &m).unwrap();
+    let hinge = (commands.iter()).find(|c| c.0 == "joint.as_built").unwrap();
+    assert_eq!(hinge.1["at"]["z"], json!([0, -1, 0]));
+    assert_eq!(hinge.1["at"]["point"][0], 0.0);
+    assert!(build(
+        &json!({"wing": "right", "wing_support": "rope"}),
+        &names(&["A"]),
+        &m
+    )
+    .is_err());
+}
+
+#[test]
+fn bolt_holes_for_the_tools_feet_go_through_its_shelf() {
+    // the tool's middle at (600, -280): four 8 mm holes 400 apart across, 300 front to back
+    let m = measure(vec![base("A", 0.0, 1000.0, 720.0)]);
+    let p = tool(json!({"bolt_x": 400, "bolt_y": 300}));
+    let (commands, summary) = build(&p, &names(&["A"]), &m).unwrap();
+    let holes: Vec<&Value> = (commands.iter())
+        .filter(|c| {
+            c.1["name"]
+                .as_str()
+                .is_some_and(|n| n.starts_with("Worktop Tool bolt hole"))
+        })
+        .map(|c| &c.1)
+        .collect();
+    let bases: Vec<&Value> = holes.iter().map(|h| &h["base"]).collect();
+    assert_eq!(
+        bases,
+        [
+            &json!(["400 mm", "-430 mm", "440 mm"]),
+            &json!(["400 mm", "-130 mm", "440 mm"]),
+            &json!(["800 mm", "-430 mm", "440 mm"]),
+            &json!(["800 mm", "-130 mm", "440 mm"])
+        ]
+    );
+    assert!(holes
+        .iter()
+        .all(|h| h["targets"] == json!(["Worktop Tool shelf"])
+            && h["diameter"] == "8 mm"
+            && h["height"] == "18 mm"
+            && h["operation"] == "cut"));
+    assert_eq!(summary["tool"]["bolt_holes"], 4);
+    // one spacing 0: a pair; holes off the shelf (it is 964 wide) are refused
+    let pair = build(&tool(json!({"bolt_x": 400})), &names(&["A"]), &m).unwrap();
+    assert_eq!(pair.1["tool"]["bolt_holes"], 2);
+    let off = build(&tool(json!({"bolt_x": 1200})), &names(&["A"]), &m).unwrap_err();
+    assert!(off.contains("off its shelf"), "{off}");
 }
 
 #[test]
