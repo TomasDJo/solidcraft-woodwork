@@ -3,7 +3,7 @@
   "id": "woodwork",
   "name": "Woodwork",
   "kind": "plugin",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "licence": "MIT",
   "min_app_version": "0.51.2",
   "summary": "Parametric kitchen and furniture cabinets with joinery, hardware, cut lists and shop drawings.",
@@ -40,7 +40,7 @@
   ],
   "files": [
     {
-      "asset": "woodwork-0.5.0.zip",
+      "asset": "woodwork-0.6.0.zip",
       "role": "package"
     },
     {

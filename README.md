@@ -1,7 +1,7 @@
 # solidcraft-woodwork
 
 A woodworking plugin for SolidCraft: parametric cabinets, joinery, materials, shop drawings
-and a cut list. The next version needs SolidCraft 0.51.2 or later (0.5.0 needs 0.49); for older SolidCraft, see
+and a cut list. Woodwork 0.6.0 needs SolidCraft 0.51.2 or later; for older SolidCraft, see
 [SolidCraft versions](#solidcraft-versions). The roadmap is in [PLAN.md](PLAN.md).
 
 ![Woodwork, a SolidCraft plugin: parametric cabinets, joinery and cut lists](docs/banner.png)
@@ -22,12 +22,13 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
   - A box cabinet with shelves, dividers, a back and a plinth / toe kick (a board, notched
     sides, legs or casters).
   - Doors, drawers, or drawers above or below doors, overlay or inset, that open on their
-    joints. Holes for shelf pins, handles, hinges and drawer slides, or no handles at all:
+    joints. Holes for shelf pins (or metal pilaster strips), handles, hinges and drawer slides, or no handles at all:
     a grip edge bevelled behind the front, a finger groove along it, or a tab under a drawer
-    front to pull by. Drawers on metal slides, dado runners or wooden strip runners, with
-    lower sides and back if you like.
+    front to pull by, set apart for doors and drawers. Drawers on metal slides, dado runners
+    or wooden strip runners (with a false back so they do not tip out), the bottom in a
+    groove, with lower sides and back if you like.
   - Fronts flat, Shaker (a frame round a panel), glass in a Shaker frame, or with
-    vertical or horizontal grooves, and drawer fronts separate or integrated (the drawer
+    vertical or horizontal grooves (square, round or V), and drawer fronts separate or integrated (the drawer
     box's own front is the front). Where overlay doors meet on a divider: half overlay
     hinges, or double dividers so every door gets standard hinges.
   - A sink base (rails instead of a top), and corner cabinets: L-shaped with a pair of
@@ -62,7 +63,7 @@ Under **Plugins > Woodwork**, and as buttons on the ribbon:
 - **Drawing**: an A3 shop drawing per cabinet, with front, right and iso views, its sizes and
   its boards.
 - **Cut list**: every board with its size, edge banding and grain, the hardware to buy, a cost
-  estimate from your prices, and
+  estimate from your prices, a warning for doors that hit a neighbour's front when open, and
   cutting layouts for the sheets (saw kerf, trim, grain). As a printable PDF with a cutting
   diagram per sheet, CSV, part labels for A4 sticker sheets, or a DXF per sheet for a CNC.
 
@@ -86,7 +87,7 @@ The functions then appear under **Plugins > Woodwork**.
 
 | SolidCraft | Plugin | Notes |
 |---|---|---|
-| 0.51.2+ | next | Tested on 0.51.2. Cabinets placed along a wall or sketch line; Mobile base of boards or timber, with stiffeners, connector bolts and frame screws, that you can edit and add cabinets to; handle-less fronts (grip edge, finger groove, bottom tab), Shaker, glass and grooved fronts, and integrated drawer fronts; drawers on wooden strip runners, and lower drawer sides and backs; half overlay hinges or double dividers where doors meet on a divider; a cost estimate in the cut list; Match selected as one shared group per run; the worktop's side wing and tool bolt holes; Woodwork settings as a dialog per group under one ribbon dropdown; and links from the dialogs' fields to the usage guide; the hardware models' definitions hidden. |
+| 0.51.2+ | 0.6.0 | Tested on 0.51.2. Cabinets placed along a wall or sketch line; Mobile base of boards or timber, with stiffeners, connector bolts and frame screws, that you can edit and add cabinets to; handle-less fronts (grip edge, finger groove, bottom tab), Shaker, glass and grooved fronts, and integrated drawer fronts; drawers on wooden strip runners, and lower drawer sides and backs; half overlay hinges or double dividers where doors meet on a divider; a cost estimate in the cut list; Match selected as one shared group per run; the worktop's side wing on legs or folding down, and tool bolt holes; counterbored connector bolts without a base; V grooves and shelf pilaster strips; separate door and drawer handle settings; a false back in runner drawers; a warning for doors that clash; Woodwork settings as a dialog per group under one ribbon dropdown; links from the dialogs' fields to the usage guide; and the hardware models' definitions hidden. |
 | 0.49 | 0.5.0 | Tested on 0.49.0. One Cabinet dialog that makes or edits (Auto mode), Woodwork settings in sections, Apply settings as a long job, and finger joints. |
 | 0.47 | 0.4.0 | Tested on 0.47.0; works on 0.46 too. Joinery and hardware are design-wide Woodwork settings, one dialog for box and corner cabinets, and hinges, slides and fasteners as models. |
 | 0.46 | 0.3.0 | Tested on 0.46.1. Dialogs show only the fields that apply, Woodwork settings give new cabinets their defaults. |
