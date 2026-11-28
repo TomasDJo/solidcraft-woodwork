@@ -966,10 +966,12 @@ fn clashes_take_integrated_fronts_and_quote_names() {
             [882.0, -280.0, 0.0],
             [900.0, 280.0, 720.0],
         ),
+        // where an integrated front stands: a side and a slide's gap in (18 + 12.7), so 32.7 mm
+        // past the door's hinge edge
         body(
             "B \"Tall\" Drawer 1 Box front",
-            [305.0, -298.0, 400.0],
-            [895.0, -280.0, 718.0],
+            [330.7, -298.0, 400.0],
+            [869.3, -280.0, 718.0],
         ),
     ];
     let design = json!({"timeline": [{"name": "A Side R hinge plate 1.1"}]});
