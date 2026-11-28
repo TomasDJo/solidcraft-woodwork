@@ -953,7 +953,8 @@ holes go through both, at a quarter and three quarters of where they touch, acro
 with a 20 mm counterbore 6 mm deep on the outer face of both sides, so an M6 bolt's head and its
 nut, each on a washer, sit below the surface. These are the same holes as a
 [Mobile base](#mobile-base) drills, so a base made later cuts none of them twice, and a run
-again cuts nothing new. Cabinets that touch nowhere are refused. The cut list counts
+again cuts nothing new. Cabinets that touch nowhere are refused, and so are sides thinner than
+12 mm, which would leave no wood under the washer. The cut list counts
 `Connector bolt, M6` and two `Washer, M6` a bolt.
 
 The holes are not part of the cabinet's own recipe: an Edit of a cabinet makes its side whole

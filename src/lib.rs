@@ -1457,7 +1457,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
                 "pick a board of each cabinet to bolt together: two or more, side by side",
             )?;
             let now = measured(names, &cabinets, run)?;
-            let holes = base::bolts(&now, &cabinets);
+            let holes = base::bolts(&now, &cabinets)?;
             check(
                 !holes.is_empty(),
                 "no two of the picked cabinets stand side to side, touching",
@@ -1569,7 +1569,7 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             }
             // Connector bolts through the sides that touch (#198), and screws into the frame.
             let had = timeline_names(run)?;
-            let holes = base::bolts(&now, &cabinets);
+            let holes = base::bolts(&now, &cabinets)?;
             // the frame's boards beside the cabinets, for the screws into it
             let mut both = now.clone();
             let frame = run("inspect.measure", json!({"bodies": summary["bodies"]}))?;

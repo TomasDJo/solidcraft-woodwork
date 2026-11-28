@@ -1179,3 +1179,65 @@ fn apply_settings_says_why_a_line_was_not_read_for_a_cabinet_on_a_base() {
         .iter()
         .any(|(c, a)| c == "component.delete" && a["component"] == "Bench"));
 }
+
+#[test]
+fn connector_bolt_cuts_keep_their_names_skip_what_is_there_and_bore_across_the_side() {
+    // #260: one bolt between A Side R and B Side L, as base::bolts gives it
+    let hole = [[582.0, 135.5, 345.5], [618.0, 144.5, 354.5]];
+    let bores = [
+        [[582.0, 130.0, 340.0], [588.0, 150.0, 360.0]],
+        [[612.0, 130.0, 340.0], [618.0, 150.0, 360.0]],
+    ];
+    let bolt = (
+        ["A Side R".to_string(), "B Side L".to_string()],
+        1,
+        hole,
+        bores,
+    );
+    let wanted = bolt_cuts(&[bolt]);
+    let names: Vec<&str> = wanted.iter().map(|w| w.0.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "A Side R connector bolt 1 to B Side L",
+            "A Side R connector counterbore 1 to B Side L",
+            "B Side L connector hole 1 to A Side R",
+            "B Side L connector counterbore 1 to A Side R",
+        ]
+    );
+    // cut in each cabinet at the origin; the bolt already in the timeline is left as it is
+    let side = |name: &str, x: f64| json!({"name": name, "bbox": {"min": [x, 0, 170], "max": [x + 18.0, 560, 890]}});
+    let now = json!({"bodies": [side("A Side L", 0.0), side("A Side R", 582.0),
+        side("B Side L", 600.0), side("B Side R", 1182.0)]});
+    let square = json!([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]);
+    let tree = json!({"components": [
+        {"id": 1, "name": "A", "occurrences": [{"id": 2, "parent": 0, "transform": square}]},
+        {"id": 3, "name": "B", "occurrences": [{"id": 4, "parent": 0, "transform": square}]}]});
+    let mut cylinders: Vec<Value> = Vec::new();
+    let mut run = |command: &str, args: Value| {
+        if command == "solid.cylinder" {
+            cylinders.push(args);
+        }
+        Ok(match command {
+            "component.list" => tree.clone(),
+            _ => json!({}),
+        })
+    };
+    let had = ["A Side R connector bolt 1 to B Side L".to_string()];
+    cut_world(&now, &wanted, &had, Vec::new(), &mut run).unwrap();
+    let cut: Vec<&str> = cylinders
+        .iter()
+        .filter_map(|c| c["name"].as_str())
+        .collect();
+    assert_eq!(cut.len(), 3, "{cut:?}");
+    assert!(!cut.contains(&"A Side R connector bolt 1 to B Side L"));
+    // a 6 x 20 x 20 counterbore runs along x, 6 deep, not along a 20 mm size
+    let bore = (cylinders.iter())
+        .find(|c| c["name"] == "A Side R connector counterbore 1 to B Side L")
+        .unwrap();
+    assert_eq!(bore["axis"], json!([1, 0, 0]));
+    assert_eq!(
+        (bore["height"].as_str(), bore["diameter"].as_str()),
+        (Some("6 mm"), Some("20 mm"))
+    );
+}
