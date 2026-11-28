@@ -889,7 +889,9 @@ frame under all of them and stands them on it:
   are at most 1500 mm apart along it (a block that would stand on a cross board moves beside it).
   **Caster height** (100 mm) is from the floor to the frame's underside.
 - **The cabinets** go up onto the frame, each to its top (by Caster height plus Frame height
-  from the floor). Make them with **Plinth** No: the frame is their plinth. A cabinet placed
+  from the floor). The frame is their plinth: a cabinet made with a plinth (board, notch, legs or
+  casters) is built again with **Plinth** No first, and keeps it (Edit shows No, Apply settings
+  does not give it back). A cabinet placed
   against another is held to it, so it goes up with it: pick the run's first cabinet too. One
   that would not end on the frame (held to a cabinet that is not picked) is refused, by name.
 - **Made again:** run Mobile base with the same **Name** to make it again, for example after a
@@ -925,7 +927,6 @@ frame under all of them and stands them on it:
   for at least 100 mm, two 4.5 mm holes (for 4 x 50 mm screws) go down through the bottom onto the
   board's middle, at a quarter and three quarters of that length. A run again does not cut them
   twice, one with other frame sizes moves them, and an Edit of the cabinet drops them until Mobile base runs again.
-  A cabinet with a plinth does not rest its bottom on the frame and gets none.
 - The cut list lists the frame's boards and blocks, and counts the casters as `Caster, locking`,
   the bolts as `Connector bolt, M6` with two `Washer, M6` each, and the screws as `Frame screw, 4 x 50 mm`.
 

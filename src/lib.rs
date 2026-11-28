@@ -221,7 +221,9 @@ fn apply(
     let mut rebased: Vec<String> = Vec::new();
     for name in names {
         let about = run("component.metadata", json!({"component": name}))?;
-        if let Some(base) = reached_base(&about, &tree, run).filter(|b| !rebased.contains(b)) {
+        // on a base (#281): Apply settings gives it no plinth
+        let on_base = reached_base(&about, &tree, run);
+        if let Some(base) = on_base.clone().filter(|b| !rebased.contains(b)) {
             rebased.push(base);
         }
         let ours = &about["metadata"][edit::KEY];
@@ -236,7 +238,7 @@ fn apply(
         let (_, base) = edit::merge(ours, &json!({}), &design)?;
         match settings {
             false => todo.push((name, about, entry, base, vec![])),
-            true => match settings::apply(&entry, &base, stored) {
+            true => match settings::apply(&entry, &base, stored, on_base.is_some()) {
                 Some((params, changed)) => todo.push((name, about, entry, params, changed)),
                 // along a line: built again all the same, to read the line again
                 None if along(&base) => todo.push((name, about, entry, base, vec!["line".into()])),
@@ -1533,6 +1535,37 @@ fn entries(entry: &str, params: &Value, stored: &Value, run: Run) -> Result<Valu
             let measure = measured(names, &cabinets, run)?;
             // a cabinet deleted since the base remembered it is left out
             cabinets.retain(|c| select::named(&measure, c).is_ok());
+            // On the frame, not on a plinth (#281): a cabinet made with one (board, notch, legs
+            // or casters) is built again with Plinth No first, as Edit would, so its bottom
+            // rests on the frame and gets the screws. Remembered, so Apply settings keeps it so.
+            let mut dropped = false;
+            for cabinet in &cabinets {
+                let about = run("component.metadata", json!({"component": cabinet}))?;
+                let ours = &about["metadata"][edit::KEY];
+                let Some(entry) = ours["entry"]
+                    .as_str()
+                    .filter(|e| matches!(*e, "cabinet" | "corner"))
+                else {
+                    continue;
+                };
+                let design = run(
+                    "document.inspect",
+                    json!({"bodies": false, "timeline": false}),
+                )?;
+                let (_, mut plain) = edit::merge(ours, &json!({}), &design)?;
+                if plain["plinth"].as_f64().unwrap_or(0.0) <= 0.0 {
+                    continue;
+                }
+                plain["plinth"] = json!(0);
+                rebuild(
+                    cabinet, &about, entry, &plain, &design, &measure, false, run,
+                )?;
+                dropped = true;
+            }
+            let measure = match dropped {
+                true => measured(body_names(run)?, &cabinets, run)?,
+                false => measure,
+            };
             let (plans, floors) = base::plans(&measure, &cabinets)?;
             params["name"] = json!(name);
             if base::timber(&params)?.is_some() {

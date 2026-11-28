@@ -369,3 +369,33 @@ def test_a_base_under_eight_cabinets(approval):
     steps += [pick(*[f"C{i} Side L" for i in range(1, 9)]), plugin(approval, "base", {"name": "Long"})]
     summary = designed(approval, NONE, steps)[-1]["result"]
     assert len(summary["cabinets"]) == 8 and summary["bolts"] == 28, summary
+
+
+def test_cabinets_with_a_plinth_lose_it_on_the_base(approval):
+    # #281: A on a plinth board, B with notched sides beside it. Mobile base builds both again
+    # with Plinth No before lifting them: no plinth board or notch is left, their bottoms rest
+    # on the frame (170 mm up) and get frame screws. Apply settings with another plinth height
+    # and type afterwards gives neither a plinth back; a run again changes nothing more.
+    timeline = {"command": "document.inspect", "params": {"bodies": False, "timeline": True}}
+    results = designed(approval, NONE, [
+        plugin(approval, "cabinet", {"name": "A", "width": 600, "plinth": 100}), select("A Side R"),
+        plugin(approval, "cabinet", {"name": "B", "width": 600, "plinth": 100, "plinth_type": "notch",
+                                     "place": "right"}),
+        pick("A Side L", "B Side L"), plugin(approval, "base", {"name": "Bench"}),
+        MEASURE, timeline,
+        setting(approval, {"plinth": 120, "plinth_type": "legs"}), plugin(approval, "rebuild", {}),
+        MEASURE, timeline,
+        pick("A Side L", "B Side L"), plugin(approval, "base", {"name": "Bench"}), MEASURE])
+    box = boxes(results[5])
+    assert not [n for n in box if " Plinth" in n or " Leg " in n], sorted(box)
+    names = [f["name"] for f in results[6]["timeline"]]
+    assert not [n for n in names if " notch" in n], [n for n in names if " notch" in n]
+    for cabinet in "AB":
+        assert box[f"{cabinet} Bottom"][2] == 170 and box[f"{cabinet} Side L"][2] == 170, box[f"{cabinet} Bottom"]
+        assert [n for n in names if n.startswith(f"{cabinet} Bottom frame screw ")], names
+    applied = results[7]["result"]
+    assert all("plinth" not in c for c in applied["changed"].values()), applied
+    after, names = boxes(results[8]), [f["name"] for f in results[9]["timeline"]]
+    assert not [n for n in after if " Plinth" in n or " Leg " in n], sorted(after)
+    assert not [n for n in names if " notch" in n] and after["A Bottom"][2] == 170, after["A Bottom"]
+    assert boxes(results[12]) == after, "a run again changes nothing"
